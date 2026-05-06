@@ -59,8 +59,8 @@ const perfStats = {
 };
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x060913);
-scene.fog = new THREE.FogExp2(0x060913, 0.038);
+scene.background = new THREE.Color(0x0f171e);
+scene.fog = new THREE.FogExp2(0x0f171e, usesMobileTuning() ? 0.024 : 0.028);
 
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 220);
 camera.position.set(0, getCameraHeight(), getCameraDepth());
@@ -890,10 +890,10 @@ function recordPoolExpansion(poolName) {
 }
 
 function buildWorld() {
-  const hemiLight = new THREE.HemisphereLight(0x7da4d4, 0x181a29, 0.85);
+  const hemiLight = new THREE.HemisphereLight(0xb1c8e6, 0x1d2430, 1.35);
   scene.add(hemiLight);
 
-  const moon = new THREE.DirectionalLight(0xb2ccff, 3.8);
+  const moon = new THREE.DirectionalLight(0xdbe9ff, 2.6);
   moon.position.set(-20, 36, 18);
   moon.castShadow = true;
   moon.shadow.mapSize.set(usesMobileTuning() ? 1024 : 2048, usesMobileTuning() ? 1024 : 2048);
@@ -1168,8 +1168,8 @@ function createPlayerMesh() {
   bladeLight.position.set(0.08, 1.2, -1.55);
   group.add(bladeLight);
 
-  const playerLight = new THREE.PointLight(0xffe8c4, usesMobileTuning() ? 2.2 : 2.8, usesMobileTuning() ? 18 : 26);
-  playerLight.position.set(0, 4, 0);
+  const playerLight = new THREE.PointLight(0xffe2ab, usesMobileTuning() ? 3.5 : 2.8, usesMobileTuning() ? 32 : 26);
+  playerLight.position.set(0, 4.5, 0);
   group.add(playerLight);
 
   return group;
