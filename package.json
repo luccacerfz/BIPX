@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "start": "node server.mjs",
-    "verify": "npx --yes --package playwright node tools/verify-canvas.mjs"
+    "verify": "npx --yes --package playwright node tools/verify-canvas.mjs",
+    "verify:performance": "npx --yes --package playwright node tools/verify-performance.mjs"
   }
 }

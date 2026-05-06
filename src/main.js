@@ -25,6 +25,29 @@ const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
 const touchFire = document.querySelector("#touch-fire");
 const queryParams = new URLSearchParams(window.location.search);
+const requestedQuality = sanitizeQuality(queryParams.get("quality"));
+const perfOverlayEnabled = queryParams.get("perf") === "1";
+const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
+
+const qualityManager = {
+  mode: requestedQuality,
+  level: requestedQuality === "auto" ? getDefaultQualityLevel() : requestedQuality,
+  effectBudget: 64,
+  fpsLowTimer: 0,
+  fpsHighTimer: 0,
+  evaluationTimer: 0,
+  pixelRatio: 1,
+};
+
+const perfStats = {
+  dt: 0,
+  frameMs: 0,
+  updateMs: 0,
+  renderMs: 0,
+  fpsAverage: 60,
+  skippedEffects: 0,
+  poolExpansions: {},
+};
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x07100d);
@@ -39,19 +62,36 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance",
   preserveDrawingBuffer: true,
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(getQualityPixelRatio());
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+applyQualitySettings(true);
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
-const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const upVector = new THREE.Vector3(0, 1, 0);
+const groundPlane = new THREE.Plane(upVector, 0);
 const pointer = new THREE.Vector2(0, 0);
 const pointerWorld = new THREE.Vector3(0, 0, -1);
 const worldLimit = 55;
 const maxActiveZombies = 90;
+const spatialGridCellSize = 8;
+const tempVectorA = new THREE.Vector3();
+const tempVectorB = new THREE.Vector3();
+const tempVectorC = new THREE.Vector3();
+
+const assetCache = {
+  geometries: new Map(),
+  materials: new Map(),
+};
+
+const spatialGrid = {
+  cells: new Map(),
+  dirty: true,
+  candidates: [],
+};
 
 const weapons = {
   pistol: { label: "Pistola", duration: 0 },
@@ -230,6 +270,14 @@ const xpGems = [];
 const effects = [];
 const graveProps = [];
 const remotePlayers = new Map();
+const entityPools = {
+  zombies: new Map(),
+  bullets: [],
+  enemyProjectiles: [],
+  xpGems: [],
+  effects: new Map(),
+  prewarmed: false,
+};
 let nextZombieId = 1;
 
 const multiplayer = {
@@ -287,6 +335,7 @@ const game = {
   zombiesToSpawn: 0,
   powerupTimer: 0,
   survivalTime: 0,
+  hudTimer: 0,
   touchVector: new THREE.Vector2(0, 0),
 };
 
@@ -468,6 +517,7 @@ window.__zombieNightDebug = {
       },
     };
   },
+  getPerfStats: getPerfStats,
   start: startGame,
   equipWeapon: activateWeapon,
   grantXp(amount) {
@@ -489,6 +539,23 @@ window.__zombieNightDebug = {
   spawnPowerup(type = "flamethrower") {
     spawnPowerup(type, player.position.x + 2.4, player.position.z);
   },
+  stressLevel6(count = 90) {
+    player.level = Math.max(player.level, 6);
+    player.bestLevel = Math.max(player.bestLevel, player.level);
+    player.wave = Math.max(player.wave, 6);
+    player.autoWeapons.orbitOrb.level = 1;
+    player.autoWeapons.sealRain.level = 1;
+    game.survivalTime = Math.max(game.survivalTime, 85);
+    const total = Math.max(0, Math.floor(Number(count) || 0));
+    for (let index = 0; index < total; index += 1) {
+      const angle = (index / Math.max(total, 1)) * Math.PI * 2;
+      const distance = 12 + (index % 18) * 1.3;
+      const type = ["zombie", "runner", "brute", "caster"][index % 4];
+      spawnZombie(player.position.x + Math.cos(angle) * distance, player.position.z + Math.sin(angle) * distance, type);
+    }
+    rebuildSpatialGrid();
+    updateHud(true);
+  },
 };
 
 if (queryParams.get("autoplay") === "1") {
@@ -502,6 +569,8 @@ if (queryParams.get("autoplay") === "1") {
 }
 
 function startGame() {
+  prewarmEntityPools();
+  applyQualitySettings(true);
   clearEntities();
   resetProgressionState();
   player.health = player.maxHealth;
@@ -520,10 +589,12 @@ function startGame() {
   game.zombiesToSpawn = 0;
   game.powerupTimer = 2.5;
   game.survivalTime = 0;
+  game.hudTimer = 0;
   nextZombieId = 1;
+  spatialGrid.dirty = true;
   message.classList.add("is-hidden");
   startNextWave();
-  updateHud();
+  updateHud(true);
 }
 
 function createDefaultUpgradeStats() {
@@ -557,6 +628,185 @@ function resetProgressionState() {
   player.pendingUpgradeChoices = [];
   player.pendingLevelUps = 0;
   renderUpgradeChoices();
+}
+
+function sanitizeQuality(value) {
+  return ["auto", "high", "medium", "low"].includes(value) ? value : "auto";
+}
+
+function createPerfOverlay() {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = [
+    "position:fixed",
+    "right:12px",
+    "top:12px",
+    "z-index:8",
+    "padding:8px 10px",
+    "border:1px solid rgba(255,255,255,.16)",
+    "border-radius:8px",
+    "background:rgba(4,8,10,.78)",
+    "color:#8ef151",
+    "font:700 11px ui-monospace, SFMono-Regular, Menlo, monospace",
+    "pointer-events:none",
+    "white-space:pre",
+  ].join(";");
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function renderPerfOverlay() {
+  if (!perfOverlay) {
+    return;
+  }
+
+  const stats = getPerfStats();
+  perfOverlay.textContent = `FPS ${stats.fpsAverage} · ${stats.quality}/${stats.qualityMode}\nU ${stats.updateMs}ms R ${stats.renderMs}ms · DC ${stats.drawCalls}\nZ ${stats.entities.zombies} B ${stats.entities.bullets} XP ${stats.entities.xpGems} FX ${stats.entities.effects}`;
+}
+
+function getDefaultQualityLevel() {
+  if (window.matchMedia?.("(pointer: coarse)")?.matches || Math.min(window.innerWidth, window.innerHeight) < 520) {
+    return "medium";
+  }
+
+  return "high";
+}
+
+function getQualityPixelRatio() {
+  const deviceRatio = window.devicePixelRatio || 1;
+
+  if (qualityManager.level === "high") {
+    return Math.min(deviceRatio, 2);
+  }
+
+  if (qualityManager.level === "medium") {
+    return Math.min(deviceRatio, 1.35);
+  }
+
+  return Math.min(deviceRatio, 1);
+}
+
+function applyQualitySettings(force = false) {
+  const pixelRatio = getQualityPixelRatio();
+  qualityManager.effectBudget = qualityManager.level === "high" ? 86 : qualityManager.level === "medium" ? 56 : 34;
+
+  if (force || Math.abs(pixelRatio - qualityManager.pixelRatio) > 0.01) {
+    qualityManager.pixelRatio = pixelRatio;
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  renderer.shadowMap.enabled = qualityManager.level !== "low";
+}
+
+function updateQualityManager(dt) {
+  if (qualityManager.mode !== "auto") {
+    return;
+  }
+
+  qualityManager.evaluationTimer -= dt;
+  if (qualityManager.evaluationTimer > 0) {
+    return;
+  }
+
+  qualityManager.evaluationTimer = 0.75;
+
+  if (perfStats.fpsAverage < 36) {
+    qualityManager.fpsLowTimer += 0.75;
+    qualityManager.fpsHighTimer = 0;
+  } else if (perfStats.fpsAverage > 55 && effects.length < qualityManager.effectBudget * 0.45) {
+    qualityManager.fpsHighTimer += 0.75;
+    qualityManager.fpsLowTimer = 0;
+  } else {
+    qualityManager.fpsLowTimer = Math.max(0, qualityManager.fpsLowTimer - 0.75);
+    qualityManager.fpsHighTimer = Math.max(0, qualityManager.fpsHighTimer - 0.75);
+  }
+
+  if (qualityManager.fpsLowTimer >= 1.5 && qualityManager.level === "high") {
+    qualityManager.level = "medium";
+    qualityManager.fpsLowTimer = 0;
+    applyQualitySettings();
+  } else if (qualityManager.fpsLowTimer >= 1.5 && qualityManager.level === "medium") {
+    qualityManager.level = "low";
+    qualityManager.fpsLowTimer = 0;
+    applyQualitySettings();
+  } else if (qualityManager.fpsHighTimer >= 5 && qualityManager.level === "low") {
+    qualityManager.level = "medium";
+    qualityManager.fpsHighTimer = 0;
+    applyQualitySettings();
+  } else if (qualityManager.fpsHighTimer >= 7 && qualityManager.level === "medium") {
+    qualityManager.level = "high";
+    qualityManager.fpsHighTimer = 0;
+    applyQualitySettings();
+  }
+}
+
+function getSharedGeometry(key, factory) {
+  if (!assetCache.geometries.has(key)) {
+    assetCache.geometries.set(key, factory());
+  }
+
+  return assetCache.geometries.get(key);
+}
+
+function createPooledMaterial(color, transparent = false, opacity = 1) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 1.05,
+    transparent,
+    opacity,
+    roughness: 0.42,
+    metalness: 0.08,
+  });
+}
+
+function prewarmEntityPools() {
+  if (entityPools.prewarmed) {
+    return;
+  }
+
+  const zombieWarmup = [
+    ["zombie", 34],
+    ["runner", 22],
+    ["brute", 18],
+    ["caster", 16],
+  ];
+
+  for (const [type, count] of zombieWarmup) {
+    for (let index = 0; index < count; index += 1) {
+      releaseZombieMesh(createZombieMesh(type), type);
+    }
+  }
+
+  for (let index = 0; index < 40; index += 1) {
+    releaseProjectileMesh(createPooledProjectileMesh(), entityPools.bullets);
+  }
+
+  for (let index = 0; index < 28; index += 1) {
+    releaseProjectileMesh(createPooledProjectileMesh(), entityPools.enemyProjectiles);
+  }
+
+  for (let index = 0; index < 120; index += 1) {
+    releaseXpGemMesh(createPooledXpGemMesh());
+  }
+
+  for (let index = 0; index < 18; index += 1) {
+    releaseEffectMesh(createPooledPulseEffect(), "pulse");
+    releaseEffectMesh(createPooledExplosionEffect(), "explosion");
+    releaseEffectMesh(createPooledBeamEffect(), "beam");
+  }
+
+  for (let index = 0; index < 10; index += 1) {
+    releaseEffectMesh(createPooledSlashEffect(), "slash");
+    releaseEffectMesh(createPooledConeEffect(), "cone");
+    releaseEffectMesh(createPooledOrbitEffect(), "orbit");
+  }
+
+  entityPools.prewarmed = true;
+}
+
+function recordPoolExpansion(poolName) {
+  perfStats.poolExpansions[poolName] = (perfStats.poolExpansions[poolName] || 0) + 1;
 }
 
 function buildWorld() {
@@ -846,6 +1096,7 @@ function createZombieMesh(type = "zombie") {
   }
 
   const group = new THREE.Group();
+  group.userData.lodState = "detail";
   const palettes = {
     zombie: { skin: 0x76a64f, cloth: 0x5d3b3b, eye: 0xff514d },
     runner: { skin: 0x8ad05d, cloth: 0x273545, eye: 0x87f7ff },
@@ -946,7 +1197,42 @@ function createZombieMesh(type = "zombie") {
     group.add(light);
   }
 
+  attachZombieLodProxy(group, type, palette, bodyRadius, bodyHeight);
   return group;
+}
+
+function attachZombieLodProxy(group, type, palette, bodyRadius, bodyHeight) {
+  const detailChildren = [...group.children];
+  const proxy = new THREE.Mesh(
+    getSharedGeometry(`zombie-proxy-${type}`, () =>
+      new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
+    ),
+    getZombieProxyMaterial(type, palette),
+  );
+  proxy.name = "zombie-lod-proxy";
+  proxy.position.y = type === "brute" ? 1.15 : 1;
+  proxy.castShadow = false;
+  proxy.receiveShadow = false;
+  proxy.visible = false;
+  proxy.userData.isLodProxy = true;
+  group.userData.detailChildren = detailChildren;
+  group.userData.lodProxy = proxy;
+  group.add(proxy);
+}
+
+function getZombieProxyMaterial(type, palette) {
+  const key = `zombie-proxy-${type}`;
+  if (!assetCache.materials.has(key)) {
+    assetCache.materials.set(
+      key,
+      new THREE.MeshBasicMaterial({
+        color: palette.cloth,
+        fog: true,
+      }),
+    );
+  }
+
+  return assetCache.materials.get(key);
 }
 
 function createBossMesh(type) {
@@ -1304,8 +1590,292 @@ function createPowerupMesh(type) {
   return group;
 }
 
+function getZombiePool(type) {
+  if (!entityPools.zombies.has(type)) {
+    entityPools.zombies.set(type, []);
+  }
+
+  return entityPools.zombies.get(type);
+}
+
+function acquireZombieMesh(type) {
+  const pool = getZombiePool(type);
+  let mesh = pool.pop();
+  if (!mesh) {
+    mesh = createZombieMesh(type);
+    recordPoolExpansion(`zombie:${type}`);
+  }
+
+  mesh.visible = true;
+  mesh.position.set(0, 0, 0);
+  mesh.rotation.set(0, 0, 0);
+  mesh.scale.set(1, 1, 1);
+  setZombieLod(mesh, false);
+  applyMeshQuality(mesh, monsterProfiles[type]?.boss ? 90 : 42);
+  return mesh;
+}
+
+function releaseZombieMesh(mesh, type) {
+  if (!mesh) {
+    return;
+  }
+
+  scene.remove(mesh);
+  mesh.visible = false;
+  mesh.position.set(9999, 9999, 9999);
+  mesh.rotation.set(0, 0, 0);
+  mesh.scale.set(1, 1, 1);
+  setZombieLod(mesh, false);
+  getZombiePool(type).push(mesh);
+}
+
+function createPooledProjectileMesh() {
+  const geometry = getSharedGeometry("projectile-sphere", () => new THREE.SphereGeometry(0.16, 10, 8));
+  const mesh = new THREE.Mesh(geometry, createPooledMaterial(0xfff2a3));
+  mesh.castShadow = qualityManager.level === "high";
+  mesh.visible = false;
+  return mesh;
+}
+
+function acquireProjectileMesh(pool, color, radius) {
+  let mesh = pool.pop();
+  if (!mesh) {
+    mesh = createPooledProjectileMesh();
+    recordPoolExpansion(pool === entityPools.bullets ? "bullets" : "enemyProjectiles");
+  }
+
+  mesh.visible = true;
+  mesh.scale.setScalar(radius / 0.3);
+  mesh.material.color.setHex(color);
+  mesh.material.emissive.setHex(color);
+  mesh.material.opacity = 1;
+  mesh.castShadow = qualityManager.level === "high";
+  return mesh;
+}
+
+function releaseProjectileMesh(mesh, pool) {
+  if (!mesh) {
+    return;
+  }
+
+  scene.remove(mesh);
+  mesh.visible = false;
+  mesh.position.set(9999, 9999, 9999);
+  mesh.scale.set(1, 1, 1);
+  pool.push(mesh);
+}
+
+function createPooledXpGemMesh() {
+  const geometry = getSharedGeometry("xp-gem-small", () => new THREE.OctahedronGeometry(0.24, 0));
+  const mesh = new THREE.Mesh(geometry, createPooledMaterial(0x74d1ff));
+  mesh.castShadow = false;
+  mesh.visible = false;
+  return mesh;
+}
+
+function acquireXpGemMesh(color, value) {
+  let mesh = entityPools.xpGems.pop();
+  if (!mesh) {
+    mesh = createPooledXpGemMesh();
+    recordPoolExpansion("xpGems");
+  }
+
+  const scale = value >= 25 ? 1.42 : 1;
+  mesh.visible = true;
+  mesh.scale.setScalar(scale);
+  mesh.material.color.setHex(color);
+  mesh.material.emissive.setHex(color);
+  mesh.material.opacity = 1;
+  mesh.castShadow = qualityManager.level === "high";
+  return mesh;
+}
+
+function releaseXpGemMesh(mesh) {
+  if (!mesh) {
+    return;
+  }
+
+  scene.remove(mesh);
+  mesh.visible = false;
+  mesh.position.set(9999, 9999, 9999);
+  mesh.rotation.set(0, 0, 0);
+  mesh.scale.set(1, 1, 1);
+  entityPools.xpGems.push(mesh);
+}
+
+function getEffectPool(type) {
+  if (!entityPools.effects.has(type)) {
+    entityPools.effects.set(type, []);
+  }
+
+  return entityPools.effects.get(type);
+}
+
+function acquireEffectMesh(type, factory) {
+  const pool = getEffectPool(type);
+  let mesh = pool.pop();
+  if (!mesh) {
+    mesh = factory();
+    recordPoolExpansion(`effect:${type}`);
+  }
+
+  mesh.visible = true;
+  mesh.userData.effectPoolType = type;
+  return mesh;
+}
+
+function releaseEffectMesh(mesh, type = mesh?.userData?.effectPoolType) {
+  if (!mesh || !type) {
+    return;
+  }
+
+  scene.remove(mesh);
+  mesh.visible = false;
+  mesh.position.set(9999, 9999, 9999);
+  mesh.rotation.set(0, 0, 0);
+  mesh.quaternion.identity();
+  mesh.scale.set(1, 1, 1);
+  mesh.traverse((child) => {
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        material.opacity = material.userData.baseOpacity ?? material.opacity ?? 1;
+      }
+    }
+  });
+  getEffectPool(type).push(mesh);
+}
+
+function createTransparentMaterial(color, opacity) {
+  return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
+}
+
+function createPooledPulseEffect() {
+  const ring = new THREE.Mesh(
+    getSharedGeometry("effect-pulse-ring", () => new THREE.TorusGeometry(1, 0.055, 8, 72)),
+    createTransparentMaterial(0x8ef151, 0.78),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.userData.baseOpacity = 0.78;
+  ring.userData.effectPoolType = "pulse";
+  return ring;
+}
+
+function createPooledExplosionEffect() {
+  const group = new THREE.Group();
+  const ring = new THREE.Mesh(
+    getSharedGeometry("effect-explosion-ring", () => new THREE.TorusGeometry(1, 0.055, 8, 72)),
+    createTransparentMaterial(0xffd36d, 0.72),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.userData.baseOpacity = 0.72;
+  group.add(ring);
+
+  const flare = new THREE.Mesh(
+    getSharedGeometry("effect-explosion-flare", () => new THREE.SphereGeometry(0.7, 14, 8)),
+    createTransparentMaterial(0xffd36d, 0.34),
+  );
+  flare.position.y = 0.64;
+  flare.userData.baseOpacity = 0.34;
+  group.add(flare);
+  group.userData.effectPoolType = "explosion";
+  return group;
+}
+
+function createPooledBeamEffect() {
+  const beam = new THREE.Mesh(
+    getSharedGeometry("effect-beam", () => new THREE.CylinderGeometry(0.045, 0.045, 1, 8)),
+    createTransparentMaterial(0x74d1ff, 0.82),
+  );
+  beam.userData.baseOpacity = 0.82;
+  beam.userData.effectPoolType = "beam";
+  return beam;
+}
+
+function createPooledSlashEffect() {
+  const group = new THREE.Group();
+  const arc = new THREE.Mesh(
+    getSharedGeometry("effect-slash-arc", () => new THREE.TorusGeometry(1, 0.045, 8, 48, Math.PI * 0.92)),
+    createTransparentMaterial(0x8ffcff, 0.78),
+  );
+  arc.rotation.x = Math.PI * 0.5;
+  arc.position.z = -0.42;
+  arc.userData.baseOpacity = 0.78;
+  group.add(arc);
+  group.userData.effectPoolType = "slash";
+  return group;
+}
+
+function createPooledConeEffect() {
+  const group = new THREE.Group();
+  const cone = new THREE.Mesh(
+    getSharedGeometry("effect-cone", () => new THREE.ConeGeometry(1, 1, 16, 1, true)),
+    createTransparentMaterial(0xff7a28, 0.42),
+  );
+  cone.userData.baseOpacity = 0.42;
+  group.add(cone);
+  group.userData.effectPoolType = "cone";
+  return group;
+}
+
+function createPooledOrbitEffect() {
+  const group = new THREE.Group();
+  const orb = new THREE.Mesh(
+    getSharedGeometry("effect-orbit-orb", () => new THREE.SphereGeometry(0.28, 14, 10)),
+    createTransparentMaterial(0xd978ff, 0.86),
+  );
+  orb.userData.baseOpacity = 0.86;
+  group.add(orb);
+
+  const ring = new THREE.Mesh(
+    getSharedGeometry("effect-orbit-ring", () => new THREE.TorusGeometry(1, 0.035, 8, 42)),
+    createTransparentMaterial(0xd978ff, 0.58),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.y = -0.3;
+  ring.userData.baseOpacity = 0.58;
+  group.add(ring);
+  group.userData.effectPoolType = "orbit";
+  return group;
+}
+
+function tintEffect(mesh, color, opacityMultiplier = 1) {
+  mesh.traverse((child) => {
+    if (!child.material) {
+      return;
+    }
+
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (material.color) {
+        material.color.setHex(color);
+      }
+      material.opacity = (child.userData.baseOpacity ?? material.userData.baseOpacity ?? material.opacity ?? 1) * opacityMultiplier;
+      material.userData.baseOpacity = material.opacity;
+    }
+  });
+}
+
+function applyMeshQuality(mesh, shadowDistance) {
+  const shadowEnabled = qualityManager.level !== "low";
+  mesh.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = shadowEnabled && shadowDistance > 18;
+      child.receiveShadow = shadowEnabled && shadowDistance > 18;
+    }
+  });
+}
+
 function animate() {
-  const dt = Math.min(clock.getDelta(), 0.035);
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.035);
+  const frameStartedAt = performance.now();
+  perfStats.dt = rawDt;
+  perfStats.frameMs = rawDt * 1000;
+  const instantFps = rawDt > 0 ? 1 / rawDt : 60;
+  perfStats.fpsAverage = perfStats.fpsAverage * 0.94 + instantFps * 0.06;
+  updateQualityManager(rawDt);
+  const updateStartedAt = performance.now();
 
   if (game.state === "playing") {
     game.survivalTime += dt;
@@ -1313,12 +1883,14 @@ function animate() {
     updatePlayer(dt);
     updatePowerups(dt);
     updateXpGems(dt);
+    ensureSpatialGrid();
     updateActiveWeapon(dt);
     updateShooting(dt);
     updateAutoWeapons(dt);
     updateUpgradeChoices(dt);
     updateSpawning(dt);
     updateZombies(dt);
+    rebuildSpatialGrid();
     updateEnemyProjectiles(dt);
     updateBullets(dt);
     updateWaveFlow(dt);
@@ -1331,7 +1903,12 @@ function animate() {
   updateCamera(dt);
   updateEffects(dt);
   animateProps(clock.elapsedTime);
+  perfStats.updateMs = performance.now() - updateStartedAt;
+  const renderStartedAt = performance.now();
   renderer.render(scene, camera);
+  perfStats.renderMs = performance.now() - renderStartedAt;
+  perfStats.drawCalls = renderer.info.render.calls;
+  perfStats.totalFrameMs = performance.now() - frameStartedAt;
   requestAnimationFrame(animate);
 }
 
@@ -1350,7 +1927,7 @@ function updateAim() {
   raycaster.setFromCamera(pointer, camera);
   raycaster.ray.intersectPlane(groundPlane, pointerWorld);
 
-  const direction = pointerWorld.clone().sub(player.position);
+  const direction = tempVectorC.subVectors(pointerWorld, player.position);
   direction.y = 0;
 
   if (direction.lengthSq() > 0.1) {
@@ -1367,7 +1944,7 @@ function updateAim() {
 }
 
 function updatePlayer(dt) {
-  const move = new THREE.Vector3(0, 0, 0);
+  const move = tempVectorB.set(0, 0, 0);
 
   if (keys.has("KeyW") || keys.has("ArrowUp")) move.z -= 1;
   if (keys.has("KeyS") || keys.has("ArrowDown")) move.z += 1;
@@ -1404,7 +1981,7 @@ function updatePowerups(dt) {
     powerup.mesh.rotation.y += dt * 1.9;
     powerup.mesh.position.y = powerup.baseY + Math.sin(powerup.age * 4.4) * 0.16;
 
-    if (distanceXZ(player.position, powerup.mesh.position) < powerup.radius) {
+    if (distanceXZSquared(player.position, powerup.mesh.position) < powerup.radius * powerup.radius) {
       activateWeapon(powerup.type);
       removePowerup(index);
     }
@@ -1414,19 +1991,9 @@ function updatePowerups(dt) {
 function spawnXpGem(position, value = 3) {
   const gemValue = Math.max(1, Math.floor(value));
   const color = gemValue >= 25 ? 0xffd36d : gemValue >= 7 ? 0xd978ff : 0x74d1ff;
-  const geometry = new THREE.OctahedronGeometry(gemValue >= 25 ? 0.34 : 0.24, 0);
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    emissive: color,
-    emissiveIntensity: 1.25,
-    roughness: 0.3,
-    metalness: 0.16,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
+  const mesh = acquireXpGemMesh(color, gemValue);
   mesh.position.copy(position);
   mesh.position.y = 0.52;
-  mesh.castShadow = true;
-  mesh.add(new THREE.PointLight(color, 1.1, 4.5));
   scene.add(mesh);
 
   xpGems.push({
@@ -1446,14 +2013,17 @@ function updateXpGems(dt) {
     gem.mesh.rotation.x += dt * 1.7;
     gem.mesh.position.y = gem.baseY + Math.sin(gem.age * 4.2) * 0.11;
 
-    const distance = distanceXZ(player.position, gem.mesh.position);
-    if (distance < player.upgradeStats.pickupRadius && distance > 0.08) {
+    const distanceSq = distanceXZSquared(player.position, gem.mesh.position);
+    const pickupRadiusSq = player.upgradeStats.pickupRadius * player.upgradeStats.pickupRadius;
+    if (distanceSq < pickupRadiusSq && distanceSq > 0.0064) {
+      const distance = Math.sqrt(distanceSq);
       const pullStrength = 1 - Math.min(distance / player.upgradeStats.pickupRadius, 1);
       gem.mesh.position.x += (player.position.x - gem.mesh.position.x) * Math.min(1, dt * (3.8 + pullStrength * 10));
       gem.mesh.position.z += (player.position.z - gem.mesh.position.z) * Math.min(1, dt * (3.8 + pullStrength * 10));
     }
 
-    if (distanceXZ(player.position, gem.mesh.position) < gem.radius + 0.72) {
+    const collectRadius = gem.radius + 0.72;
+    if (distanceXZSquared(player.position, gem.mesh.position) < collectRadius * collectRadius) {
       collectXp(gem.value);
       removeXpGem(index);
     }
@@ -1814,18 +2384,9 @@ function spawnProjectile({
   angleOffset = 0,
 }) {
   const projectileDirection = rotateDirectionY(direction, angleOffset);
-  const geometry = new THREE.SphereGeometry(0.16, 10, 8);
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    emissive: color,
-    emissiveIntensity: 1.1,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.scale.setScalar(radius / 0.3);
-  mesh.castShadow = true;
+  const mesh = acquireProjectileMesh(entityPools.bullets, color, radius);
   mesh.position.copy(origin);
   mesh.position.y = 1.12;
-  mesh.add(new THREE.PointLight(color, 1.4, 4));
   mesh.position.addScaledVector(projectileDirection, 1.25);
   scene.add(mesh);
 
@@ -1950,15 +2511,15 @@ function updateSealRain(dt) {
 
 function getClosestZombie(origin, maxRange = Infinity) {
   let closest = null;
-  let closestDistance = maxRange;
+  let closestDistanceSq = maxRange * maxRange;
+  const candidates = Number.isFinite(maxRange) ? queryZombiesNear(origin, maxRange) : zombies;
 
-  for (let index = 0; index < zombies.length; index += 1) {
-    const zombie = zombies[index];
-    const distance = distanceXZ(origin, zombie.mesh.position);
+  for (const zombie of candidates) {
+    const distanceSq = distanceXZSquared(origin, zombie.mesh.position);
 
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      closest = { zombie, index, distance };
+    if (distanceSq < closestDistanceSq) {
+      closestDistanceSq = distanceSq;
+      closest = { zombie, index: getZombieIndex(zombie), distance: Math.sqrt(distanceSq) };
     }
   }
 
@@ -1967,54 +2528,27 @@ function getClosestZombie(origin, maxRange = Infinity) {
 
 function spawnGuardianBladeEffect(origin, direction, color) {
   spawnRemoteBeam(origin, direction, color, 7);
-  const slashOrigin = origin.clone().addScaledVector(direction, 2.6);
+  const slashOrigin = tempVectorA.copy(origin).addScaledVector(direction, 2.6);
   spawnRemoteSlash(slashOrigin, direction, color);
 }
 
 function spawnOrbitOrbEffect(origin, color, radius) {
-  const group = new THREE.Group();
+  const group = acquireEffectMesh("orbit", createPooledOrbitEffect);
   group.position.copy(origin);
   group.position.y = 0.52;
-
-  const orb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 14, 10),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86, depthWrite: false }),
-  );
-  group.add(orb);
-
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.035, 8, 42),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.58, depthWrite: false }),
-  );
-  ring.rotation.x = Math.PI * 0.5;
-  ring.position.y = -0.3;
-  group.add(ring);
-
-  const light = new THREE.PointLight(color, 1.5, 5);
-  group.add(light);
-  addTimedEffect(group, 0.26);
+  group.scale.setScalar(radius);
+  tintEffect(group, color);
+  addTimedEffect(group, 0.26, false, "orbit");
 }
 
 function spawnSealRainEffect(origin, color, radius) {
-  const marker = new THREE.Group();
+  const marker = acquireEffectMesh("beam", createPooledBeamEffect);
   marker.position.copy(origin);
   marker.position.y = 2.9;
-
-  const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.06, 0.16, 4.8, 8),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.74, depthWrite: false }),
-  );
-  marker.add(beam);
-
-  const seal = new THREE.Mesh(
-    new THREE.TorusGeometry(radius * 0.45, 0.045, 8, 36),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.78, depthWrite: false }),
-  );
-  seal.rotation.x = Math.PI * 0.5;
-  seal.position.y = -2.35;
-  marker.add(seal);
-
-  addTimedEffect(marker, 0.24);
+  marker.scale.set(1.9, 4.8, 1.9);
+  marker.quaternion.identity();
+  tintEffect(marker, color, 0.85);
+  addTimedEffect(marker, 0.24, false, "beam");
   spawnExplosion(origin, color, radius);
 }
 
@@ -2091,40 +2625,14 @@ function getPowerupInterval() {
 }
 
 function spawnFlameBurst() {
-  const direction = player.aimDirection.clone().normalize();
-  const flame = new THREE.Group();
+  const direction = tempVectorA.copy(player.aimDirection).normalize();
+  const flame = acquireEffectMesh("cone", createPooledConeEffect);
   flame.position.copy(player.position).addScaledVector(direction, 3.05);
   flame.position.y = 1.02;
-  flame.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-
-  const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(1.25, 4.6, 18, 1, true),
-    new THREE.MeshBasicMaterial({
-      color: 0xff7a28,
-      transparent: true,
-      opacity: 0.46,
-      depthWrite: false,
-    }),
-  );
-  flame.add(cone);
-
-  const core = new THREE.Mesh(
-    new THREE.ConeGeometry(0.54, 3.4, 14, 1, true),
-    new THREE.MeshBasicMaterial({
-      color: 0xffdc78,
-      transparent: true,
-      opacity: 0.58,
-      depthWrite: false,
-    }),
-  );
-  core.position.y = 0.35;
-  flame.add(core);
-
-  const light = new THREE.PointLight(0xff8a24, 2.2, 8);
-  light.position.y = -0.9;
-  flame.add(light);
-
-  addTimedEffect(flame, 0.16);
+  flame.quaternion.setFromUnitVectors(upVector, direction);
+  flame.scale.set(1.25, 4.6, 1.25);
+  tintEffect(flame, 0xff7a28);
+  addTimedEffect(flame, 0.16, false, "cone");
 }
 
 function startAxeSpin() {
@@ -2133,75 +2641,32 @@ function startAxeSpin() {
 }
 
 function spawnKatanaSlash() {
-  const slash = new THREE.Group();
+  const slash = acquireEffectMesh("slash", createPooledSlashEffect);
   slash.position.copy(player.position);
   slash.position.y = 0.28;
   slash.rotation.y = getForwardRotation(player.aimDirection) - Math.PI * 0.5;
-
-  const arc = new THREE.Mesh(
-    new THREE.TorusGeometry(2.75, 0.045, 8, 56, Math.PI * 0.92),
-    new THREE.MeshBasicMaterial({
-      color: weapons.katana.color,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-    }),
-  );
-  arc.rotation.x = Math.PI * 0.5;
-  arc.position.z = -1.2;
-  slash.add(arc);
-
-  const edge = new THREE.Mesh(
-    new THREE.BoxGeometry(3.2, 0.045, 0.16),
-    new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-    }),
-  );
-  edge.position.set(0, 0, -1.74);
-  edge.rotation.y = -0.28;
-  slash.add(edge);
-
-  addTimedEffect(slash, 0.2, true);
+  slash.scale.setScalar(2.75);
+  tintEffect(slash, weapons.katana.color, 1.1);
+  addTimedEffect(slash, 0.2, true, "slash");
 }
 
 function spawnExplosion(position, color, radius) {
-  const group = new THREE.Group();
+  const group = acquireEffectMesh("explosion", createPooledExplosionEffect);
   group.position.copy(position);
   group.position.y = 0.24;
-
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.055, 8, 72),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.72, depthWrite: false }),
-  );
-  ring.rotation.x = Math.PI * 0.5;
-  group.add(ring);
-
-  const flare = new THREE.Mesh(
-    new THREE.SphereGeometry(0.7, 18, 10),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.42, depthWrite: false }),
-  );
-  flare.position.y = 0.64;
-  group.add(flare);
-
-  const light = new THREE.PointLight(color, 2.2, radius * 2.2);
-  light.position.y = 1.2;
-  group.add(light);
-
-  addTimedEffect(group, 0.32);
+  group.scale.setScalar(radius);
+  tintEffect(group, color);
+  addTimedEffect(group, 0.32, false, "explosion");
 }
 
 function spawnWeaponPulse(color) {
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(3.9, 0.055, 8, 72),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 }),
-  );
+  const ring = acquireEffectMesh("pulse", createPooledPulseEffect);
   ring.rotation.x = Math.PI * 0.5;
   ring.position.copy(player.position);
   ring.position.y = 0.18;
-  addTimedEffect(ring, 0.36, true);
+  ring.scale.setScalar(3.9);
+  tintEffect(ring, color);
+  addTimedEffect(ring, 0.36, true, "pulse");
 }
 
 function startNextWave() {
@@ -2237,7 +2702,8 @@ function getZombieSpawnInterval() {
 
 function spawnZombie(x, z, type = pickMonsterType()) {
   const profile = monsterProfiles[type] ?? monsterProfiles.zombie;
-  const mesh = createZombieMesh(type);
+  const mesh = acquireZombieMesh(type);
+  mesh.userData.poolType = type;
   if (Number.isFinite(x) && Number.isFinite(z)) {
     mesh.position.set(x, 0, z);
   } else {
@@ -2265,12 +2731,14 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     damage: profile.damage,
     radius: profile.radius,
     score: profile.score,
+    shadowEnabled: null,
     wobble: Math.random() * Math.PI * 2,
   });
   if (labelSprite) {
     updateBossLabelPosition(zombies[zombies.length - 1]);
   }
   nextZombieId += 1;
+  spatialGrid.dirty = true;
 }
 
 function createBossLabelSprite(label, maxHealth, type) {
@@ -2428,10 +2896,11 @@ function updateZombies(dt) {
       continue;
     }
 
-    const toTarget = target.position.clone().sub(zombie.mesh.position);
+    const toTarget = tempVectorA.subVectors(target.position, zombie.mesh.position);
     toTarget.y = 0;
     const distance = toTarget.length();
     zombie.attackCooldown -= dt;
+    updateZombieLod(zombie);
 
     if (canUseRangedAttack(zombie.type, distance)) {
       if (distance > 0.05) {
@@ -2461,6 +2930,66 @@ function updateZombies(dt) {
 
     updateBossLabelPosition(zombie);
   }
+
+  spatialGrid.dirty = true;
+}
+
+function updateZombieLod(zombie) {
+  if (monsterProfiles[zombie.type]?.boss) {
+    return;
+  }
+
+  const distanceSq = distanceXZSquared(player.position, zombie.mesh.position);
+  const detailDistance = getZombieDetailDistance();
+  const wantsProxy = distanceSq > detailDistance * detailDistance;
+  setZombieLod(zombie.mesh, wantsProxy);
+
+  const shadowDistance = qualityManager.level === "high" ? 28 : qualityManager.level === "medium" ? 17 : 0;
+  const wantsShadow = !wantsProxy && distanceSq < shadowDistance * shadowDistance;
+
+  if (zombie.shadowEnabled === wantsShadow) {
+    return;
+  }
+
+  zombie.shadowEnabled = wantsShadow;
+  zombie.mesh.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = wantsShadow;
+      child.receiveShadow = wantsShadow && qualityManager.level === "high";
+    }
+  });
+}
+
+function getZombieDetailDistance() {
+  const baseDistance = qualityManager.level === "high" ? 24 : qualityManager.level === "medium" ? 15 : 8.5;
+  if (zombies.length > 70) {
+    return baseDistance * 0.75;
+  }
+
+  if (zombies.length > 45) {
+    return baseDistance * 0.9;
+  }
+
+  return baseDistance;
+}
+
+function setZombieLod(mesh, useProxy) {
+  const detailChildren = mesh.userData.detailChildren;
+  const proxy = mesh.userData.lodProxy;
+  if (!detailChildren || !proxy) {
+    return;
+  }
+
+  const nextState = useProxy ? "proxy" : "detail";
+  if (mesh.userData.lodState === nextState) {
+    return;
+  }
+
+  for (const child of detailChildren) {
+    child.visible = !useProxy;
+  }
+  proxy.visible = useProxy;
+  mesh.userData.lodState = nextState;
 }
 
 function getClosestPlayerTarget(position) {
@@ -2588,17 +3117,10 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
   const projectileColor = profile.projectileColor ?? 0xd978ff;
   const projectileSpeed = zombie.type === "himetrica" ? 19 : zombie.type === "visor" ? 13 : 14;
   const projectileSize = zombie.type === "visor" ? 0.3 : zombie.type === "himetrica" ? 0.2 : 0.24;
-  const material = new THREE.MeshStandardMaterial({
-    color: projectileColor,
-    emissive: projectileColor,
-    emissiveIntensity: 1.25,
-    roughness: 0.42,
-  });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(projectileSize, 14, 10), material);
+  const mesh = acquireProjectileMesh(entityPools.enemyProjectiles, projectileColor, projectileSize + 0.18);
   mesh.position.copy(zombie.mesh.position);
   mesh.position.y = 1.38;
   mesh.position.addScaledVector(direction, 0.9);
-  mesh.add(new THREE.PointLight(projectileColor, 1.7, 5));
   scene.add(mesh);
 
   enemyProjectiles.push({
@@ -2640,17 +3162,18 @@ function updateBullets(dt) {
     bullet.mesh.position.addScaledVector(bullet.velocity, dt);
 
     let hit = false;
-    for (let zombieIndex = zombies.length - 1; zombieIndex >= 0; zombieIndex -= 1) {
-      const zombie = zombies[zombieIndex];
+    const candidates = [...queryZombiesNear(bullet.mesh.position, bullet.radius + 2.1)];
+    for (const zombie of candidates) {
       if (bullet.hitZombies.has(zombie.id)) {
         continue;
       }
 
-      const distance = distanceXZ(bullet.mesh.position, zombie.mesh.position);
+      const hitRadius = bullet.radius + zombie.radius;
 
-      if (distance < bullet.radius + zombie.radius) {
+      if (distanceXZSquared(bullet.mesh.position, zombie.mesh.position) < hitRadius * hitRadius) {
         hit = true;
         bullet.hitZombies.add(zombie.id);
+        const zombieIndex = getZombieIndex(zombie);
         damageZombie(zombieIndex, bullet.damage, true);
 
         if (bullet.explodeRadius > 0) {
@@ -2692,18 +3215,21 @@ function damageZombiesInCone(range, minDot, amount, shouldFlash) {
 }
 
 function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shouldFlash, awardRewards = true) {
-  for (let index = zombies.length - 1; index >= 0; index -= 1) {
-    const zombie = zombies[index];
-    const offset = zombie.mesh.position.clone().sub(origin);
-    offset.y = 0;
-    const distance = offset.length();
+  const candidates = [...queryZombiesNear(origin, range)];
+  const rangeSq = range * range;
 
-    if (distance <= 0.05 || distance > range) {
+  for (const zombie of candidates) {
+    tempVectorA.subVectors(zombie.mesh.position, origin);
+    tempVectorA.y = 0;
+    const distanceSq = tempVectorA.lengthSq();
+
+    if (distanceSq <= 0.0025 || distanceSq > rangeSq) {
       continue;
     }
 
-    const dot = offset.normalize().dot(direction);
+    const dot = tempVectorA.normalize().dot(direction);
     if (dot >= minDot) {
+      const index = getZombieIndex(zombie);
       damageZombie(index, amount, shouldFlash, awardRewards);
     }
   }
@@ -2719,16 +3245,24 @@ function damageZombiesInRadius(radius, amount, shouldFlash) {
 }
 
 function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash, awardRewards = true) {
-  for (let index = zombies.length - 1; index >= 0; index -= 1) {
-    if (distanceXZ(origin, zombies[index].mesh.position) <= radius) {
+  const candidates = [...queryZombiesNear(origin, radius)];
+  const radiusSq = radius * radius;
+
+  for (const zombie of candidates) {
+    if (distanceXZSquared(origin, zombie.mesh.position) <= radiusSq) {
+      const index = getZombieIndex(zombie);
       damageZombie(index, amount, shouldFlash, awardRewards);
     }
   }
 }
 
 function damageZombiesAtPoint(position, radius, amount, shouldFlash, awardRewards = true) {
-  for (let index = zombies.length - 1; index >= 0; index -= 1) {
-    if (distanceXZ(position, zombies[index].mesh.position) <= radius) {
+  const candidates = [...queryZombiesNear(position, radius)];
+  const radiusSq = radius * radius;
+
+  for (const zombie of candidates) {
+    if (distanceXZSquared(position, zombie.mesh.position) <= radiusSq) {
+      const index = getZombieIndex(zombie);
       damageZombie(index, amount, shouldFlash, awardRewards);
     }
   }
@@ -2777,7 +3311,17 @@ function updateWaveFlow(dt) {
   }
 }
 
-function addTimedEffect(mesh, duration, followPlayer = false) {
+function addTimedEffect(mesh, duration, followPlayer = false, poolType = mesh.userData?.effectPoolType || null) {
+  if (effects.length >= qualityManager.effectBudget) {
+    perfStats.skippedEffects += 1;
+    if (poolType) {
+      releaseEffectMesh(mesh, poolType);
+    } else {
+      disposeObject(mesh);
+    }
+    return;
+  }
+
   scene.add(mesh);
   mesh.traverse((child) => {
     const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
@@ -2786,7 +3330,7 @@ function addTimedEffect(mesh, duration, followPlayer = false) {
       material.userData.baseOpacity = material.opacity ?? 1;
     }
   });
-  effects.push({ mesh, duration, age: 0, followPlayer });
+  effects.push({ mesh, duration, age: 0, followPlayer, poolType, baseScale: mesh.scale.clone() });
 }
 
 function updateEffects(dt) {
@@ -2800,7 +3344,12 @@ function updateEffects(dt) {
       effect.mesh.position.z = player.position.z;
     }
 
-    effect.mesh.scale.setScalar(1 + (1 - fade) * 0.32);
+    const scaleBoost = 1 + (1 - fade) * 0.32;
+    effect.mesh.scale.set(
+      effect.baseScale.x * scaleBoost,
+      effect.baseScale.y * scaleBoost,
+      effect.baseScale.z * scaleBoost,
+    );
     effect.mesh.traverse((child) => {
       const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
 
@@ -2811,17 +3360,21 @@ function updateEffects(dt) {
 
     if (effect.age >= effect.duration) {
       const [expired] = effects.splice(index, 1);
-      scene.remove(expired.mesh);
-      disposeObject(expired.mesh);
+      if (expired.poolType) {
+        releaseEffectMesh(expired.mesh, expired.poolType);
+      } else {
+        scene.remove(expired.mesh);
+        disposeObject(expired.mesh);
+      }
     }
   }
 }
 
 function updateCamera(dt) {
-  const cameraTarget = player.position.clone().addScaledVector(player.aimDirection, 2.6);
+  const cameraTarget = tempVectorB.copy(player.position).addScaledVector(player.aimDirection, 2.6);
   cameraTarget.y = 1.2;
 
-  const desiredPosition = player.position.clone().add(new THREE.Vector3(0, 17, 20));
+  const desiredPosition = tempVectorC.set(player.position.x, player.position.y + 17, player.position.z + 20);
   camera.position.lerp(desiredPosition, 1 - Math.pow(0.001, dt));
   camera.lookAt(cameraTarget);
 }
@@ -2845,20 +3398,18 @@ function removeZombie(index) {
     zombie.labelSprite.material.map.dispose();
     zombie.labelSprite.material.dispose();
   }
-  scene.remove(zombie.mesh);
-  disposeObject(zombie.mesh);
+  releaseZombieMesh(zombie.mesh, zombie.type);
+  spatialGrid.dirty = true;
 }
 
 function removeBullet(index) {
   const [bullet] = bullets.splice(index, 1);
-  scene.remove(bullet.mesh);
-  disposeObject(bullet.mesh);
+  releaseProjectileMesh(bullet.mesh, entityPools.bullets);
 }
 
 function removeEnemyProjectile(index) {
   const [projectile] = enemyProjectiles.splice(index, 1);
-  scene.remove(projectile.mesh);
-  disposeObject(projectile.mesh);
+  releaseProjectileMesh(projectile.mesh, entityPools.enemyProjectiles);
 }
 
 function removePowerup(index) {
@@ -2869,8 +3420,7 @@ function removePowerup(index) {
 
 function removeXpGem(index) {
   const [gem] = xpGems.splice(index, 1);
-  scene.remove(gem.mesh);
-  disposeObject(gem.mesh);
+  releaseXpGemMesh(gem.mesh);
 }
 
 function clearEntities() {
@@ -2896,8 +3446,12 @@ function clearEntities() {
 
   while (effects.length > 0) {
     const [effect] = effects.splice(effects.length - 1, 1);
-    scene.remove(effect.mesh);
-    disposeObject(effect.mesh);
+    if (effect.poolType) {
+      releaseEffectMesh(effect.mesh, effect.poolType);
+    } else {
+      scene.remove(effect.mesh);
+      disposeObject(effect.mesh);
+    }
   }
 }
 
@@ -2947,7 +3501,15 @@ function endGame() {
   message.classList.remove("is-hidden");
 }
 
-function updateHud() {
+function updateHud(force = false) {
+  if (!force) {
+    game.hudTimer -= perfStats.dt || 0.016;
+    if (game.hudTimer > 0) {
+      return;
+    }
+    game.hudTimer = qualityManager.level === "low" ? 0.18 : 0.1;
+  }
+
   healthFill.style.transform = `scaleX(${Math.max(player.health, 0) / player.maxHealth})`;
   scoreElement.textContent = player.score.toString();
   waveElement.textContent = Math.max(player.wave, 1).toString();
@@ -2955,6 +3517,7 @@ function updateHud() {
   xpFillElement.style.transform = `scaleX(${Math.max(0, Math.min(1, player.xp / player.xpToNext))})`;
   weaponNameElement.textContent = weapons[player.weapon].label;
   weaponTimerElement.textContent = player.weapon === "pistol" ? "Arma" : `${Math.ceil(player.weaponTimer)}s`;
+  renderPerfOverlay();
 }
 
 function loadPlayerName() {
@@ -3228,6 +3791,38 @@ function getPlayerBuildSummary() {
     });
 
   return [...unlockedWeapons, ...upgrades].slice(0, 8);
+}
+
+function getPerfStats() {
+  const poolUsage = {
+    zombies: Object.fromEntries([...entityPools.zombies.entries()].map(([type, pool]) => [type, pool.length])),
+    bullets: entityPools.bullets.length,
+    enemyProjectiles: entityPools.enemyProjectiles.length,
+    xpGems: entityPools.xpGems.length,
+    effects: Object.fromEntries([...entityPools.effects.entries()].map(([type, pool]) => [type, pool.length])),
+  };
+
+  return {
+    fpsAverage: Number(perfStats.fpsAverage.toFixed(1)),
+    quality: qualityManager.level,
+    qualityMode: qualityManager.mode,
+    pixelRatio: Number(qualityManager.pixelRatio.toFixed(2)),
+    updateMs: Number(perfStats.updateMs.toFixed(2)),
+    renderMs: Number(perfStats.renderMs.toFixed(2)),
+    frameMs: Number(perfStats.totalFrameMs?.toFixed(2) || 0),
+    drawCalls: renderer.info.render.calls,
+    skippedEffects: perfStats.skippedEffects,
+    entities: {
+      zombies: zombies.length,
+      bullets: bullets.length,
+      enemyProjectiles: enemyProjectiles.length,
+      xpGems: xpGems.length,
+      effects: effects.length,
+      remotePlayers: remotePlayers.size,
+    },
+    poolUsage,
+    poolExpansions: { ...perfStats.poolExpansions },
+  };
 }
 
 function sendMultiplayerState() {
@@ -3524,69 +4119,46 @@ function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
 }
 
 function spawnDirectionalConeEffect(origin, direction, color) {
-  const normalizedDirection = direction.clone().normalize();
-  const flame = new THREE.Group();
+  const normalizedDirection = tempVectorA.copy(direction).normalize();
+  const flame = acquireEffectMesh("cone", createPooledConeEffect);
   flame.position.copy(origin).addScaledVector(normalizedDirection, 3.05);
   flame.position.y = 1.02;
-  flame.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normalizedDirection);
-
-  const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(1.15, 4.2, 16, 1, true),
-    new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.38,
-      depthWrite: false,
-    }),
-  );
-  flame.add(cone);
-
-  const light = new THREE.PointLight(color, 1.8, 7);
-  light.position.y = -0.9;
-  flame.add(light);
-
-  addTimedEffect(flame, 0.16);
+  flame.quaternion.setFromUnitVectors(upVector, normalizedDirection);
+  flame.scale.set(1.15, 4.2, 1.15);
+  tintEffect(flame, color, 0.9);
+  addTimedEffect(flame, 0.16, false, "cone");
 }
 
 function spawnRemoteBeam(origin, direction, color, length) {
-  const normalizedDirection = direction.clone().normalize();
-  const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.045, 0.045, length, 8),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.82, depthWrite: false }),
-  );
+  const normalizedDirection = tempVectorA.copy(direction).normalize();
+  const beam = acquireEffectMesh("beam", createPooledBeamEffect);
   beam.position.copy(origin);
   beam.position.y = 1.12;
   beam.position.addScaledVector(normalizedDirection, length * 0.5);
-  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normalizedDirection);
-  addTimedEffect(beam, 0.14);
+  beam.quaternion.setFromUnitVectors(upVector, normalizedDirection);
+  beam.scale.set(1, length, 1);
+  tintEffect(beam, color);
+  addTimedEffect(beam, 0.14, false, "beam");
 }
 
 function spawnRemotePulse(origin, color, radius) {
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.055, 8, 64),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.76, depthWrite: false }),
-  );
+  const ring = acquireEffectMesh("pulse", createPooledPulseEffect);
   ring.rotation.x = Math.PI * 0.5;
   ring.position.copy(origin);
   ring.position.y = 0.18;
-  addTimedEffect(ring, 0.28, false);
+  ring.scale.setScalar(radius);
+  tintEffect(ring, color);
+  addTimedEffect(ring, 0.28, false, "pulse");
 }
 
 function spawnRemoteSlash(origin, direction, color) {
-  const slash = new THREE.Group();
+  const slash = acquireEffectMesh("slash", createPooledSlashEffect);
   slash.position.copy(origin);
   slash.position.y = 0.28;
   slash.rotation.y = getForwardRotation(direction) - Math.PI * 0.5;
-
-  const arc = new THREE.Mesh(
-    new THREE.TorusGeometry(2.55, 0.045, 8, 48, Math.PI * 0.92),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.78, depthWrite: false }),
-  );
-  arc.rotation.x = Math.PI * 0.5;
-  arc.position.z = -1.1;
-  slash.add(arc);
-
-  addTimedEffect(slash, 0.2);
+  slash.scale.setScalar(2.55);
+  tintEffect(slash, color);
+  addTimedEffect(slash, 0.2, false, "slash");
 }
 
 function getRemoteAttackInterval(weapon) {
@@ -3887,11 +4459,69 @@ function resetStick() {
 function resizeRenderer() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  applyQualitySettings(true);
+}
+
+function ensureSpatialGrid() {
+  if (spatialGrid.dirty) {
+    rebuildSpatialGrid();
+  }
+}
+
+function rebuildSpatialGrid() {
+  spatialGrid.cells.clear();
+
+  for (const zombie of zombies) {
+    const key = getSpatialCellKey(zombie.mesh.position.x, zombie.mesh.position.z);
+    let cell = spatialGrid.cells.get(key);
+
+    if (!cell) {
+      cell = [];
+      spatialGrid.cells.set(key, cell);
+    }
+
+    cell.push(zombie);
+  }
+
+  spatialGrid.dirty = false;
+}
+
+function getSpatialCellKey(x, z) {
+  return `${Math.floor(x / spatialGridCellSize)},${Math.floor(z / spatialGridCellSize)}`;
+}
+
+function queryZombiesNear(position, radius) {
+  ensureSpatialGrid();
+  spatialGrid.candidates.length = 0;
+  const minX = Math.floor((position.x - radius) / spatialGridCellSize);
+  const maxX = Math.floor((position.x + radius) / spatialGridCellSize);
+  const minZ = Math.floor((position.z - radius) / spatialGridCellSize);
+  const maxZ = Math.floor((position.z + radius) / spatialGridCellSize);
+
+  for (let cellX = minX; cellX <= maxX; cellX += 1) {
+    for (let cellZ = minZ; cellZ <= maxZ; cellZ += 1) {
+      const cell = spatialGrid.cells.get(`${cellX},${cellZ}`);
+      if (cell) {
+        spatialGrid.candidates.push(...cell);
+      }
+    }
+  }
+
+  return spatialGrid.candidates;
+}
+
+function getZombieIndex(zombie) {
+  return zombies.indexOf(zombie);
+}
+
+function distanceXZSquared(first, second) {
+  const dx = first.x - second.x;
+  const dz = first.z - second.z;
+  return dx * dx + dz * dz;
 }
 
 function distanceXZ(first, second) {
-  return Math.hypot(first.x - second.x, first.z - second.z);
+  return Math.sqrt(distanceXZSquared(first, second));
 }
 
 function getForwardRotation(direction) {
