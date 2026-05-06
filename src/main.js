@@ -4,6 +4,8 @@ const canvas = document.querySelector("#game-canvas");
 const healthFill = document.querySelector("#health-fill");
 const scoreElement = document.querySelector("#score");
 const waveElement = document.querySelector("#wave");
+const levelValueElement = document.querySelector("#level-value");
+const xpFillElement = document.querySelector("#xp-fill");
 const weaponNameElement = document.querySelector("#weapon-name");
 const weaponTimerElement = document.querySelector("#weapon-timer");
 const onlineCountElement = document.querySelector("#online-count");
@@ -11,6 +13,8 @@ const onlineStatusElement = document.querySelector("#online-status");
 const partyListElement = document.querySelector("#party-list");
 const leaderboardCountElement = document.querySelector("#leaderboard-count");
 const leaderboardListElement = document.querySelector("#leaderboard-list");
+const upgradePanel = document.querySelector("#upgrade-panel");
+const upgradeOptionsElement = document.querySelector("#upgrade-options");
 const message = document.querySelector("#message");
 const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
@@ -140,11 +144,89 @@ const monsterProfiles = {
   },
 };
 
+const autoWeaponProfiles = {
+  guardianBlade: {
+    label: "Lâmina Guardiã",
+    color: 0x8ffcff,
+    cooldown: 0.95,
+    damage: 1.8,
+    range: 24,
+  },
+  orbitOrb: {
+    label: "Orbe Giratório",
+    color: 0xd978ff,
+    cooldown: 0.34,
+    damage: 1.65,
+    orbitRadius: 3.4,
+    radius: 1.25,
+  },
+  sealRain: {
+    label: "Chuva de Selos",
+    color: 0xffd36d,
+    cooldown: 1.45,
+    damage: 5.6,
+    radius: 3.5,
+    range: 31,
+  },
+};
+
+const upgradeDefinitions = [
+  {
+    id: "damage",
+    label: "+Dano",
+    description: "Aumenta todo dano causado por armas manuais e automáticas.",
+    maxStacks: 6,
+  },
+  {
+    id: "cadence",
+    label: "+Cadência",
+    description: "Reduz o tempo entre ataques e deixa sua build mais agressiva.",
+    maxStacks: 5,
+  },
+  {
+    id: "area",
+    label: "+Área",
+    description: "Aumenta cones, explosões, giros e zonas das armas automáticas.",
+    maxStacks: 5,
+  },
+  {
+    id: "speed",
+    label: "+Velocidade",
+    description: "Corre mais rápido para escapar do cerco da horda.",
+    maxStacks: 4,
+  },
+  {
+    id: "pickup",
+    label: "+Raio de coleta",
+    description: "Puxa cristais de XP de mais longe.",
+    maxStacks: 5,
+  },
+  {
+    id: "maxHealth",
+    label: "+Vida máxima",
+    description: "Aumenta sua vida máxima e cura uma parte na hora.",
+    maxStacks: 4,
+  },
+  {
+    id: "projectile",
+    label: "+Projétil extra",
+    description: "Armas de disparo soltam projéteis adicionais em leque.",
+    maxStacks: 3,
+  },
+  {
+    id: "autoWeapon",
+    label: "Desbloquear arma automática",
+    description: "Adiciona uma arma automática nova à sua build.",
+    maxStacks: 2,
+  },
+];
+
 const keys = new Set();
 const zombies = [];
 const bullets = [];
 const enemyProjectiles = [];
 const powerups = [];
+const xpGems = [];
 const effects = [];
 const graveProps = [];
 const remotePlayers = new Map();
@@ -175,13 +257,23 @@ const multiplayer = {
 const player = {
   name: loadPlayerName(),
   health: 100,
+  maxHealth: 100,
   score: 0,
   wave: 0,
+  level: 1,
+  bestLevel: 1,
+  xp: 0,
+  xpToNext: 12,
   speed: 11,
   shotCooldown: 0,
   weapon: "pistol",
   weaponTimer: 0,
   axeSpinTimer: 0,
+  upgradeStats: createDefaultUpgradeStats(),
+  upgradeStacks: {},
+  autoWeapons: createDefaultAutoWeapons(),
+  pendingUpgradeChoices: [],
+  pendingLevelUps: 0,
   position: new THREE.Vector3(0, 0, 0),
   aimDirection: new THREE.Vector3(0, 0, -1),
   mesh: createPlayerMesh(),
@@ -233,6 +325,13 @@ playerNameInput?.addEventListener("keydown", (event) => {
 
 window.addEventListener("resize", resizeRenderer);
 window.addEventListener("keydown", (event) => {
+  const upgradeIndex = ["Digit1", "Digit2", "Digit3", "Numpad1", "Numpad2", "Numpad3"].indexOf(event.code);
+  if (upgradeIndex >= 0 && player.pendingUpgradeChoices.length > 0) {
+    event.preventDefault();
+    chooseUpgrade(upgradeIndex % 3);
+    return;
+  }
+
   keys.add(event.code);
 
   if (event.code === "Enter" && game.state !== "playing") {
@@ -283,13 +382,37 @@ touchStick.addEventListener("pointermove", handleStickMove);
 touchStick.addEventListener("pointerup", resetStick);
 touchStick.addEventListener("pointercancel", resetStick);
 
+upgradePanel?.addEventListener("mousedown", (event) => event.stopPropagation());
+upgradePanel?.addEventListener("mouseup", (event) => event.stopPropagation());
+upgradePanel?.addEventListener("click", (event) => event.stopPropagation());
+
+upgradeOptionsElement?.addEventListener("click", (event) => {
+  if (!(event.target instanceof Element)) {
+    return;
+  }
+
+  const button = event.target.closest("[data-upgrade-index]");
+  if (!button) {
+    return;
+  }
+
+  chooseUpgrade(Number(button.dataset.upgradeIndex));
+});
+
 window.__zombieNightDebug = {
   getState() {
     return {
       state: game.state,
       health: player.health,
+      maxHealth: player.maxHealth,
       score: player.score,
       wave: player.wave,
+      level: player.level,
+      bestLevel: player.bestLevel,
+      xp: player.xp,
+      xpToNext: player.xpToNext,
+      xpGems: xpGems.length,
+      pendingUpgradeChoices: player.pendingUpgradeChoices.map((choice) => choice.id),
       zombies: zombies.length,
       bullets: bullets.length,
       enemyProjectiles: enemyProjectiles.length,
@@ -308,6 +431,18 @@ window.__zombieNightDebug = {
       spawnInterval: Number(getZombieSpawnInterval().toFixed(3)),
       weapon: player.weapon,
       weaponTimer: Number(player.weaponTimer.toFixed(2)),
+      build: getPlayerBuildSummary(),
+      autoWeapons: Object.fromEntries(
+        Object.entries(player.autoWeapons).map(([id, state]) => [id, state.level]),
+      ),
+      upgradeStats: {
+        damageMultiplier: Number(player.upgradeStats.damageMultiplier.toFixed(3)),
+        cooldownMultiplier: Number(player.upgradeStats.cooldownMultiplier.toFixed(3)),
+        areaMultiplier: Number(player.upgradeStats.areaMultiplier.toFixed(3)),
+        speedMultiplier: Number(player.upgradeStats.speedMultiplier.toFixed(3)),
+        pickupRadius: Number(player.upgradeStats.pickupRadius.toFixed(3)),
+        projectileBonus: player.upgradeStats.projectileBonus,
+      },
       survivalTime: Number(game.survivalTime.toFixed(2)),
       player: {
         name: player.name,
@@ -335,6 +470,15 @@ window.__zombieNightDebug = {
   },
   start: startGame,
   equipWeapon: activateWeapon,
+  grantXp(amount) {
+    collectXp(Math.max(0, Number(amount) || 0));
+  },
+  chooseUpgrade(index = 0) {
+    chooseUpgrade(Number(index) || 0);
+  },
+  spawnXpGem(value = 8) {
+    spawnXpGem(player.position.clone().add(new THREE.Vector3(1.6, 0, 0)), Math.max(1, Number(value) || 1));
+  },
   setSurvivalTime(seconds) {
     game.survivalTime = Math.max(0, Number(seconds) || 0);
   },
@@ -359,7 +503,8 @@ if (queryParams.get("autoplay") === "1") {
 
 function startGame() {
   clearEntities();
-  player.health = 100;
+  resetProgressionState();
+  player.health = player.maxHealth;
   player.score = 0;
   player.wave = 0;
   player.shotCooldown = 0;
@@ -379,6 +524,39 @@ function startGame() {
   message.classList.add("is-hidden");
   startNextWave();
   updateHud();
+}
+
+function createDefaultUpgradeStats() {
+  return {
+    damageMultiplier: 1,
+    cooldownMultiplier: 1,
+    areaMultiplier: 1,
+    speedMultiplier: 1,
+    pickupRadius: 2.35,
+    projectileBonus: 0,
+  };
+}
+
+function createDefaultAutoWeapons() {
+  return {
+    guardianBlade: { level: 1, cooldown: 0.35, angle: 0 },
+    orbitOrb: { level: 0, cooldown: 0, angle: Math.random() * Math.PI * 2 },
+    sealRain: { level: 0, cooldown: 0, angle: 0 },
+  };
+}
+
+function resetProgressionState() {
+  player.maxHealth = 100;
+  player.level = 1;
+  player.bestLevel = 1;
+  player.xp = 0;
+  player.xpToNext = getXpToNext(1);
+  player.upgradeStats = createDefaultUpgradeStats();
+  player.upgradeStacks = {};
+  player.autoWeapons = createDefaultAutoWeapons();
+  player.pendingUpgradeChoices = [];
+  player.pendingLevelUps = 0;
+  renderUpgradeChoices();
 }
 
 function buildWorld() {
@@ -1134,8 +1312,11 @@ function animate() {
     updateAim();
     updatePlayer(dt);
     updatePowerups(dt);
+    updateXpGems(dt);
     updateActiveWeapon(dt);
     updateShooting(dt);
+    updateAutoWeapons(dt);
+    updateUpgradeChoices(dt);
     updateSpawning(dt);
     updateZombies(dt);
     updateEnemyProjectiles(dt);
@@ -1198,7 +1379,7 @@ function updatePlayer(dt) {
 
   if (move.lengthSq() > 0) {
     move.normalize();
-    player.position.addScaledVector(move, player.speed * dt);
+    player.position.addScaledVector(move, player.speed * player.upgradeStats.speedMultiplier * dt);
   }
 
   const distanceFromCenter = Math.hypot(player.position.x, player.position.z);
@@ -1228,6 +1409,246 @@ function updatePowerups(dt) {
       removePowerup(index);
     }
   }
+}
+
+function spawnXpGem(position, value = 3) {
+  const gemValue = Math.max(1, Math.floor(value));
+  const color = gemValue >= 25 ? 0xffd36d : gemValue >= 7 ? 0xd978ff : 0x74d1ff;
+  const geometry = new THREE.OctahedronGeometry(gemValue >= 25 ? 0.34 : 0.24, 0);
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 1.25,
+    roughness: 0.3,
+    metalness: 0.16,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(position);
+  mesh.position.y = 0.52;
+  mesh.castShadow = true;
+  mesh.add(new THREE.PointLight(color, 1.1, 4.5));
+  scene.add(mesh);
+
+  xpGems.push({
+    mesh,
+    value: gemValue,
+    age: Math.random() * Math.PI * 2,
+    baseY: 0.52,
+    radius: 0.5,
+  });
+}
+
+function updateXpGems(dt) {
+  for (let index = xpGems.length - 1; index >= 0; index -= 1) {
+    const gem = xpGems[index];
+    gem.age += dt;
+    gem.mesh.rotation.y += dt * 3.1;
+    gem.mesh.rotation.x += dt * 1.7;
+    gem.mesh.position.y = gem.baseY + Math.sin(gem.age * 4.2) * 0.11;
+
+    const distance = distanceXZ(player.position, gem.mesh.position);
+    if (distance < player.upgradeStats.pickupRadius && distance > 0.08) {
+      const pullStrength = 1 - Math.min(distance / player.upgradeStats.pickupRadius, 1);
+      gem.mesh.position.x += (player.position.x - gem.mesh.position.x) * Math.min(1, dt * (3.8 + pullStrength * 10));
+      gem.mesh.position.z += (player.position.z - gem.mesh.position.z) * Math.min(1, dt * (3.8 + pullStrength * 10));
+    }
+
+    if (distanceXZ(player.position, gem.mesh.position) < gem.radius + 0.72) {
+      collectXp(gem.value);
+      removeXpGem(index);
+    }
+  }
+}
+
+function collectXp(value) {
+  player.xp += Math.max(0, Math.floor(value));
+
+  while (player.xp >= player.xpToNext) {
+    player.xp -= player.xpToNext;
+    player.level += 1;
+    player.bestLevel = Math.max(player.bestLevel, player.level);
+    player.xpToNext = getXpToNext(player.level);
+    player.pendingLevelUps += 1;
+    spawnLevelPulse();
+  }
+
+  if (player.pendingLevelUps > 0 && player.pendingUpgradeChoices.length === 0) {
+    openUpgradeChoices();
+  }
+
+  updateHud();
+}
+
+function getXpToNext(level) {
+  return 10 + level * 7 + Math.floor(level ** 1.35);
+}
+
+function getXpValueForZombie(type) {
+  const profile = monsterProfiles[type] ?? monsterProfiles.zombie;
+
+  if (profile.boss) {
+    return 34 + Math.floor(player.wave * 2.5);
+  }
+
+  if (type === "brute" || type === "caster") {
+    return 8 + Math.floor(player.wave * 0.35);
+  }
+
+  if (type === "runner") {
+    return 5 + Math.floor(player.wave * 0.2);
+  }
+
+  return 3 + Math.floor(player.wave * 0.12);
+}
+
+function updateUpgradeChoices() {
+  if (player.pendingLevelUps > 0 && player.pendingUpgradeChoices.length === 0) {
+    openUpgradeChoices();
+  }
+}
+
+function openUpgradeChoices() {
+  const choices = getRandomUpgradeChoices();
+  if (choices.length === 0) {
+    player.pendingLevelUps = 0;
+    player.pendingUpgradeChoices = [];
+  } else {
+    player.pendingUpgradeChoices = choices;
+  }
+
+  renderUpgradeChoices();
+}
+
+function getRandomUpgradeChoices() {
+  const available = upgradeDefinitions.filter((upgrade) => isUpgradeAvailable(upgrade));
+  const shuffled = [...available].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 3);
+}
+
+function isUpgradeAvailable(upgrade) {
+  const stacks = player.upgradeStacks[upgrade.id] || 0;
+
+  if (upgrade.id === "autoWeapon") {
+    return getNextUnlockableAutoWeapon() !== null && stacks < upgrade.maxStacks;
+  }
+
+  return stacks < upgrade.maxStacks;
+}
+
+function chooseUpgrade(index) {
+  const choice = player.pendingUpgradeChoices[index];
+  if (!choice) {
+    return;
+  }
+
+  applyUpgrade(choice);
+  player.pendingLevelUps = Math.max(0, player.pendingLevelUps - 1);
+  player.pendingUpgradeChoices = [];
+
+  if (player.pendingLevelUps > 0) {
+    openUpgradeChoices();
+  } else {
+    renderUpgradeChoices();
+  }
+
+  updateHud();
+}
+
+function applyUpgrade(upgrade) {
+  player.upgradeStacks[upgrade.id] = (player.upgradeStacks[upgrade.id] || 0) + 1;
+
+  if (upgrade.id === "damage") {
+    player.upgradeStats.damageMultiplier += 0.16;
+  }
+
+  if (upgrade.id === "cadence") {
+    player.upgradeStats.cooldownMultiplier = Math.max(0.48, player.upgradeStats.cooldownMultiplier * 0.9);
+  }
+
+  if (upgrade.id === "area") {
+    player.upgradeStats.areaMultiplier += 0.13;
+  }
+
+  if (upgrade.id === "speed") {
+    player.upgradeStats.speedMultiplier += 0.1;
+  }
+
+  if (upgrade.id === "pickup") {
+    player.upgradeStats.pickupRadius += 1.2;
+  }
+
+  if (upgrade.id === "maxHealth") {
+    player.maxHealth += 18;
+    player.health = Math.min(player.maxHealth, player.health + 18);
+  }
+
+  if (upgrade.id === "projectile") {
+    player.upgradeStats.projectileBonus += 1;
+  }
+
+  if (upgrade.id === "autoWeapon") {
+    const weaponId = getNextUnlockableAutoWeapon();
+    if (weaponId) {
+      player.autoWeapons[weaponId].level = 1;
+      player.autoWeapons[weaponId].cooldown = 0.2;
+      spawnWeaponPulse(autoWeaponProfiles[weaponId].color);
+    }
+  }
+}
+
+function getNextUnlockableAutoWeapon() {
+  for (const weaponId of ["orbitOrb", "sealRain"]) {
+    if ((player.autoWeapons[weaponId]?.level || 0) <= 0) {
+      return weaponId;
+    }
+  }
+
+  return null;
+}
+
+function renderUpgradeChoices() {
+  if (!upgradePanel || !upgradeOptionsElement) {
+    return;
+  }
+
+  if (player.pendingUpgradeChoices.length === 0) {
+    upgradePanel.classList.add("is-hidden");
+    upgradeOptionsElement.innerHTML = "";
+    return;
+  }
+
+  upgradePanel.classList.remove("is-hidden");
+  upgradeOptionsElement.innerHTML = player.pendingUpgradeChoices
+    .map((upgrade, index) => {
+      const stacks = player.upgradeStacks[upgrade.id] || 0;
+      const description = upgrade.id === "autoWeapon" ? getAutoWeaponUnlockDescription() : upgrade.description;
+      return `
+        <button class="upgrade-card" type="button" data-upgrade-index="${index}">
+          <span class="upgrade-card__key">${index + 1}</span>
+          <strong>${escapeHtml(upgrade.label)}</strong>
+          <span>${escapeHtml(description)}</span>
+          <span>${stacks}/${upgrade.maxStacks} stacks</span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function getAutoWeaponUnlockDescription() {
+  const weaponId = getNextUnlockableAutoWeapon();
+  const label = weaponId ? autoWeaponProfiles[weaponId].label : "arsenal completo";
+  return `Desbloqueia ${label} para atacar sem segurar o tiro.`;
+}
+
+function spawnLevelPulse() {
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(2.8, 0.06, 8, 72),
+    new THREE.MeshBasicMaterial({ color: 0x8ef151, transparent: true, opacity: 0.82, depthWrite: false }),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.copy(player.position);
+  ring.position.y = 0.22;
+  addTimedEffect(ring, 0.55, true);
 }
 
 function updateActiveWeapon(dt) {
@@ -1277,7 +1698,7 @@ function updateShooting(dt) {
     return;
   }
 
-  player.shotCooldown = Math.max(0.1, 0.2 - player.wave * 0.006);
+  player.shotCooldown = getPlayerCooldown(Math.max(0.1, 0.2 - player.wave * 0.006));
   spawnBullet();
   sendMultiplayerAttack("pistol");
 }
@@ -1290,7 +1711,7 @@ function updateFlamethrower(dt) {
   damageZombiesInCone(10.5, Math.cos(0.58), 12 * dt, false);
 
   if (player.shotCooldown <= 0) {
-    player.shotCooldown = 0.065;
+    player.shotCooldown = getPlayerCooldown(0.065);
     spawnFlameBurst();
     sendMultiplayerAttack("flamethrower");
   }
@@ -1301,7 +1722,7 @@ function updateAxeAttack() {
     return;
   }
 
-  player.shotCooldown = 0.48;
+  player.shotCooldown = getPlayerCooldown(0.48);
   startAxeSpin();
   sendMultiplayerAttack("axe");
 }
@@ -1311,7 +1732,7 @@ function updateKatanaAttack() {
     return;
   }
 
-  player.shotCooldown = 0.28;
+  player.shotCooldown = getPlayerCooldown(0.28);
   damageZombiesInCone(5.8, Math.cos(0.92), 7, true);
   spawnKatanaSlash();
   sendMultiplayerAttack("katana");
@@ -1322,8 +1743,8 @@ function updateCrossbowAttack() {
     return;
   }
 
-  player.shotCooldown = 0.36;
-  spawnProjectile({
+  player.shotCooldown = getPlayerCooldown(0.36);
+  spawnPlayerProjectiles({
     color: weapons.crossbow.color,
     damage: 5,
     lifespan: 1.7,
@@ -1339,8 +1760,8 @@ function updateTalismanAttack() {
     return;
   }
 
-  player.shotCooldown = 0.72;
-  spawnProjectile({
+  player.shotCooldown = getPlayerCooldown(0.72);
+  spawnPlayerProjectiles({
     color: weapons.talisman.color,
     damage: 3,
     explodeDamage: 5,
@@ -1353,7 +1774,7 @@ function updateTalismanAttack() {
 }
 
 function spawnBullet() {
-  spawnProjectile({
+  spawnPlayerProjectiles({
     color: 0xfff2a3,
     damage: 1,
     lifespan: 1.25,
@@ -1362,7 +1783,37 @@ function spawnBullet() {
   });
 }
 
-function spawnProjectile({ color, damage, explodeDamage = 0, explodeRadius = 0, lifespan, pierceHits = 0, radius, speed }) {
+function spawnPlayerProjectiles(config) {
+  const count = 1 + player.upgradeStats.projectileBonus;
+  const spreadStep = count > 1 ? 0.12 : 0;
+
+  for (let index = 0; index < count; index += 1) {
+    const angleOffset = (index - (count - 1) / 2) * spreadStep;
+    spawnProjectile({
+      ...config,
+      angleOffset,
+      damage: config.damage * player.upgradeStats.damageMultiplier,
+      explodeDamage: (config.explodeDamage || 0) * player.upgradeStats.damageMultiplier,
+      explodeRadius: (config.explodeRadius || 0) * player.upgradeStats.areaMultiplier,
+      radius: config.radius * Math.sqrt(player.upgradeStats.areaMultiplier),
+    });
+  }
+}
+
+function spawnProjectile({
+  color,
+  damage,
+  explodeDamage = 0,
+  explodeRadius = 0,
+  lifespan,
+  pierceHits = 0,
+  radius,
+  speed,
+  origin = player.position,
+  direction = player.aimDirection,
+  angleOffset = 0,
+}) {
+  const projectileDirection = rotateDirectionY(direction, angleOffset);
   const geometry = new THREE.SphereGeometry(0.16, 10, 8);
   const material = new THREE.MeshStandardMaterial({
     color,
@@ -1372,10 +1823,10 @@ function spawnProjectile({ color, damage, explodeDamage = 0, explodeRadius = 0, 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.scale.setScalar(radius / 0.3);
   mesh.castShadow = true;
-  mesh.position.copy(player.position);
+  mesh.position.copy(origin);
   mesh.position.y = 1.12;
   mesh.add(new THREE.PointLight(color, 1.4, 4));
-  mesh.position.addScaledVector(player.aimDirection, 1.25);
+  mesh.position.addScaledVector(projectileDirection, 1.25);
   scene.add(mesh);
 
   bullets.push({
@@ -1388,8 +1839,187 @@ function spawnProjectile({ color, damage, explodeDamage = 0, explodeRadius = 0, 
     lifespan,
     pierceHits,
     radius,
-    velocity: player.aimDirection.clone().multiplyScalar(speed),
+    velocity: projectileDirection.multiplyScalar(speed),
   });
+}
+
+function updateAutoWeapons(dt) {
+  updateGuardianBlade(dt);
+  updateOrbitOrb(dt);
+  updateSealRain(dt);
+}
+
+function updateGuardianBlade(dt) {
+  const weapon = player.autoWeapons.guardianBlade;
+  if (!weapon?.level) {
+    return;
+  }
+
+  const profile = autoWeaponProfiles.guardianBlade;
+  weapon.cooldown -= dt;
+
+  if (weapon.cooldown > 0) {
+    return;
+  }
+
+  const target = getClosestZombie(player.position, profile.range);
+  if (!target) {
+    weapon.cooldown = Math.min(weapon.cooldown + 0.1, 0.18);
+    return;
+  }
+
+  weapon.cooldown = getPlayerCooldown(profile.cooldown);
+  const origin = player.position.clone();
+  const direction = target.zombie.mesh.position.clone().sub(origin);
+  direction.y = 0;
+
+  if (direction.lengthSq() < 0.01) {
+    direction.copy(player.aimDirection);
+  } else {
+    direction.normalize();
+  }
+
+  damageZombie(target.index, profile.damage * player.upgradeStats.damageMultiplier, true);
+  spawnGuardianBladeEffect(origin, direction, profile.color);
+  sendMultiplayerAttack("guardianBlade", origin, direction);
+}
+
+function updateOrbitOrb(dt) {
+  const weapon = player.autoWeapons.orbitOrb;
+  if (!weapon?.level) {
+    return;
+  }
+
+  const profile = autoWeaponProfiles.orbitOrb;
+  weapon.angle += dt * 3.4;
+  weapon.cooldown -= dt;
+
+  if (weapon.cooldown > 0) {
+    return;
+  }
+
+  weapon.cooldown = getPlayerCooldown(profile.cooldown);
+  const orbitRadius = profile.orbitRadius * Math.sqrt(player.upgradeStats.areaMultiplier);
+  const origin = player.position
+    .clone()
+    .add(new THREE.Vector3(Math.cos(weapon.angle) * orbitRadius, 0, Math.sin(weapon.angle) * orbitRadius));
+  const direction = origin.clone().sub(player.position).normalize();
+  const radius = profile.radius * player.upgradeStats.areaMultiplier;
+  const damage = profile.damage * player.upgradeStats.damageMultiplier;
+  damageZombiesAtPoint(origin, radius, damage, false);
+  spawnOrbitOrbEffect(origin, profile.color, radius);
+  sendMultiplayerAttack("orbitOrb", origin, direction);
+}
+
+function updateSealRain(dt) {
+  const weapon = player.autoWeapons.sealRain;
+  if (!weapon?.level) {
+    return;
+  }
+
+  const profile = autoWeaponProfiles.sealRain;
+  weapon.cooldown -= dt;
+
+  if (weapon.cooldown > 0) {
+    return;
+  }
+
+  const target = getClosestZombie(player.position, profile.range);
+  if (!target) {
+    weapon.cooldown = Math.min(weapon.cooldown + 0.16, 0.24);
+    return;
+  }
+
+  weapon.cooldown = getPlayerCooldown(profile.cooldown);
+  const origin = target.zombie.mesh.position.clone();
+  const direction = origin.clone().sub(player.position);
+  direction.y = 0;
+
+  if (direction.lengthSq() < 0.01) {
+    direction.copy(player.aimDirection);
+  } else {
+    direction.normalize();
+  }
+
+  const radius = profile.radius * player.upgradeStats.areaMultiplier;
+  const damage = profile.damage * player.upgradeStats.damageMultiplier;
+  damageZombiesAtPoint(origin, radius, damage, false);
+  spawnSealRainEffect(origin, profile.color, radius);
+  sendMultiplayerAttack("sealRain", origin, direction);
+}
+
+function getClosestZombie(origin, maxRange = Infinity) {
+  let closest = null;
+  let closestDistance = maxRange;
+
+  for (let index = 0; index < zombies.length; index += 1) {
+    const zombie = zombies[index];
+    const distance = distanceXZ(origin, zombie.mesh.position);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closest = { zombie, index, distance };
+    }
+  }
+
+  return closest;
+}
+
+function spawnGuardianBladeEffect(origin, direction, color) {
+  spawnRemoteBeam(origin, direction, color, 7);
+  const slashOrigin = origin.clone().addScaledVector(direction, 2.6);
+  spawnRemoteSlash(slashOrigin, direction, color);
+}
+
+function spawnOrbitOrbEffect(origin, color, radius) {
+  const group = new THREE.Group();
+  group.position.copy(origin);
+  group.position.y = 0.52;
+
+  const orb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 14, 10),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86, depthWrite: false }),
+  );
+  group.add(orb);
+
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(radius, 0.035, 8, 42),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.58, depthWrite: false }),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.y = -0.3;
+  group.add(ring);
+
+  const light = new THREE.PointLight(color, 1.5, 5);
+  group.add(light);
+  addTimedEffect(group, 0.26);
+}
+
+function spawnSealRainEffect(origin, color, radius) {
+  const marker = new THREE.Group();
+  marker.position.copy(origin);
+  marker.position.y = 2.9;
+
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.16, 4.8, 8),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.74, depthWrite: false }),
+  );
+  marker.add(beam);
+
+  const seal = new THREE.Mesh(
+    new THREE.TorusGeometry(radius * 0.45, 0.045, 8, 36),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.78, depthWrite: false }),
+  );
+  seal.rotation.x = Math.PI * 0.5;
+  seal.position.y = -2.35;
+  marker.add(seal);
+
+  addTimedEffect(marker, 0.24);
+  spawnExplosion(origin, color, radius);
+}
+
+function getPlayerCooldown(seconds) {
+  return Math.max(0.045, seconds * player.upgradeStats.cooldownMultiplier);
 }
 
 function spawnPowerup(type = randomPowerupType(), x, z) {
@@ -1912,7 +2542,7 @@ function damageRemotePlayer(playerId, amount) {
   }
 
   remotePlayer.health = Math.max(0, remotePlayer.health - amount);
-  updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health);
+  updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health, remotePlayer.maxHealth);
 
   sendMultiplayerMessage({
     type: "damagePlayer",
@@ -2051,10 +2681,17 @@ function updateBullets(dt) {
 }
 
 function damageZombiesInCone(range, minDot, amount, shouldFlash) {
-  damageZombiesInConeFrom(player.position, player.aimDirection, range, minDot, amount, shouldFlash);
+  damageZombiesInConeFrom(
+    player.position,
+    player.aimDirection,
+    range * player.upgradeStats.areaMultiplier,
+    minDot,
+    amount * player.upgradeStats.damageMultiplier,
+    shouldFlash,
+  );
 }
 
-function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shouldFlash) {
+function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shouldFlash, awardRewards = true) {
   for (let index = zombies.length - 1; index >= 0; index -= 1) {
     const zombie = zombies[index];
     const offset = zombie.mesh.position.clone().sub(origin);
@@ -2067,32 +2704,37 @@ function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shoul
 
     const dot = offset.normalize().dot(direction);
     if (dot >= minDot) {
-      damageZombie(index, amount, shouldFlash);
+      damageZombie(index, amount, shouldFlash, awardRewards);
     }
   }
 }
 
 function damageZombiesInRadius(radius, amount, shouldFlash) {
-  damageZombiesInRadiusAt(player.position, radius, amount, shouldFlash);
+  damageZombiesInRadiusAt(
+    player.position,
+    radius * player.upgradeStats.areaMultiplier,
+    amount * player.upgradeStats.damageMultiplier,
+    shouldFlash,
+  );
 }
 
-function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash) {
+function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash, awardRewards = true) {
   for (let index = zombies.length - 1; index >= 0; index -= 1) {
     if (distanceXZ(origin, zombies[index].mesh.position) <= radius) {
-      damageZombie(index, amount, shouldFlash);
+      damageZombie(index, amount, shouldFlash, awardRewards);
     }
   }
 }
 
-function damageZombiesAtPoint(position, radius, amount, shouldFlash) {
+function damageZombiesAtPoint(position, radius, amount, shouldFlash, awardRewards = true) {
   for (let index = zombies.length - 1; index >= 0; index -= 1) {
     if (distanceXZ(position, zombies[index].mesh.position) <= radius) {
-      damageZombie(index, amount, shouldFlash);
+      damageZombie(index, amount, shouldFlash, awardRewards);
     }
   }
 }
 
-function damageZombie(index, amount, shouldFlash) {
+function damageZombie(index, amount, shouldFlash, awardRewards = true) {
   const zombie = zombies[index];
 
   if (!zombie) {
@@ -2110,8 +2752,13 @@ function damageZombie(index, amount, shouldFlash) {
   }
 
   if (zombie.health <= 0) {
+    const xpPosition = zombie.mesh.position.clone();
+    const xpValue = getXpValueForZombie(zombie.type);
     removeZombie(index);
-    player.score += zombie.score;
+    if (awardRewards) {
+      spawnXpGem(xpPosition, xpValue);
+      player.score += zombie.score;
+    }
     return true;
   }
 
@@ -2220,6 +2867,12 @@ function removePowerup(index) {
   disposeObject(powerup.mesh);
 }
 
+function removeXpGem(index) {
+  const [gem] = xpGems.splice(index, 1);
+  scene.remove(gem.mesh);
+  disposeObject(gem.mesh);
+}
+
 function clearEntities() {
   while (zombies.length > 0) {
     removeZombie(zombies.length - 1);
@@ -2235,6 +2888,10 @@ function clearEntities() {
 
   while (powerups.length > 0) {
     removePowerup(powerups.length - 1);
+  }
+
+  while (xpGems.length > 0) {
+    removeXpGem(xpGems.length - 1);
   }
 
   while (effects.length > 0) {
@@ -2280,17 +2937,22 @@ function pulseHealth() {
 function endGame() {
   game.state = "dead";
   game.shooting = false;
+  player.pendingUpgradeChoices = [];
+  player.pendingLevelUps = 0;
+  renderUpgradeChoices();
   messageKicker.textContent = `Onda ${player.wave}`;
   messageTitle.textContent = "Fim da noite";
-  messageCopy.textContent = `${player.score} pontos`;
+  messageCopy.textContent = `${player.score} pontos · Nivel ${player.bestLevel}`;
   playButton.innerHTML = "<span aria-hidden=\"true\">↻</span>Reiniciar";
   message.classList.remove("is-hidden");
 }
 
 function updateHud() {
-  healthFill.style.transform = `scaleX(${Math.max(player.health, 0) / 100})`;
+  healthFill.style.transform = `scaleX(${Math.max(player.health, 0) / player.maxHealth})`;
   scoreElement.textContent = player.score.toString();
   waveElement.textContent = Math.max(player.wave, 1).toString();
+  levelValueElement.textContent = `Nv ${player.level}`;
+  xpFillElement.style.transform = `scaleX(${Math.max(0, Math.min(1, player.xp / player.xpToNext))})`;
   weaponNameElement.textContent = weapons[player.weapon].label;
   weaponTimerElement.textContent = player.weapon === "pistol" ? "Arma" : `${Math.ceil(player.weaponTimer)}s`;
 }
@@ -2552,6 +3214,22 @@ function updateMultiplayer(dt) {
   updateMultiplayerHud();
 }
 
+function getPlayerBuildSummary() {
+  const unlockedWeapons = Object.entries(player.autoWeapons)
+    .filter(([, state]) => state.level > 0)
+    .map(([weaponId]) => autoWeaponProfiles[weaponId]?.label)
+    .filter(Boolean);
+
+  const upgrades = Object.entries(player.upgradeStacks)
+    .filter(([, stacks]) => stacks > 0)
+    .map(([upgradeId, stacks]) => {
+      const definition = upgradeDefinitions.find((upgrade) => upgrade.id === upgradeId);
+      return `${definition?.label || upgradeId} x${stacks}`;
+    });
+
+  return [...unlockedWeapons, ...upgrades].slice(0, 8);
+}
+
 function sendMultiplayerState() {
   sendMultiplayerMessage({
     type: "state",
@@ -2562,8 +3240,12 @@ function sendMultiplayerState() {
       aimX: player.aimDirection.x,
       aimZ: player.aimDirection.z,
       health: player.health,
+      maxHealth: player.maxHealth,
       score: player.score,
       wave: Math.max(player.wave, 1),
+      level: player.level,
+      bestLevel: player.bestLevel,
+      build: getPlayerBuildSummary(),
       weapon: player.weapon,
       shooting: game.shooting,
       state: game.state,
@@ -2571,16 +3253,18 @@ function sendMultiplayerState() {
   });
 }
 
-function sendMultiplayerAttack(kind) {
+function sendMultiplayerAttack(kind, origin = player.position, direction = player.aimDirection) {
+  const attackDirection = direction.lengthSq() < 0.01 ? player.aimDirection : direction;
+
   sendMultiplayerMessage({
     type: "attack",
     attack: {
       kind,
-      weapon: player.weapon,
-      x: player.position.x,
-      z: player.position.z,
-      aimX: player.aimDirection.x,
-      aimZ: player.aimDirection.z,
+      weapon: autoWeaponProfiles[kind] ? kind : player.weapon,
+      x: origin.x,
+      z: origin.z,
+      aimX: attackDirection.x,
+      aimZ: attackDirection.z,
     },
   });
 }
@@ -2629,8 +3313,12 @@ function createRemotePlayer(playerData) {
     name: playerData.name || "P?",
     color: playerData.color || "#74d1ff",
     health: 100,
+    maxHealth: 100,
     score: 0,
     wave: 1,
+    level: 1,
+    bestLevel: 1,
+    build: [],
     weapon: "pistol",
     shooting: false,
     state: "menu",
@@ -2657,13 +3345,17 @@ function updateRemotePlayerState(remotePlayer, state) {
     remotePlayer.aimDirection.normalize();
   }
 
-  remotePlayer.health = Math.max(0, Math.min(100, Number(state.health) || 0));
+  remotePlayer.maxHealth = Math.max(1, Math.min(300, Number(state.maxHealth) || remotePlayer.maxHealth || 100));
+  remotePlayer.health = Math.max(0, Math.min(remotePlayer.maxHealth, Number(state.health) || 0));
   remotePlayer.score = Math.max(0, Number(state.score) || 0);
   remotePlayer.wave = Math.max(1, Number(state.wave) || 1);
+  remotePlayer.level = Math.max(1, Number(state.level) || 1);
+  remotePlayer.bestLevel = Math.max(remotePlayer.level, Number(state.bestLevel) || remotePlayer.level);
+  remotePlayer.build = Array.isArray(state.build) ? state.build.slice(0, 8) : [];
   remotePlayer.weapon = weapons[state.weapon] ? state.weapon : "pistol";
   remotePlayer.shooting = Boolean(state.shooting);
   remotePlayer.state = state.state || "menu";
-  updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health);
+  updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health, remotePlayer.maxHealth);
 }
 
 function applyNetworkPlayerState(playerId, state, amount = 0) {
@@ -2673,7 +3365,8 @@ function applyNetworkPlayerState(playerId, state, amount = 0) {
 
   if (playerId === multiplayer.id) {
     const previousHealth = player.health;
-    player.health = Math.max(0, Math.min(100, Number(state.health) || 0));
+    player.maxHealth = Math.max(1, Math.min(300, Number(state.maxHealth) || player.maxHealth));
+    player.health = Math.max(0, Math.min(player.maxHealth, Number(state.health) || 0));
 
     if (player.health < previousHealth || amount > 0) {
       pulseHealth();
@@ -2734,7 +3427,11 @@ function handleRemoteAttack(playerId, attack) {
     direction.normalize();
   }
 
-  const weapon = weapons[attack?.weapon] ? attack.weapon : attack?.kind || "pistol";
+  const weapon = autoWeaponProfiles[attack?.kind]
+    ? attack.kind
+    : weapons[attack?.weapon]
+      ? attack.weapon
+      : attack?.kind || "pistol";
   spawnRemoteAttackVisual(origin, direction, weapon, remotePlayer?.color || "#74d1ff");
   applyRemoteAttackDamage(origin, direction, weapon);
 }
@@ -2745,33 +3442,49 @@ function applyRemoteAttackDamage(origin, direction, weapon) {
   }
 
   if (weapon === "flamethrower") {
-    damageZombiesInConeFrom(origin, direction, 10.5, Math.cos(0.58), 1.1, false);
+    damageZombiesInConeFrom(origin, direction, 10.5, Math.cos(0.58), 1.1, false, false);
     return;
   }
 
   if (weapon === "axe") {
-    damageZombiesInRadiusAt(origin, 4.4, 5, false);
+    damageZombiesInRadiusAt(origin, 4.4, 5, false, false);
     return;
   }
 
   if (weapon === "katana") {
-    damageZombiesInConeFrom(origin, direction, 5.8, Math.cos(0.92), 5, true);
+    damageZombiesInConeFrom(origin, direction, 5.8, Math.cos(0.92), 5, true, false);
     return;
   }
 
   if (weapon === "crossbow") {
-    damageZombiesInConeFrom(origin, direction, 28, Math.cos(0.08), 4, true);
+    damageZombiesInConeFrom(origin, direction, 28, Math.cos(0.08), 4, true, false);
     return;
   }
 
   if (weapon === "talisman") {
     const explosionPoint = origin.clone().addScaledVector(direction, 8.5);
-    damageZombiesAtPoint(explosionPoint, 4.8, 4, false);
+    damageZombiesAtPoint(explosionPoint, 4.8, 4, false, false);
     spawnExplosion(explosionPoint, weapons.talisman.color, 4.8);
     return;
   }
 
-  damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.06), 1, true);
+  if (weapon === "guardianBlade") {
+    damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.04), 1.6, true, false);
+    return;
+  }
+
+  if (weapon === "orbitOrb") {
+    damageZombiesAtPoint(origin, 1.45, 1.4, false, false);
+    return;
+  }
+
+  if (weapon === "sealRain") {
+    damageZombiesAtPoint(origin, 3.5, 4.8, false, false);
+    spawnExplosion(origin, autoWeaponProfiles.sealRain.color, 3.5);
+    return;
+  }
+
+  damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.06), 1, true, false);
 }
 
 function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
@@ -2789,6 +3502,21 @@ function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
 
   if (weapon === "katana") {
     spawnRemoteSlash(origin, direction, color);
+    return;
+  }
+
+  if (weapon === "guardianBlade") {
+    spawnGuardianBladeEffect(origin, direction, color);
+    return;
+  }
+
+  if (weapon === "orbitOrb") {
+    spawnOrbitOrbEffect(origin, color, autoWeaponProfiles.orbitOrb.radius);
+    return;
+  }
+
+  if (weapon === "sealRain") {
+    spawnSealRainEffect(origin, color, autoWeaponProfiles.sealRain.radius);
     return;
   }
 
@@ -2886,6 +3614,10 @@ function getRemoteAttackInterval(weapon) {
 }
 
 function getWeaponColorValue(weapon, fallbackColor) {
+  if (autoWeaponProfiles[weapon]?.color) {
+    return autoWeaponProfiles[weapon].color;
+  }
+
   if (weapons[weapon]?.color) {
     return weapons[weapon].color;
   }
@@ -2921,9 +3653,9 @@ function createPlayerLabelSprite(label, color) {
   return sprite;
 }
 
-function updatePlayerLabel(sprite, label, color, health) {
+function updatePlayerLabel(sprite, label, color, health, maxHealth = 100) {
   const { canvas, context, texture } = sprite.userData;
-  const healthRatio = Math.max(0, Math.min(1, health / 100));
+  const healthRatio = Math.max(0, Math.min(1, health / maxHealth));
 
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "rgba(5, 8, 10, 0.76)";
@@ -2997,16 +3729,17 @@ function updatePartyHud() {
   const partyPlayers = getPartyPlayers();
   partyListElement.innerHTML = partyPlayers
     .map((partyPlayer, index) => {
-      const healthRatio = Math.max(0, Math.min(100, partyPlayer.health)) / 100;
+      const healthRatio = Math.max(0, Math.min(1, partyPlayer.health / partyPlayer.maxHealth));
       return `
         <div class="party-card" style="border-left-color: ${partyPlayer.color}">
           <div class="party-card__top">
             <span>${index + 1}. ${escapeHtml(partyPlayer.name)}${partyPlayer.isLocal ? " (voce)" : ""}</span>
-            <span class="party-card__score">${Math.floor(partyPlayer.score)}</span>
+            <span class="party-card__score">Nv ${partyPlayer.level}</span>
           </div>
           <div class="party-card__health" aria-hidden="true">
             <div class="party-card__health-fill" style="transform: scaleX(${healthRatio}); background: ${partyPlayer.color}"></div>
           </div>
+          <div class="party-card__meta">${Math.floor(partyPlayer.health)}/${Math.floor(partyPlayer.maxHealth)} vida · ${Math.floor(partyPlayer.score)} pts</div>
         </div>
       `;
     })
@@ -3019,7 +3752,9 @@ function getPartyPlayers() {
       id: multiplayer.id || "local",
       name: player.name,
       health: player.health,
+      maxHealth: player.maxHealth,
       score: player.score,
+      level: player.level,
       color: multiplayer.color,
       isLocal: true,
     },
@@ -3030,13 +3765,15 @@ function getPartyPlayers() {
       id: remotePlayer.id,
       name: remotePlayer.name,
       health: remotePlayer.health,
+      maxHealth: remotePlayer.maxHealth,
       score: remotePlayer.score,
+      level: remotePlayer.level,
       color: remotePlayer.color,
       isLocal: false,
     });
   }
 
-  return partyPlayers.sort((first, second) => second.score - first.score || second.health - first.health);
+  return partyPlayers.sort((first, second) => second.score - first.score || second.level - first.level || second.health - first.health);
 }
 
 function updateLeaderboard(leaderboard) {
@@ -3076,11 +3813,12 @@ function updateLeaderboardHud() {
     .map((leader) => {
       const bestScore = Math.floor(Number(leader.bestScore) || 0);
       const bestWave = Math.floor(Number(leader.bestWave) || 1);
+      const bestLevel = Math.floor(Number(leader.bestLevel) || 1);
       return `
         <li>
           <span class="leaderboard-list__rank">#${leader.rank}</span>
           <span>${escapeHtml(leader.name)}</span>
-          <span class="leaderboard-list__meta">${bestScore} pts · O${bestWave}</span>
+          <span class="leaderboard-list__meta">${bestScore} pts · O${bestWave} · Nv${bestLevel}</span>
         </li>
       `;
     })
@@ -3098,6 +3836,24 @@ function escapeHtml(value) {
 function lerpAngle(from, to, alpha) {
   const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
   return from + delta * alpha;
+}
+
+function rotateDirectionY(direction, angle) {
+  const normalized = direction.clone();
+
+  if (normalized.lengthSq() < 0.01) {
+    normalized.set(0, 0, -1);
+  } else {
+    normalized.normalize();
+  }
+
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return new THREE.Vector3(
+    normalized.x * cos - normalized.z * sin,
+    0,
+    normalized.x * sin + normalized.z * cos,
+  ).normalize();
 }
 
 function handleStickMove(event) {

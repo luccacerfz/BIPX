@@ -124,6 +124,8 @@ function joinMultiplayerRoom(requestUrl, socket) {
     lastSeen: Date.now(),
     sessionBestScore: 0,
     sessionBestWave: 1,
+    sessionBestLevel: 1,
+    sessionBestBuild: [],
     sessionStartedAt: null,
     state: {
       x: getSpawnPoint(slot).x,
@@ -132,8 +134,12 @@ function joinMultiplayerRoom(requestUrl, socket) {
       aimX: 0,
       aimZ: -1,
       health: 100,
+      maxHealth: 100,
       score: 0,
       wave: 1,
+      level: 1,
+      bestLevel: 1,
+      build: [],
       weapon: "pistol",
       shooting: false,
       state: "menu",
@@ -336,19 +342,44 @@ function handleClientMessage(client, rawMessage) {
 }
 
 function normalizePlayerState(state, fallback) {
+  const maxHealth = clampNumber(state?.maxHealth, 1, 300, fallback.maxHealth ?? 100);
+  const fallbackHealth = Number.isFinite(Number(fallback.health)) ? Math.min(Number(fallback.health), maxHealth) : maxHealth;
+  const level = Math.max(1, Math.floor(clampNumber(state?.level, 1, 999, fallback.level ?? 1)));
+  const bestLevel = Math.max(level, Math.floor(clampNumber(state?.bestLevel, 1, 999, fallback.bestLevel ?? 1)));
+
   return {
     x: clampNumber(state?.x, -65, 65, fallback.x),
     z: clampNumber(state?.z, -65, 65, fallback.z),
     rotation: clampNumber(state?.rotation, -Math.PI * 2, Math.PI * 2, fallback.rotation),
     aimX: clampNumber(state?.aimX, -1, 1, fallback.aimX),
     aimZ: clampNumber(state?.aimZ, -1, 1, fallback.aimZ),
-    health: clampNumber(state?.health, 0, 100, fallback.health),
+    health: clampNumber(state?.health, 0, maxHealth, fallbackHealth),
+    maxHealth,
     score: Math.max(0, Math.floor(clampNumber(state?.score, 0, 999_999, fallback.score))),
     wave: Math.max(1, Math.floor(clampNumber(state?.wave, 1, 999, fallback.wave))),
+    level,
+    bestLevel,
+    build: normalizeBuildSummary(state?.build ?? fallback.build),
     weapon: typeof state?.weapon === "string" ? state.weapon.slice(0, 24) : fallback.weapon,
     shooting: Boolean(state?.shooting),
     state: state?.state === "playing" || state?.state === "dead" ? state.state : "menu",
   };
+}
+
+function normalizeBuildSummary(build) {
+  if (!Array.isArray(build)) {
+    return [];
+  }
+
+  return build
+    .map((item) =>
+      String(item || "")
+        .trim()
+        .replace(/[<>]/g, "")
+        .slice(0, 40),
+    )
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function normalizeAttack(attack, fallbackState) {
@@ -449,7 +480,7 @@ function recordPlayerSeen(client, force = false) {
 function updatePlayerHistory(client, previousState) {
   const state = client.state;
   const shouldTrackPlayer =
-    state.state === "playing" || previousState === "playing" || state.score > 0 || state.wave > 1;
+    state.state === "playing" || previousState === "playing" || state.score > 0 || state.wave > 1 || state.level > 1;
 
   if (!shouldTrackPlayer) {
     return false;
@@ -462,6 +493,8 @@ function updatePlayerHistory(client, previousState) {
     client.sessionStartedAt = Date.now();
     client.sessionBestScore = state.score;
     client.sessionBestWave = state.wave;
+    client.sessionBestLevel = state.level;
+    client.sessionBestBuild = normalizeBuildSummary(state.build);
     record.gamesPlayed += 1;
     changed = true;
   }
@@ -469,6 +502,10 @@ function updatePlayerHistory(client, previousState) {
   if (state.state === "playing") {
     client.sessionBestScore = Math.max(client.sessionBestScore, state.score);
     client.sessionBestWave = Math.max(client.sessionBestWave, state.wave);
+    if (state.level >= client.sessionBestLevel) {
+      client.sessionBestLevel = state.level;
+      client.sessionBestBuild = normalizeBuildSummary(state.build);
+    }
   }
 
   if (state.score > record.bestScore) {
@@ -481,9 +518,17 @@ function updatePlayerHistory(client, previousState) {
     changed = true;
   }
 
-  if (record.lastScore !== state.score || record.lastWave !== state.wave) {
+  if (state.bestLevel > record.bestLevel || state.level > record.bestLevel) {
+    record.bestLevel = Math.max(state.bestLevel, state.level);
+    record.bestBuild = normalizeBuildSummary(state.build);
+    changed = true;
+  }
+
+  if (record.lastScore !== state.score || record.lastWave !== state.wave || record.lastLevel !== state.level) {
     record.lastScore = state.score;
     record.lastWave = state.wave;
+    record.lastLevel = state.level;
+    record.lastBuild = normalizeBuildSummary(state.build);
     changed = true;
   }
 
@@ -509,20 +554,33 @@ function finishPlayerSession(client) {
   const durationMs = Math.max(0, Date.now() - client.sessionStartedAt);
   const score = Math.max(client.sessionBestScore, client.state.score);
   const wave = Math.max(client.sessionBestWave, client.state.wave);
+  const level = Math.max(client.sessionBestLevel, client.state.level);
+  const build =
+    client.sessionBestLevel >= client.state.level
+      ? normalizeBuildSummary(client.sessionBestBuild)
+      : normalizeBuildSummary(client.state.build);
 
   record.totalScore += score;
   record.totalPlayMs += durationMs;
   record.lastScore = score;
   record.lastWave = wave;
+  record.lastLevel = level;
+  record.lastBuild = build;
   record.lastSeenAt = endedAt;
   record.bestScore = Math.max(record.bestScore, score);
   record.bestWave = Math.max(record.bestWave, wave);
+  if (level >= record.bestLevel) {
+    record.bestLevel = level;
+    record.bestBuild = build;
+  }
 
   leaderboardStore.sessions.push({
     id: crypto.randomUUID(),
     name: client.name,
     score,
     wave,
+    level,
+    build,
     durationMs,
     endedAt,
   });
@@ -531,6 +589,8 @@ function finishPlayerSession(client) {
   client.sessionStartedAt = null;
   client.sessionBestScore = 0;
   client.sessionBestWave = 1;
+  client.sessionBestLevel = 1;
+  client.sessionBestBuild = [];
   markLeaderboardChanged();
   return true;
 }
@@ -545,17 +605,26 @@ function getOrCreatePlayerRecord(name) {
       name: safeName,
       bestScore: 0,
       bestWave: 1,
+      bestLevel: 1,
+      bestBuild: [],
       gamesPlayed: 0,
       totalScore: 0,
       totalPlayMs: 0,
       lastScore: 0,
       lastWave: 1,
+      lastLevel: 1,
+      lastBuild: [],
       firstSeenAt: now,
       lastSeenAt: now,
     };
   }
 
-  return leaderboardStore.players[key];
+  const record = leaderboardStore.players[key];
+  record.bestLevel = Math.max(1, Math.floor(Number(record.bestLevel) || 1));
+  record.bestBuild = normalizeBuildSummary(record.bestBuild);
+  record.lastLevel = Math.max(1, Math.floor(Number(record.lastLevel) || 1));
+  record.lastBuild = normalizeBuildSummary(record.lastBuild);
+  return record;
 }
 
 function getPlayerRecordKey(name) {
@@ -567,6 +636,7 @@ function getLeaderboardSnapshot() {
     .sort(
       (first, second) =>
         second.bestScore - first.bestScore ||
+        (Number(second.bestLevel) || 1) - (Number(first.bestLevel) || 1) ||
         second.bestWave - first.bestWave ||
         second.gamesPlayed - first.gamesPlayed ||
         second.totalScore - first.totalScore,
@@ -577,10 +647,14 @@ function getLeaderboardSnapshot() {
       name: record.name,
       bestScore: record.bestScore,
       bestWave: record.bestWave,
+      bestLevel: Math.max(1, Math.floor(Number(record.bestLevel) || 1)),
+      bestBuild: normalizeBuildSummary(record.bestBuild),
       gamesPlayed: record.gamesPlayed,
       totalScore: record.totalScore,
       lastScore: record.lastScore,
       lastWave: record.lastWave,
+      lastLevel: Math.max(1, Math.floor(Number(record.lastLevel) || 1)),
+      lastBuild: normalizeBuildSummary(record.lastBuild),
       totalPlayMs: record.totalPlayMs,
       firstSeenAt: record.firstSeenAt,
       lastSeenAt: record.lastSeenAt,
@@ -593,6 +667,8 @@ function getLeaderboardSnapshot() {
       name: session.name,
       score: session.score,
       wave: session.wave,
+      level: Math.max(1, Math.floor(Number(session.level) || 1)),
+      build: normalizeBuildSummary(session.build),
       durationMs: session.durationMs,
       endedAt: session.endedAt,
     }));

@@ -28,6 +28,14 @@
           <span>Onda</span>
         </div>
 
+        <div class="hud__stat hud__stat--level">
+          <strong id="level-value">Nv 1</strong>
+          <span>Nivel</span>
+          <div class="xp__track" aria-hidden="true">
+            <div id="xp-fill" class="xp__fill"></div>
+          </div>
+        </div>
+
         <div class="hud__stat hud__stat--weapon">
           <strong id="weapon-name">Pistola</strong>
           <span id="weapon-timer">Arma</span>
@@ -39,6 +47,15 @@
         </div>
 
         <div id="party-list" class="party-list" aria-label="Ranking dos jogadores"></div>
+      </section>
+
+      <section id="upgrade-panel" class="upgrade-panel is-hidden" aria-label="Escolha de upgrade">
+        <div class="upgrade-panel__shell">
+          <p class="upgrade-panel__kicker">Nivel novo</p>
+          <h2>Escolha um poder</h2>
+          <p class="upgrade-panel__copy">O multiplayer nao pausa. Use 1, 2 ou 3 para montar sua build.</p>
+          <div id="upgrade-options" class="upgrade-options"></div>
+        </div>
       </section>
 
       <section id="message" class="message" aria-live="polite">

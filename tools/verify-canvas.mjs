@@ -29,6 +29,31 @@ try {
   const fired = await page.evaluate(() => window.__zombieNightDebug.getState());
   await page.mouse.up();
 
+  const beforeAutoWeapon = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnZombieAhead(14, "runner");
+    return window.__zombieNightDebug.getState();
+  });
+
+  await page.waitForTimeout(1250);
+  const afterAutoWeapon = await page.evaluate(() => window.__zombieNightDebug.getState());
+
+  const beforeXpPickup = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnXpGem(3);
+    return window.__zombieNightDebug.getState();
+  });
+
+  await page.waitForTimeout(450);
+  const afterXpPickup = await page.evaluate(() => window.__zombieNightDebug.getState());
+
+  const beforeLevelUp = await page.evaluate(() => {
+    const state = window.__zombieNightDebug.getState();
+    window.__zombieNightDebug.grantXp(state.xpToNext);
+    return state;
+  });
+  const levelUpChoices = await page.evaluate(() => window.__zombieNightDebug.getState());
+  await page.keyboard.press("Digit1");
+  const afterUpgradeChoice = await page.evaluate(() => window.__zombieNightDebug.getState());
+
   const beforeFlame = await page.evaluate(() => {
     window.__zombieNightDebug.equipWeapon("flamethrower");
     window.__zombieNightDebug.spawnZombieAhead(3.4, "runner");
@@ -115,6 +140,13 @@ try {
   assert(initial.zombies >= 1, "zombies did not spawn");
   assert(moved.player.z < initial.player.z - 0.1, "keyboard movement did not change player position");
   assert(fired.bullets >= 1, "shooting did not create bullets");
+  assert(initial.autoWeapons.guardianBlade === 1, "guardian blade did not start unlocked");
+  assert(afterAutoWeapon.score > beforeAutoWeapon.score, "automatic weapon did not defeat a monster without shooting");
+  assert(afterAutoWeapon.xpGems > beforeAutoWeapon.xpGems, "defeated monster did not drop XP");
+  assert(afterXpPickup.xp > beforeXpPickup.xp || afterXpPickup.level > beforeXpPickup.level, "XP gem was not collected");
+  assert(levelUpChoices.level > beforeLevelUp.level, "XP did not trigger level up");
+  assert(levelUpChoices.pendingUpgradeChoices.length >= 1, "level up did not create upgrade choices");
+  assert(JSON.stringify(afterUpgradeChoice.build) !== JSON.stringify(levelUpChoices.build), "upgrade choice did not alter build");
   assert(beforeFlame.weapon === "flamethrower", "flamethrower did not equip");
   assert(afterFlame.score > beforeFlame.score, "flamethrower did not defeat a monster");
   assert(beforeAxe.weapon === "axe", "axe did not equip");
@@ -147,6 +179,13 @@ try {
         initial,
         moved,
         fired,
+        beforeAutoWeapon,
+        afterAutoWeapon,
+        beforeXpPickup,
+        afterXpPickup,
+        beforeLevelUp,
+        levelUpChoices,
+        afterUpgradeChoice,
         beforeFlame,
         afterFlame,
         beforeAxe,

@@ -22,7 +22,7 @@ npm start
 - Para jogar em outro computador da mesma rede, use o IP da maquina que esta rodando o servidor, por exemplo `http://192.168.0.10:5173?room=cemiterio`.
 - Troque `cemiterio` por outro nome para criar outra sala.
 - Cada jogador escolhe um nome no inicio; o topo mostra ranking, pontos e vida dos players.
-- O servidor guarda um ranking historico com melhores pontuacoes, ondas, partidas e ultimos jogadores.
+- O servidor guarda um ranking historico com melhores pontuacoes, ondas, niveis, builds, partidas e ultimos jogadores.
 - Os monstros escolhem o jogador vivo mais proximo como alvo, incluindo players remotos.
 - Para jogar com pessoas fora da sua rede, publique o servidor Node em um lugar que aceite WebSocket, como Render, Railway ou Fly.io.
 - Na Vercel estatica, o jogo continua abrindo solo. Para usar Vercel + servidor separado, abra o site com `?ws=wss://SEU-SERVIDOR/ws&room=cemiterio`.
@@ -35,6 +35,10 @@ use a variavel `LEADERBOARD_FILE` apontando para um caminho persistente ou troqu
 - `WASD` ou setas movem o personagem.
 - Mouse mira.
 - Clique ou `Espaco` atira.
+- A `Lâmina Guardiã` ataca sozinha o inimigo mais proximo.
+- Cristais de XP dropam dos monstros; colete para subir de nivel.
+- Ao subir de nivel, escolha upgrades com `1`, `2` ou `3` enquanto o jogo continua.
+- Upgrades melhoram dano, cadencia, area, velocidade, coleta, vida, projeteis extras e novas armas automaticas.
 - `Enter` inicia ou reinicia.
 - Pegue itens brilhantes no mapa para trocar de arma por alguns segundos.
 - O lanca-chamas queima em cone enquanto voce segura o tiro.
