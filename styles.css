@@ -131,6 +131,54 @@ button {
   color: #d978ff;
 }
 
+.party-list {
+  display: flex;
+  flex: 1 1 360px;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: min(520px, 100%);
+}
+
+.party-card {
+  width: min(170px, calc(50vw - 24px));
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 4px solid var(--sky);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.party-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.party-card__score {
+  color: var(--amber);
+}
+
+.party-card__health {
+  height: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.party-card__health-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blood), var(--acid));
+  transform-origin: left center;
+}
+
 .message {
   position: fixed;
   inset: 0;
@@ -175,6 +223,38 @@ button {
   margin: 16px 0 24px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.name-field {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+
+.name-field span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.name-field input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  outline: none;
+  padding: 0 12px;
+}
+
+.name-field input:focus {
+  border-color: var(--acid);
+  box-shadow: 0 0 0 3px rgba(142, 241, 81, 0.16);
 }
 
 .primary-button {

@@ -37,6 +37,8 @@
           <strong id="online-count">Solo</strong>
           <span id="online-status">Online</span>
         </div>
+
+        <div id="party-list" class="party-list" aria-label="Ranking dos jogadores"></div>
       </section>
 
       <section id="message" class="message" aria-live="polite">
@@ -44,6 +46,10 @@
           <p id="message-kicker" class="message__kicker">Noite 3D</p>
           <h1 id="message-title">Zombie Night</h1>
           <p id="message-copy">Sobreviva no cemiterio enquanto a horda fecha o cerco. Compartilhe o link da sala para jogar online em ate 4 pessoas.</p>
+          <label class="name-field" for="player-name">
+            <span>Nome do player</span>
+            <input id="player-name" maxlength="16" autocomplete="nickname" placeholder="Ex: Lucca" />
+          </label>
           <button id="play-button" class="primary-button" type="button">
             <span aria-hidden="true">▶</span>
             Jogar

@@ -8,11 +8,13 @@ const weaponNameElement = document.querySelector("#weapon-name");
 const weaponTimerElement = document.querySelector("#weapon-timer");
 const onlineCountElement = document.querySelector("#online-count");
 const onlineStatusElement = document.querySelector("#online-status");
+const partyListElement = document.querySelector("#party-list");
 const message = document.querySelector("#message");
 const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
 const messageCopy = document.querySelector("#message-copy");
 const playButton = document.querySelector("#play-button");
+const playerNameInput = document.querySelector("#player-name");
 const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
 const touchFire = document.querySelector("#touch-fire");
@@ -148,6 +150,7 @@ let nextZombieId = 1;
 
 const multiplayer = {
   enabled: shouldUseMultiplayer(),
+  color: "#74d1ff",
   connected: false,
   full: false,
   id: null,
@@ -163,6 +166,7 @@ const multiplayer = {
 };
 
 const player = {
+  name: loadPlayerName(),
   health: 100,
   score: 0,
   wave: 0,
@@ -189,6 +193,9 @@ const game = {
 
 scene.add(player.mesh);
 buildWorld();
+if (playerNameInput) {
+  playerNameInput.value = player.name;
+}
 updateMultiplayerHud();
 if (multiplayer.enabled) {
   connectMultiplayer();
@@ -198,6 +205,20 @@ animate();
 
 playButton.addEventListener("click", () => {
   if (game.state !== "playing") {
+    updateLocalPlayerName(playerNameInput?.value);
+    startGame();
+  }
+});
+
+playerNameInput?.addEventListener("change", () => {
+  updateLocalPlayerName(playerNameInput.value);
+});
+
+playerNameInput?.addEventListener("keydown", (event) => {
+  if (event.code === "Enter") {
+    event.preventDefault();
+    event.stopPropagation();
+    updateLocalPlayerName(playerNameInput.value);
     startGame();
   }
 });
@@ -281,12 +302,18 @@ window.__zombieNightDebug = {
       weaponTimer: Number(player.weaponTimer.toFixed(2)),
       survivalTime: Number(game.survivalTime.toFixed(2)),
       player: {
+        name: player.name,
         x: Number(player.position.x.toFixed(3)),
         z: Number(player.position.z.toFixed(3)),
       },
       multiplayer: {
         connected: multiplayer.connected,
         id: multiplayer.id,
+        players: getPartyPlayers().map((partyPlayer) => ({
+          name: partyPlayer.name,
+          health: partyPlayer.health,
+          score: partyPlayer.score,
+        })),
         room: multiplayer.room,
         remotePlayers: remotePlayers.size,
         status: multiplayer.status,
@@ -1753,20 +1780,25 @@ function pickMonsterType() {
 function updateZombies(dt) {
   for (let index = zombies.length - 1; index >= 0; index -= 1) {
     const zombie = zombies[index];
-    const toPlayer = player.position.clone().sub(zombie.mesh.position);
-    toPlayer.y = 0;
-    const distance = toPlayer.length();
+    const target = getClosestPlayerTarget(zombie.mesh.position);
+    if (!target) {
+      continue;
+    }
+
+    const toTarget = target.position.clone().sub(zombie.mesh.position);
+    toTarget.y = 0;
+    const distance = toTarget.length();
     zombie.attackCooldown -= dt;
 
     if (canUseRangedAttack(zombie.type, distance)) {
       if (distance > 0.05) {
-        toPlayer.normalize();
-        zombie.mesh.rotation.y = getForwardRotation(toPlayer);
+        toTarget.normalize();
+        zombie.mesh.rotation.y = getForwardRotation(toTarget);
       }
 
       if (zombie.attackCooldown <= 0) {
         zombie.attackCooldown = getRangedCooldown(zombie.type);
-        spawnEnemyProjectile(zombie);
+        spawnEnemyProjectile(zombie, target);
       }
 
       updateBossLabelPosition(zombie);
@@ -1774,23 +1806,106 @@ function updateZombies(dt) {
     }
 
     if (distance > 0.05) {
-      toPlayer.normalize();
-      zombie.mesh.position.addScaledVector(toPlayer, zombie.speed * dt);
-      zombie.mesh.rotation.y = getForwardRotation(toPlayer);
+      toTarget.normalize();
+      zombie.mesh.position.addScaledVector(toTarget, zombie.speed * dt);
+      zombie.mesh.rotation.y = getForwardRotation(toTarget);
     }
 
     if (distance < zombie.radius + 0.72 && zombie.attackCooldown <= 0) {
       zombie.attackCooldown = 0.62;
-      player.health = Math.max(0, player.health - (zombie.damage + Math.floor(player.wave * 0.55)));
-      pulseHealth();
-
-      if (player.health <= 0) {
-        endGame();
-      }
+      damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.55));
     }
 
     updateBossLabelPosition(zombie);
   }
+}
+
+function getClosestPlayerTarget(position) {
+  let closestTarget = null;
+  let closestDistance = Infinity;
+
+  for (const target of getLivingPlayerTargets()) {
+    const distance = distanceXZ(position, target.position);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestTarget = target;
+    }
+  }
+
+  return closestTarget;
+}
+
+function getLivingPlayerTargets() {
+  const targets = [];
+
+  if (game.state === "playing" && player.health > 0) {
+    targets.push({
+      id: multiplayer.id || "local",
+      isLocal: true,
+      position: player.position,
+      radius: 0.64,
+    });
+  }
+
+  for (const remotePlayer of remotePlayers.values()) {
+    if (remotePlayer.state === "playing" && remotePlayer.health > 0) {
+      targets.push({
+        id: remotePlayer.id,
+        isLocal: false,
+        position: remotePlayer.mesh.position,
+        radius: 0.64,
+        remotePlayer,
+      });
+    }
+  }
+
+  return targets;
+}
+
+function getProjectileHitTarget(projectile) {
+  for (const target of getLivingPlayerTargets()) {
+    if (distanceXZ(projectile.mesh.position, target.position) < projectile.radius + target.radius) {
+      return target;
+    }
+  }
+
+  return null;
+}
+
+function damagePlayerTarget(target, amount) {
+  if (target.isLocal) {
+    damageLocalPlayer(amount);
+    return;
+  }
+
+  damageRemotePlayer(target.id, amount);
+}
+
+function damageLocalPlayer(amount) {
+  player.health = Math.max(0, player.health - amount);
+  pulseHealth();
+
+  if (player.health <= 0) {
+    endGame();
+  }
+}
+
+function damageRemotePlayer(playerId, amount) {
+  const remotePlayer = remotePlayers.get(playerId);
+
+  if (!remotePlayer || remotePlayer.health <= 0) {
+    return;
+  }
+
+  remotePlayer.health = Math.max(0, remotePlayer.health - amount);
+  updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health);
+
+  sendMultiplayerMessage({
+    type: "damagePlayer",
+    targetId: playerId,
+    amount,
+  });
 }
 
 function canUseRangedAttack(type, distance) {
@@ -1813,8 +1928,12 @@ function getRangedCooldown(type) {
   return 1.45;
 }
 
-function spawnEnemyProjectile(zombie) {
-  const direction = player.position.clone().sub(zombie.mesh.position);
+function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mesh.position)) {
+  if (!target) {
+    return;
+  }
+
+  const direction = target.position.clone().sub(zombie.mesh.position);
   direction.y = 0;
 
   if (direction.lengthSq() <= 0.01) {
@@ -1846,6 +1965,7 @@ function spawnEnemyProjectile(zombie) {
     lifespan: 2.25,
     radius: projectileSize + 0.18,
     color: projectileColor,
+    targetId: target.id,
     velocity: direction.multiplyScalar(projectileSpeed),
   });
 }
@@ -1856,16 +1976,11 @@ function updateEnemyProjectiles(dt) {
     projectile.age += dt;
     projectile.mesh.position.addScaledVector(projectile.velocity, dt);
 
-    if (distanceXZ(projectile.mesh.position, player.position) < projectile.radius + 0.64) {
-      player.health = Math.max(0, player.health - projectile.damage);
-      pulseHealth();
+    const hitTarget = getProjectileHitTarget(projectile);
+    if (hitTarget) {
+      damagePlayerTarget(hitTarget, projectile.damage);
       spawnExplosion(projectile.mesh.position, projectile.color, 2.4);
       removeEnemyProjectile(index);
-
-      if (player.health <= 0) {
-        endGame();
-      }
-
       continue;
     }
 
@@ -2167,6 +2282,44 @@ function updateHud() {
   weaponTimerElement.textContent = player.weapon === "pistol" ? "Arma" : `${Math.ceil(player.weaponTimer)}s`;
 }
 
+function loadPlayerName() {
+  const queryName = queryParams.get("name");
+  let savedName = "";
+
+  try {
+    savedName = window.localStorage?.getItem("zombieNightPlayerName") || "";
+  } catch {
+  }
+
+  return sanitizePlayerName(queryName || savedName || "Cacador");
+}
+
+function updateLocalPlayerName(name) {
+  player.name = sanitizePlayerName(name || player.name);
+
+  if (playerNameInput) {
+    playerNameInput.value = player.name;
+  }
+
+  try {
+    window.localStorage?.setItem("zombieNightPlayerName", player.name);
+  } catch {
+  }
+
+  sendMultiplayerMessage({
+    type: "profile",
+    name: player.name,
+  });
+}
+
+function sanitizePlayerName(name) {
+  return String(name || "Cacador")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[<>]/g, "")
+    .slice(0, 16) || "Cacador";
+}
+
 function shouldUseMultiplayer() {
   if (!("WebSocket" in window) || queryParams.get("offline") === "1") {
     return false;
@@ -2198,6 +2351,7 @@ function getMultiplayerUrl() {
     try {
       const websocketUrl = new URL(explicitUrl);
       websocketUrl.searchParams.set("room", multiplayer.room);
+      websocketUrl.searchParams.set("name", player.name);
       return websocketUrl.toString();
     } catch {
       return null;
@@ -2209,7 +2363,7 @@ function getMultiplayerUrl() {
   }
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws?room=${encodeURIComponent(multiplayer.room)}`;
+  return `${protocol}//${window.location.host}/ws?room=${encodeURIComponent(multiplayer.room)}&name=${encodeURIComponent(player.name)}`;
 }
 
 function connectMultiplayer() {
@@ -2288,6 +2442,15 @@ function handleMultiplayerMessage(rawMessage) {
     multiplayer.status = `Sala ${multiplayer.room}`;
     multiplayer.spawn.set(Number(messageData.spawn?.x) || 0, 0, Number(messageData.spawn?.z) || 0);
 
+    const selfSnapshot = messageData.players?.find((playerData) => playerData.id === multiplayer.id);
+    if (selfSnapshot) {
+      player.name = sanitizePlayerName(selfSnapshot.name);
+      multiplayer.color = selfSnapshot.color || multiplayer.color;
+      if (playerNameInput) {
+        playerNameInput.value = player.name;
+      }
+    }
+
     if (game.state !== "playing") {
       player.position.copy(multiplayer.spawn);
       player.mesh.position.copy(player.position);
@@ -2302,6 +2465,7 @@ function handleMultiplayerMessage(rawMessage) {
 
     updateMultiplayerHud();
     sendMultiplayerState();
+    updateLocalPlayerName(playerNameInput?.value || player.name);
     return;
   }
 
@@ -2316,6 +2480,23 @@ function handleMultiplayerMessage(rawMessage) {
     if (remotePlayer) {
       updateRemotePlayerState(remotePlayer, messageData.state);
     }
+    return;
+  }
+
+  if (messageData.type === "playerProfile") {
+    if (messageData.player?.id === multiplayer.id) {
+      player.name = sanitizePlayerName(messageData.player.name);
+      multiplayer.color = messageData.player.color || multiplayer.color;
+    } else {
+      upsertRemotePlayer(messageData.player);
+    }
+
+    updateMultiplayerHud();
+    return;
+  }
+
+  if (messageData.type === "playerDamaged") {
+    applyNetworkPlayerState(messageData.id, messageData.state, messageData.amount);
     return;
   }
 
@@ -2464,6 +2645,33 @@ function updateRemotePlayerState(remotePlayer, state) {
   remotePlayer.shooting = Boolean(state.shooting);
   remotePlayer.state = state.state || "menu";
   updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health);
+}
+
+function applyNetworkPlayerState(playerId, state, amount = 0) {
+  if (!state) {
+    return;
+  }
+
+  if (playerId === multiplayer.id) {
+    const previousHealth = player.health;
+    player.health = Math.max(0, Math.min(100, Number(state.health) || 0));
+
+    if (player.health < previousHealth || amount > 0) {
+      pulseHealth();
+    }
+
+    if (player.health <= 0 && game.state === "playing") {
+      endGame();
+    }
+
+    updateHud();
+    return;
+  }
+
+  const remotePlayer = remotePlayers.get(playerId);
+  if (remotePlayer) {
+    updateRemotePlayerState(remotePlayer, state);
+  }
 }
 
 function updateRemotePlayers(dt) {
@@ -2753,11 +2961,71 @@ function updateMultiplayerHud() {
   if (multiplayer.connected) {
     onlineCountElement.textContent = `${remotePlayers.size + 1}/${multiplayer.maxPlayers}`;
     onlineStatusElement.textContent = `Sala ${multiplayer.room}`;
+    updatePartyHud();
     return;
   }
 
   onlineCountElement.textContent = multiplayer.full ? "Cheia" : "Solo";
   onlineStatusElement.textContent = multiplayer.status;
+  updatePartyHud();
+}
+
+function updatePartyHud() {
+  if (!partyListElement) {
+    return;
+  }
+
+  const partyPlayers = getPartyPlayers();
+  partyListElement.innerHTML = partyPlayers
+    .map((partyPlayer, index) => {
+      const healthRatio = Math.max(0, Math.min(100, partyPlayer.health)) / 100;
+      return `
+        <div class="party-card" style="border-left-color: ${partyPlayer.color}">
+          <div class="party-card__top">
+            <span>${index + 1}. ${escapeHtml(partyPlayer.name)}${partyPlayer.isLocal ? " (voce)" : ""}</span>
+            <span class="party-card__score">${Math.floor(partyPlayer.score)}</span>
+          </div>
+          <div class="party-card__health" aria-hidden="true">
+            <div class="party-card__health-fill" style="transform: scaleX(${healthRatio}); background: ${partyPlayer.color}"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function getPartyPlayers() {
+  const partyPlayers = [
+    {
+      id: multiplayer.id || "local",
+      name: player.name,
+      health: player.health,
+      score: player.score,
+      color: multiplayer.color,
+      isLocal: true,
+    },
+  ];
+
+  for (const remotePlayer of remotePlayers.values()) {
+    partyPlayers.push({
+      id: remotePlayer.id,
+      name: remotePlayer.name,
+      health: remotePlayer.health,
+      score: remotePlayer.score,
+      color: remotePlayer.color,
+      isLocal: false,
+    });
+  }
+
+  return partyPlayers.sort((first, second) => second.score - first.score || second.health - first.health);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function lerpAngle(from, to, alpha) {

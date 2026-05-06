@@ -96,6 +96,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
   const slot = getFreeSlot(room);
   const client = {
     id: crypto.randomUUID(),
+    name: sanitizePlayerName(requestUrl.searchParams.get("name"), slot),
     roomId,
     slot,
     socket,
@@ -172,6 +173,16 @@ function sanitizeRoomId(roomId) {
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, "-")
     .slice(0, 28) || "cemiterio";
+}
+
+function sanitizePlayerName(name, slot = 0) {
+  const cleaned = String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[<>]/g, "")
+    .slice(0, 16);
+
+  return cleaned || `Player ${slot + 1}`;
 }
 
 function handleSocketData(client, chunk) {
@@ -271,6 +282,20 @@ function handleClientMessage(client, rawMessage) {
     return;
   }
 
+  if (message.type === "profile") {
+    client.name = sanitizePlayerName(message.name, client.slot);
+    broadcast(room, {
+      type: "playerProfile",
+      player: createPlayerSnapshot(client),
+    });
+    return;
+  }
+
+  if (message.type === "damagePlayer") {
+    damagePlayer(room, client, message);
+    return;
+  }
+
   if (message.type === "attack") {
     broadcast(room, {
       type: "playerAttack",
@@ -307,6 +332,37 @@ function normalizeAttack(attack, fallbackState) {
   };
 }
 
+function damagePlayer(room, sourceClient, message) {
+  const target = room.clients.get(String(message.targetId || ""));
+
+  if (!target || target.id === sourceClient.id) {
+    return;
+  }
+
+  const amount = Math.ceil(clampNumber(message.amount, 0, 40, 0));
+
+  if (amount <= 0 || target.state.state !== "playing" || target.state.health <= 0) {
+    return;
+  }
+
+  target.state = {
+    ...target.state,
+    health: Math.max(0, target.state.health - amount),
+  };
+
+  if (target.state.health <= 0) {
+    target.state.state = "dead";
+  }
+
+  broadcast(room, {
+    type: "playerDamaged",
+    id: target.id,
+    amount,
+    sourceId: sourceClient.id,
+    state: target.state,
+  });
+}
+
 function clampNumber(value, min, max, fallback) {
   const number = Number(value);
 
@@ -320,7 +376,7 @@ function clampNumber(value, min, max, fallback) {
 function createPlayerSnapshot(client) {
   return {
     id: client.id,
-    name: `P${client.slot + 1}`,
+    name: client.name,
     color: ["#74d1ff", "#ffd36d", "#d978ff", "#8ef151"][client.slot] ?? "#f6fbff",
     state: client.state,
   };

@@ -21,6 +21,8 @@ npm start
 - Abra `http://127.0.0.1:5173?room=cemiterio` em ate 4 abas ou computadores.
 - Para jogar em outro computador da mesma rede, use o IP da maquina que esta rodando o servidor, por exemplo `http://192.168.0.10:5173?room=cemiterio`.
 - Troque `cemiterio` por outro nome para criar outra sala.
+- Cada jogador escolhe um nome no inicio; o topo mostra ranking, pontos e vida dos players.
+- Os monstros escolhem o jogador vivo mais proximo como alvo, incluindo players remotos.
 - Para jogar com pessoas fora da sua rede, publique o servidor Node em um lugar que aceite WebSocket, como Render, Railway ou Fly.io.
 - Na Vercel estatica, o jogo continua abrindo solo. Para usar Vercel + servidor separado, abra o site com `?ws=wss://SEU-SERVIDOR/ws&room=cemiterio`.
 
