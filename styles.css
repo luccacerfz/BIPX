@@ -267,12 +267,13 @@ button {
   bottom: 18px;
   z-index: 3;
   width: min(330px, calc(100vw - 36px));
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  background: var(--panel);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(14px);
+  background: rgba(6, 12, 10, 0.34);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(8px);
+  opacity: 0.72;
   pointer-events: none;
 }
 
@@ -311,7 +312,7 @@ button {
   min-height: 30px;
   padding: 6px 8px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   font-size: 0.78rem;
   font-weight: 800;
@@ -730,7 +731,7 @@ button {
     max-height: 126px;
     padding: 9px;
     overflow: hidden;
-    opacity: 0.86;
+    opacity: 0.64;
   }
 
   .leaderboard-list li:nth-child(n + 4) {

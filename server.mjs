@@ -40,11 +40,39 @@ const server = http.createServer(async (request, response) => {
   const pathname = decodeURIComponent(requestUrl.pathname);
 
   if (pathname === "/api/leaderboard") {
+    if (request.method !== "GET") {
+      response.writeHead(405, { Allow: "GET" });
+      response.end("Method not allowed");
+      return;
+    }
+
     response.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
     });
     response.end(JSON.stringify(getLeaderboardSnapshot()));
+    return;
+  }
+
+  if (pathname === "/api/leaderboard/session") {
+    if (request.method !== "POST") {
+      response.writeHead(405, { Allow: "POST" });
+      response.end("Method not allowed");
+      return;
+    }
+
+    try {
+      const session = await readJsonBody(request);
+      const leaderboard = recordSoloLeaderboardSession(session);
+      response.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      response.end(JSON.stringify(leaderboard));
+    } catch (error) {
+      response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: error.message }));
+    }
     return;
   }
 
@@ -623,6 +651,48 @@ function finishPlayerSession(client) {
   return true;
 }
 
+function recordSoloLeaderboardSession(data) {
+  const name = sanitizePlayerName(data?.name);
+  const record = getOrCreatePlayerRecord(name);
+  const endedAt = new Date().toISOString();
+  const score = Math.max(0, Math.floor(clampNumber(data?.score, 0, 999_999, 0)));
+  const wave = Math.max(1, Math.floor(clampNumber(data?.wave, 1, 999, 1)));
+  const level = Math.max(1, Math.floor(clampNumber(data?.level ?? data?.bestLevel, 1, 999, 1)));
+  const build = normalizeBuildSummary(data?.build);
+  const durationMs = Math.max(0, Math.floor(clampNumber(data?.durationMs, 0, 86_400_000, 0)));
+
+  record.name = name;
+  record.gamesPlayed += 1;
+  record.totalScore += score;
+  record.totalPlayMs += durationMs;
+  record.lastScore = score;
+  record.lastWave = wave;
+  record.lastLevel = level;
+  record.lastBuild = build;
+  record.lastSeenAt = endedAt;
+  record.bestScore = Math.max(record.bestScore, score);
+  record.bestWave = Math.max(record.bestWave, wave);
+
+  if (level >= record.bestLevel) {
+    record.bestLevel = level;
+    record.bestBuild = build;
+  }
+
+  leaderboardStore.sessions.push({
+    id: crypto.randomUUID(),
+    name,
+    score,
+    wave,
+    level,
+    build,
+    durationMs,
+    endedAt,
+  });
+  leaderboardStore.sessions = leaderboardStore.sessions.slice(-historyLimit);
+  markLeaderboardChanged();
+  return getLeaderboardSnapshot();
+}
+
 function getOrCreatePlayerRecord(name) {
   const safeName = sanitizePlayerName(name);
   const key = getPlayerRecordKey(safeName);
@@ -653,6 +723,23 @@ function getOrCreatePlayerRecord(name) {
   record.lastLevel = Math.max(1, Math.floor(Number(record.lastLevel) || 1));
   record.lastBuild = normalizeBuildSummary(record.lastBuild);
   return record;
+}
+
+async function readJsonBody(request) {
+  let body = "";
+
+  for await (const chunk of request) {
+    body += chunk;
+    if (body.length > 16_384) {
+      throw new Error("Payload too large");
+    }
+  }
+
+  try {
+    return JSON.parse(body || "{}");
+  } catch {
+    throw new Error("Invalid JSON");
+  }
 }
 
 function getPlayerRecordKey(name) {

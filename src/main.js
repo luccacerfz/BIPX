@@ -368,6 +368,7 @@ const game = {
   powerupTimer: 0,
   survivalTime: 0,
   hudTimer: 0,
+  leaderboardSubmitted: false,
   partyHudTimer: 0,
   skillHudSignature: "",
   touchVector: new THREE.Vector2(0, 0),
@@ -380,6 +381,7 @@ if (playerNameInput) {
 }
 updateMultiplayerHud();
 updateLeaderboardHud();
+void loadLeaderboardSnapshot();
 if (multiplayer.enabled) {
   connectMultiplayer();
 }
@@ -639,6 +641,7 @@ function startGame() {
   game.powerupTimer = 2.5;
   game.survivalTime = 0;
   game.hudTimer = 0;
+  game.leaderboardSubmitted = false;
   game.partyHudTimer = 0;
   game.skillHudSignature = "";
   nextZombieId = 1;
@@ -3584,6 +3587,8 @@ function endGame() {
   player.pendingUpgradeChoices = [];
   player.pendingLevelUps = 0;
   renderUpgradeChoices();
+  sendMultiplayerState();
+  void submitSoloLeaderboardSession();
   messageKicker.textContent = `Onda ${player.wave}`;
   messageTitle.textContent = "Fim da noite";
   messageCopy.textContent = `${player.score} pontos · Nivel ${player.bestLevel}`;
@@ -4525,6 +4530,47 @@ function updateLeaderboard(leaderboard) {
     recentSessions: Array.isArray(leaderboard.recentSessions) ? leaderboard.recentSessions.slice(0, 10) : [],
   };
   updateLeaderboardHud();
+}
+
+async function loadLeaderboardSnapshot() {
+  try {
+    const response = await fetch("/api/leaderboard", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+
+    updateLeaderboard(await response.json());
+  } catch {
+  }
+}
+
+async function submitSoloLeaderboardSession() {
+  if (game.leaderboardSubmitted || multiplayer.connected) {
+    return;
+  }
+
+  game.leaderboardSubmitted = true;
+
+  try {
+    const response = await fetch("/api/leaderboard/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: player.name,
+        score: player.score,
+        wave: Math.max(player.wave, 1),
+        level: player.level,
+        bestLevel: player.bestLevel,
+        build: getPlayerBuildSummary(),
+        durationMs: Math.floor(game.survivalTime * 1000),
+      }),
+    });
+
+    if (response.ok) {
+      updateLeaderboard(await response.json());
+    }
+  } catch {
+  }
 }
 
 function updateLeaderboardHud() {
