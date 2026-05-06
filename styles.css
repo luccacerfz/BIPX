@@ -47,185 +47,178 @@ button {
 
 .hud {
   position: fixed;
-  top: 18px;
-  left: 18px;
+  top: 4px;
+  left: 0;
+  right: 0;
   z-index: 3;
   pointer-events: none;
 }
 
-.status-card {
-  width: min(344px, calc(100vw - 36px));
+.survivor-hud {
   display: grid;
-  gap: 9px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  background:
-    linear-gradient(145deg, rgba(116, 209, 255, 0.1), rgba(142, 241, 81, 0.05)),
-    rgba(5, 8, 9, 0.74);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(16px) saturate(1.2);
+  gap: 4px;
+  padding: 0 10px;
+  color: #f5f7ef;
+  font-family:
+    "Arial Black", Impact, Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  text-shadow:
+    2px 2px 0 rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(0, 0, 0, 0.75);
 }
 
-.status-card__top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 8px;
+.survivor-hud__xp {
+  width: 100%;
+  height: 9px;
+  margin: 0;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.86);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.65);
 }
 
-.status-card__weapon,
-.status-meter,
-.status-card__stats .hud__stat,
-.hud__stat--online {
-  min-height: 50px;
-  padding: 9px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.065);
-}
-
-.status-card__weapon {
+.survivor-hud__row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
   min-width: 0;
 }
 
-.status-card__weapon strong {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--amber);
-  font-size: 1rem;
-  line-height: 1.05;
-  text-overflow: ellipsis;
+.survivor-hud__row--stats {
+  min-height: 26px;
+  padding-top: 3px;
+}
+
+.survivor-hud__row--combat {
+  gap: 14px;
+  align-items: end;
+}
+
+.hud__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  color: #f5f7ef;
+  font-size: clamp(0.86rem, 1.8vw, 1.22rem);
+  font-weight: 950;
+  line-height: 1;
   white-space: nowrap;
 }
 
-.status-card__weapon small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
+.hud__stat strong {
+  color: #f5f7ef;
+  font-size: 1em;
+}
+
+.hud__stat small {
+  color: rgba(245, 247, 239, 0.78);
+  font-size: 0.72em;
+  font-weight: 950;
   text-transform: uppercase;
 }
 
-.status-card__stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.hud__stat--online {
+  color: #d978ff;
+}
+
+.hud__stat--online strong {
+  color: #d978ff;
+}
+
+.hud__stat--level {
+  margin-left: auto;
+  color: #f5f7ef;
+  font-size: clamp(1rem, 2.2vw, 1.42rem);
+  letter-spacing: 0.04em;
+}
+
+.hud__stat--level strong {
+  color: #f5f7ef;
+}
+
+.hud__stat--weapon {
+  max-width: min(280px, 42vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud__stat--weapon strong {
+  color: var(--amber);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.health {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-}
-
-.status-meter__label {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.health,
-.hud__stat {
-  min-height: 0;
-}
-
-.status-card__weapon span,
-.health span,
-.hud__stat span,
-.status-meter__label span {
-  display: block;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  min-width: min(268px, 38vw);
 }
 
 .health__track {
-  width: 100%;
-  height: 12px;
-  margin-top: 8px;
+  width: min(235px, 34vw);
+  height: 18px;
   overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.13);
+  border: 2px solid rgba(0, 0, 0, 0.88);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.82);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .health__fill {
   width: 100%;
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--blood), var(--amber), var(--acid));
+  background: linear-gradient(90deg, #eb1212 0 52%, #ffc400 52% 100%);
   transform-origin: left center;
-  transition: transform 160ms ease;
+  transition: transform 120ms linear;
 }
 
-.hud__stat {
-  min-width: 0;
-}
-
-.hud__stat strong,
-.status-meter__label strong {
-  display: block;
-  color: var(--sky);
-  font-size: 1.08rem;
-  line-height: 1.05;
-}
-
-.hud__stat--level {
-  min-width: 0;
-}
-
-.hud__stat--level .status-meter__label span {
-  color: var(--acid);
-  font-size: 0.8rem;
-  font-weight: 900;
+.health strong {
+  color: #f5f7ef;
+  font-size: clamp(0.76rem, 1.5vw, 1rem);
+  font-weight: 950;
 }
 
 .xp__track {
-  width: 100%;
-  height: 7px;
-  margin-top: 7px;
   overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.13);
 }
 
 .xp__fill {
   width: 100%;
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #74d1ff, #d978ff, #8ef151);
-  box-shadow: 0 0 14px rgba(116, 209, 255, 0.38);
+  background: #12bdf8;
+  box-shadow: 0 0 10px rgba(18, 189, 248, 0.75);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 160ms ease;
+  transition: transform 120ms linear;
 }
 
-.hud__stat--online {
-  min-width: 82px;
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  max-width: min(560px, 70vw);
+  min-height: 35px;
 }
 
-.hud__stat--online strong {
-  color: #d978ff;
-  font-size: 0.9rem;
-  max-width: 86px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.skill-chip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 38px;
+  color: #f5f7ef;
+  font-size: clamp(1rem, 2.1vw, 1.48rem);
+  font-weight: 950;
+  line-height: 0.95;
+  text-align: center;
 }
 
-.party-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  max-height: 134px;
-  overflow: hidden;
-}
-
-.party-card {
-  min-height: 50px;
-  padding: 7px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-left: 3px solid var(--sky);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.055);
+.skill-chip small {
+  margin-top: 2px;
+  color: #f5f7ef;
+  font-size: 0.42em;
+  font-weight: 950;
+  letter-spacing: 0;
 }
 
 .party-card__top {
@@ -261,6 +254,11 @@ button {
   color: var(--muted);
   font-size: 0.62rem;
   font-weight: 800;
+}
+
+.party-list,
+.party-card {
+  display: none;
 }
 
 .leaderboard-panel {
@@ -599,57 +597,75 @@ button {
 
 @media (max-width: 680px) {
   .hud {
-    top: max(10px, env(safe-area-inset-top));
-    left: max(10px, env(safe-area-inset-left));
+    top: max(3px, env(safe-area-inset-top));
   }
 
-  .status-card {
-    width: min(326px, calc(100vw - 20px));
-    gap: 7px;
-    padding: 9px;
-    border-radius: 14px;
-    background:
-      linear-gradient(145deg, rgba(116, 209, 255, 0.08), rgba(142, 241, 81, 0.04)),
-      rgba(5, 8, 9, 0.68);
-    backdrop-filter: blur(10px);
+  .survivor-hud {
+    gap: 3px;
+    padding: 0 6px;
   }
 
-  .status-card__top {
-    gap: 7px;
+  .survivor-hud__xp {
+    height: 7px;
+    border-width: 1px;
   }
 
-  .status-card__weapon,
-  .status-meter,
-  .status-card__stats .hud__stat,
+  .survivor-hud__row {
+    gap: 8px;
+  }
+
+  .survivor-hud__row--stats {
+    min-height: 18px;
+    overflow: hidden;
+  }
+
+  .hud__stat {
+    gap: 3px;
+    font-size: 0.66rem;
+  }
+
   .hud__stat--online {
-    min-height: 44px;
-    padding: 7px 8px;
-    border-radius: 11px;
+    max-width: 82px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .status-card__weapon strong,
-  .hud__stat strong,
-  .status-meter__label strong {
-    font-size: 0.92rem;
+  .hud__stat--online small {
+    display: none;
+  }
+
+  .hud__stat--level {
+    font-size: 0.76rem;
+  }
+
+  .hud__stat--weapon {
+    max-width: 45vw;
+  }
+
+  .health {
+    min-width: 124px;
+    gap: 5px;
   }
 
   .health__track {
-    height: 10px;
-    margin-top: 6px;
+    width: 98px;
+    height: 12px;
+    border-width: 1px;
   }
 
-  .xp__track {
-    height: 6px;
-    margin-top: 6px;
+  .health strong {
+    font-size: 0.62rem;
   }
 
-  .party-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 104px;
+  .skill-list {
+    max-width: calc(100vw - 12px);
+    min-height: 25px;
+    gap: 2px 7px;
   }
 
-  .party-card {
-    min-height: 42px;
+  .skill-chip {
+    min-width: 28px;
+    font-size: 0.92rem;
   }
 
   .touch-controls {

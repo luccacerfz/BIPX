@@ -10,50 +10,33 @@
     <main id="app" aria-label="Zombie Night 3D">
       <canvas id="game-canvas"></canvas>
 
-      <section class="hud status-card" aria-label="Status">
-        <div class="status-card__top">
-          <div class="status-card__weapon">
-            <span>Arma</span>
-            <strong id="weapon-name">Pistola</strong>
-            <small id="weapon-timer">Pronta</small>
-          </div>
-
-          <div class="hud__stat hud__stat--online">
-            <strong id="online-count">Solo</strong>
-            <span id="online-status">Online</span>
-          </div>
+      <section class="hud survivor-hud" aria-label="Status">
+        <div class="xp__track survivor-hud__xp" aria-hidden="true">
+          <div id="xp-fill" class="xp__fill"></div>
         </div>
 
-        <div class="health status-meter">
-          <div class="status-meter__label">
-            <span>Vida</span>
+        <div class="survivor-hud__row survivor-hud__row--stats">
+          <span class="hud__stat">⏱ <strong id="time-value">00:00</strong></span>
+          <span class="hud__stat">💎 <strong id="xp-value">0/18</strong></span>
+          <span class="hud__stat">🪙 <strong id="score">0</strong></span>
+          <span class="hud__stat">☠ <strong id="kills">0</strong></span>
+          <span class="hud__stat hud__stat--online"><strong id="online-count">Solo</strong> <small id="online-status">Online</small></span>
+          <span class="hud__stat hud__stat--level">LVL <strong id="level-value">1</strong></span>
+        </div>
+
+        <div class="survivor-hud__row survivor-hud__row--combat">
+          <div class="health">
+            <div class="health__track" aria-hidden="true">
+              <div id="health-fill" class="health__fill"></div>
+            </div>
             <strong id="health-value">100/100</strong>
           </div>
-          <div class="health__track" aria-hidden="true">
-            <div id="health-fill" class="health__fill"></div>
-          </div>
+          <span class="hud__stat">🌊 <strong id="wave">1</strong></span>
+          <span class="hud__stat hud__stat--weapon">⚔ <strong id="weapon-name">Pistola</strong> <small id="weapon-timer">Pronta</small></span>
         </div>
 
-        <div class="hud__stat hud__stat--level status-meter">
-          <div class="status-meter__label">
-            <span id="level-value">Nv 1</span>
-            <strong id="xp-value">XP 0/18</strong>
-          </div>
-          <div class="xp__track" aria-hidden="true">
-            <div id="xp-fill" class="xp__fill"></div>
-          </div>
-        </div>
-
-        <div class="status-card__stats">
-          <div class="hud__stat">
-            <strong id="score">0</strong>
-            <span>Pontos</span>
-          </div>
-
-          <div class="hud__stat">
-            <strong id="wave">1</strong>
-            <span>Onda</span>
-          </div>
+        <div id="skill-list" class="skill-list" aria-label="Skills">
+          <span class="skill-chip"><span>🗡</span><small>LVL 1</small></span>
         </div>
 
         <div id="party-list" class="party-list" aria-label="Ranking dos jogadores"></div>

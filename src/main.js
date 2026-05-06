@@ -3,13 +3,16 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.m
 const canvas = document.querySelector("#game-canvas");
 const healthFill = document.querySelector("#health-fill");
 const healthValueElement = document.querySelector("#health-value");
+const timeValueElement = document.querySelector("#time-value");
 const scoreElement = document.querySelector("#score");
+const killsElement = document.querySelector("#kills");
 const waveElement = document.querySelector("#wave");
 const levelValueElement = document.querySelector("#level-value");
 const xpFillElement = document.querySelector("#xp-fill");
 const xpValueElement = document.querySelector("#xp-value");
 const weaponNameElement = document.querySelector("#weapon-name");
 const weaponTimerElement = document.querySelector("#weapon-timer");
+const skillListElement = document.querySelector("#skill-list");
 const onlineCountElement = document.querySelector("#online-count");
 const onlineStatusElement = document.querySelector("#online-status");
 const partyListElement = document.querySelector("#party-list");
@@ -102,6 +105,29 @@ const weapons = {
   katana: { label: "Katana", duration: 10, color: 0x8ffcff },
   crossbow: { label: "Besta", duration: 11, color: 0xffd36d },
   talisman: { label: "Selo", duration: 9, color: 0xd978ff },
+};
+
+const hudWeaponIcons = {
+  pistol: "🔫",
+  flamethrower: "🔥",
+  axe: "🪓",
+  katana: "⚔",
+  crossbow: "🏹",
+  talisman: "📜",
+  guardianBlade: "🗡",
+  orbitOrb: "🟣",
+  sealRain: "☄",
+};
+
+const hudUpgradeIcons = {
+  damage: "◆",
+  cadence: "⚡",
+  area: "◎",
+  speed: "👟",
+  pickup: "🧲",
+  maxHealth: "❤",
+  projectile: "✦",
+  autoWeapon: "★",
 };
 
 const monsterProfiles = {
@@ -309,6 +335,7 @@ const player = {
   health: 100,
   maxHealth: 100,
   score: 0,
+  kills: 0,
   wave: 0,
   level: 1,
   bestLevel: 1,
@@ -339,6 +366,7 @@ const game = {
   survivalTime: 0,
   hudTimer: 0,
   partyHudTimer: 0,
+  skillHudSignature: "",
   touchVector: new THREE.Vector2(0, 0),
 };
 
@@ -463,6 +491,7 @@ window.__zombieNightDebug = {
       health: player.health,
       maxHealth: player.maxHealth,
       score: player.score,
+      kills: player.kills,
       wave: player.wave,
       level: player.level,
       bestLevel: player.bestLevel,
@@ -583,6 +612,7 @@ function startGame() {
   resetProgressionState();
   player.health = player.maxHealth;
   player.score = 0;
+  player.kills = 0;
   player.wave = 0;
   player.shotCooldown = 0;
   player.weapon = "pistol";
@@ -599,6 +629,7 @@ function startGame() {
   game.survivalTime = 0;
   game.hudTimer = 0;
   game.partyHudTimer = 0;
+  game.skillHudSignature = "";
   nextZombieId = 1;
   spatialGrid.dirty = true;
   message.classList.add("is-hidden");
@@ -3338,6 +3369,7 @@ function damageZombie(index, amount, shouldFlash, awardRewards = true) {
     removeZombie(index);
     if (awardRewards) {
       spawnXpGem(xpPosition, xpValue);
+      player.kills += 1;
       player.score += zombie.score;
     }
     return true;
@@ -3560,15 +3592,86 @@ function updateHud(force = false) {
   const healthRatio = Math.max(player.health, 0) / player.maxHealth;
   const xpRatio = Math.max(0, Math.min(1, player.xp / player.xpToNext));
   healthFill.style.transform = `scaleX(${healthRatio})`;
+  timeValueElement.textContent = formatSurvivalTime(game.survivalTime);
   healthValueElement.textContent = `${Math.ceil(Math.max(player.health, 0))}/${Math.ceil(player.maxHealth)}`;
-  scoreElement.textContent = player.score.toString();
+  scoreElement.textContent = formatHudNumber(player.score);
+  killsElement.textContent = formatHudNumber(player.kills);
   waveElement.textContent = Math.max(player.wave, 1).toString();
-  levelValueElement.textContent = `Nv ${player.level}`;
+  levelValueElement.textContent = player.level.toString();
   xpFillElement.style.transform = `scaleX(${xpRatio})`;
-  xpValueElement.textContent = `XP ${Math.floor(player.xp)}/${Math.floor(player.xpToNext)}`;
+  xpValueElement.textContent = `${Math.floor(player.xp)}/${Math.floor(player.xpToNext)}`;
   weaponNameElement.textContent = weapons[player.weapon].label;
-  weaponTimerElement.textContent = player.weapon === "pistol" ? "Pronta" : `${Math.ceil(player.weaponTimer)}s`;
+  weaponTimerElement.textContent = player.weapon === "pistol" ? "READY" : `${Math.ceil(player.weaponTimer)}s`;
+  renderSkillHud();
   renderPerfOverlay();
+}
+
+function formatSurvivalTime(seconds) {
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainder = totalSeconds % 60;
+  return `${minutes}:${remainder.toString().padStart(2, "0")}`;
+}
+
+function formatHudNumber(value) {
+  return Math.floor(Number(value) || 0).toLocaleString("en-US");
+}
+
+function renderSkillHud() {
+  if (!skillListElement) {
+    return;
+  }
+
+  const skills = getHudSkills();
+  const signature = skills.map((skill) => `${skill.icon}:${skill.level}:${skill.title}`).join("|");
+  if (game.skillHudSignature === signature) {
+    return;
+  }
+
+  game.skillHudSignature = signature;
+  skillListElement.innerHTML = skills
+    .map(
+      (skill) => `
+        <span class="skill-chip" title="${escapeHtml(skill.title)}">
+          <span>${skill.icon}</span>
+          <small>LVL ${skill.level}</small>
+        </span>
+      `,
+    )
+    .join("");
+}
+
+function getHudSkills() {
+  const skills = [
+    {
+      icon: hudWeaponIcons[player.weapon] || "⚔",
+      title: weapons[player.weapon]?.label || "Arma",
+      level: player.weapon === "pistol" ? 1 : Math.max(1, Math.ceil(player.weaponTimer)),
+    },
+  ];
+
+  for (const [weaponId, state] of Object.entries(player.autoWeapons)) {
+    if (state.level > 0) {
+      skills.push({
+        icon: hudWeaponIcons[weaponId] || "✦",
+        title: autoWeaponProfiles[weaponId]?.label || weaponId,
+        level: state.level,
+      });
+    }
+  }
+
+  for (const [upgradeId, stacks] of Object.entries(player.upgradeStacks)) {
+    if (stacks > 0) {
+      const definition = upgradeDefinitions.find((upgrade) => upgrade.id === upgradeId);
+      skills.push({
+        icon: hudUpgradeIcons[upgradeId] || "◆",
+        title: definition?.label || upgradeId,
+        level: stacks,
+      });
+    }
+  }
+
+  return skills.slice(0, usesMobileTuning() ? 8 : 12);
 }
 
 function loadPlayerName() {
