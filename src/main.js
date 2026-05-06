@@ -9,6 +9,8 @@ const weaponTimerElement = document.querySelector("#weapon-timer");
 const onlineCountElement = document.querySelector("#online-count");
 const onlineStatusElement = document.querySelector("#online-status");
 const partyListElement = document.querySelector("#party-list");
+const leaderboardCountElement = document.querySelector("#leaderboard-count");
+const leaderboardListElement = document.querySelector("#leaderboard-list");
 const message = document.querySelector("#message");
 const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
@@ -153,6 +155,11 @@ const multiplayer = {
   color: "#74d1ff",
   connected: false,
   full: false,
+  leaderboard: {
+    totalPlayers: 0,
+    players: [],
+    recentSessions: [],
+  },
   id: null,
   maxPlayers: 4,
   reconnectTimer: 0,
@@ -197,6 +204,7 @@ if (playerNameInput) {
   playerNameInput.value = player.name;
 }
 updateMultiplayerHud();
+updateLeaderboardHud();
 if (multiplayer.enabled) {
   connectMultiplayer();
 }
@@ -313,6 +321,11 @@ window.__zombieNightDebug = {
           name: partyPlayer.name,
           health: partyPlayer.health,
           score: partyPlayer.score,
+        })),
+        leaderboard: multiplayer.leaderboard.players.map((leader) => ({
+          rank: leader.rank,
+          name: leader.name,
+          bestScore: leader.bestScore,
         })),
         room: multiplayer.room,
         remotePlayers: remotePlayers.size,
@@ -2440,6 +2453,7 @@ function handleMultiplayerMessage(rawMessage) {
     multiplayer.maxPlayers = messageData.maxPlayers ?? 4;
     multiplayer.room = sanitizeRoomName(messageData.room);
     multiplayer.status = `Sala ${multiplayer.room}`;
+    updateLeaderboard(messageData.leaderboard);
     multiplayer.spawn.set(Number(messageData.spawn?.x) || 0, 0, Number(messageData.spawn?.z) || 0);
 
     const selfSnapshot = messageData.players?.find((playerData) => playerData.id === multiplayer.id);
@@ -2497,6 +2511,11 @@ function handleMultiplayerMessage(rawMessage) {
 
   if (messageData.type === "playerDamaged") {
     applyNetworkPlayerState(messageData.id, messageData.state, messageData.amount);
+    return;
+  }
+
+  if (messageData.type === "leaderboard") {
+    updateLeaderboard(messageData.leaderboard);
     return;
   }
 
@@ -3018,6 +3037,54 @@ function getPartyPlayers() {
   }
 
   return partyPlayers.sort((first, second) => second.score - first.score || second.health - first.health);
+}
+
+function updateLeaderboard(leaderboard) {
+  if (!leaderboard) {
+    return;
+  }
+
+  multiplayer.leaderboard = {
+    totalPlayers: Number(leaderboard.totalPlayers) || 0,
+    players: Array.isArray(leaderboard.players) ? leaderboard.players.slice(0, 10) : [],
+    recentSessions: Array.isArray(leaderboard.recentSessions) ? leaderboard.recentSessions.slice(0, 10) : [],
+  };
+  updateLeaderboardHud();
+}
+
+function updateLeaderboardHud() {
+  if (!leaderboardListElement || !leaderboardCountElement) {
+    return;
+  }
+
+  const leaders = multiplayer.leaderboard.players;
+  leaderboardCountElement.textContent = `${multiplayer.leaderboard.totalPlayers} players`;
+
+  if (leaders.length === 0) {
+    leaderboardListElement.innerHTML = `
+      <li>
+        <span class="leaderboard-list__rank">–</span>
+        <span>Nenhum historico ainda</span>
+        <span class="leaderboard-list__meta">jogue</span>
+      </li>
+    `;
+    return;
+  }
+
+  leaderboardListElement.innerHTML = leaders
+    .slice(0, 6)
+    .map((leader) => {
+      const bestScore = Math.floor(Number(leader.bestScore) || 0);
+      const bestWave = Math.floor(Number(leader.bestWave) || 1);
+      return `
+        <li>
+          <span class="leaderboard-list__rank">#${leader.rank}</span>
+          <span>${escapeHtml(leader.name)}</span>
+          <span class="leaderboard-list__meta">${bestScore} pts · O${bestWave}</span>
+        </li>
+      `;
+    })
+    .join("");
 }
 
 function escapeHtml(value) {

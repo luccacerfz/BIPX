@@ -9,7 +9,15 @@ const port = Number(process.env.PORT ?? 5173);
 const host = process.env.HOST ?? "0.0.0.0";
 const maxPlayersPerRoom = 4;
 const websocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+const leaderboardPath = process.env.LEADERBOARD_FILE || path.join(root, ".data", "leaderboard.json");
+const leaderboardLimit = 10;
+const historyLimit = 120;
 const rooms = new Map();
+const leaderboardStore = {
+  players: {},
+  sessions: [],
+};
+let saveLeaderboardTimer = null;
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -20,9 +28,21 @@ const mimeTypes = {
   ".png": "image/png",
 };
 
+await loadLeaderboard();
+
 const server = http.createServer(async (request, response) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host}`);
   const pathname = decodeURIComponent(requestUrl.pathname);
+
+  if (pathname === "/api/leaderboard") {
+    response.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    response.end(JSON.stringify(getLeaderboardSnapshot()));
+    return;
+  }
+
   const requestedFile = pathname === "/" ? "index.html" : pathname.slice(1);
   const filePath = path.normalize(path.join(root, requestedFile));
 
@@ -102,6 +122,9 @@ function joinMultiplayerRoom(requestUrl, socket) {
     socket,
     buffer: Buffer.alloc(0),
     lastSeen: Date.now(),
+    sessionBestScore: 0,
+    sessionBestWave: 1,
+    sessionStartedAt: null,
     state: {
       x: getSpawnPoint(slot).x,
       z: getSpawnPoint(slot).z,
@@ -126,6 +149,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
     maxPlayers: maxPlayersPerRoom,
     spawn: getSpawnPoint(slot),
     players: [...room.clients.values()].map(createPlayerSnapshot),
+    leaderboard: getLeaderboardSnapshot(),
   });
 
   broadcast(room, {
@@ -273,12 +297,17 @@ function handleClientMessage(client, rawMessage) {
   }
 
   if (message.type === "state") {
+    const previousState = client.state.state;
     client.state = normalizePlayerState(message.state, client.state);
+    const leaderboardChanged = updatePlayerHistory(client, previousState);
     broadcast(room, {
       type: "playerState",
       id: client.id,
       state: client.state,
     }, client.id);
+    if (leaderboardChanged) {
+      broadcastLeaderboard(room);
+    }
     return;
   }
 
@@ -288,6 +317,7 @@ function handleClientMessage(client, rawMessage) {
       type: "playerProfile",
       player: createPlayerSnapshot(client),
     });
+    broadcastLeaderboard(room);
     return;
   }
 
@@ -354,6 +384,8 @@ function damagePlayer(room, sourceClient, message) {
     target.state.state = "dead";
   }
 
+  updatePlayerHistory(target, target.state.state === "dead" ? "playing" : target.state.state);
+
   broadcast(room, {
     type: "playerDamaged",
     id: target.id,
@@ -361,6 +393,8 @@ function damagePlayer(room, sourceClient, message) {
     sourceId: sourceClient.id,
     state: target.state,
   });
+
+  broadcastLeaderboard(room);
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -380,6 +414,233 @@ function createPlayerSnapshot(client) {
     color: ["#74d1ff", "#ffd36d", "#d978ff", "#8ef151"][client.slot] ?? "#f6fbff",
     state: client.state,
   };
+}
+
+async function loadLeaderboard() {
+  try {
+    const rawData = await fs.readFile(leaderboardPath, "utf8");
+    const data = JSON.parse(rawData);
+    leaderboardStore.players = typeof data.players === "object" && data.players ? data.players : {};
+    leaderboardStore.sessions = Array.isArray(data.sessions) ? data.sessions.slice(-historyLimit) : [];
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(`Could not load leaderboard: ${error.message}`);
+    }
+  }
+}
+
+function recordPlayerSeen(client, force = false) {
+  const record = getOrCreatePlayerRecord(client.name);
+  const nowMs = Date.now();
+
+  if (!force && client.lastHistorySeenAt && nowMs - client.lastHistorySeenAt < 10_000) {
+    return record;
+  }
+
+  const now = new Date().toISOString();
+
+  record.name = client.name;
+  record.lastSeenAt = now;
+  client.lastHistorySeenAt = nowMs;
+  markLeaderboardChanged();
+  return record;
+}
+
+function updatePlayerHistory(client, previousState) {
+  const state = client.state;
+  const shouldTrackPlayer =
+    state.state === "playing" || previousState === "playing" || state.score > 0 || state.wave > 1;
+
+  if (!shouldTrackPlayer) {
+    return false;
+  }
+
+  const record = recordPlayerSeen(client);
+  let changed = false;
+
+  if (state.state === "playing" && previousState !== "playing") {
+    client.sessionStartedAt = Date.now();
+    client.sessionBestScore = state.score;
+    client.sessionBestWave = state.wave;
+    record.gamesPlayed += 1;
+    changed = true;
+  }
+
+  if (state.state === "playing") {
+    client.sessionBestScore = Math.max(client.sessionBestScore, state.score);
+    client.sessionBestWave = Math.max(client.sessionBestWave, state.wave);
+  }
+
+  if (state.score > record.bestScore) {
+    record.bestScore = state.score;
+    changed = true;
+  }
+
+  if (state.wave > record.bestWave) {
+    record.bestWave = state.wave;
+    changed = true;
+  }
+
+  if (record.lastScore !== state.score || record.lastWave !== state.wave) {
+    record.lastScore = state.score;
+    record.lastWave = state.wave;
+    changed = true;
+  }
+
+  if (previousState === "playing" && state.state !== "playing") {
+    finishPlayerSession(client);
+    changed = true;
+  }
+
+  if (changed) {
+    markLeaderboardChanged();
+  }
+
+  return changed;
+}
+
+function finishPlayerSession(client) {
+  if (!client.sessionStartedAt) {
+    return false;
+  }
+
+  const record = getOrCreatePlayerRecord(client.name);
+  const endedAt = new Date().toISOString();
+  const durationMs = Math.max(0, Date.now() - client.sessionStartedAt);
+  const score = Math.max(client.sessionBestScore, client.state.score);
+  const wave = Math.max(client.sessionBestWave, client.state.wave);
+
+  record.totalScore += score;
+  record.totalPlayMs += durationMs;
+  record.lastScore = score;
+  record.lastWave = wave;
+  record.lastSeenAt = endedAt;
+  record.bestScore = Math.max(record.bestScore, score);
+  record.bestWave = Math.max(record.bestWave, wave);
+
+  leaderboardStore.sessions.push({
+    id: crypto.randomUUID(),
+    name: client.name,
+    score,
+    wave,
+    durationMs,
+    endedAt,
+  });
+
+  leaderboardStore.sessions = leaderboardStore.sessions.slice(-historyLimit);
+  client.sessionStartedAt = null;
+  client.sessionBestScore = 0;
+  client.sessionBestWave = 1;
+  markLeaderboardChanged();
+  return true;
+}
+
+function getOrCreatePlayerRecord(name) {
+  const safeName = sanitizePlayerName(name);
+  const key = getPlayerRecordKey(safeName);
+
+  if (!leaderboardStore.players[key]) {
+    const now = new Date().toISOString();
+    leaderboardStore.players[key] = {
+      name: safeName,
+      bestScore: 0,
+      bestWave: 1,
+      gamesPlayed: 0,
+      totalScore: 0,
+      totalPlayMs: 0,
+      lastScore: 0,
+      lastWave: 1,
+      firstSeenAt: now,
+      lastSeenAt: now,
+    };
+  }
+
+  return leaderboardStore.players[key];
+}
+
+function getPlayerRecordKey(name) {
+  return sanitizePlayerName(name).toLowerCase();
+}
+
+function getLeaderboardSnapshot() {
+  const players = Object.values(leaderboardStore.players)
+    .sort(
+      (first, second) =>
+        second.bestScore - first.bestScore ||
+        second.bestWave - first.bestWave ||
+        second.gamesPlayed - first.gamesPlayed ||
+        second.totalScore - first.totalScore,
+    )
+    .slice(0, leaderboardLimit)
+    .map((record, index) => ({
+      rank: index + 1,
+      name: record.name,
+      bestScore: record.bestScore,
+      bestWave: record.bestWave,
+      gamesPlayed: record.gamesPlayed,
+      totalScore: record.totalScore,
+      lastScore: record.lastScore,
+      lastWave: record.lastWave,
+      totalPlayMs: record.totalPlayMs,
+      firstSeenAt: record.firstSeenAt,
+      lastSeenAt: record.lastSeenAt,
+    }));
+
+  const recentSessions = leaderboardStore.sessions
+    .slice(-10)
+    .reverse()
+    .map((session) => ({
+      name: session.name,
+      score: session.score,
+      wave: session.wave,
+      durationMs: session.durationMs,
+      endedAt: session.endedAt,
+    }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    totalPlayers: Object.keys(leaderboardStore.players).length,
+    players,
+    recentSessions,
+  };
+}
+
+function broadcastLeaderboard(room) {
+  broadcast(room, {
+    type: "leaderboard",
+    leaderboard: getLeaderboardSnapshot(),
+  });
+}
+
+function markLeaderboardChanged() {
+  if (saveLeaderboardTimer) {
+    clearTimeout(saveLeaderboardTimer);
+  }
+
+  saveLeaderboardTimer = setTimeout(() => {
+    saveLeaderboardTimer = null;
+    void saveLeaderboard();
+  }, 750);
+  saveLeaderboardTimer.unref?.();
+}
+
+async function saveLeaderboard() {
+  try {
+    await fs.mkdir(path.dirname(leaderboardPath), { recursive: true });
+    await fs.writeFile(
+      leaderboardPath,
+      JSON.stringify(
+        {
+          players: leaderboardStore.players,
+          sessions: leaderboardStore.sessions.slice(-historyLimit),
+        },
+        null,
+        2,
+      ),
+    );
+  } catch (error) {
+    console.warn(`Could not save leaderboard: ${error.message}`);
+  }
 }
 
 function broadcast(room, message, exceptId) {
@@ -427,7 +688,9 @@ function removeClient(client) {
   }
 
   room.clients.delete(client.id);
+  finishPlayerSession(client);
   broadcast(room, { type: "playerLeft", id: client.id }, client.id);
+  broadcastLeaderboard(room);
 
   if (room.clients.size === 0) {
     rooms.delete(client.roomId);
