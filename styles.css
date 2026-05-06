@@ -725,13 +725,40 @@ button {
   }
 
   .leaderboard-panel {
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(166px, calc(env(safe-area-inset-bottom) + 156px));
-    width: min(230px, calc(100vw - 20px));
-    max-height: 126px;
-    padding: 9px;
+    top: max(44px, calc(env(safe-area-inset-top) + 38px));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: auto;
+    width: min(168px, calc(100vw - 20px));
+    max-height: 82px;
+    padding: 6px;
+    border-radius: 8px;
     overflow: hidden;
-    opacity: 0.64;
+    opacity: 0.58;
+  }
+
+  .leaderboard-panel__title {
+    gap: 6px;
+  }
+
+  .leaderboard-panel__title strong {
+    font-size: 0.54rem;
+  }
+
+  .leaderboard-panel__title span {
+    font-size: 0.5rem;
+  }
+
+  .leaderboard-list {
+    gap: 3px;
+    margin-top: 5px;
+  }
+
+  .leaderboard-list li {
+    grid-template-columns: auto 1fr;
+    min-height: 18px;
+    padding: 3px 5px;
+    gap: 5px;
+    font-size: 0.56rem;
   }
 
   .leaderboard-list li:nth-child(n + 4) {
