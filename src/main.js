@@ -25,11 +25,14 @@ const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
 const messageCopy = document.querySelector("#message-copy");
 const playButton = document.querySelector("#play-button");
+const playButtonLabel = document.querySelector("#play-button-label");
+const multiplayerButton = document.querySelector("#multiplayer-button");
 const playerNameInput = document.querySelector("#player-name");
 const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
 const touchFire = document.querySelector("#touch-fire");
 const queryParams = new URLSearchParams(window.location.search);
+const multiplayerEntryUrl = "https://bipx.vercel.app/?ws=wss://bipx-multiplayer-server.onrender.com/ws&room=cemiterio";
 const requestedQuality = sanitizeQuality(queryParams.get("quality"));
 const perfOverlayEnabled = queryParams.get("perf") === "1";
 const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
@@ -380,6 +383,9 @@ updateLeaderboardHud();
 if (multiplayer.enabled) {
   connectMultiplayer();
 }
+if (playButtonLabel && multiplayer.enabled) {
+  playButtonLabel.textContent = "Jogar multiplayer";
+}
 updateHud();
 animate();
 
@@ -388,6 +394,11 @@ playButton.addEventListener("click", () => {
     updateLocalPlayerName(playerNameInput?.value);
     startGame();
   }
+});
+
+multiplayerButton?.addEventListener("click", () => {
+  updateLocalPlayerName(playerNameInput?.value);
+  window.location.assign(multiplayerEntryUrl);
 });
 
 playerNameInput?.addEventListener("change", () => {
@@ -3717,15 +3728,7 @@ function shouldUseMultiplayer() {
     return false;
   }
 
-  if (queryParams.has("ws")) {
-    return true;
-  }
-
-  if (window.location.protocol === "file:" || window.location.hostname.endsWith("vercel.app")) {
-    return false;
-  }
-
-  return true;
+  return queryParams.has("ws");
 }
 
 function sanitizeRoomName(roomName) {

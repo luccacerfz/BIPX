@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+await loadLocalEnv();
+
 const port = Number(process.env.PORT ?? 5173);
 const host = process.env.HOST ?? "0.0.0.0";
 const maxPlayersPerRoom = 4;
@@ -12,6 +14,9 @@ const websocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const leaderboardPath = process.env.LEADERBOARD_FILE || path.join(root, ".data", "leaderboard.json");
 const leaderboardLimit = 10;
 const historyLimit = 120;
+const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const leaderboardBackend = supabaseUrl && supabaseServiceRoleKey ? "supabase" : "file";
 const rooms = new Map();
 const leaderboardStore = {
   players: {},
@@ -448,6 +453,11 @@ function createPlayerSnapshot(client) {
 }
 
 async function loadLeaderboard() {
+  if (leaderboardBackend === "supabase") {
+    await loadLeaderboardFromSupabase();
+    return;
+  }
+
   try {
     const rawData = await fs.readFile(leaderboardPath, "utf8");
     const data = JSON.parse(rawData);
@@ -457,6 +467,24 @@ async function loadLeaderboard() {
     if (error.code !== "ENOENT") {
       console.warn(`Could not load leaderboard: ${error.message}`);
     }
+  }
+}
+
+async function loadLeaderboardFromSupabase() {
+  try {
+    const [players, sessions] = await Promise.all([
+      supabaseRequest(
+        "/leaderboard_players?select=*&order=best_score.desc,best_level.desc,best_wave.desc,games_played.desc,total_score.desc",
+      ),
+      supabaseRequest(`/leaderboard_sessions?select=*&order=ended_at.desc&limit=${historyLimit}`),
+    ]);
+
+    leaderboardStore.players = Object.fromEntries(
+      players.map((row) => [row.player_key, mapLeaderboardPlayerFromRow(row)]),
+    );
+    leaderboardStore.sessions = sessions.reverse().map(mapLeaderboardSessionFromRow);
+  } catch (error) {
+    console.warn(`Could not load Supabase leaderboard: ${error.message}`);
   }
 }
 
@@ -701,6 +729,11 @@ function markLeaderboardChanged() {
 }
 
 async function saveLeaderboard() {
+  if (leaderboardBackend === "supabase") {
+    await saveLeaderboardToSupabase();
+    return;
+  }
+
   try {
     await fs.mkdir(path.dirname(leaderboardPath), { recursive: true });
     await fs.writeFile(
@@ -717,6 +750,161 @@ async function saveLeaderboard() {
   } catch (error) {
     console.warn(`Could not save leaderboard: ${error.message}`);
   }
+}
+
+async function saveLeaderboardToSupabase() {
+  try {
+    const playerRows = Object.entries(leaderboardStore.players).map(([playerKey, record]) =>
+      mapLeaderboardPlayerToRow(playerKey, record),
+    );
+    const sessionRows = leaderboardStore.sessions.slice(-historyLimit).map(mapLeaderboardSessionToRow);
+
+    if (playerRows.length > 0) {
+      await supabaseRequest("/leaderboard_players?on_conflict=player_key", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(playerRows),
+      });
+    }
+
+    if (sessionRows.length > 0) {
+      await supabaseRequest("/leaderboard_sessions?on_conflict=id", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(sessionRows),
+      });
+    }
+  } catch (error) {
+    console.warn(`Could not save Supabase leaderboard: ${error.message}`);
+  }
+}
+
+async function supabaseRequest(pathname, options = {}) {
+  const response = await fetch(`${supabaseUrl}/rest/v1${pathname}`, {
+    ...options,
+    headers: {
+      apikey: supabaseServiceRoleKey,
+      Authorization: `Bearer ${supabaseServiceRoleKey}`,
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`${response.status} ${response.statusText}: ${body}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function normalizeSupabaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+async function loadLocalEnv() {
+  try {
+    const envPath = path.join(root, ".env");
+    const envFile = await fs.readFile(envPath, "utf8");
+
+    for (const line of envFile.split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!match || process.env[match[1]] !== undefined) {
+        continue;
+      }
+
+      process.env[match[1]] = unquoteEnvValue(match[2]);
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(`Could not load .env: ${error.message}`);
+    }
+  }
+}
+
+function unquoteEnvValue(value) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
+function mapLeaderboardPlayerFromRow(row) {
+  return {
+    name: sanitizePlayerName(row.name),
+    bestScore: Math.max(0, Math.floor(Number(row.best_score) || 0)),
+    bestWave: Math.max(1, Math.floor(Number(row.best_wave) || 1)),
+    bestLevel: Math.max(1, Math.floor(Number(row.best_level) || 1)),
+    bestBuild: normalizeBuildSummary(row.best_build),
+    gamesPlayed: Math.max(0, Math.floor(Number(row.games_played) || 0)),
+    totalScore: Math.max(0, Math.floor(Number(row.total_score) || 0)),
+    totalPlayMs: Math.max(0, Math.floor(Number(row.total_play_ms) || 0)),
+    lastScore: Math.max(0, Math.floor(Number(row.last_score) || 0)),
+    lastWave: Math.max(1, Math.floor(Number(row.last_wave) || 1)),
+    lastLevel: Math.max(1, Math.floor(Number(row.last_level) || 1)),
+    lastBuild: normalizeBuildSummary(row.last_build),
+    firstSeenAt: row.first_seen_at || new Date().toISOString(),
+    lastSeenAt: row.last_seen_at || new Date().toISOString(),
+  };
+}
+
+function mapLeaderboardPlayerToRow(playerKey, record) {
+  return {
+    player_key: playerKey,
+    name: sanitizePlayerName(record.name),
+    best_score: Math.max(0, Math.floor(Number(record.bestScore) || 0)),
+    best_wave: Math.max(1, Math.floor(Number(record.bestWave) || 1)),
+    best_level: Math.max(1, Math.floor(Number(record.bestLevel) || 1)),
+    best_build: normalizeBuildSummary(record.bestBuild),
+    games_played: Math.max(0, Math.floor(Number(record.gamesPlayed) || 0)),
+    total_score: Math.max(0, Math.floor(Number(record.totalScore) || 0)),
+    total_play_ms: Math.max(0, Math.floor(Number(record.totalPlayMs) || 0)),
+    last_score: Math.max(0, Math.floor(Number(record.lastScore) || 0)),
+    last_wave: Math.max(1, Math.floor(Number(record.lastWave) || 1)),
+    last_level: Math.max(1, Math.floor(Number(record.lastLevel) || 1)),
+    last_build: normalizeBuildSummary(record.lastBuild),
+    first_seen_at: record.firstSeenAt || new Date().toISOString(),
+    last_seen_at: record.lastSeenAt || new Date().toISOString(),
+  };
+}
+
+function mapLeaderboardSessionFromRow(row) {
+  return {
+    id: row.id,
+    name: sanitizePlayerName(row.name),
+    score: Math.max(0, Math.floor(Number(row.score) || 0)),
+    wave: Math.max(1, Math.floor(Number(row.wave) || 1)),
+    level: Math.max(1, Math.floor(Number(row.level) || 1)),
+    build: normalizeBuildSummary(row.build),
+    durationMs: Math.max(0, Math.floor(Number(row.duration_ms) || 0)),
+    endedAt: row.ended_at || new Date().toISOString(),
+  };
+}
+
+function mapLeaderboardSessionToRow(session) {
+  session.id ||= crypto.randomUUID();
+
+  return {
+    id: session.id,
+    player_key: getPlayerRecordKey(session.name),
+    name: sanitizePlayerName(session.name),
+    score: Math.max(0, Math.floor(Number(session.score) || 0)),
+    wave: Math.max(1, Math.floor(Number(session.wave) || 1)),
+    level: Math.max(1, Math.floor(Number(session.level) || 1)),
+    build: normalizeBuildSummary(session.build),
+    duration_ms: Math.max(0, Math.floor(Number(session.durationMs) || 0)),
+    ended_at: session.endedAt || new Date().toISOString(),
+  };
 }
 
 function broadcast(room, message, exceptId) {

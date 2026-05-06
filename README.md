@@ -30,6 +30,18 @@ npm start
 Por padrao, o historico fica em `.data/leaderboard.json`. Em hospedagem com disco efemero,
 use a variavel `LEADERBOARD_FILE` apontando para um caminho persistente ou troque por banco.
 
+### Ranking no Supabase
+
+O servidor grava o ranking no Supabase quando estas variaveis estao configuradas:
+
+```bash
+SUPABASE_URL=https://sflbmnnxsgqawfthqoak.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+```
+
+Use a `service_role key` somente no servidor Node. Nunca coloque essa chave no frontend.
+Sem essas variaveis, o jogo continua usando `.data/leaderboard.json` localmente.
+
 ## Controles
 
 - `WASD` ou setas movem o personagem.

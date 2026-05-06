@@ -502,25 +502,47 @@ button {
   box-shadow: 0 0 0 3px rgba(142, 241, 81, 0.16);
 }
 
-.primary-button {
+.mode-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.primary-button,
+.secondary-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-width: 150px;
+  width: 100%;
   min-height: 46px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: var(--acid);
-  color: #10160d;
   cursor: pointer;
   font-weight: 900;
   text-transform: uppercase;
 }
 
+.primary-button {
+  background: var(--acid);
+  color: #10160d;
+}
+
 .primary-button:hover,
 .primary-button:focus-visible {
   background: #a9ff70;
+}
+
+.secondary-button {
+  border-color: rgba(116, 209, 255, 0.46);
+  background: rgba(116, 209, 255, 0.12);
+  color: var(--sky);
+}
+
+.secondary-button:hover,
+.secondary-button:focus-visible {
+  border-color: rgba(116, 209, 255, 0.82);
+  background: rgba(116, 209, 255, 0.2);
 }
 
 .touch-controls {
@@ -725,5 +747,9 @@ button {
 
   .message h1 {
     font-size: 2.05rem;
+  }
+
+  .mode-actions {
+    grid-template-columns: 1fr;
   }
 }

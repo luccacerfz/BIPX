@@ -55,15 +55,21 @@
         <div class="message__panel">
           <p id="message-kicker" class="message__kicker">Noite 3D</p>
           <h1 id="message-title">Zombie Night</h1>
-          <p id="message-copy">Sobreviva no cemiterio enquanto a horda fecha o cerco. Compartilhe o link da sala para jogar online em ate 4 pessoas.</p>
+          <p id="message-copy">Sobreviva no cemiterio enquanto a horda fecha o cerco. Escolha jogar sozinho ou entrar na sala online com ate 4 players.</p>
           <label class="name-field" for="player-name">
             <span>Nome do player</span>
             <input id="player-name" maxlength="16" autocomplete="nickname" placeholder="Ex: Lucca" />
           </label>
-          <button id="play-button" class="primary-button" type="button">
-            <span aria-hidden="true">▶</span>
-            Jogar
-          </button>
+          <div class="mode-actions" aria-label="Escolha o modo de jogo">
+            <button id="play-button" class="primary-button" type="button">
+              <span aria-hidden="true">▶</span>
+              <span id="play-button-label">Single player</span>
+            </button>
+            <button id="multiplayer-button" class="secondary-button" type="button">
+              <span aria-hidden="true">🌐</span>
+              Multiplayer
+            </button>
+          </div>
         </div>
       </section>
 
