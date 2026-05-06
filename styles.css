@@ -20,6 +20,7 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #050706;
   color: var(--text);
   font-family:
@@ -48,32 +49,88 @@ button {
   position: fixed;
   top: 18px;
   left: 18px;
-  right: 18px;
   z-index: 3;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 10px;
   pointer-events: none;
+}
+
+.status-card {
+  width: min(344px, calc(100vw - 36px));
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(116, 209, 255, 0.1), rgba(142, 241, 81, 0.05)),
+    rgba(5, 8, 9, 0.74);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.status-card__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.status-card__weapon,
+.status-meter,
+.status-card__stats .hud__stat,
+.hud__stat--online {
+  min-height: 50px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.status-card__weapon {
+  min-width: 0;
+}
+
+.status-card__weapon strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--amber);
+  font-size: 1rem;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-card__weapon small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.status-card__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.status-meter__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .health,
 .hud__stat {
-  min-height: 54px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(14px);
+  min-height: 0;
 }
 
-.health {
-  width: min(310px, 48vw);
-  padding: 10px 12px;
-}
-
+.status-card__weapon span,
 .health span,
-.hud__stat span {
+.hud__stat span,
+.status-meter__label span {
   display: block;
   color: var(--muted);
   font-size: 0.72rem;
@@ -83,7 +140,7 @@ button {
 
 .health__track {
   width: 100%;
-  height: 14px;
+  height: 12px;
   margin-top: 8px;
   overflow: hidden;
   border-radius: 999px;
@@ -100,35 +157,25 @@ button {
 }
 
 .hud__stat {
-  min-width: 86px;
-  padding: 8px 12px;
+  min-width: 0;
 }
 
-.hud__stat strong {
+.hud__stat strong,
+.status-meter__label strong {
   display: block;
   color: var(--sky);
-  font-size: 1.35rem;
+  font-size: 1.08rem;
   line-height: 1.05;
 }
 
-.hud__stat--weapon {
-  min-width: 126px;
-}
-
-.hud__stat--weapon strong {
-  color: var(--amber);
-  font-size: 1.05rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .hud__stat--level {
-  min-width: 104px;
+  min-width: 0;
 }
 
-.hud__stat--level strong {
+.hud__stat--level .status-meter__label span {
   color: var(--acid);
+  font-size: 0.8rem;
+  font-weight: 900;
 }
 
 .xp__track {
@@ -152,31 +199,33 @@ button {
 }
 
 .hud__stat--online {
-  min-width: 118px;
+  min-width: 82px;
 }
 
 .hud__stat--online strong {
   color: #d978ff;
+  font-size: 0.9rem;
+  max-width: 86px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .party-list {
-  display: flex;
-  flex: 1 1 360px;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: min(520px, 100%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  max-height: 134px;
+  overflow: hidden;
 }
 
 .party-card {
-  width: min(170px, calc(50vw - 24px));
-  min-height: 54px;
-  padding: 8px 10px;
+  min-height: 50px;
+  padding: 7px 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-left: 4px solid var(--sky);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(14px);
+  border-left: 3px solid var(--sky);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .party-card__top {
@@ -193,8 +242,8 @@ button {
 }
 
 .party-card__health {
-  height: 8px;
-  margin-top: 8px;
+  height: 6px;
+  margin-top: 7px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.13);
@@ -210,7 +259,7 @@ button {
 .party-card__meta {
   margin-top: 5px;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 800;
 }
 
@@ -478,7 +527,7 @@ button {
 
 .touch-controls {
   position: fixed;
-  inset: auto 18px 22px;
+  inset: auto max(18px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
   z-index: 3;
   display: none;
   align-items: end;
@@ -494,20 +543,23 @@ button {
 
 .touch-stick {
   position: relative;
-  width: 116px;
-  height: 116px;
+  width: 122px;
+  height: 122px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 50%;
-  background: rgba(6, 10, 10, 0.55);
-  backdrop-filter: blur(12px);
+  background:
+    radial-gradient(circle, rgba(116, 209, 255, 0.12), transparent 62%),
+    rgba(6, 10, 10, 0.5);
+  box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(10px);
 }
 
 .touch-stick__knob {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: rgba(116, 209, 255, 0.75);
   transform: translate(-50%, -50%);
@@ -516,12 +568,15 @@ button {
 .touch-fire {
   display: grid;
   place-items: center;
-  width: 88px;
-  height: 88px;
+  width: 92px;
+  height: 92px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 50%;
-  background: rgba(216, 68, 68, 0.72);
-  backdrop-filter: blur(12px);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.2), transparent 42%),
+    rgba(216, 68, 68, 0.72);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
 }
 
 .touch-fire span {
@@ -535,43 +590,90 @@ button {
   .touch-controls {
     display: flex;
   }
+
+  .upgrade-card:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
+  }
 }
 
 @media (max-width: 680px) {
   .hud {
-    top: 12px;
-    left: 12px;
-    right: 12px;
-    gap: 8px;
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
   }
 
-  .health {
-    flex: 1 0 100%;
-    min-width: 0;
-    width: auto;
+  .status-card {
+    width: min(326px, calc(100vw - 20px));
+    gap: 7px;
+    padding: 9px;
+    border-radius: 14px;
+    background:
+      linear-gradient(145deg, rgba(116, 209, 255, 0.08), rgba(142, 241, 81, 0.04)),
+      rgba(5, 8, 9, 0.68);
+    backdrop-filter: blur(10px);
   }
 
-  .hud__stat {
-    flex: 1 1 0;
-    min-width: 0;
-    padding-inline: 9px;
+  .status-card__top {
+    gap: 7px;
   }
 
-  .hud__stat strong {
-    font-size: 1.08rem;
+  .status-card__weapon,
+  .status-meter,
+  .status-card__stats .hud__stat,
+  .hud__stat--online {
+    min-height: 44px;
+    padding: 7px 8px;
+    border-radius: 11px;
   }
 
-  .hud__stat--weapon {
-    flex: 1.4 1 0;
-    min-width: 94px;
-  }
-
-  .hud__stat--weapon strong {
+  .status-card__weapon strong,
+  .hud__stat strong,
+  .status-meter__label strong {
     font-size: 0.92rem;
   }
 
+  .health__track {
+    height: 10px;
+    margin-top: 6px;
+  }
+
+  .xp__track {
+    height: 6px;
+    margin-top: 6px;
+  }
+
+  .party-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 104px;
+  }
+
+  .party-card {
+    min-height: 42px;
+  }
+
+  .touch-controls {
+    display: flex;
+    inset: auto max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  .touch-stick {
+    width: min(132px, 30vw);
+    height: min(132px, 30vw);
+  }
+
+  .touch-stick__knob {
+    width: min(54px, 12vw);
+    height: min(54px, 12vw);
+  }
+
+  .touch-fire {
+    width: min(100px, 23vw);
+    height: min(100px, 23vw);
+  }
+
   .upgrade-panel {
-    padding: 12px;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(132px, calc(env(safe-area-inset-bottom) + 116px));
     place-items: center;
   }
 
@@ -584,13 +686,20 @@ button {
   }
 
   .leaderboard-panel {
-    right: 12px;
-    bottom: 120px;
-    max-height: 180px;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(166px, calc(env(safe-area-inset-bottom) + 156px));
+    width: min(230px, calc(100vw - 20px));
+    max-height: 126px;
+    padding: 9px;
     overflow: hidden;
+    opacity: 0.86;
   }
 
-  .leaderboard-list li:nth-child(n + 5) {
+  .leaderboard-list li:nth-child(n + 4) {
+    display: none;
+  }
+
+  .leaderboard-list__meta {
     display: none;
   }
 

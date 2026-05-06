@@ -2,10 +2,12 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.m
 
 const canvas = document.querySelector("#game-canvas");
 const healthFill = document.querySelector("#health-fill");
+const healthValueElement = document.querySelector("#health-value");
 const scoreElement = document.querySelector("#score");
 const waveElement = document.querySelector("#wave");
 const levelValueElement = document.querySelector("#level-value");
 const xpFillElement = document.querySelector("#xp-fill");
+const xpValueElement = document.querySelector("#xp-value");
 const weaponNameElement = document.querySelector("#weapon-name");
 const weaponTimerElement = document.querySelector("#weapon-timer");
 const onlineCountElement = document.querySelector("#online-count");
@@ -336,6 +338,7 @@ const game = {
   powerupTimer: 0,
   survivalTime: 0,
   hudTimer: 0,
+  partyHudTimer: 0,
   touchVector: new THREE.Vector2(0, 0),
 };
 
@@ -415,6 +418,7 @@ window.addEventListener("mouseup", () => {
 
 touchFire.addEventListener("pointerdown", (event) => {
   event.preventDefault();
+  touchFire.setPointerCapture?.(event.pointerId);
   game.shooting = true;
 });
 
@@ -423,6 +427,10 @@ touchFire.addEventListener("pointerup", () => {
 });
 
 touchFire.addEventListener("pointercancel", () => {
+  game.shooting = false;
+});
+
+touchFire.addEventListener("lostpointercapture", () => {
   game.shooting = false;
 });
 
@@ -590,11 +598,13 @@ function startGame() {
   game.powerupTimer = 2.5;
   game.survivalTime = 0;
   game.hudTimer = 0;
+  game.partyHudTimer = 0;
   nextZombieId = 1;
   spatialGrid.dirty = true;
   message.classList.add("is-hidden");
   startNextWave();
   updateHud(true);
+  updateMultiplayerHud();
 }
 
 function createDefaultUpgradeStats() {
@@ -664,30 +674,54 @@ function renderPerfOverlay() {
 }
 
 function getDefaultQualityLevel() {
-  if (window.matchMedia?.("(pointer: coarse)")?.matches || Math.min(window.innerWidth, window.innerHeight) < 520) {
+  if (usesMobileTuning()) {
     return "medium";
   }
 
   return "high";
 }
 
+function isTouchDevice() {
+  return window.matchMedia?.("(pointer: coarse)")?.matches || navigator.maxTouchPoints > 0;
+}
+
+function isCompactViewport() {
+  return Math.min(window.innerWidth, window.innerHeight) < 680;
+}
+
+function usesMobileTuning() {
+  return isTouchDevice() || isCompactViewport();
+}
+
 function getQualityPixelRatio() {
   const deviceRatio = window.devicePixelRatio || 1;
+  const mobileTuned = usesMobileTuning();
 
   if (qualityManager.level === "high") {
-    return Math.min(deviceRatio, 2);
+    return Math.min(deviceRatio, mobileTuned ? 1.35 : 2);
   }
 
   if (qualityManager.level === "medium") {
-    return Math.min(deviceRatio, 1.35);
+    return Math.min(deviceRatio, mobileTuned ? 1.15 : 1.35);
   }
 
-  return Math.min(deviceRatio, 1);
+  return Math.min(deviceRatio, mobileTuned ? 0.9 : 1);
 }
 
 function applyQualitySettings(force = false) {
   const pixelRatio = getQualityPixelRatio();
-  qualityManager.effectBudget = qualityManager.level === "high" ? 86 : qualityManager.level === "medium" ? 56 : 34;
+  const mobileTuned = usesMobileTuning();
+  qualityManager.effectBudget = mobileTuned
+    ? qualityManager.level === "high"
+      ? 68
+      : qualityManager.level === "medium"
+        ? 42
+        : 24
+    : qualityManager.level === "high"
+      ? 86
+      : qualityManager.level === "medium"
+        ? 56
+        : 34;
 
   if (force || Math.abs(pixelRatio - qualityManager.pixelRatio) > 0.01) {
     qualityManager.pixelRatio = pixelRatio;
@@ -695,7 +729,7 @@ function applyQualitySettings(force = false) {
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  renderer.shadowMap.enabled = qualityManager.level !== "low";
+  renderer.shadowMap.enabled = qualityManager.level === "high" || (qualityManager.level === "medium" && !mobileTuned);
 }
 
 function updateQualityManager(dt) {
@@ -1913,7 +1947,7 @@ function animate() {
 }
 
 function updateAim() {
-  if (game.touchVector.lengthSq() > 0.08) {
+  if (game.touchVector.lengthSq() > 0.0025) {
     const reticle = scene.getObjectByName("reticle");
     if (reticle) {
       reticle.position.copy(player.position).addScaledVector(player.aimDirection, 5);
@@ -1951,11 +1985,20 @@ function updatePlayer(dt) {
   if (keys.has("KeyA") || keys.has("ArrowLeft")) move.x -= 1;
   if (keys.has("KeyD") || keys.has("ArrowRight")) move.x += 1;
 
-  move.x += game.touchVector.x;
-  move.z += game.touchVector.y;
-
-  if (move.lengthSq() > 0) {
+  if (move.lengthSq() > 1) {
     move.normalize();
+  }
+
+  if (game.touchVector.lengthSq() > 0) {
+    move.x += game.touchVector.x;
+    move.z += game.touchVector.y;
+  }
+
+  const moveLengthSq = move.lengthSq();
+  if (moveLengthSq > 0) {
+    if (moveLengthSq > 1) {
+      move.normalize();
+    }
     player.position.addScaledVector(move, player.speed * player.upgradeStats.speedMultiplier * dt);
   }
 
@@ -2961,7 +3004,11 @@ function updateZombieLod(zombie) {
 }
 
 function getZombieDetailDistance() {
-  const baseDistance = qualityManager.level === "high" ? 24 : qualityManager.level === "medium" ? 15 : 8.5;
+  let baseDistance = qualityManager.level === "high" ? 24 : qualityManager.level === "medium" ? 15 : 8.5;
+  if (usesMobileTuning()) {
+    baseDistance *= 0.82;
+  }
+
   if (zombies.length > 70) {
     return baseDistance * 0.75;
   }
@@ -3510,13 +3557,17 @@ function updateHud(force = false) {
     game.hudTimer = qualityManager.level === "low" ? 0.18 : 0.1;
   }
 
-  healthFill.style.transform = `scaleX(${Math.max(player.health, 0) / player.maxHealth})`;
+  const healthRatio = Math.max(player.health, 0) / player.maxHealth;
+  const xpRatio = Math.max(0, Math.min(1, player.xp / player.xpToNext));
+  healthFill.style.transform = `scaleX(${healthRatio})`;
+  healthValueElement.textContent = `${Math.ceil(Math.max(player.health, 0))}/${Math.ceil(player.maxHealth)}`;
   scoreElement.textContent = player.score.toString();
   waveElement.textContent = Math.max(player.wave, 1).toString();
   levelValueElement.textContent = `Nv ${player.level}`;
-  xpFillElement.style.transform = `scaleX(${Math.max(0, Math.min(1, player.xp / player.xpToNext))})`;
+  xpFillElement.style.transform = `scaleX(${xpRatio})`;
+  xpValueElement.textContent = `XP ${Math.floor(player.xp)}/${Math.floor(player.xpToNext)}`;
   weaponNameElement.textContent = weapons[player.weapon].label;
-  weaponTimerElement.textContent = player.weapon === "pistol" ? "Arma" : `${Math.ceil(player.weaponTimer)}s`;
+  weaponTimerElement.textContent = player.weapon === "pistol" ? "Pronta" : `${Math.ceil(player.weaponTimer)}s`;
   renderPerfOverlay();
 }
 
@@ -3774,7 +3825,11 @@ function updateMultiplayer(dt) {
   }
 
   updateRemotePlayers(dt);
-  updateMultiplayerHud();
+  game.partyHudTimer -= dt;
+  if (game.partyHudTimer <= 0) {
+    game.partyHudTimer = usesMobileTuning() ? 0.25 : 0.15;
+    updateMultiplayerHud();
+  }
 }
 
 function getPlayerBuildSummary() {
@@ -4299,6 +4354,11 @@ function updatePartyHud() {
   }
 
   const partyPlayers = getPartyPlayers();
+  if (partyPlayers.length <= 1) {
+    partyListElement.innerHTML = "";
+    return;
+  }
+
   partyListElement.innerHTML = partyPlayers
     .map((partyPlayer, index) => {
       const healthRatio = Math.max(0, Math.min(1, partyPlayer.health / partyPlayer.maxHealth));
@@ -4430,23 +4490,28 @@ function rotateDirectionY(direction, angle) {
 
 function handleStickMove(event) {
   event.preventDefault();
-  touchStick.setPointerCapture(event.pointerId);
+  touchStick.setPointerCapture?.(event.pointerId);
 
   const rect = touchStick.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
   const offsetX = event.clientX - centerX;
   const offsetY = event.clientY - centerY;
-  const maxDistance = rect.width * 0.34;
-  const distance = Math.min(Math.hypot(offsetX, offsetY), maxDistance);
+  const maxDistance = rect.width * getTouchStickRadiusFactor();
+  const rawDistance = Math.hypot(offsetX, offsetY);
+  const distance = Math.min(rawDistance, maxDistance);
   const angle = Math.atan2(offsetY, offsetX);
   const knobX = Math.cos(angle) * distance;
   const knobY = Math.sin(angle) * distance;
+  const rawStrength = maxDistance > 0 ? distance / maxDistance : 0;
+  const deadZone = getTouchDeadZone();
+  const strength = rawStrength <= deadZone ? 0 : Math.min(1, (rawStrength - deadZone) / (1 - deadZone));
+  const response = Math.pow(strength, usesMobileTuning() ? 0.78 : 0.9);
 
   touchKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-  game.touchVector.set(knobX / maxDistance, knobY / maxDistance);
+  game.touchVector.set(Math.cos(angle) * response, Math.sin(angle) * response);
 
-  if (game.touchVector.lengthSq() > 0.08) {
+  if (game.touchVector.lengthSq() > 0.0025) {
     player.aimDirection.set(game.touchVector.x, 0, game.touchVector.y).normalize();
   }
 }
@@ -4454,6 +4519,14 @@ function handleStickMove(event) {
 function resetStick() {
   touchKnob.style.transform = "translate(-50%, -50%)";
   game.touchVector.set(0, 0);
+}
+
+function getTouchStickRadiusFactor() {
+  return usesMobileTuning() ? 0.42 : 0.36;
+}
+
+function getTouchDeadZone() {
+  return usesMobileTuning() ? 0.12 : 0.16;
 }
 
 function resizeRenderer() {
