@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
+import { getConfig } from "./config/index.js";
 
 const canvas = document.querySelector("#game-canvas");
 const healthFill = document.querySelector("#health-fill");
@@ -59,11 +60,18 @@ const perfStats = {
 };
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0f171e);
-scene.fog = new THREE.FogExp2(0x0f171e, usesMobileTuning() ? 0.024 : 0.028);
+scene.background = new THREE.Color(getGameConfig("fog.color"));
+scene.fog = new THREE.FogExp2(getGameConfig("fog.color"), getGameConfig("fog.density"));
 
-const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 220);
+const camera = new THREE.PerspectiveCamera(getGameConfig("camera.fov"), window.innerWidth / window.innerHeight, 0.1, 220);
 camera.position.set(0, getCameraHeight(), getCameraDepth());
+scene.userData.editorRefs = {
+  camera,
+  fog: scene.fog,
+  hemiLight: null,
+  moonLight: null,
+  playerLight: null,
+};
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -739,19 +747,28 @@ function usesMobileTuning() {
   return isTouchDevice() || isCompactViewport();
 }
 
+function getGameConfig(path) {
+  return getConfig(path);
+}
+
 function getQualityPixelRatio() {
   const deviceRatio = window.devicePixelRatio || 1;
   const mobileTuned = usesMobileTuning();
+  const highRatio = mobileTuned ? getGameConfig("quality.mobileHighPixelRatio") : getGameConfig("quality.highPixelRatio");
+  const mediumRatio = mobileTuned
+    ? getGameConfig("quality.mobileMediumPixelRatio")
+    : getGameConfig("quality.mediumPixelRatio");
+  const lowRatio = mobileTuned ? getGameConfig("quality.mobileLowPixelRatio") : getGameConfig("quality.lowPixelRatio");
 
   if (qualityManager.level === "high") {
-    return Math.min(deviceRatio, mobileTuned ? 1.5 : 2);
+    return Math.min(deviceRatio, highRatio);
   }
 
   if (qualityManager.level === "medium") {
-    return Math.min(deviceRatio, mobileTuned ? 1.25 : 1.35);
+    return Math.min(deviceRatio, mediumRatio);
   }
 
-  return Math.min(deviceRatio, mobileTuned ? 1 : 1);
+  return Math.min(deviceRatio, lowRatio);
 }
 
 function applyQualitySettings(force = false) {
@@ -759,15 +776,15 @@ function applyQualitySettings(force = false) {
   const mobileTuned = usesMobileTuning();
   qualityManager.effectBudget = mobileTuned
     ? qualityManager.level === "high"
-      ? 68
+      ? getGameConfig("quality.effectBudget.mobileHigh")
       : qualityManager.level === "medium"
-        ? 42
-        : 24
+        ? getGameConfig("quality.effectBudget.mobileMedium")
+        : getGameConfig("quality.effectBudget.mobileLow")
     : qualityManager.level === "high"
-      ? 86
+      ? getGameConfig("quality.effectBudget.high")
       : qualityManager.level === "medium"
-        ? 56
-        : 34;
+        ? getGameConfig("quality.effectBudget.medium")
+        : getGameConfig("quality.effectBudget.low");
 
   if (force || Math.abs(pixelRatio - qualityManager.pixelRatio) > 0.01) {
     qualityManager.pixelRatio = pixelRatio;
@@ -890,21 +907,27 @@ function recordPoolExpansion(poolName) {
 }
 
 function buildWorld() {
-  const hemiLight = new THREE.HemisphereLight(0xb1c8e6, 0x1d2430, 1.35);
+  const hemiLight = new THREE.HemisphereLight(
+    getGameConfig("lighting.hemi.skyColor"),
+    getGameConfig("lighting.hemi.groundColor"),
+    getGameConfig("lighting.hemi.intensity"),
+  );
   scene.add(hemiLight);
+  scene.userData.editorRefs.hemiLight = hemiLight;
 
-  const moon = new THREE.DirectionalLight(0xdbe9ff, 2.6);
+  const moon = new THREE.DirectionalLight(getGameConfig("lighting.moon.color"), getGameConfig("lighting.moon.intensity"));
   moon.position.set(-20, 36, 18);
   moon.castShadow = true;
-  moon.shadow.mapSize.set(usesMobileTuning() ? 1024 : 2048, usesMobileTuning() ? 1024 : 2048);
+  moon.shadow.mapSize.set(getGameConfig("lighting.moon.shadowMapSize"), getGameConfig("lighting.moon.shadowMapSize"));
   moon.shadow.camera.near = 1;
   moon.shadow.camera.far = 95;
   moon.shadow.camera.left = -55;
   moon.shadow.camera.right = 55;
   moon.shadow.camera.top = 55;
   moon.shadow.camera.bottom = -55;
-  moon.shadow.bias = usesMobileTuning() ? -0.002 : -0.0005;
+  moon.shadow.bias = getGameConfig("lighting.moon.shadowBias");
   scene.add(moon);
+  scene.userData.editorRefs.moonLight = moon;
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(140, 140),
@@ -1168,9 +1191,16 @@ function createPlayerMesh() {
   bladeLight.position.set(0.08, 1.2, -1.55);
   group.add(bladeLight);
 
-  const playerLight = new THREE.PointLight(0xffe2ab, usesMobileTuning() ? 3.5 : 2.8, usesMobileTuning() ? 32 : 26);
-  playerLight.position.set(0, 4.5, 0);
+  const playerLight = new THREE.PointLight(
+    getGameConfig("lighting.player.color"),
+    getGameConfig("lighting.player.intensity"),
+    getGameConfig("lighting.player.distance"),
+  );
+  playerLight.position.set(0, getGameConfig("lighting.player.height"), 0);
   group.add(playerLight);
+  if (!scene.userData.editorRefs.playerLight) {
+    scene.userData.editorRefs.playerLight = playerLight;
+  }
 
   return group;
 }
@@ -3483,19 +3513,19 @@ function updateCamera(dt) {
 }
 
 function getCameraZoomScale() {
-  return usesMobileTuning() ? 2 : 1;
+  return getGameConfig("camera.zoomScale");
 }
 
 function getCameraHeight() {
-  return 17 * getCameraZoomScale();
+  return getGameConfig("camera.height") * getCameraZoomScale();
 }
 
 function getCameraDepth() {
-  return 20 * getCameraZoomScale();
+  return getGameConfig("camera.depth") * getCameraZoomScale();
 }
 
 function getCameraLookAhead() {
-  return 2.6 * getCameraZoomScale();
+  return getGameConfig("camera.lookAhead") * getCameraZoomScale();
 }
 
 function animateProps(time) {
@@ -3713,7 +3743,10 @@ function getHudSkills() {
     }
   }
 
-  return skills.slice(0, usesMobileTuning() ? 8 : 12);
+  return skills.slice(
+    0,
+    usesMobileTuning() ? getGameConfig("gameplay.skillHud.mobileMaxEntries") : getGameConfig("gameplay.skillHud.desktopMaxEntries"),
+  );
 }
 
 function loadPlayerName() {
@@ -3964,7 +3997,9 @@ function updateMultiplayer(dt) {
   updateRemotePlayers(dt);
   game.partyHudTimer -= dt;
   if (game.partyHudTimer <= 0) {
-    game.partyHudTimer = usesMobileTuning() ? 0.25 : 0.15;
+    game.partyHudTimer = usesMobileTuning()
+      ? getGameConfig("gameplay.partyHud.mobileInterval")
+      : getGameConfig("gameplay.partyHud.desktopInterval");
     updateMultiplayerHud();
   }
 }
@@ -4715,7 +4750,12 @@ function handleStickMove(event) {
   const rawStrength = maxDistance > 0 ? distance / maxDistance : 0;
   const deadZone = getTouchDeadZone();
   const strength = rawStrength <= deadZone ? 0 : Math.min(1, (rawStrength - deadZone) / (1 - deadZone));
-  const response = Math.pow(strength, usesMobileTuning() ? 0.78 : 0.9);
+  const response = Math.pow(
+    strength,
+    usesMobileTuning()
+      ? getGameConfig("gameplay.touch.responseMobileExponent")
+      : getGameConfig("gameplay.touch.responseDesktopExponent"),
+  );
 
   touchKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
   game.touchVector.set(Math.cos(angle) * response, Math.sin(angle) * response);
@@ -4731,14 +4771,19 @@ function resetStick() {
 }
 
 function getTouchStickRadiusFactor() {
-  return usesMobileTuning() ? 0.42 : 0.36;
+  return usesMobileTuning() ? getGameConfig("gameplay.touch.stickRadiusMobile") : getGameConfig("gameplay.touch.stickRadiusDesktop");
 }
 
 function getTouchDeadZone() {
-  return usesMobileTuning() ? 0.12 : 0.16;
+  return usesMobileTuning() ? getGameConfig("gameplay.touch.deadZoneMobile") : getGameConfig("gameplay.touch.deadZoneDesktop");
 }
 
 function resizeRenderer() {
+  const fogColor = getGameConfig("fog.color");
+  scene.background = new THREE.Color(fogColor);
+  scene.fog.color.set(fogColor);
+  scene.fog.density = getGameConfig("fog.density");
+  camera.fov = getGameConfig("camera.fov");
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   applyQualitySettings(true);
