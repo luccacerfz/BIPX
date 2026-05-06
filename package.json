@@ -1,0 +1,9 @@
+{
+  "name": "zombie-night-3d",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.mjs",
+    "verify": "npx --yes --package playwright node tools/verify-canvas.mjs"
+  }
+}

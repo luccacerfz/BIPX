@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zombie Night 3D</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" aria-label="Zombie Night 3D">
+      <canvas id="game-canvas"></canvas>
+
+      <section class="hud" aria-label="Status">
+        <div class="health">
+          <span>Vida</span>
+          <div class="health__track" aria-hidden="true">
+            <div id="health-fill" class="health__fill"></div>
+          </div>
+        </div>
+
+        <div class="hud__stat">
+          <strong id="score">0</strong>
+          <span>Pontos</span>
+        </div>
+
+        <div class="hud__stat">
+          <strong id="wave">1</strong>
+          <span>Onda</span>
+        </div>
+
+        <div class="hud__stat hud__stat--weapon">
+          <strong id="weapon-name">Pistola</strong>
+          <span id="weapon-timer">Arma</span>
+        </div>
+      </section>
+
+      <section id="message" class="message" aria-live="polite">
+        <div class="message__panel">
+          <p id="message-kicker" class="message__kicker">Noite 3D</p>
+          <h1 id="message-title">Zombie Night</h1>
+          <p id="message-copy">Sobreviva no cemiterio enquanto a horda fecha o cerco.</p>
+          <button id="play-button" class="primary-button" type="button">
+            <span aria-hidden="true">▶</span>
+            Jogar
+          </button>
+        </div>
+      </section>
+
+      <section class="touch-controls" aria-label="Controles de toque">
+        <div id="touch-stick" class="touch-stick">
+          <div id="touch-knob" class="touch-stick__knob"></div>
+        </div>
+        <button id="touch-fire" class="touch-fire" type="button" aria-label="Atirar">
+          <span aria-hidden="true"></span>
+        </button>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
