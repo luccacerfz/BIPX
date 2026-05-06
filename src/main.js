@@ -6,6 +6,8 @@ const scoreElement = document.querySelector("#score");
 const waveElement = document.querySelector("#wave");
 const weaponNameElement = document.querySelector("#weapon-name");
 const weaponTimerElement = document.querySelector("#weapon-timer");
+const onlineCountElement = document.querySelector("#online-count");
+const onlineStatusElement = document.querySelector("#online-status");
 const message = document.querySelector("#message");
 const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
@@ -14,6 +16,7 @@ const playButton = document.querySelector("#play-button");
 const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
 const touchFire = document.querySelector("#touch-fire");
+const queryParams = new URLSearchParams(window.location.search);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x07100d);
@@ -140,7 +143,24 @@ const enemyProjectiles = [];
 const powerups = [];
 const effects = [];
 const graveProps = [];
+const remotePlayers = new Map();
 let nextZombieId = 1;
+
+const multiplayer = {
+  enabled: shouldUseMultiplayer(),
+  connected: false,
+  full: false,
+  id: null,
+  maxPlayers: 4,
+  reconnectTimer: 0,
+  reconnectAttempts: 0,
+  room: sanitizeRoomName(queryParams.get("room")),
+  sendTimer: 0,
+  socket: null,
+  spawn: new THREE.Vector3(0, 0, 0),
+  status: "Solo",
+  url: null,
+};
 
 const player = {
   health: 100,
@@ -169,6 +189,10 @@ const game = {
 
 scene.add(player.mesh);
 buildWorld();
+updateMultiplayerHud();
+if (multiplayer.enabled) {
+  connectMultiplayer();
+}
 updateHud();
 animate();
 
@@ -260,6 +284,13 @@ window.__zombieNightDebug = {
         x: Number(player.position.x.toFixed(3)),
         z: Number(player.position.z.toFixed(3)),
       },
+      multiplayer: {
+        connected: multiplayer.connected,
+        id: multiplayer.id,
+        room: multiplayer.room,
+        remotePlayers: remotePlayers.size,
+        status: multiplayer.status,
+      },
     };
   },
   start: startGame,
@@ -276,11 +307,11 @@ window.__zombieNightDebug = {
   },
 };
 
-if (new URLSearchParams(window.location.search).get("autoplay") === "1") {
+if (queryParams.get("autoplay") === "1") {
   requestAnimationFrame(() => {
     startGame();
 
-    if (new URLSearchParams(window.location.search).get("bosses") === "1") {
+    if (queryParams.get("bosses") === "1") {
       spawnBossPreview();
     }
   });
@@ -295,7 +326,7 @@ function startGame() {
   player.weapon = "pistol";
   player.weaponTimer = 0;
   player.axeSpinTimer = 0;
-  player.position.set(0, 0, 0);
+  player.position.copy(getMultiplayerStartPosition());
   player.aimDirection.set(0, 0, -1);
   player.mesh.position.copy(player.position);
   game.state = "playing";
@@ -1064,17 +1095,18 @@ function animate() {
     updatePlayer(dt);
     updatePowerups(dt);
     updateActiveWeapon(dt);
-  updateShooting(dt);
-  updateSpawning(dt);
-  updateZombies(dt);
-  updateEnemyProjectiles(dt);
-  updateBullets(dt);
+    updateShooting(dt);
+    updateSpawning(dt);
+    updateZombies(dt);
+    updateEnemyProjectiles(dt);
+    updateBullets(dt);
     updateWaveFlow(dt);
     updateHud();
   } else {
     updateAim();
   }
 
+  updateMultiplayer(dt);
   updateCamera(dt);
   updateEffects(dt);
   animateProps(clock.elapsedTime);
@@ -1207,6 +1239,7 @@ function updateShooting(dt) {
 
   player.shotCooldown = Math.max(0.1, 0.2 - player.wave * 0.006);
   spawnBullet();
+  sendMultiplayerAttack("pistol");
 }
 
 function updateFlamethrower(dt) {
@@ -1219,6 +1252,7 @@ function updateFlamethrower(dt) {
   if (player.shotCooldown <= 0) {
     player.shotCooldown = 0.065;
     spawnFlameBurst();
+    sendMultiplayerAttack("flamethrower");
   }
 }
 
@@ -1229,6 +1263,7 @@ function updateAxeAttack() {
 
   player.shotCooldown = 0.48;
   startAxeSpin();
+  sendMultiplayerAttack("axe");
 }
 
 function updateKatanaAttack() {
@@ -1239,6 +1274,7 @@ function updateKatanaAttack() {
   player.shotCooldown = 0.28;
   damageZombiesInCone(5.8, Math.cos(0.92), 7, true);
   spawnKatanaSlash();
+  sendMultiplayerAttack("katana");
 }
 
 function updateCrossbowAttack() {
@@ -1255,6 +1291,7 @@ function updateCrossbowAttack() {
     radius: 0.24,
     speed: 42,
   });
+  sendMultiplayerAttack("crossbow");
 }
 
 function updateTalismanAttack() {
@@ -1272,6 +1309,7 @@ function updateTalismanAttack() {
     radius: 0.32,
     speed: 25,
   });
+  sendMultiplayerAttack("talisman");
 }
 
 function spawnBullet() {
@@ -1885,9 +1923,10 @@ function updateBullets(dt) {
 }
 
 function damageZombiesInCone(range, minDot, amount, shouldFlash) {
-  const origin = player.position;
-  const direction = player.aimDirection;
+  damageZombiesInConeFrom(player.position, player.aimDirection, range, minDot, amount, shouldFlash);
+}
 
+function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shouldFlash) {
   for (let index = zombies.length - 1; index >= 0; index -= 1) {
     const zombie = zombies[index];
     const offset = zombie.mesh.position.clone().sub(origin);
@@ -1906,8 +1945,12 @@ function damageZombiesInCone(range, minDot, amount, shouldFlash) {
 }
 
 function damageZombiesInRadius(radius, amount, shouldFlash) {
+  damageZombiesInRadiusAt(player.position, radius, amount, shouldFlash);
+}
+
+function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash) {
   for (let index = zombies.length - 1; index >= 0; index -= 1) {
-    if (distanceXZ(player.position, zombies[index].mesh.position) <= radius) {
+    if (distanceXZ(origin, zombies[index].mesh.position) <= radius) {
       damageZombie(index, amount, shouldFlash);
     }
   }
@@ -2122,6 +2165,604 @@ function updateHud() {
   waveElement.textContent = Math.max(player.wave, 1).toString();
   weaponNameElement.textContent = weapons[player.weapon].label;
   weaponTimerElement.textContent = player.weapon === "pistol" ? "Arma" : `${Math.ceil(player.weaponTimer)}s`;
+}
+
+function shouldUseMultiplayer() {
+  if (!("WebSocket" in window) || queryParams.get("offline") === "1") {
+    return false;
+  }
+
+  if (queryParams.has("ws")) {
+    return true;
+  }
+
+  if (window.location.protocol === "file:" || window.location.hostname.endsWith("vercel.app")) {
+    return false;
+  }
+
+  return true;
+}
+
+function sanitizeRoomName(roomName) {
+  return String(roomName || "cemiterio")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .slice(0, 28) || "cemiterio";
+}
+
+function getMultiplayerUrl() {
+  const explicitUrl = queryParams.get("ws");
+
+  if (explicitUrl) {
+    try {
+      const websocketUrl = new URL(explicitUrl);
+      websocketUrl.searchParams.set("room", multiplayer.room);
+      return websocketUrl.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  if (!window.location.host) {
+    return null;
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/ws?room=${encodeURIComponent(multiplayer.room)}`;
+}
+
+function connectMultiplayer() {
+  const websocketUrl = getMultiplayerUrl();
+
+  if (!websocketUrl) {
+    multiplayer.status = "Solo";
+    updateMultiplayerHud();
+    return;
+  }
+
+  multiplayer.url = websocketUrl;
+  multiplayer.status = "Conectando";
+  updateMultiplayerHud();
+
+  const socket = new WebSocket(websocketUrl);
+  multiplayer.socket = socket;
+
+  socket.addEventListener("open", () => {
+    multiplayer.reconnectAttempts = 0;
+    multiplayer.status = "Entrando";
+    updateMultiplayerHud();
+  });
+
+  socket.addEventListener("message", (event) => {
+    handleMultiplayerMessage(event.data);
+  });
+
+  socket.addEventListener("close", () => {
+    if (multiplayer.socket !== socket) {
+      return;
+    }
+
+    multiplayer.socket = null;
+    multiplayer.connected = false;
+    multiplayer.id = null;
+    clearRemotePlayers();
+
+    if (!multiplayer.full) {
+      multiplayer.status = multiplayer.enabled ? "Reconectando" : "Solo";
+      multiplayer.reconnectTimer = Math.min(8, 2 + multiplayer.reconnectAttempts * 1.5);
+      multiplayer.reconnectAttempts += 1;
+    }
+
+    updateMultiplayerHud();
+  });
+
+  socket.addEventListener("error", () => {
+    multiplayer.status = multiplayer.full ? "Sala cheia" : "Offline";
+    updateMultiplayerHud();
+  });
+}
+
+function handleMultiplayerMessage(rawMessage) {
+  let messageData;
+
+  try {
+    messageData = JSON.parse(rawMessage);
+  } catch {
+    return;
+  }
+
+  if (messageData.type === "roomFull") {
+    multiplayer.full = true;
+    multiplayer.status = "Sala cheia";
+    updateMultiplayerHud();
+    return;
+  }
+
+  if (messageData.type === "welcome") {
+    multiplayer.connected = true;
+    multiplayer.full = false;
+    multiplayer.id = messageData.id;
+    multiplayer.maxPlayers = messageData.maxPlayers ?? 4;
+    multiplayer.room = sanitizeRoomName(messageData.room);
+    multiplayer.status = `Sala ${multiplayer.room}`;
+    multiplayer.spawn.set(Number(messageData.spawn?.x) || 0, 0, Number(messageData.spawn?.z) || 0);
+
+    if (game.state !== "playing") {
+      player.position.copy(multiplayer.spawn);
+      player.mesh.position.copy(player.position);
+    }
+
+    clearRemotePlayers();
+    for (const remotePlayer of messageData.players ?? []) {
+      if (remotePlayer.id !== multiplayer.id) {
+        upsertRemotePlayer(remotePlayer);
+      }
+    }
+
+    updateMultiplayerHud();
+    sendMultiplayerState();
+    return;
+  }
+
+  if (messageData.type === "playerJoined") {
+    upsertRemotePlayer(messageData.player);
+    updateMultiplayerHud();
+    return;
+  }
+
+  if (messageData.type === "playerState") {
+    const remotePlayer = remotePlayers.get(messageData.id);
+    if (remotePlayer) {
+      updateRemotePlayerState(remotePlayer, messageData.state);
+    }
+    return;
+  }
+
+  if (messageData.type === "playerAttack") {
+    handleRemoteAttack(messageData.id, messageData.attack);
+    return;
+  }
+
+  if (messageData.type === "playerLeft") {
+    removeRemotePlayer(messageData.id);
+    updateMultiplayerHud();
+  }
+}
+
+function updateMultiplayer(dt) {
+  if (multiplayer.reconnectTimer > 0) {
+    multiplayer.reconnectTimer -= dt;
+
+    if (multiplayer.reconnectTimer <= 0 && multiplayer.enabled && !multiplayer.socket && !multiplayer.full) {
+      connectMultiplayer();
+    }
+  }
+
+  if (multiplayer.connected) {
+    multiplayer.sendTimer -= dt;
+
+    if (multiplayer.sendTimer <= 0) {
+      multiplayer.sendTimer = 0.05;
+      sendMultiplayerState();
+    }
+  }
+
+  updateRemotePlayers(dt);
+  updateMultiplayerHud();
+}
+
+function sendMultiplayerState() {
+  sendMultiplayerMessage({
+    type: "state",
+    state: {
+      x: player.position.x,
+      z: player.position.z,
+      rotation: player.mesh.rotation.y,
+      aimX: player.aimDirection.x,
+      aimZ: player.aimDirection.z,
+      health: player.health,
+      score: player.score,
+      wave: Math.max(player.wave, 1),
+      weapon: player.weapon,
+      shooting: game.shooting,
+      state: game.state,
+    },
+  });
+}
+
+function sendMultiplayerAttack(kind) {
+  sendMultiplayerMessage({
+    type: "attack",
+    attack: {
+      kind,
+      weapon: player.weapon,
+      x: player.position.x,
+      z: player.position.z,
+      aimX: player.aimDirection.x,
+      aimZ: player.aimDirection.z,
+    },
+  });
+}
+
+function sendMultiplayerMessage(messageData) {
+  if (!multiplayer.connected || multiplayer.socket?.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  multiplayer.socket.send(JSON.stringify(messageData));
+}
+
+function upsertRemotePlayer(playerData) {
+  if (!playerData || playerData.id === multiplayer.id) {
+    return null;
+  }
+
+  let remotePlayer = remotePlayers.get(playerData.id);
+
+  if (!remotePlayer) {
+    remotePlayer = createRemotePlayer(playerData);
+    remotePlayers.set(playerData.id, remotePlayer);
+    scene.add(remotePlayer.mesh);
+    scene.add(remotePlayer.labelSprite);
+  }
+
+  remotePlayer.name = playerData.name || remotePlayer.name;
+  remotePlayer.color = playerData.color || remotePlayer.color;
+  updateRemotePlayerState(remotePlayer, playerData.state);
+  return remotePlayer;
+}
+
+function createRemotePlayer(playerData) {
+  const mesh = createPlayerMesh();
+  const color = new THREE.Color(playerData.color || "#74d1ff");
+  const marker = new THREE.Mesh(
+    new THREE.TorusGeometry(1.02, 0.045, 8, 42),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.86 }),
+  );
+  marker.rotation.x = Math.PI * 0.5;
+  marker.position.y = 0.08;
+  mesh.add(marker);
+
+  return {
+    id: playerData.id,
+    name: playerData.name || "P?",
+    color: playerData.color || "#74d1ff",
+    health: 100,
+    score: 0,
+    wave: 1,
+    weapon: "pistol",
+    shooting: false,
+    state: "menu",
+    combatTimer: 0,
+    phase: Math.random() * Math.PI * 2,
+    mesh,
+    labelSprite: createPlayerLabelSprite(playerData.name || "P?", playerData.color || "#74d1ff"),
+    aimDirection: new THREE.Vector3(0, 0, -1),
+    targetPosition: new THREE.Vector3(0, 0, 0),
+  };
+}
+
+function updateRemotePlayerState(remotePlayer, state) {
+  if (!state) {
+    return;
+  }
+
+  remotePlayer.targetPosition.set(Number(state.x) || 0, 0, Number(state.z) || 0);
+  remotePlayer.aimDirection.set(Number(state.aimX) || 0, 0, Number(state.aimZ) || -1);
+
+  if (remotePlayer.aimDirection.lengthSq() < 0.01) {
+    remotePlayer.aimDirection.set(0, 0, -1);
+  } else {
+    remotePlayer.aimDirection.normalize();
+  }
+
+  remotePlayer.health = Math.max(0, Math.min(100, Number(state.health) || 0));
+  remotePlayer.score = Math.max(0, Number(state.score) || 0);
+  remotePlayer.wave = Math.max(1, Number(state.wave) || 1);
+  remotePlayer.weapon = weapons[state.weapon] ? state.weapon : "pistol";
+  remotePlayer.shooting = Boolean(state.shooting);
+  remotePlayer.state = state.state || "menu";
+  updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health);
+}
+
+function updateRemotePlayers(dt) {
+  const moveAlpha = 1 - Math.pow(0.0008, dt);
+  const turnAlpha = 1 - Math.pow(0.001, dt);
+
+  for (const remotePlayer of remotePlayers.values()) {
+    remotePlayer.mesh.position.x += (remotePlayer.targetPosition.x - remotePlayer.mesh.position.x) * moveAlpha;
+    remotePlayer.mesh.position.z += (remotePlayer.targetPosition.z - remotePlayer.mesh.position.z) * moveAlpha;
+    remotePlayer.mesh.position.y = Math.sin(clock.elapsedTime * 8 + remotePlayer.phase) * 0.035;
+    remotePlayer.mesh.rotation.y = lerpAngle(
+      remotePlayer.mesh.rotation.y,
+      getForwardRotation(remotePlayer.aimDirection),
+      turnAlpha,
+    );
+
+    remotePlayer.labelSprite.position.copy(remotePlayer.mesh.position);
+    remotePlayer.labelSprite.position.y = 3.1;
+    remotePlayer.combatTimer = Math.max(0, remotePlayer.combatTimer - dt);
+
+    if (remotePlayer.shooting && remotePlayer.state === "playing" && remotePlayer.combatTimer <= 0) {
+      remotePlayer.combatTimer = getRemoteAttackInterval(remotePlayer.weapon);
+      spawnRemoteAttackVisual(
+        remotePlayer.mesh.position,
+        remotePlayer.aimDirection,
+        remotePlayer.weapon,
+        remotePlayer.color,
+      );
+    }
+  }
+}
+
+function handleRemoteAttack(playerId, attack) {
+  const remotePlayer = remotePlayers.get(playerId);
+  const origin = new THREE.Vector3(Number(attack?.x) || 0, 0, Number(attack?.z) || 0);
+  const direction = new THREE.Vector3(Number(attack?.aimX) || 0, 0, Number(attack?.aimZ) || -1);
+
+  if (direction.lengthSq() < 0.01) {
+    direction.set(0, 0, -1);
+  } else {
+    direction.normalize();
+  }
+
+  const weapon = weapons[attack?.weapon] ? attack.weapon : attack?.kind || "pistol";
+  spawnRemoteAttackVisual(origin, direction, weapon, remotePlayer?.color || "#74d1ff");
+  applyRemoteAttackDamage(origin, direction, weapon);
+}
+
+function applyRemoteAttackDamage(origin, direction, weapon) {
+  if (game.state !== "playing") {
+    return;
+  }
+
+  if (weapon === "flamethrower") {
+    damageZombiesInConeFrom(origin, direction, 10.5, Math.cos(0.58), 1.1, false);
+    return;
+  }
+
+  if (weapon === "axe") {
+    damageZombiesInRadiusAt(origin, 4.4, 5, false);
+    return;
+  }
+
+  if (weapon === "katana") {
+    damageZombiesInConeFrom(origin, direction, 5.8, Math.cos(0.92), 5, true);
+    return;
+  }
+
+  if (weapon === "crossbow") {
+    damageZombiesInConeFrom(origin, direction, 28, Math.cos(0.08), 4, true);
+    return;
+  }
+
+  if (weapon === "talisman") {
+    const explosionPoint = origin.clone().addScaledVector(direction, 8.5);
+    damageZombiesAtPoint(explosionPoint, 4.8, 4, false);
+    spawnExplosion(explosionPoint, weapons.talisman.color, 4.8);
+    return;
+  }
+
+  damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.06), 1, true);
+}
+
+function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
+  const color = getWeaponColorValue(weapon, fallbackColor);
+
+  if (weapon === "flamethrower") {
+    spawnDirectionalConeEffect(origin, direction, color);
+    return;
+  }
+
+  if (weapon === "axe") {
+    spawnRemotePulse(origin, color, 3.8);
+    return;
+  }
+
+  if (weapon === "katana") {
+    spawnRemoteSlash(origin, direction, color);
+    return;
+  }
+
+  spawnRemoteBeam(origin, direction, color, weapon === "crossbow" ? 8.5 : weapon === "talisman" ? 6 : 5.5);
+}
+
+function spawnDirectionalConeEffect(origin, direction, color) {
+  const normalizedDirection = direction.clone().normalize();
+  const flame = new THREE.Group();
+  flame.position.copy(origin).addScaledVector(normalizedDirection, 3.05);
+  flame.position.y = 1.02;
+  flame.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normalizedDirection);
+
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(1.15, 4.2, 16, 1, true),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.38,
+      depthWrite: false,
+    }),
+  );
+  flame.add(cone);
+
+  const light = new THREE.PointLight(color, 1.8, 7);
+  light.position.y = -0.9;
+  flame.add(light);
+
+  addTimedEffect(flame, 0.16);
+}
+
+function spawnRemoteBeam(origin, direction, color, length) {
+  const normalizedDirection = direction.clone().normalize();
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.045, 0.045, length, 8),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.82, depthWrite: false }),
+  );
+  beam.position.copy(origin);
+  beam.position.y = 1.12;
+  beam.position.addScaledVector(normalizedDirection, length * 0.5);
+  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normalizedDirection);
+  addTimedEffect(beam, 0.14);
+}
+
+function spawnRemotePulse(origin, color, radius) {
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(radius, 0.055, 8, 64),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.76, depthWrite: false }),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.copy(origin);
+  ring.position.y = 0.18;
+  addTimedEffect(ring, 0.28, false);
+}
+
+function spawnRemoteSlash(origin, direction, color) {
+  const slash = new THREE.Group();
+  slash.position.copy(origin);
+  slash.position.y = 0.28;
+  slash.rotation.y = getForwardRotation(direction) - Math.PI * 0.5;
+
+  const arc = new THREE.Mesh(
+    new THREE.TorusGeometry(2.55, 0.045, 8, 48, Math.PI * 0.92),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.78, depthWrite: false }),
+  );
+  arc.rotation.x = Math.PI * 0.5;
+  arc.position.z = -1.1;
+  slash.add(arc);
+
+  addTimedEffect(slash, 0.2);
+}
+
+function getRemoteAttackInterval(weapon) {
+  if (weapon === "flamethrower") {
+    return 0.14;
+  }
+
+  if (weapon === "axe") {
+    return 0.48;
+  }
+
+  if (weapon === "katana") {
+    return 0.28;
+  }
+
+  if (weapon === "crossbow") {
+    return 0.36;
+  }
+
+  if (weapon === "talisman") {
+    return 0.72;
+  }
+
+  return 0.2;
+}
+
+function getWeaponColorValue(weapon, fallbackColor) {
+  if (weapons[weapon]?.color) {
+    return weapons[weapon].color;
+  }
+
+  return new THREE.Color(fallbackColor || "#74d1ff").getHex();
+}
+
+function createPlayerLabelSprite(label, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 96;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  sprite.scale.set(3.2, 1.2, 1);
+  sprite.renderOrder = 18;
+  sprite.userData = {
+    canvas,
+    context: canvas.getContext("2d"),
+    texture,
+  };
+
+  updatePlayerLabel(sprite, label, color, 100);
+  return sprite;
+}
+
+function updatePlayerLabel(sprite, label, color, health) {
+  const { canvas, context, texture } = sprite.userData;
+  const healthRatio = Math.max(0, Math.min(1, health / 100));
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "rgba(5, 8, 10, 0.76)";
+  context.fillRect(24, 10, 208, 68);
+  context.strokeStyle = color;
+  context.lineWidth = 3;
+  context.strokeRect(24, 10, 208, 68);
+  context.fillStyle = "#f6fbff";
+  context.font = "900 28px Inter, Arial, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(label, 128, 32);
+  context.fillStyle = "rgba(255, 255, 255, 0.18)";
+  context.fillRect(52, 56, 152, 12);
+  context.fillStyle = color;
+  context.fillRect(52, 56, 152 * healthRatio, 12);
+  texture.needsUpdate = true;
+}
+
+function removeRemotePlayer(playerId) {
+  const remotePlayer = remotePlayers.get(playerId);
+
+  if (!remotePlayer) {
+    return;
+  }
+
+  scene.remove(remotePlayer.mesh);
+  scene.remove(remotePlayer.labelSprite);
+  disposeObject(remotePlayer.mesh);
+  remotePlayer.labelSprite.material.map.dispose();
+  remotePlayer.labelSprite.material.dispose();
+  remotePlayers.delete(playerId);
+}
+
+function clearRemotePlayers() {
+  for (const playerId of [...remotePlayers.keys()]) {
+    removeRemotePlayer(playerId);
+  }
+}
+
+function getMultiplayerStartPosition() {
+  if (multiplayer.connected) {
+    return multiplayer.spawn.clone();
+  }
+
+  return new THREE.Vector3(0, 0, 0);
+}
+
+function updateMultiplayerHud() {
+  if (!onlineCountElement || !onlineStatusElement) {
+    return;
+  }
+
+  if (multiplayer.connected) {
+    onlineCountElement.textContent = `${remotePlayers.size + 1}/${multiplayer.maxPlayers}`;
+    onlineStatusElement.textContent = `Sala ${multiplayer.room}`;
+    return;
+  }
+
+  onlineCountElement.textContent = multiplayer.full ? "Cheia" : "Solo";
+  onlineStatusElement.textContent = multiplayer.status;
+}
+
+function lerpAngle(from, to, alpha) {
+  const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+  return from + delta * alpha;
 }
 
 function handleStickMove(event) {

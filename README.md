@@ -10,6 +10,20 @@ npm start
 
 Depois abra `http://127.0.0.1:5173`.
 
+## Multiplayer online
+
+O `npm start` agora tambem abre um servidor WebSocket em `/ws`, com salas de ate 4 jogadores.
+
+```bash
+npm start
+```
+
+- Abra `http://127.0.0.1:5173?room=cemiterio` em ate 4 abas ou computadores.
+- Para jogar em outro computador da mesma rede, use o IP da maquina que esta rodando o servidor, por exemplo `http://192.168.0.10:5173?room=cemiterio`.
+- Troque `cemiterio` por outro nome para criar outra sala.
+- Para jogar com pessoas fora da sua rede, publique o servidor Node em um lugar que aceite WebSocket, como Render, Railway ou Fly.io.
+- Na Vercel estatica, o jogo continua abrindo solo. Para usar Vercel + servidor separado, abra o site com `?ws=wss://SEU-SERVIDOR/ws&room=cemiterio`.
+
 ## Controles
 
 - `WASD` ou setas movem o personagem.

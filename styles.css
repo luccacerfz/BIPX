@@ -123,6 +123,14 @@ button {
   white-space: nowrap;
 }
 
+.hud__stat--online {
+  min-width: 118px;
+}
+
+.hud__stat--online strong {
+  color: #d978ff;
+}
+
 .message {
   position: fixed;
   inset: 0;
