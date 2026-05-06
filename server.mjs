@@ -40,6 +40,14 @@ const server = http.createServer(async (request, response) => {
   const pathname = decodeURIComponent(requestUrl.pathname);
 
   if (pathname === "/api/leaderboard") {
+    writeCorsHeaders(response);
+
+    if (request.method === "OPTIONS") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+
     if (request.method !== "GET") {
       response.writeHead(405, { Allow: "GET" });
       response.end("Method not allowed");
@@ -55,6 +63,14 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (pathname === "/api/leaderboard/session") {
+    writeCorsHeaders(response);
+
+    if (request.method === "OPTIONS") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+
     if (request.method !== "POST") {
       response.writeHead(405, { Allow: "POST" });
       response.end("Method not allowed");
@@ -740,6 +756,12 @@ async function readJsonBody(request) {
   } catch {
     throw new Error("Invalid JSON");
   }
+}
+
+function writeCorsHeaders(response) {
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 function getPlayerRecordKey(name) {

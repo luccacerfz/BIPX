@@ -32,7 +32,8 @@ const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
 const touchFire = document.querySelector("#touch-fire");
 const queryParams = new URLSearchParams(window.location.search);
-const multiplayerEntryUrl = "https://bipx.vercel.app/?ws=wss://bipx-multiplayer-server.onrender.com/ws&room=cemiterio";
+const multiplayerServerOrigin = "https://bipx-multiplayer-server.onrender.com";
+const multiplayerEntryUrl = `https://bipx.vercel.app/?ws=${multiplayerServerOrigin.replace(/^http/, "ws")}/ws&room=cemiterio`;
 const requestedQuality = sanitizeQuality(queryParams.get("quality"));
 const perfOverlayEnabled = queryParams.get("perf") === "1";
 const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
@@ -62,7 +63,7 @@ scene.background = new THREE.Color(0x07100d);
 scene.fog = new THREE.FogExp2(0x07100d, 0.027);
 
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 220);
-camera.position.set(0, 17, 20);
+camera.position.set(0, getCameraHeight(), getCameraDepth());
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -3464,12 +3465,32 @@ function updateEffects(dt) {
 }
 
 function updateCamera(dt) {
-  const cameraTarget = tempVectorB.copy(player.position).addScaledVector(player.aimDirection, 2.6);
+  const cameraTarget = tempVectorB.copy(player.position).addScaledVector(player.aimDirection, getCameraLookAhead());
   cameraTarget.y = 1.2;
 
-  const desiredPosition = tempVectorC.set(player.position.x, player.position.y + 17, player.position.z + 20);
+  const desiredPosition = tempVectorC.set(
+    player.position.x,
+    player.position.y + getCameraHeight(),
+    player.position.z + getCameraDepth(),
+  );
   camera.position.lerp(desiredPosition, 1 - Math.pow(0.001, dt));
   camera.lookAt(cameraTarget);
+}
+
+function getCameraZoomScale() {
+  return usesMobileTuning() ? 2 : 1;
+}
+
+function getCameraHeight() {
+  return 17 * getCameraZoomScale();
+}
+
+function getCameraDepth() {
+  return 20 * getCameraZoomScale();
+}
+
+function getCameraLookAhead() {
+  return 2.6 * getCameraZoomScale();
 }
 
 function animateProps(time) {
@@ -4534,7 +4555,7 @@ function updateLeaderboard(leaderboard) {
 
 async function loadLeaderboardSnapshot() {
   try {
-    const response = await fetch("/api/leaderboard", { cache: "no-store" });
+    const response = await fetch(getLeaderboardApiUrl("/api/leaderboard"), { cache: "no-store" });
     if (!response.ok) {
       return;
     }
@@ -4552,7 +4573,7 @@ async function submitSoloLeaderboardSession() {
   game.leaderboardSubmitted = true;
 
   try {
-    const response = await fetch("/api/leaderboard/session", {
+    const response = await fetch(getLeaderboardApiUrl("/api/leaderboard/session"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -4570,6 +4591,37 @@ async function submitSoloLeaderboardSession() {
       updateLeaderboard(await response.json());
     }
   } catch {
+  }
+}
+
+function getLeaderboardApiUrl(pathname) {
+  const wsOrigin = getExplicitWebsocketOrigin();
+  if (wsOrigin) {
+    return `${wsOrigin}${pathname}`;
+  }
+
+  if (window.location.hostname === "bipx.vercel.app") {
+    return `${multiplayerServerOrigin}${pathname}`;
+  }
+
+  return pathname;
+}
+
+function getExplicitWebsocketOrigin() {
+  const explicitUrl = queryParams.get("ws");
+  if (!explicitUrl) {
+    return null;
+  }
+
+  try {
+    const websocketUrl = new URL(explicitUrl);
+    websocketUrl.protocol = websocketUrl.protocol === "wss:" ? "https:" : "http:";
+    websocketUrl.pathname = "";
+    websocketUrl.search = "";
+    websocketUrl.hash = "";
+    return websocketUrl.toString().replace(/\/$/, "");
+  } catch {
+    return null;
   }
 }
 
