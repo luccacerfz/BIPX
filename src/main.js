@@ -59,8 +59,8 @@ const perfStats = {
 };
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x07100d);
-scene.fog = new THREE.FogExp2(0x07100d, 0.027);
+scene.background = new THREE.Color(0x060913);
+scene.fog = new THREE.FogExp2(0x060913, 0.038);
 
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 220);
 camera.position.set(0, getCameraHeight(), getCameraDepth());
@@ -744,14 +744,14 @@ function getQualityPixelRatio() {
   const mobileTuned = usesMobileTuning();
 
   if (qualityManager.level === "high") {
-    return Math.min(deviceRatio, mobileTuned ? 1.35 : 2);
+    return Math.min(deviceRatio, mobileTuned ? 1.5 : 2);
   }
 
   if (qualityManager.level === "medium") {
-    return Math.min(deviceRatio, mobileTuned ? 1.15 : 1.35);
+    return Math.min(deviceRatio, mobileTuned ? 1.25 : 1.35);
   }
 
-  return Math.min(deviceRatio, mobileTuned ? 0.9 : 1);
+  return Math.min(deviceRatio, mobileTuned ? 1 : 1);
 }
 
 function applyQualitySettings(force = false) {
@@ -890,19 +890,20 @@ function recordPoolExpansion(poolName) {
 }
 
 function buildWorld() {
-  const hemiLight = new THREE.HemisphereLight(0xbde6ff, 0x1d2717, 1.45);
+  const hemiLight = new THREE.HemisphereLight(0x7da4d4, 0x181a29, 0.85);
   scene.add(hemiLight);
 
-  const moon = new THREE.DirectionalLight(0xdceeff, 2.25);
+  const moon = new THREE.DirectionalLight(0xb2ccff, 3.8);
   moon.position.set(-20, 36, 18);
   moon.castShadow = true;
-  moon.shadow.mapSize.set(2048, 2048);
+  moon.shadow.mapSize.set(usesMobileTuning() ? 1024 : 2048, usesMobileTuning() ? 1024 : 2048);
   moon.shadow.camera.near = 1;
   moon.shadow.camera.far = 95;
   moon.shadow.camera.left = -55;
   moon.shadow.camera.right = 55;
   moon.shadow.camera.top = 55;
   moon.shadow.camera.bottom = -55;
+  moon.shadow.bias = usesMobileTuning() ? -0.002 : -0.0005;
   scene.add(moon);
 
   const ground = new THREE.Mesh(
@@ -1167,6 +1168,10 @@ function createPlayerMesh() {
   bladeLight.position.set(0.08, 1.2, -1.55);
   group.add(bladeLight);
 
+  const playerLight = new THREE.PointLight(0xffe8c4, usesMobileTuning() ? 2.2 : 2.8, usesMobileTuning() ? 18 : 26);
+  playerLight.position.set(0, 4, 0);
+  group.add(playerLight);
+
   return group;
 }
 
@@ -1189,7 +1194,7 @@ function createZombieMesh(type = "zombie") {
   const eye = new THREE.MeshStandardMaterial({
     color: palette.eye,
     emissive: palette.eye,
-    emissiveIntensity: 0.8,
+    emissiveIntensity: 1.6,
   });
   const bone = new THREE.MeshStandardMaterial({ color: 0xc7c0a2, roughness: 0.8 });
 
