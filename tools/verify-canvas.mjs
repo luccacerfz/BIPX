@@ -135,6 +135,31 @@ try {
     return window.__zombieNightDebug.getState();
   });
 
+  const rarityDropState = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnPerkDrop("soulMagnet", "rare");
+    window.__zombieNightDebug.spawnPerkDrop("sealRitual", "epic");
+    window.__zombieNightDebug.spawnPerkDrop("cuttingMoon", "legendary");
+    return window.__zombieNightDebug.getState();
+  });
+
+  const chestDropState = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnBossRewardChest("visor");
+    return window.__zombieNightDebug.getState();
+  });
+
+  const bossRewardChoices = await page.evaluate(() => {
+    window.__zombieNightDebug.setLevel(10);
+    window.__zombieNightDebug.openBossReward("visor");
+    return window.__zombieNightDebug.getState();
+  });
+
+  const evolutionState = await page.evaluate(() => {
+    window.__zombieNightDebug.chooseUpgrade(0);
+    window.__zombieNightDebug.grantPerk("bladeEcho");
+    window.__zombieNightDebug.grantPerk("bladeEcho");
+    return window.__zombieNightDebug.getState();
+  });
+
   const canvas = await page.evaluate(readCanvasStats);
 
   assert(initial.state === "playing", "game did not enter playing state");
@@ -181,7 +206,22 @@ try {
   assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "himetrica" && projectile.kind === "lightning"), "Himetrica did not fire a lightning projectile");
   assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "dinzo" && projectile.kind === "boleto"), "Dinzo did not fire a boleto projectile");
   assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "sofra" && projectile.kind === "briefcase"), "Sofra did not fire a briefcase projectile");
+  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "gitcity" && projectile.kind === "airplane"), "GitCity did not fire a tiny airplane projectile");
   assert(lateSpawn.spawnInterval < initial.spawnInterval, "zombie spawn interval did not increase over time");
+  assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "rare"), "rare perk drop did not spawn");
+  assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "epic"), "epic perk drop did not spawn");
+  assert(
+    rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "legendary" && powerup.animated),
+    "legendary perk drop did not spawn with animation flag",
+  );
+  assert(chestDropState.powerupDetails.some((powerup) => powerup.kind === "bossChest" && powerup.rarity === "rare"), "boss reward chest did not spawn as rare");
+  assert(bossRewardChoices.pendingUpgradeSource === "bossChest", "boss reward did not open special choices");
+  assert(
+    bossRewardChoices.pendingUpgradeRarities.length === 3 &&
+      bossRewardChoices.pendingUpgradeRarities.every((rarity) => ["rare", "epic", "legendary"].includes(rarity)),
+    "boss reward choices were not all rare+",
+  );
+  assert(evolutionState.evolvedWeapons.guardianBlade === "eclipseBlade", "guardian blade did not evolve into eclipse blade");
   assert(canvas.uniqueColors >= 40, "canvas has too few color samples");
   assert(canvas.lumaStdDev >= 3, "canvas pixel variance is too low");
 
@@ -213,6 +253,10 @@ try {
         casterState,
         bossState,
         lateSpawn,
+        rarityDropState,
+        chestDropState,
+        bossRewardChoices,
+        evolutionState,
         canvas,
       },
       null,

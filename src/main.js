@@ -165,6 +165,51 @@ const bossWeaponDrops = {
   sofra: "flamethrower",
 };
 
+const rarityStyles = {
+  common: {
+    label: "COMUM",
+    color: 0x74d1ff,
+    css: "#74d1ff",
+    border: "rgba(116, 209, 255, 0.56)",
+    glow: "rgba(116, 209, 255, 0.26)",
+    accent: "#74d1ff",
+    weight: 72,
+    animated: false,
+  },
+  rare: {
+    label: "RARO",
+    color: 0xffd84a,
+    css: "#ffd84a",
+    border: "rgba(255, 216, 74, 0.86)",
+    glow: "rgba(255, 216, 74, 0.38)",
+    accent: "#ffd84a",
+    weight: 20,
+    animated: false,
+  },
+  epic: {
+    label: "ÉPICO",
+    color: 0xff8a2a,
+    css: "#ff8a2a",
+    border: "rgba(255, 138, 42, 0.9)",
+    glow: "rgba(255, 138, 42, 0.46)",
+    accent: "#ff8a2a",
+    weight: 7,
+    animated: true,
+  },
+  legendary: {
+    label: "LENDÁRIO",
+    color: 0xffd76a,
+    css: "#ffd76a",
+    border: "rgba(255, 215, 106, 0.96)",
+    glow: "rgba(255, 215, 106, 0.62)",
+    accent: "#fff2a8",
+    weight: 1,
+    animated: true,
+  },
+};
+const rarityOrder = { common: 0, rare: 1, epic: 2, legendary: 3 };
+const bossRewardRarityWeights = { rare: 70, epic: 25, legendary: 5 };
+
 const hudWeaponIcons = {
   pistol: "🔫",
   flamethrower: "🔥",
@@ -175,6 +220,9 @@ const hudWeaponIcons = {
   guardianBlade: "🗡",
   orbitOrb: "🟣",
   sealRain: "☄",
+  eclipseBlade: "🌘",
+  profaneOrb: "🟠",
+  arcaneDeluge: "🌈",
 };
 
 const hudUpgradeIcons = {
@@ -186,6 +234,16 @@ const hudUpgradeIcons = {
   maxHealth: "❤",
   projectile: "✦",
   autoWeapon: "★",
+  soulMagnet: "🧲",
+  ironBlood: "🛡",
+  bladeEcho: "🌘",
+  hunterEye: "👁",
+  sealRitual: "🔯",
+  ashenHeart: "🫀",
+  prismStorm: "🌈",
+  cuttingMoon: "🌙",
+  lastBreath: "♻",
+  slayerPact: "👹",
 };
 
 const monsterProfiles = {
@@ -268,6 +326,7 @@ const monsterProfiles = {
     score: 140,
     minWave: 4,
     boss: true,
+    projectileColor: 0xb9dcff,
   },
   sofra: {
     label: "SOFRA",
@@ -316,56 +375,193 @@ const autoWeaponProfiles = {
   },
 };
 
+const evolvedWeaponProfiles = {
+  guardianBlade: {
+    id: "eclipseBlade",
+    label: "Lâmina Eclipse",
+    color: 0x5dc7ff,
+    requirement: { perk: "bladeEcho", stacks: 2 },
+  },
+  orbitOrb: {
+    id: "profaneOrb",
+    label: "Orbe Profano",
+    color: 0xff8a2a,
+    requirement: { perk: "sealRitual", stacks: 1 },
+  },
+  sealRain: {
+    id: "arcaneDeluge",
+    label: "Dilúvio Arcano",
+    color: 0xffd76a,
+    requirement: { perk: "prismStorm", stacks: 1 },
+  },
+};
+
 const upgradeDefinitions = [
   {
     id: "damage",
     label: "+Dano",
     description: "Aumenta todo dano causado por armas manuais e automáticas.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 6,
   },
   {
     id: "cadence",
     label: "+Cadência",
     description: "Reduz o tempo entre ataques e deixa sua build mais agressiva.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 5,
   },
   {
     id: "area",
     label: "+Área",
     description: "Aumenta cones, explosões, giros e zonas das armas automáticas.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 5,
   },
   {
     id: "speed",
     label: "+Velocidade",
     description: "Corre mais rápido para escapar do cerco da horda.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 4,
   },
   {
     id: "pickup",
     label: "+Raio de coleta",
     description: "Puxa cristais de XP de mais longe.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 5,
   },
   {
     id: "maxHealth",
     label: "+Vida máxima",
     description: "Aumenta sua vida máxima e cura uma parte na hora.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 4,
   },
   {
     id: "projectile",
     label: "+Projétil extra",
     description: "Armas de disparo soltam projéteis adicionais em leque.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 3,
   },
   {
     id: "autoWeapon",
     label: "Desbloquear arma automática",
     description: "Adiciona uma arma automática nova à sua build.",
+    rarity: "common",
+    kind: "stat",
+    weight: 72,
     maxStacks: 2,
   },
+  {
+    id: "soulMagnet",
+    label: "Ímã de Almas",
+    description: "A cada 18s puxa cristais de XP próximos para você.",
+    rarity: "rare",
+    kind: "perk",
+    minLevel: 2,
+    maxStacks: 2,
+  },
+  {
+    id: "ironBlood",
+    label: "Sangue de Ferro",
+    description: "Reduz o dano recebido em 12% por stack.",
+    rarity: "rare",
+    kind: "perk",
+    minLevel: 2,
+    maxStacks: 3,
+  },
+  {
+    id: "bladeEcho",
+    label: "Eco da Lâmina",
+    description: "Ataques podem gerar um golpe fantasma extra.",
+    rarity: "rare",
+    kind: "perk",
+    minLevel: 2,
+    maxStacks: 2,
+  },
+  {
+    id: "hunterEye",
+    label: "Olho do Caçador",
+    description: "Aumenta chance de crítico e destaca impactos fortes.",
+    rarity: "rare",
+    kind: "perk",
+    minLevel: 2,
+    maxStacks: 3,
+  },
+  {
+    id: "sealRitual",
+    label: "Ritual de Selos",
+    description: "A cada 5 ataques automáticos, explode um selo no alvo.",
+    rarity: "epic",
+    kind: "perk",
+    minLevel: 5,
+    maxStacks: 2,
+  },
+  {
+    id: "ashenHeart",
+    label: "Coração de Cinzas",
+    description: "Cura ao derrotar brutos, invocadores e bosses.",
+    rarity: "epic",
+    kind: "perk",
+    minLevel: 5,
+    maxStacks: 2,
+  },
+  {
+    id: "prismStorm",
+    label: "Tempestade Prismática",
+    description: "Ao subir de nível, ganha área e projétil extra por 8s.",
+    rarity: "epic",
+    kind: "perk",
+    minLevel: 5,
+    maxStacks: 1,
+  },
+  {
+    id: "cuttingMoon",
+    label: "Lua Cortante",
+    description: "Level-up solta uma onda circular de corte dourado.",
+    rarity: "legendary",
+    kind: "perk",
+    minLevel: 10,
+    maxStacks: 1,
+  },
+  {
+    id: "lastBreath",
+    label: "Último Fôlego",
+    description: "Revive uma vez por run com 40% da vida máxima.",
+    rarity: "legendary",
+    kind: "perk",
+    minLevel: 10,
+    maxStacks: 1,
+  },
+  {
+    id: "slayerPact",
+    label: "Pacto do Exterminador",
+    description: "Cada boss morto aumenta seu dano até o fim da run.",
+    rarity: "legendary",
+    kind: "perk",
+    minLevel: 10,
+    maxStacks: 1,
+  },
 ];
+
+const upgradeById = new Map(upgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 
 const keys = new Set();
 const zombies = [];
@@ -443,6 +639,17 @@ const player = {
   axeSpinTimer: 0,
   upgradeStats: createDefaultUpgradeStats(),
   upgradeStacks: {},
+  perks: {},
+  perkCooldowns: createDefaultPerkCooldowns(),
+  evolvedWeapons: {},
+  rarityPity: 0,
+  damageReduction: 0,
+  critChance: 0,
+  critMultiplier: 1.8,
+  revives: 0,
+  bossKills: 0,
+  autoAttackCounter: 0,
+  pendingUpgradeSource: "level",
   autoWeapons: createDefaultAutoWeapons(),
   pendingUpgradeChoices: [],
   pendingLevelUps: 0,
@@ -466,6 +673,7 @@ const game = {
   labelTimer: 0,
   labelFrameReady: true,
   skillHudSignature: "",
+  perfStressImmortal: false,
   cameraLookDirection: new THREE.Vector3(0, 0, -1),
   touchVector: new THREE.Vector2(0, 0),
   touchStickPointerId: null,
@@ -645,7 +853,10 @@ window.__zombieNightDebug = {
       powerups: powerups.length,
       powerupDetails: powerups.map((powerup) => ({
         type: powerup.type,
-        label: getPowerupDropLabel(powerup.type),
+        kind: powerup.kind ?? "weapon",
+        label: powerup.label ?? getPowerupDropLabel(powerup.type),
+        rarity: powerup.rarity ?? "common",
+        animated: Boolean(rarityStyles[powerup.rarity]?.animated),
         hasLabel: Boolean(powerup.labelSprite),
         source: powerup.source,
       })),
@@ -667,6 +878,12 @@ window.__zombieNightDebug = {
       autoWeapons: Object.fromEntries(
         Object.entries(player.autoWeapons).map(([id, state]) => [id, state.level]),
       ),
+      perks: { ...player.perks },
+      evolvedWeapons: { ...player.evolvedWeapons },
+      pendingUpgradeSource: player.pendingUpgradeSource,
+      pendingUpgradeRarities: player.pendingUpgradeChoices.map((choice) => choice.rarity ?? "common"),
+      rarityPity: player.rarityPity,
+      revives: player.revives,
       upgradeStats: {
         damageMultiplier: Number(player.upgradeStats.damageMultiplier.toFixed(3)),
         cooldownMultiplier: Number(player.upgradeStats.cooldownMultiplier.toFixed(3)),
@@ -674,6 +891,10 @@ window.__zombieNightDebug = {
         speedMultiplier: Number(player.upgradeStats.speedMultiplier.toFixed(3)),
         pickupRadius: Number(player.upgradeStats.pickupRadius.toFixed(3)),
         projectileBonus: player.upgradeStats.projectileBonus,
+        effectiveAreaMultiplier: Number(getAreaMultiplier().toFixed(3)),
+        effectiveProjectileBonus: getProjectileBonus(),
+        damageReduction: Number(player.damageReduction.toFixed(3)),
+        critChance: Number(player.critChance.toFixed(3)),
       },
       survivalTime: Number(game.survivalTime.toFixed(2)),
       player: {
@@ -726,10 +947,35 @@ window.__zombieNightDebug = {
   spawnWeaponDrop(type = "flamethrower") {
     spawnWeaponDrop(player.position.clone().addScaledVector(player.aimDirection, 2.4), type, "debug");
   },
+  spawnPerkDrop(perkId = "soulMagnet", rarity = null) {
+    const perk = upgradeById.get(perkId) ?? upgradeById.get("soulMagnet");
+    spawnPerkDropAt(player.position.clone().addScaledVector(player.aimDirection, 2.8), perk.id, rarity ?? perk.rarity, "debug");
+  },
+  spawnBossRewardChest(bossType = "visor") {
+    spawnBossRewardChestAt(player.position.clone().addScaledVector(player.aimDirection, 2.8), bossType);
+  },
+  openBossReward(bossType = "debug") {
+    openBossRewardChoices(bossType);
+  },
+  grantPerk(perkId = "soulMagnet") {
+    const perk = upgradeById.get(perkId);
+    if (perk) {
+      applyUpgrade(perk);
+      updateHud(true);
+    }
+  },
+  setLevel(level = 10) {
+    player.level = Math.max(1, Math.floor(Number(level) || 1));
+    player.bestLevel = Math.max(player.bestLevel, player.level);
+    updateHud(true);
+  },
   stressLevel6(count = 90) {
+    game.perfStressImmortal = true;
     player.level = Math.max(player.level, 6);
     player.bestLevel = Math.max(player.bestLevel, player.level);
     player.wave = Math.max(player.wave, 6);
+    player.maxHealth = Math.max(player.maxHealth, 2000);
+    player.health = player.maxHealth;
     player.autoWeapons.orbitOrb.level = 1;
     player.autoWeapons.sealRain.level = 1;
     game.survivalTime = Math.max(game.survivalTime, 85);
@@ -739,15 +985,21 @@ window.__zombieNightDebug = {
       const distance = 12 + (index % 18) * 1.3;
       const type = ["zombie", "runner", "brute", "caster"][index % 4];
       spawnZombie(player.position.x + Math.cos(angle) * distance, player.position.z + Math.sin(angle) * distance, type);
+      fortifyStressZombie(zombies[zombies.length - 1], 2400);
     }
     rebuildSpatialGrid();
+    assignMonsterRenderModes();
+    syncMonsterRenderer();
     updateHud(true);
   },
   stressLevel16(count = 130) {
     clearEntities();
+    game.perfStressImmortal = true;
     player.level = Math.max(player.level, 16);
     player.bestLevel = Math.max(player.bestLevel, player.level);
     player.wave = Math.max(player.wave, 16);
+    player.maxHealth = Math.max(player.maxHealth, 4000);
+    player.health = player.maxHealth;
     player.xp = Math.min(player.xp, player.xpToNext - 1);
     player.upgradeStats = {
       damageMultiplier: 1.72,
@@ -775,13 +1027,14 @@ window.__zombieNightDebug = {
     game.zombiesToSpawn = 0;
     renderUpgradeChoices();
 
-    const total = Math.max(0, Math.floor(Number(count) || 0));
+    const total = Math.max(130, Math.floor(Number(count) || 0));
     const types = ["zombie", "runner", "brute", "caster"];
     for (let index = 0; index < total; index += 1) {
       const angle = (index / Math.max(total, 1)) * Math.PI * 2;
       const distance = 9 + (index % 26) * 1.05;
       const type = types[index % types.length];
       spawnZombie(player.position.x + Math.cos(angle) * distance, player.position.z + Math.sin(angle) * distance, type);
+      fortifyStressZombie(zombies[zombies.length - 1]);
     }
 
     const bossRing = [
@@ -790,6 +1043,7 @@ window.__zombieNightDebug = {
     ];
     for (const [type, x, z] of bossRing) {
       spawnZombie(player.position.x + x, player.position.z + z, type);
+      fortifyStressZombie(zombies[zombies.length - 1]);
     }
 
     for (let index = 0; index < 72; index += 1) {
@@ -807,6 +1061,20 @@ window.__zombieNightDebug = {
     updateHud(true);
   },
 };
+
+function fortifyStressZombie(zombie, health = 9999) {
+  if (!zombie) {
+    return;
+  }
+
+  zombie.health = health;
+  zombie.maxHealth = health;
+  zombie.speed = 0;
+  zombie.attackCooldown = 9999;
+  if (zombie.labelSprite) {
+    updateBossLabel(zombie.labelSprite, zombie.health);
+  }
+}
 
 window.__bipxConfig = {
   get(path) {
@@ -923,6 +1191,7 @@ function startGame() {
   game.labelTimer = 0;
   game.labelFrameReady = true;
   game.skillHudSignature = "";
+  game.perfStressImmortal = false;
   game.cameraLookDirection.copy(player.aimDirection);
   game.touchAimActive = false;
   game.touchAimPointerId = null;
@@ -957,6 +1226,13 @@ function createDefaultAutoWeapons() {
   };
 }
 
+function createDefaultPerkCooldowns() {
+  return {
+    soulMagnet: 4.5,
+    prismStorm: 0,
+  };
+}
+
 function resetProgressionState() {
   player.maxHealth = 100;
   player.level = 1;
@@ -965,6 +1241,17 @@ function resetProgressionState() {
   player.xpToNext = getXpToNext(1);
   player.upgradeStats = createDefaultUpgradeStats();
   player.upgradeStacks = {};
+  player.perks = {};
+  player.perkCooldowns = createDefaultPerkCooldowns();
+  player.evolvedWeapons = {};
+  player.rarityPity = 0;
+  player.damageReduction = 0;
+  player.critChance = 0;
+  player.critMultiplier = 1.8;
+  player.revives = 0;
+  player.bossKills = 0;
+  player.autoAttackCounter = 0;
+  player.pendingUpgradeSource = "level";
   player.autoWeapons = createDefaultAutoWeapons();
   player.pendingUpgradeChoices = [];
   player.pendingLevelUps = 0;
@@ -2460,10 +2747,79 @@ function createPowerupMesh(type) {
   return group;
 }
 
+function createPerkDropMesh(rarity = "rare") {
+  const style = getRarityStyle(rarity);
+  const group = new THREE.Group();
+  const color = style.color;
+  const core = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.38, 0),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }),
+  );
+  core.position.y = 0.78;
+  group.add(core);
+
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.74, 0.045, 8, 40),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.72 }),
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.y = 0.12;
+  group.add(ring);
+
+  if (style.animated) {
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(0.5, 0.035, 8, 40),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.78 }),
+    );
+    halo.rotation.x = Math.PI * 0.5;
+    halo.position.y = 0.78;
+    group.add(halo);
+  }
+
+  return group;
+}
+
+function createBossRewardChestMesh(bossType = "boss") {
+  const color = monsterProfiles[bossType]?.projectileColor ?? rarityStyles.rare.color;
+  const group = new THREE.Group();
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(0.95, 0.52, 0.62),
+    new THREE.MeshStandardMaterial({ color: 0x322326, roughness: 0.5, metalness: 0.18 }),
+  );
+  const lid = new THREE.Mesh(
+    new THREE.BoxGeometry(1.04, 0.22, 0.68),
+    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.65, roughness: 0.42 }),
+  );
+  const lock = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 0.22, 0.08),
+    new THREE.MeshBasicMaterial({ color: rarityStyles.rare.color }),
+  );
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.82, 0.045, 8, 40),
+    new THREE.MeshBasicMaterial({ color: rarityStyles.rare.color, transparent: true, opacity: 0.74 }),
+  );
+
+  base.position.y = 0.42;
+  lid.position.y = 0.78;
+  lock.position.set(0, 0.55, -0.35);
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.y = 0.1;
+  group.add(base, lid, lock, ring);
+  return group;
+}
+
 function createPowerupLabelSprite(type) {
+  return createDropLabelSprite({
+    label: getPowerupDropLabel(type),
+    rarity: "common",
+    icon: hudWeaponIcons[type] || "⚔",
+  });
+}
+
+function createDropLabelSprite(drop) {
   const canvas = document.createElement("canvas");
-  canvas.width = 384;
-  canvas.height = 96;
+  canvas.width = 448;
+  canvas.height = 112;
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -2476,38 +2832,52 @@ function createPowerupLabelSprite(type) {
       depthWrite: false,
     }),
   );
-  sprite.scale.set(3.9, 0.98, 1);
+  sprite.scale.set(4.3, 1.08, 1);
   sprite.renderOrder = 24;
   sprite.userData = {
     canvas,
     context: canvas.getContext("2d"),
+    drop,
+    baseScaleX: 4.3,
+    baseScaleY: 1.08,
     texture,
   };
 
-  drawPowerupLabel(sprite, type);
+  drawDropLabel(sprite, drop);
   return sprite;
 }
 
-function drawPowerupLabel(sprite, type) {
+function drawDropLabel(sprite, drop) {
   const { canvas, context, texture } = sprite.userData;
-  const color = `#${(weapons[type]?.color ?? 0xffffff).toString(16).padStart(6, "0")}`;
+  const rarity = normalizeRarity(drop?.rarity);
+  const style = getRarityStyle(rarity);
+  const icon = drop?.icon ? `${drop.icon} ` : "";
+  const label = `${icon}${drop?.label || "Drop"}`;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(18, 10, 12, 0.62)";
-  context.fillRect(18, 22, 348, 52);
-  context.strokeStyle = "rgba(255, 255, 255, 0.42)";
+  context.shadowColor = style.glow;
+  context.shadowBlur = style.animated ? 22 : 12;
+  context.fillStyle = "rgba(18, 10, 12, 0.72)";
+  context.fillRect(22, 26, 404, 62);
+  context.strokeStyle = style.border;
   context.lineWidth = 2;
-  context.strokeRect(18, 22, 348, 52);
-  context.fillStyle = color;
-  context.fillRect(22, 68, 340, 3);
+  context.strokeRect(22, 26, 404, 62);
+  context.shadowBlur = 0;
+  context.fillStyle = style.css;
+  context.fillRect(28, 82, 392, 4);
+  context.fillStyle = style.css;
+  context.font = "900 13px Arial, Helvetica, sans-serif";
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+  context.fillText(style.label, 408, 40);
   context.shadowColor = "rgba(0, 0, 0, 0.82)";
   context.shadowBlur = 6;
   context.shadowOffsetY = 2;
   context.fillStyle = "#fff5f3";
-  context.font = "900 30px Georgia, 'Times New Roman', serif";
+  context.font = "900 29px Georgia, 'Times New Roman', serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(getPowerupDropLabel(type), 192, 48);
+  context.fillText(label, 224, 60);
   context.shadowBlur = 0;
   context.shadowOffsetY = 0;
   texture.needsUpdate = true;
@@ -2703,6 +3073,38 @@ function createBriefcaseProjectileMesh() {
   return group;
 }
 
+function createTinyAirplaneProjectileMesh() {
+  const group = new THREE.Group();
+  const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0xdcecff });
+  const wingMaterial = new THREE.MeshBasicMaterial({ color: 0x64b5ff });
+  const windowMaterial = new THREE.MeshBasicMaterial({ color: 0x102438 });
+  const propellerMaterial = new THREE.MeshBasicMaterial({ color: 0xfff5a8 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.74), bodyMaterial);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.2, 10), bodyMaterial);
+  const wings = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.045, 0.18), wingMaterial);
+  const tailWing = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.04, 0.12), wingMaterial);
+  const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.1), wingMaterial);
+  const cockpit = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.055, 0.16), windowMaterial);
+  const propeller = new THREE.Group();
+  const bladeA = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.025, 0.025), propellerMaterial);
+  const bladeB = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.42, 0.025), propellerMaterial.clone());
+
+  nose.rotation.x = Math.PI / 2;
+  nose.position.z = 0.47;
+  wings.position.z = 0.02;
+  tailWing.position.z = -0.34;
+  tailFin.position.set(0, 0.13, -0.34);
+  cockpit.position.set(0, 0.12, 0.14);
+  propeller.position.z = 0.59;
+  propeller.add(bladeA, bladeB);
+  group.add(body, nose, wings, tailWing, tailFin, cockpit, propeller);
+  group.userData.enemyProjectileVisual = "airplane";
+  group.userData.propeller = propeller;
+  group.scale.setScalar(0.62);
+  return group;
+}
+
 function getEnemyProjectileSpec(type) {
   if (type === "dinzo") {
     return {
@@ -2756,6 +3158,19 @@ function getEnemyProjectileSpec(type) {
     };
   }
 
+  if (type === "gitcity") {
+    return {
+      kind: "airplane",
+      color: 0xb9dcff,
+      speed: 18,
+      radius: 0.42,
+      height: 1.75,
+      spawnOffset: 1.2,
+      lifespan: 2.7,
+      impactRadius: 3.1,
+    };
+  }
+
   const profile = monsterProfiles[type] ?? monsterProfiles.caster;
   return {
     kind: "orb",
@@ -2784,6 +3199,10 @@ function createEnemyProjectileVisual(spec) {
 
   if (spec.kind === "briefcase") {
     return { mesh: createBriefcaseProjectileMesh(), pooled: false };
+  }
+
+  if (spec.kind === "airplane") {
+    return { mesh: createTinyAirplaneProjectileMesh(), pooled: false };
   }
 
   return {
@@ -2834,6 +3253,13 @@ function animateEnemyProjectileVisual(projectile, dt) {
   if (projectile.visualKind === "briefcase") {
     mesh.rotation.x += dt * 5.6;
     mesh.rotation.z = Math.sin(projectile.age * 10 + phase) * 0.28;
+    return;
+  }
+
+  if (projectile.visualKind === "airplane") {
+    mesh.rotation.x = Math.sin(projectile.age * 8 + phase) * 0.08;
+    mesh.rotation.z = Math.sin(projectile.age * 11 + phase) * 0.22;
+    mesh.userData.propeller.rotation.z += dt * 34;
   }
 }
 
@@ -3120,6 +3546,23 @@ function createPooledOrbitEffect() {
   return group;
 }
 
+function createPooledSparkleEffect() {
+  const group = new THREE.Group();
+  const material = createTransparentMaterial(0xffd76a, 0.86);
+  for (let index = 0; index < 4; index += 1) {
+    const sparkle = new THREE.Mesh(
+      getSharedGeometry("effect-sparkle-dot", () => new THREE.SphereGeometry(0.07, 8, 6)),
+      material,
+    );
+    const angle = (index / 4) * Math.PI * 2;
+    sparkle.position.set(Math.cos(angle) * 0.32, 0.08 + index * 0.055, Math.sin(angle) * 0.32);
+    sparkle.userData.baseOpacity = 0.86;
+    group.add(sparkle);
+  }
+  group.userData.effectPoolType = "sparkle";
+  return group;
+}
+
 function tintEffect(mesh, color, opacityMultiplier = 1) {
   mesh.traverse((child) => {
     if (!child.material) {
@@ -3163,24 +3606,30 @@ function animate() {
 
   if (game.state === "playing") {
     game.survivalTime += dt;
-    updateAim();
-    updatePlayer(dt);
-    updatePowerups(dt);
-    updateXpGems(dt);
-    ensureSpatialGrid();
-    updateActiveWeapon(dt);
-    updateShooting(dt);
-    updateAutoWeapons(dt);
-    updateUpgradeChoices(dt);
-    updateSpawning(dt);
-    refreshLivingPlayerTargets();
-    updateZombies(dt);
-    rebuildSpatialGrid();
-    refreshLivingPlayerTargets();
-    updateEnemyProjectiles(dt);
-    updateBullets(dt);
-    updateWaveFlow(dt);
-    updateHud();
+    if (game.perfStressImmortal) {
+      updateAim();
+      updateHud();
+    } else {
+      updateAim();
+      updatePlayer(dt);
+      updatePerks(dt);
+      updatePowerups(dt);
+      updateXpGems(dt);
+      ensureSpatialGrid();
+      updateActiveWeapon(dt);
+      updateShooting(dt);
+      updateAutoWeapons(dt);
+      updateUpgradeChoices(dt);
+      updateSpawning(dt);
+      refreshLivingPlayerTargets();
+      updateZombies(dt);
+      rebuildSpatialGrid();
+      refreshLivingPlayerTargets();
+      updateEnemyProjectiles(dt);
+      updateBullets(dt);
+      updateWaveFlow(dt);
+      updateHud();
+    }
   } else {
     updateAim();
   }
@@ -3284,11 +3733,43 @@ function updatePowerups(dt) {
     powerup.mesh.rotation.y += dt * 1.9;
     powerup.mesh.position.y = powerup.baseY + Math.sin(powerup.age * 4.4) * 0.16;
     updatePowerupLabelPosition(powerup);
+    animateDropLabel(powerup, dt);
 
     if (distanceXZSquared(player.position, powerup.mesh.position) < powerup.radius * powerup.radius) {
-      activateWeapon(powerup.type);
-      removePowerup(index);
+      if (collectPowerup(powerup)) {
+        removePowerup(index);
+      }
     }
+  }
+}
+
+function updatePerks(dt) {
+  if (player.perkCooldowns.prismStorm > 0) {
+    player.perkCooldowns.prismStorm = Math.max(0, player.perkCooldowns.prismStorm - dt);
+  }
+
+  if (!hasPerk("soulMagnet")) {
+    return;
+  }
+
+  player.perkCooldowns.soulMagnet -= dt;
+  if (player.perkCooldowns.soulMagnet > 0 || xpGems.length === 0) {
+    return;
+  }
+
+  player.perkCooldowns.soulMagnet = Math.max(7.5, 18 - (player.perks.soulMagnet - 1) * 4);
+  const pullRadius = 18 + player.perks.soulMagnet * 7;
+  const pullRadiusSq = pullRadius * pullRadius;
+  let pulled = 0;
+  for (const gem of xpGems) {
+    if (distanceXZSquared(player.position, gem.mesh.position) <= pullRadiusSq) {
+      gem.mesh.position.lerp(player.position, 0.72);
+      pulled += 1;
+    }
+  }
+
+  if (pulled > 0) {
+    triggerPerkAnimation("soulMagnet", player.position, "rare");
   }
 }
 
@@ -3380,6 +3861,7 @@ function collectXp(value) {
     player.xpToNext = getXpToNext(player.level);
     player.pendingLevelUps += 1;
     spawnLevelPulse();
+    activateLevelUpPerks();
   }
 
   if (player.pendingLevelUps > 0 && player.pendingUpgradeChoices.length === 0) {
@@ -3391,6 +3873,17 @@ function collectXp(value) {
 
 function getXpToNext(level) {
   return 10 + level * 7 + Math.floor(level ** 1.35);
+}
+
+function activateLevelUpPerks() {
+  if (hasPerk("prismStorm")) {
+    player.perkCooldowns.prismStorm = 8;
+    triggerPerkAnimation("prismStorm", player.position, "epic");
+  }
+
+  if (hasPerk("cuttingMoon")) {
+    spawnCuttingMoonWave();
+  }
 }
 
 function getXpValueForZombie(type) {
@@ -3417,25 +3910,115 @@ function updateUpgradeChoices() {
   }
 }
 
-function openUpgradeChoices() {
-  const choices = getRandomUpgradeChoices();
+function openUpgradeChoices(source = "level") {
+  const choices = rollUpgradeChoices(source);
   if (choices.length === 0) {
     player.pendingLevelUps = 0;
     player.pendingUpgradeChoices = [];
+    player.pendingUpgradeSource = "level";
   } else {
     player.pendingUpgradeChoices = choices;
+    player.pendingUpgradeSource = source;
   }
 
   renderUpgradeChoices();
 }
 
-function getRandomUpgradeChoices() {
-  const available = upgradeDefinitions.filter((upgrade) => isUpgradeAvailable(upgrade));
-  const shuffled = [...available].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 3);
+function openBossRewardChoices(bossType = "boss") {
+  if (player.pendingUpgradeChoices.length > 0) {
+    return false;
+  }
+
+  const choices = rollUpgradeChoices("bossChest");
+  if (choices.length === 0) {
+    return false;
+  }
+
+  player.pendingUpgradeChoices = choices;
+  player.pendingUpgradeSource = "bossChest";
+  triggerPerkAnimation("bossChest", player.position, "rare", bossType);
+  renderUpgradeChoices();
+  return true;
 }
 
-function isUpgradeAvailable(upgrade) {
+function rollUpgradeChoices(source = "level") {
+  const minimumRarity = source === "bossChest" ? "rare" : "common";
+  let available = upgradeDefinitions.filter((upgrade) => isUpgradeAvailable(upgrade, minimumRarity, source));
+  if (available.length === 0) {
+    return [];
+  }
+
+  const choices = [];
+  const forceRare = source === "level" && player.rarityPity >= 4;
+  while (choices.length < 3 && available.length > 0) {
+    let pool = available;
+    if (forceRare && choices.length === 0) {
+      const rarePool = available.filter((upgrade) => getRarityRank(upgrade.rarity) >= getRarityRank("rare"));
+      if (rarePool.length > 0) {
+        pool = rarePool;
+      }
+    }
+
+    const selected = pickWeightedUpgrade(pool, source);
+    if (!selected) {
+      break;
+    }
+
+    choices.push(selected);
+    available = available.filter((upgrade) => upgrade.id !== selected.id);
+  }
+
+  if (source === "level") {
+    if (choices.some((upgrade) => getRarityRank(upgrade.rarity) >= getRarityRank("rare"))) {
+      player.rarityPity = 0;
+    } else {
+      player.rarityPity += 1;
+    }
+  }
+
+  return choices;
+}
+
+function pickWeightedUpgrade(upgrades, source = "level") {
+  const weighted = upgrades.map((upgrade) => ({
+    upgrade,
+    weight: getUpgradeRollWeight(upgrade, source),
+  }));
+  const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+  if (totalWeight <= 0) {
+    return upgrades[0] ?? null;
+  }
+
+  let roll = Math.random() * totalWeight;
+  for (const item of weighted) {
+    roll -= item.weight;
+    if (roll <= 0) {
+      return item.upgrade;
+    }
+  }
+
+  return weighted[weighted.length - 1]?.upgrade ?? null;
+}
+
+function getUpgradeRollWeight(upgrade, source = "level") {
+  const rarity = normalizeRarity(upgrade.rarity);
+  if (source === "bossChest") {
+    return bossRewardRarityWeights[rarity] ?? 0;
+  }
+
+  return upgrade.weight ?? getRarityStyle(rarity).weight;
+}
+
+function isUpgradeAvailable(upgrade, minimumRarity = "common", source = "level") {
+  if (getRarityRank(upgrade.rarity) < getRarityRank(minimumRarity)) {
+    return false;
+  }
+
+  const ignoresMinLevel = source === "bossChest" && normalizeRarity(upgrade.rarity) !== "legendary";
+  if (!ignoresMinLevel && player.level < (upgrade.minLevel ?? 1)) {
+    return false;
+  }
+
   const stacks = player.upgradeStacks[upgrade.id] || 0;
 
   if (upgrade.id === "autoWeapon") {
@@ -3452,12 +4035,15 @@ function chooseUpgrade(index) {
   }
 
   applyUpgrade(choice);
-  player.pendingLevelUps = Math.max(0, player.pendingLevelUps - 1);
+  if (player.pendingUpgradeSource === "level") {
+    player.pendingLevelUps = Math.max(0, player.pendingLevelUps - 1);
+  }
   player.pendingUpgradeChoices = [];
 
   if (player.pendingLevelUps > 0) {
-    openUpgradeChoices();
+    openUpgradeChoices("level");
   } else {
+    player.pendingUpgradeSource = "level";
     renderUpgradeChoices();
   }
 
@@ -3465,7 +4051,17 @@ function chooseUpgrade(index) {
 }
 
 function applyUpgrade(upgrade) {
-  player.upgradeStacks[upgrade.id] = (player.upgradeStacks[upgrade.id] || 0) + 1;
+  const currentStacks = player.upgradeStacks[upgrade.id] || 0;
+  if (currentStacks >= upgrade.maxStacks) {
+    return false;
+  }
+
+  player.upgradeStacks[upgrade.id] = currentStacks + 1;
+  if (upgrade.kind === "perk") {
+    player.perks[upgrade.id] = player.upgradeStacks[upgrade.id];
+    applyPerkEffect(upgrade);
+    triggerPerkAnimation(upgrade.id, player.position, upgrade.rarity);
+  }
 
   if (upgrade.id === "damage") {
     player.upgradeStats.damageMultiplier += 0.16;
@@ -3504,6 +4100,9 @@ function applyUpgrade(upgrade) {
       spawnWeaponPulse(autoWeaponProfiles[weaponId].color);
     }
   }
+
+  tryEvolveWeapons();
+  return true;
 }
 
 function getNextUnlockableAutoWeapon() {
@@ -3532,9 +4131,12 @@ function renderUpgradeChoices() {
     .map((upgrade, index) => {
       const stacks = player.upgradeStacks[upgrade.id] || 0;
       const description = upgrade.id === "autoWeapon" ? getAutoWeaponUnlockDescription() : upgrade.description;
+      const rarity = normalizeRarity(upgrade.rarity);
+      const rarityLabel = getRarityStyle(rarity).label;
       return `
-        <button class="upgrade-card" type="button" data-upgrade-index="${index}">
+        <button class="upgrade-card upgrade-card--${rarity}" type="button" data-upgrade-index="${index}">
           <span class="upgrade-card__key">${index + 1}</span>
+          <span class="upgrade-card__rarity">${escapeHtml(rarityLabel)}</span>
           <strong>${escapeHtml(upgrade.label)}</strong>
           <span>${escapeHtml(description)}</span>
           <span>${stacks}/${upgrade.maxStacks} stacks</span>
@@ -3548,6 +4150,91 @@ function getAutoWeaponUnlockDescription() {
   const weaponId = getNextUnlockableAutoWeapon();
   const label = weaponId ? autoWeaponProfiles[weaponId].label : "arsenal completo";
   return `Desbloqueia ${label} para atacar sem segurar o tiro.`;
+}
+
+function normalizeRarity(rarity) {
+  return rarityStyles[rarity] ? rarity : "common";
+}
+
+function getRarityStyle(rarity) {
+  return rarityStyles[normalizeRarity(rarity)];
+}
+
+function getRarityRank(rarity) {
+  return rarityOrder[normalizeRarity(rarity)] ?? 0;
+}
+
+function hasPerk(perkId, stacks = 1) {
+  return (player.perks[perkId] || 0) >= stacks;
+}
+
+function applyPerkEffect(upgrade) {
+  if (upgrade.id === "ironBlood") {
+    player.damageReduction = Math.min(0.48, (player.perks.ironBlood || 0) * 0.12);
+  }
+
+  if (upgrade.id === "hunterEye") {
+    player.critChance = Math.min(0.42, (player.perks.hunterEye || 0) * 0.08);
+    player.critMultiplier = 1.8;
+  }
+
+  if (upgrade.id === "lastBreath") {
+    player.revives = Math.max(player.revives, 1);
+  }
+}
+
+function tryEvolveWeapons() {
+  for (const [weaponId, evolution] of Object.entries(evolvedWeaponProfiles)) {
+    if (player.evolvedWeapons[weaponId] || !player.autoWeapons[weaponId]?.level) {
+      continue;
+    }
+
+    const requirement = evolution.requirement;
+    if (!hasPerk(requirement.perk, requirement.stacks)) {
+      continue;
+    }
+
+    player.evolvedWeapons[weaponId] = evolution.id;
+    spawnEvolutionBurst(evolution.label, evolution.color);
+  }
+}
+
+function spawnEvolutionBurst(label, color = rarityStyles.legendary.color) {
+  spawnWeaponPulse(color);
+  spawnTemporaryDropLabel(`ARMA EVOLUÍDA: ${label}`, "legendary", "✦", player.position, 1.45);
+}
+
+function getAutoWeaponDisplayLabel(weaponId) {
+  const evolutionId = player.evolvedWeapons[weaponId];
+  const evolution = evolvedWeaponProfiles[weaponId];
+  if (evolutionId && evolution?.id === evolutionId) {
+    return evolution.label;
+  }
+
+  return autoWeaponProfiles[weaponId]?.label || weaponId;
+}
+
+function getAutoWeaponDisplayColor(weaponId) {
+  const evolutionId = player.evolvedWeapons[weaponId];
+  const evolution = evolvedWeaponProfiles[weaponId];
+  if (evolutionId && evolution?.id === evolutionId) {
+    return evolution.color;
+  }
+
+  return autoWeaponProfiles[weaponId]?.color ?? 0x74d1ff;
+}
+
+function getAreaMultiplier() {
+  const prismBonus = player.perkCooldowns.prismStorm > 0 ? 1.35 : 1;
+  return player.upgradeStats.areaMultiplier * prismBonus;
+}
+
+function getProjectileBonus() {
+  return player.upgradeStats.projectileBonus + (player.perkCooldowns.prismStorm > 0 ? 1 : 0);
+}
+
+function getSlayerPactMultiplier() {
+  return hasPerk("slayerPact") ? 1 + player.bossKills * 0.07 : 1;
 }
 
 function spawnLevelPulse() {
@@ -3693,8 +4380,9 @@ function spawnBullet() {
 }
 
 function spawnPlayerProjectiles(config) {
-  const count = 1 + player.upgradeStats.projectileBonus;
+  const count = 1 + getProjectileBonus();
   const spreadStep = count > 1 ? 0.12 : 0;
+  const areaMultiplier = getAreaMultiplier();
 
   for (let index = 0; index < count; index += 1) {
     const angleOffset = (index - (count - 1) / 2) * spreadStep;
@@ -3703,8 +4391,8 @@ function spawnPlayerProjectiles(config) {
       angleOffset,
       damage: config.damage * player.upgradeStats.damageMultiplier,
       explodeDamage: (config.explodeDamage || 0) * player.upgradeStats.damageMultiplier,
-      explodeRadius: (config.explodeRadius || 0) * player.upgradeStats.areaMultiplier,
-      radius: config.radius * Math.sqrt(player.upgradeStats.areaMultiplier),
+      explodeRadius: (config.explodeRadius || 0) * areaMultiplier,
+      radius: config.radius * Math.sqrt(areaMultiplier),
     });
   }
 }
@@ -3779,8 +4467,15 @@ function updateGuardianBlade(dt) {
     direction.normalize();
   }
 
-  damageZombie(target.zombie, profile.damage * player.upgradeStats.damageMultiplier, true);
-  spawnGuardianBladeEffect(origin, direction, profile.color);
+  const evolved = player.evolvedWeapons.guardianBlade === evolvedWeaponProfiles.guardianBlade.id;
+  const color = getAutoWeaponDisplayColor("guardianBlade");
+  const damage = profile.damage * player.upgradeStats.damageMultiplier * (evolved ? 1.45 : 1);
+  damageZombie(target.zombie, damage, true);
+  if (evolved) {
+    damageZombiesInConeFrom(origin, direction, 9.2, Math.cos(0.2), damage * 0.62, false);
+  }
+  spawnGuardianBladeEffect(origin, direction, color);
+  recordAutoWeaponAttack(origin);
   sendMultiplayerAttack("guardianBlade", origin, direction);
 }
 
@@ -3799,17 +4494,23 @@ function updateOrbitOrb(dt) {
   }
 
   weapon.cooldown = getPlayerCooldown(profile.cooldown);
-  const orbitRadius = profile.orbitRadius * Math.sqrt(player.upgradeStats.areaMultiplier);
+  const evolved = player.evolvedWeapons.orbitOrb === evolvedWeaponProfiles.orbitOrb.id;
+  const color = getAutoWeaponDisplayColor("orbitOrb");
+  const orbitRadius = profile.orbitRadius * Math.sqrt(getAreaMultiplier()) * (evolved ? 1.12 : 1);
   const origin = tempVectorB.set(
     player.position.x + Math.cos(weapon.angle) * orbitRadius,
     0,
     player.position.z + Math.sin(weapon.angle) * orbitRadius,
   );
   const direction = tempVectorC.subVectors(origin, player.position).normalize();
-  const radius = profile.radius * player.upgradeStats.areaMultiplier;
-  const damage = profile.damage * player.upgradeStats.damageMultiplier;
+  const radius = profile.radius * getAreaMultiplier() * (evolved ? 1.18 : 1);
+  const damage = profile.damage * player.upgradeStats.damageMultiplier * (evolved ? 1.22 : 1);
   damageZombiesAtPoint(origin, radius, damage, false);
-  spawnOrbitOrbEffect(origin, profile.color, radius);
+  if (evolved) {
+    spawnExplosion(origin, color, radius * 0.82);
+  }
+  spawnOrbitOrbEffect(origin, color, radius);
+  recordAutoWeaponAttack(origin);
   sendMultiplayerAttack("orbitOrb", origin, direction);
 }
 
@@ -3843,10 +4544,24 @@ function updateSealRain(dt) {
     direction.normalize();
   }
 
-  const radius = profile.radius * player.upgradeStats.areaMultiplier;
-  const damage = profile.damage * player.upgradeStats.damageMultiplier;
-  damageZombiesAtPoint(origin, radius, damage, false);
-  spawnSealRainEffect(origin, profile.color, radius);
+  const evolved = player.evolvedWeapons.sealRain === evolvedWeaponProfiles.sealRain.id;
+  const color = getAutoWeaponDisplayColor("sealRain");
+  const radius = profile.radius * getAreaMultiplier() * (evolved ? 1.08 : 1);
+  const damage = profile.damage * player.upgradeStats.damageMultiplier * (evolved ? 1.18 : 1);
+  if (evolved) {
+    const perpendicular = tempVectorA.set(-direction.z, 0, direction.x).normalize();
+    const baseX = origin.x;
+    const baseZ = origin.z;
+    for (const offset of [-1.35, 0, 1.35]) {
+      const impact = tempVectorB.set(baseX + perpendicular.x * offset, origin.y, baseZ + perpendicular.z * offset);
+      damageZombiesAtPoint(impact, radius * 0.86, damage * 0.72, false);
+      spawnSealRainEffect(impact, color, radius * 0.86);
+    }
+  } else {
+    damageZombiesAtPoint(origin, radius, damage, false);
+    spawnSealRainEffect(origin, color, radius);
+  }
+  recordAutoWeaponAttack(origin);
   sendMultiplayerAttack("sealRain", origin, direction);
 }
 
@@ -3905,14 +4620,21 @@ function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
   const position =
     Number.isFinite(x) && Number.isFinite(z) ? new THREE.Vector3(x, 0, z) : getRandomPowerupPosition();
   const mesh = createPowerupMesh(type);
-  const labelSprite = createPowerupLabelSprite(type);
+  const labelSprite = createDropLabelSprite({
+    label: getPowerupDropLabel(type),
+    rarity: "common",
+    icon: hudWeaponIcons[type] || "⚔",
+  });
   mesh.position.set(position.x, 0.36, position.z);
   mesh.rotation.y = Math.random() * Math.PI * 2;
   scene.add(mesh);
   scene.add(labelSprite);
 
   const powerup = {
+    kind: "weapon",
     type,
+    label: getPowerupDropLabel(type),
+    rarity: "common",
     mesh,
     labelSprite,
     source: options.source || "kill",
@@ -3922,6 +4644,79 @@ function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
   };
   updatePowerupLabelPosition(powerup);
   powerups.push(powerup);
+}
+
+function spawnPerkDropAt(position, perkId, rarity = null, source = "perk") {
+  const perk = upgradeById.get(perkId);
+  if (!perk) {
+    return false;
+  }
+
+  const dropRarity = normalizeRarity(rarity || perk.rarity);
+  const mesh = createPerkDropMesh(dropRarity);
+  const labelSprite = createDropLabelSprite({
+    label: perk.label,
+    rarity: dropRarity,
+    icon: hudUpgradeIcons[perk.id] || "✦",
+  });
+  mesh.position.copy(position);
+  mesh.position.y = 0.36;
+  mesh.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(mesh);
+  scene.add(labelSprite);
+
+  const powerup = {
+    kind: "perk",
+    type: `perk:${perk.id}`,
+    perkId: perk.id,
+    label: perk.label,
+    rarity: dropRarity,
+    mesh,
+    labelSprite,
+    source,
+    sparkleTimer: 0,
+    age: Math.random() * Math.PI,
+    baseY: 0.36,
+    radius: 1.45,
+  };
+  updatePowerupLabelPosition(powerup);
+  powerups.push(powerup);
+  if (dropRarity === "legendary") {
+    triggerPerkAnimation("legendaryDrop", position, dropRarity);
+  }
+  return true;
+}
+
+function spawnBossRewardChestAt(position, bossType = "boss") {
+  const mesh = createBossRewardChestMesh(bossType);
+  const labelSprite = createDropLabelSprite({
+    label: "Baú Sinistro",
+    rarity: "rare",
+    icon: "🎁",
+  });
+  mesh.position.copy(position);
+  mesh.position.y = 0.28;
+  mesh.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(mesh);
+  scene.add(labelSprite);
+
+  const powerup = {
+    kind: "bossChest",
+    type: "bossChest",
+    bossType,
+    label: "Baú Sinistro",
+    rarity: "rare",
+    mesh,
+    labelSprite,
+    source: bossType,
+    sparkleTimer: 0.2,
+    age: Math.random() * Math.PI,
+    baseY: 0.28,
+    radius: 1.65,
+  };
+  updatePowerupLabelPosition(powerup);
+  powerups.push(powerup);
+  return true;
 }
 
 function spawnWeaponDrop(position, type = getNextWeaponDropType(), source = "kill") {
@@ -3937,7 +4732,7 @@ function maybeDropWeaponFromZombie(type, position) {
   const profile = monsterProfiles[type] || {};
 
   if (profile.boss) {
-    return spawnWeaponDrop(position, bossWeaponDrops[type] || getNextWeaponDropType(), type);
+    return spawnBossRewardChestAt(position, type);
   }
 
   game.weaponDropCounter += type === "brute" || type === "caster" ? 2 : 1;
@@ -3947,6 +4742,70 @@ function maybeDropWeaponFromZombie(type, position) {
 
   game.weaponDropCounter = 0;
   return spawnWeaponDrop(position, getNextWeaponDropType(), type);
+}
+
+function maybeDropPerkFromZombie(type, position) {
+  const profile = monsterProfiles[type] || {};
+  if (profile.boss || countActivePowerupsByKind("perk") >= getMaxActivePerkDrops()) {
+    return false;
+  }
+
+  const chanceByType = {
+    zombie: 0.012,
+    runner: 0.018,
+    brute: 0.07,
+    caster: 0.08,
+  };
+  const levelBonus = Math.min(0.035, Math.max(0, player.level - 4) * 0.0025);
+  const dropChance = (chanceByType[type] ?? 0.015) + levelBonus;
+  if (Math.random() > dropChance) {
+    return false;
+  }
+
+  const perk = rollPerkDrop(type);
+  return perk ? spawnPerkDropAt(position, perk.id, perk.rarity, type) : false;
+}
+
+function rollPerkDrop(type) {
+  const elite = type === "brute" || type === "caster";
+  const weights = elite
+    ? { rare: 72, epic: 24, legendary: 4 }
+    : { rare: 88, epic: 11, legendary: 1 };
+  const available = upgradeDefinitions.filter(
+    (upgrade) => upgrade.kind === "perk" && isUpgradeAvailable(upgrade, "rare", "perkDrop"),
+  );
+
+  if (available.length === 0) {
+    return null;
+  }
+
+  let roll = Math.random() * Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+  let targetRarity = "rare";
+  for (const [rarity, weight] of Object.entries(weights)) {
+    roll -= weight;
+    if (roll <= 0) {
+      targetRarity = rarity;
+      break;
+    }
+  }
+
+  const rarityFallbacks = {
+    legendary: ["legendary", "epic", "rare"],
+    epic: ["epic", "rare"],
+    rare: ["rare", "epic", "legendary"],
+  };
+  for (const rarity of rarityFallbacks[targetRarity] ?? ["rare"]) {
+    const pool = available.filter((upgrade) => normalizeRarity(upgrade.rarity) === rarity);
+    if (pool.length > 0) {
+      return pickWeightedUpgrade(pool, "perkDrop");
+    }
+  }
+
+  return pickWeightedUpgrade(available, "perkDrop");
+}
+
+function countActivePowerupsByKind(kind) {
+  return powerups.reduce((count, powerup) => count + (powerup.kind === kind ? 1 : 0), 0);
 }
 
 function getNextWeaponDropType() {
@@ -3972,12 +4831,62 @@ function getMaxActiveWeaponDrops() {
   return usesMobileTuning() ? 4 : 5;
 }
 
+function getMaxActivePerkDrops() {
+  return usesMobileTuning() ? 3 : 4;
+}
+
 function updatePowerupLabelPosition(powerup) {
   if (!powerup.labelSprite) {
     return;
   }
 
   powerup.labelSprite.position.set(powerup.mesh.position.x, powerup.mesh.position.y + 1.18, powerup.mesh.position.z);
+}
+
+function animateDropLabel(powerup, dt) {
+  if (!powerup.labelSprite) {
+    return;
+  }
+
+  const rarity = normalizeRarity(powerup.rarity);
+  const style = getRarityStyle(rarity);
+  const baseScaleX = powerup.labelSprite.userData.baseScaleX ?? 4.3;
+  const baseScaleY = powerup.labelSprite.userData.baseScaleY ?? 1.08;
+
+  if (rarity === "epic" || rarity === "legendary") {
+    const pulse = 1 + Math.sin(powerup.age * (rarity === "legendary" ? 6.5 : 4.6)) * (rarity === "legendary" ? 0.08 : 0.035);
+    powerup.labelSprite.scale.set(baseScaleX * pulse, baseScaleY * pulse, 1);
+    powerup.labelSprite.material.opacity = rarity === "legendary" ? 0.86 + Math.sin(powerup.age * 8) * 0.14 : 0.94;
+  } else {
+    powerup.labelSprite.scale.set(baseScaleX, baseScaleY, 1);
+    powerup.labelSprite.material.opacity = 1;
+  }
+
+  if (style.animated) {
+    powerup.sparkleTimer = (powerup.sparkleTimer ?? 0) - dt;
+    if (powerup.sparkleTimer <= 0) {
+      powerup.sparkleTimer = rarity === "legendary" ? 0.22 : 0.42;
+      spawnDropSparkle(powerup);
+    }
+  }
+}
+
+function collectPowerup(powerup) {
+  if (powerup.kind === "perk") {
+    const perk = upgradeById.get(powerup.perkId);
+    if (perk && isUpgradeAvailable(perk)) {
+      applyUpgrade(perk);
+      updateHud(true);
+    }
+    return true;
+  }
+
+  if (powerup.kind === "bossChest") {
+    return openBossRewardChoices(powerup.bossType);
+  }
+
+  activateWeapon(powerup.type);
+  return true;
 }
 
 function activateWeapon(type) {
@@ -4061,6 +4970,82 @@ function spawnWeaponPulse(color) {
   ring.scale.setScalar(3.9);
   tintEffect(ring, color);
   addTimedEffect(ring, 0.36, true, "pulse");
+}
+
+function spawnTemporaryDropLabel(label, rarity = "legendary", icon = "✦", position = player.position, duration = 1.2) {
+  const sprite = createDropLabelSprite({ label, rarity, icon });
+  sprite.position.copy(position);
+  sprite.position.y = 2.7;
+  addTimedEffect(sprite, duration, true, null);
+}
+
+function spawnDropSparkle(powerup) {
+  const sparkle = acquireEffectMesh("sparkle", createPooledSparkleEffect);
+  const angle = powerup.age * 2.4 + Math.random() * Math.PI * 2;
+  sparkle.position.set(
+    powerup.mesh.position.x + Math.cos(angle) * 0.9,
+    powerup.mesh.position.y + 1.15 + Math.random() * 0.55,
+    powerup.mesh.position.z + Math.sin(angle) * 0.9,
+  );
+  sparkle.scale.setScalar(powerup.rarity === "legendary" ? 0.72 : 0.52);
+  tintEffect(sparkle, getRarityStyle(powerup.rarity).color, 1);
+  addTimedEffect(sparkle, 0.48, false, "sparkle");
+}
+
+function triggerPerkAnimation(key, origin = player.position, rarity = "rare") {
+  const color = getRarityStyle(rarity).color;
+  if (key === "soulMagnet") {
+    spawnRemotePulse(origin, color, 5.4);
+    return;
+  }
+
+  if (key === "ironBlood") {
+    spawnRemotePulse(origin, color, 2.6);
+    return;
+  }
+
+  if (key === "bladeEcho") {
+    spawnRemoteSlash(origin, player.aimDirection, color);
+    return;
+  }
+
+  if (key === "hunterEye") {
+    spawnExplosion(origin, color, 1.1);
+    return;
+  }
+
+  if (key === "sealRitual" || key === "bossChest") {
+    spawnExplosion(origin, color, key === "bossChest" ? 3.4 : 3.1);
+    return;
+  }
+
+  if (key === "ashenHeart") {
+    spawnRemotePulse(player.position, color, 2.2);
+    spawnExplosion(origin, color, 1.4);
+    return;
+  }
+
+  if (key === "prismStorm") {
+    spawnRemotePulse(player.position, color, 4.4);
+    spawnTemporaryDropLabel("TEMPESTADE PRISMÁTICA", "epic", "🌈", player.position, 0.9);
+    return;
+  }
+
+  if (key === "lastBreath" || key === "legendaryDrop") {
+    spawnExplosion(origin, color, 4.8);
+    spawnRemotePulse(origin, color, 5.8);
+    return;
+  }
+
+  spawnRemotePulse(origin, color, getRarityRank(rarity) >= getRarityRank("legendary") ? 4.8 : 2.8);
+}
+
+function spawnCuttingMoonWave() {
+  const radius = 9.5 * getAreaMultiplier();
+  const damage = 12 * player.upgradeStats.damageMultiplier;
+  damageZombiesInRadiusAt(player.position, radius, damage, true);
+  spawnExplosion(player.position, rarityStyles.legendary.color, radius);
+  spawnTemporaryDropLabel("LUA CORTANTE", "legendary", "🌙", player.position, 1.1);
 }
 
 function startNextWave() {
@@ -4538,10 +5523,27 @@ function damagePlayerTarget(target, amount) {
 }
 
 function damageLocalPlayer(amount) {
-  player.health = Math.max(0, player.health - amount);
+  if (game.perfStressImmortal) {
+    player.health = player.maxHealth;
+    return;
+  }
+
+  const reducedAmount = amount * (1 - player.damageReduction);
+  if (player.damageReduction > 0) {
+    triggerPerkAnimation("ironBlood", player.position, "rare");
+  }
+
+  player.health = Math.max(0, player.health - reducedAmount);
   pulseHealth();
 
   if (player.health <= 0) {
+    if (player.revives > 0) {
+      player.revives -= 1;
+      player.health = Math.max(1, Math.floor(player.maxHealth * 0.4));
+      triggerPerkAnimation("lastBreath", player.position, "legendary");
+      updateHud(true);
+      return;
+    }
     endGame();
   }
 }
@@ -4569,6 +5571,7 @@ function canUseRangedAttack(type, distance) {
     (type === "visor" && distance < 18 && distance > 4.4) ||
     (type === "himetrica" && distance < 15 && distance > 3.6) ||
     (type === "dinzo" && distance < 16 && distance > 3.5) ||
+    (type === "gitcity" && distance < 19 && distance > 4.4) ||
     (type === "sofra" && distance < 20 && distance > 3.8)
   );
 }
@@ -4588,6 +5591,10 @@ function getRangedCooldown(type) {
 
   if (type === "dinzo") {
     return 1.2;
+  }
+
+  if (type === "gitcity") {
+    return 1.35;
   }
 
   return 1.45;
@@ -4707,7 +5714,7 @@ function damageZombiesInCone(range, minDot, amount, shouldFlash) {
   damageZombiesInConeFrom(
     player.position,
     player.aimDirection,
-    range * player.upgradeStats.areaMultiplier,
+    range * getAreaMultiplier(),
     minDot,
     amount * player.upgradeStats.damageMultiplier,
     shouldFlash,
@@ -4737,7 +5744,7 @@ function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shoul
 function damageZombiesInRadius(radius, amount, shouldFlash) {
   damageZombiesInRadiusAt(
     player.position,
-    radius * player.upgradeStats.areaMultiplier,
+    radius * getAreaMultiplier(),
     amount * player.upgradeStats.damageMultiplier,
     shouldFlash,
   );
@@ -4752,6 +5759,54 @@ function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash, awardRewar
       damageZombie(zombie, amount, shouldFlash, awardRewards);
     }
   }
+}
+
+function recordAutoWeaponAttack(origin) {
+  if (!hasPerk("sealRitual")) {
+    return;
+  }
+
+  player.autoAttackCounter += 1;
+  if (player.autoAttackCounter % 5 !== 0) {
+    return;
+  }
+
+  const radius = 3.2 + player.perks.sealRitual * 0.65;
+  const damage = (4.2 + player.perks.sealRitual * 1.5) * player.upgradeStats.damageMultiplier;
+  damageZombiesAtPoint(origin, radius, damage, false);
+  triggerPerkAnimation("sealRitual", origin, "epic");
+}
+
+function applyDamagePerks(zombie, amount) {
+  let finalDamage = amount * getSlayerPactMultiplier();
+
+  if (player.critChance > 0 && Math.random() < player.critChance) {
+    finalDamage *= player.critMultiplier;
+    triggerPerkAnimation("hunterEye", zombie.mesh.position, "rare");
+  }
+
+  if (hasPerk("bladeEcho") && Math.random() < 0.18 * player.perks.bladeEcho) {
+    finalDamage += amount * 0.55;
+    triggerPerkAnimation("bladeEcho", zombie.mesh.position, "rare");
+  }
+
+  return finalDamage;
+}
+
+function maybeTriggerKillPerks(type, position) {
+  if (!hasPerk("ashenHeart")) {
+    return;
+  }
+
+  const profile = monsterProfiles[type] ?? {};
+  const isElite = profile.boss || type === "brute" || type === "caster";
+  if (!isElite) {
+    return;
+  }
+
+  const healAmount = profile.boss ? 18 : 8;
+  player.health = Math.min(player.maxHealth, player.health + healAmount * player.perks.ashenHeart);
+  triggerPerkAnimation("ashenHeart", position, "epic");
 }
 
 function damageZombiesAtPoint(position, radius, amount, shouldFlash, awardRewards = true) {
@@ -4780,7 +5835,8 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
     return false;
   }
 
-  zombie.health -= amount;
+  const finalDamage = applyDamagePerks(zombie, amount);
+  zombie.health -= finalDamage;
 
   if (shouldFlash) {
     flashZombie(zombie.mesh);
@@ -4794,6 +5850,7 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
     const xpPosition = zombie.mesh.position.clone();
     const xpValue = getXpValueForZombie(zombie.type);
     const shouldBurst = zombie.type === "sofra";
+    const profile = monsterProfiles[zombie.type] ?? {};
     removeZombieByRef(zombie);
     if (shouldBurst) {
       spawnSofraDeathBurst(xpPosition);
@@ -4802,6 +5859,11 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
       spawnXpGem(xpPosition, xpValue);
       player.kills += 1;
       player.score += zombie.score;
+      if (profile.boss) {
+        player.bossKills += 1;
+      }
+      maybeTriggerKillPerks(zombie.type, xpPosition);
+      maybeDropPerkFromZombie(zombie.type, xpPosition);
       maybeDropWeaponFromZombie(zombie.type, xpPosition);
     }
     return true;
@@ -5044,8 +6106,12 @@ function disposeObject(object) {
 
     if (child.material) {
       if (Array.isArray(child.material)) {
-        child.material.forEach((material) => material.dispose());
+        child.material.forEach((material) => {
+          material.map?.dispose();
+          material.dispose();
+        });
       } else {
+        child.material.map?.dispose();
         child.material.dispose();
       }
     }
@@ -5160,9 +6226,10 @@ function getHudSkills() {
 
   for (const [weaponId, state] of Object.entries(player.autoWeapons)) {
     if (state.level > 0) {
+      const evolutionId = player.evolvedWeapons[weaponId];
       skills.push({
-        icon: hudWeaponIcons[weaponId] || "✦",
-        title: autoWeaponProfiles[weaponId]?.label || weaponId,
+        icon: hudWeaponIcons[evolutionId] || hudWeaponIcons[weaponId] || "✦",
+        title: getAutoWeaponDisplayLabel(weaponId),
         level: state.level,
       });
     }
@@ -5443,7 +6510,7 @@ function updateMultiplayer(dt) {
 function getPlayerBuildSummary() {
   const unlockedWeapons = Object.entries(player.autoWeapons)
     .filter(([, state]) => state.level > 0)
-    .map(([weaponId]) => autoWeaponProfiles[weaponId]?.label)
+    .map(([weaponId]) => getAutoWeaponDisplayLabel(weaponId))
     .filter(Boolean);
 
   const upgrades = Object.entries(player.upgradeStacks)
@@ -6252,15 +7319,45 @@ function renderLeaderboardPerks(build = []) {
 
   return perks
     .map(
-      (perk) =>
-        `<span class="menu-perk" title="${escapeHtml(perk)}">${escapeHtml(getLeaderboardPerkIcon(perk))}</span>`,
+      (perk) => {
+        const rarity = getBuildEntryRarity(perk);
+        return `<span class="menu-perk menu-perk--${rarity}" title="${escapeHtml(perk)}">${escapeHtml(getLeaderboardPerkIcon(perk))}</span>`;
+      },
     )
     .join("");
+}
+
+function getBuildEntryRarity(entry) {
+  const text = String(entry || "").toLowerCase();
+  if (text.includes("eclipse") || text.includes("profano") || text.includes("dilúvio") || text.includes("diluvio")) {
+    return "legendary";
+  }
+
+  for (const upgrade of upgradeDefinitions) {
+    if (text.includes(upgrade.label.toLowerCase().replace(/^\+/, "").trim())) {
+      return normalizeRarity(upgrade.rarity);
+    }
+  }
+
+  return "common";
 }
 
 function getLeaderboardPerkIcon(perk) {
   const text = String(perk || "").toLowerCase();
 
+  if (text.includes("eclipse")) return "🌘";
+  if (text.includes("profano")) return "🟠";
+  if (text.includes("dilúvio") || text.includes("diluvio")) return "🌈";
+  if (text.includes("ímã") || text.includes("ima")) return "🧲";
+  if (text.includes("ferro")) return "🛡";
+  if (text.includes("eco")) return "🌘";
+  if (text.includes("olho")) return "👁";
+  if (text.includes("ritual")) return "🔯";
+  if (text.includes("cinzas")) return "🫀";
+  if (text.includes("prism")) return "🌈";
+  if (text.includes("lua")) return "🌙";
+  if (text.includes("fôlego") || text.includes("folego")) return "♻";
+  if (text.includes("pacto")) return "👹";
   if (text.includes("lâmina") || text.includes("lamina")) return "🗡";
   if (text.includes("orbe")) return "🟣";
   if (text.includes("chuva")) return "☄";

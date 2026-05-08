@@ -417,6 +417,36 @@ button {
   text-align: left;
 }
 
+.upgrade-card--common {
+  border-color: rgba(116, 209, 255, 0.28);
+}
+
+.upgrade-card--rare {
+  border-color: rgba(255, 216, 74, 0.74);
+  background:
+    linear-gradient(145deg, rgba(255, 216, 74, 0.22), rgba(255, 216, 74, 0.06)),
+    rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 216, 74, 0.18);
+}
+
+.upgrade-card--epic {
+  border-color: rgba(255, 138, 42, 0.82);
+  background:
+    linear-gradient(145deg, rgba(255, 138, 42, 0.25), rgba(217, 120, 255, 0.09)),
+    rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 24px rgba(255, 138, 42, 0.12), inset 0 1px 0 rgba(255, 138, 42, 0.2);
+}
+
+.upgrade-card--legendary {
+  border-color: rgba(255, 215, 106, 0.96);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.24), transparent 28%),
+    linear-gradient(145deg, rgba(255, 215, 106, 0.32), rgba(255, 138, 42, 0.14)),
+    rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 30px rgba(255, 215, 106, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  animation: legendary-card-shimmer 1.7s ease-in-out infinite;
+}
+
 .upgrade-card:hover,
 .upgrade-card:focus-visible {
   border-color: var(--acid);
@@ -443,12 +473,49 @@ button {
   font-size: 0.98rem;
 }
 
+.upgrade-card--rare strong,
+.upgrade-card--rare .upgrade-card__rarity {
+  color: #ffd84a;
+}
+
+.upgrade-card--epic strong,
+.upgrade-card--epic .upgrade-card__rarity {
+  color: #ff8a2a;
+}
+
+.upgrade-card--legendary strong,
+.upgrade-card--legendary .upgrade-card__rarity {
+  color: #ffd76a;
+  text-shadow: 0 0 12px rgba(255, 215, 106, 0.5);
+}
+
 .upgrade-card span {
   display: block;
   margin-top: 8px;
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.upgrade-card__rarity {
+  float: right;
+  margin-top: 3px;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+@keyframes legendary-card-shimmer {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: translateY(0);
+  }
+
+  50% {
+    filter: brightness(1.18);
+    transform: translateY(-1px);
+  }
 }
 
 .message {
@@ -843,6 +910,25 @@ body:has(.message:not(.is-hidden)) .touch-controls {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 8px 16px rgba(0, 0, 0, 0.18);
+}
+
+.menu-perk--rare {
+  border-color: rgba(255, 216, 74, 0.78);
+  color: #ffd84a;
+  box-shadow: 0 0 18px rgba(255, 216, 74, 0.18), inset 0 1px 0 rgba(255, 216, 74, 0.18);
+}
+
+.menu-perk--epic {
+  border-color: rgba(255, 138, 42, 0.82);
+  color: #ff8a2a;
+  box-shadow: 0 0 18px rgba(255, 138, 42, 0.2), inset 0 1px 0 rgba(255, 138, 42, 0.2);
+}
+
+.menu-perk--legendary {
+  border-color: rgba(255, 215, 106, 0.96);
+  color: #ffd76a;
+  animation: legendary-card-shimmer 1.7s ease-in-out infinite;
+  box-shadow: 0 0 22px rgba(255, 215, 106, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .menu-perk--empty {
