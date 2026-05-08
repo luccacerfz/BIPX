@@ -138,6 +138,7 @@ try {
   assert(initial.state === "playing", "game did not enter playing state");
   assert(initial.wave >= 1, "wave did not start");
   assert(initial.zombies >= 1, "zombies did not spawn");
+  assert(initial.powerups === 0, "weapon powerups spawned without kills");
   assert(moved.player.z < initial.player.z - 0.1, "keyboard movement did not change player position");
   assert(fired.bullets >= 1, "shooting did not create bullets");
   assert(initial.autoWeapons.guardianBlade === 1, "guardian blade did not start unlocked");
@@ -157,6 +158,10 @@ try {
   assert(afterCrossbow.score > beforeCrossbow.score, "crossbow did not defeat a runner");
   assert(beforeTalisman.weapon === "talisman", "talisman did not equip");
   assert(afterTalisman.score > beforeTalisman.score, "talisman blast did not defeat a runner");
+  assert(
+    afterTalisman.powerupDetails.some((powerup) => powerup.hasLabel && powerup.label.startsWith("1 ")),
+    "kill weapon drop did not create a labeled pickup",
+  );
   assert(monsterState.monsters.brute >= 1, "brute monster did not spawn");
   assert(monsterState.monsters.caster >= 1, "caster monster did not spawn");
   assert(casterState.enemyProjectiles >= 1 || casterState.health < monsterState.health, "caster did not attack");

@@ -32,7 +32,7 @@ const baseConfig = {
   quality: {
     highPixelRatio: 2,
     mediumPixelRatio: 1.6,
-    lowPixelRatio: 1,
+    lowPixelRatio: 0.85,
     mobileHighPixelRatio: 1.75,
     mobileMediumPixelRatio: 1.45,
     mobileLowPixelRatio: 1,

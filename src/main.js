@@ -50,6 +50,7 @@ const multiplayerEntryUrl = `https://bipx.vercel.app/?ws=${multiplayerServerOrig
 const requestedQuality = sanitizeQuality(queryParams.get("quality"));
 const perfOverlayEnabled = queryParams.get("perf") === "1";
 const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
+let runtimeReady = false;
 
 setViewportCssVars();
 applyMobileLayoutState();
@@ -68,8 +69,14 @@ const perfStats = {
   dt: 0,
   frameMs: 0,
   updateMs: 0,
+  logicMs: 0,
   renderMs: 0,
   fpsAverage: 60,
+  visibleDetailedZombies: 0,
+  instancedZombies: 0,
+  labelUpdates: 0,
+  gridQueries: 0,
+  objectAllocWarnings: 0,
   skippedEffects: 0,
   poolExpansions: {},
 };
@@ -109,11 +116,14 @@ const groundPlane = new THREE.Plane(upVector, 0);
 const pointer = new THREE.Vector2(0, 0);
 const pointerWorld = new THREE.Vector3(0, 0, -1);
 const worldLimit = 55;
-const maxActiveZombies = 90;
+const maxActiveZombies = 160;
 const spatialGridCellSize = 8;
 const tempVectorA = new THREE.Vector3();
 const tempVectorB = new THREE.Vector3();
 const tempVectorC = new THREE.Vector3();
+const tempQuaternion = new THREE.Quaternion();
+const tempMatrix = new THREE.Matrix4();
+const tempScale = new THREE.Vector3(1, 1, 1);
 
 const assetCache = {
   geometries: new Map(),
@@ -124,15 +134,31 @@ const spatialGrid = {
   cells: new Map(),
   dirty: true,
   candidates: [],
+  bulletCandidates: [],
+  closestCandidates: [],
+  coneCandidates: [],
+  pointCandidates: [],
+  pointCandidatesNested: [],
+  radiusCandidates: [],
+  pointQueryActive: false,
 };
 
 const weapons = {
   pistol: { label: "Pistola", duration: 0 },
-  flamethrower: { label: "Lanca", duration: 10, color: 0xff7a28 },
+  flamethrower: { label: "Lança-chamas", duration: 10, color: 0xff7a28 },
   axe: { label: "Machado", duration: 8, color: 0x7fd7ff },
   katana: { label: "Katana", duration: 10, color: 0x8ffcff },
   crossbow: { label: "Besta", duration: 11, color: 0xffd36d },
   talisman: { label: "Selo", duration: 9, color: 0xd978ff },
+};
+
+const weaponDropTypes = ["flamethrower", "axe", "katana", "crossbow", "talisman"];
+const bossWeaponDrops = {
+  visor: "talisman",
+  himetrica: "katana",
+  dinzo: "axe",
+  gitcity: "crossbow",
+  sofra: "flamethrower",
 };
 
 const hudWeaponIcons = {
@@ -251,6 +277,14 @@ const monsterProfiles = {
   },
 };
 
+const commonMonsterTypes = new Set(["zombie", "runner", "brute", "caster"]);
+const commonMonsterPalettes = {
+  zombie: { skin: 0x76a64f, cloth: 0x5d3b3b, eye: 0xff514d },
+  runner: { skin: 0x8ad05d, cloth: 0x273545, eye: 0x87f7ff },
+  brute: { skin: 0x8c6c4c, cloth: 0x493028, eye: 0xff9538 },
+  caster: { skin: 0x6f58a8, cloth: 0x272039, eye: 0xd978ff },
+};
+
 const autoWeaponProfiles = {
   guardianBlade: {
     label: "Lâmina Guardiã",
@@ -337,6 +371,7 @@ const xpGems = [];
 const effects = [];
 const graveProps = [];
 const remotePlayers = new Map();
+const livingPlayerTargets = [];
 const entityPools = {
   zombies: new Map(),
   bullets: [],
@@ -344,6 +379,22 @@ const entityPools = {
   xpGems: [],
   effects: new Map(),
   prewarmed: false,
+};
+const monsterRenderer = {
+  frame: 0,
+  lodInterval: 5,
+  instanced: new Map(),
+  temporaryObjects: [],
+};
+const xpGemRenderer = {
+  capacity: 240,
+  count: 0,
+  mesh: null,
+};
+const enemyProjectileRenderer = {
+  capacity: 140,
+  count: 0,
+  mesh: null,
 };
 let nextZombieId = 1;
 
@@ -401,7 +452,8 @@ const game = {
   nextWaveDelay: 0,
   spawnTimer: 0,
   zombiesToSpawn: 0,
-  powerupTimer: 0,
+  weaponDropCounter: 0,
+  weaponDropIndex: 0,
   survivalTime: 0,
   hudTimer: 0,
   leaderboardSubmitted: false,
@@ -417,6 +469,7 @@ const game = {
   touchAimPointerId: null,
 };
 
+runtimeReady = true;
 scene.add(player.mesh);
 buildWorld();
 if (playerNameInput) {
@@ -567,6 +620,12 @@ window.__zombieNightDebug = {
       bullets: bullets.length,
       enemyProjectiles: enemyProjectiles.length,
       powerups: powerups.length,
+      powerupDetails: powerups.map((powerup) => ({
+        type: powerup.type,
+        label: getPowerupDropLabel(powerup.type),
+        hasLabel: Boolean(powerup.labelSprite),
+        source: powerup.source,
+      })),
       monsters: zombies.reduce((counts, zombie) => {
         counts[zombie.type] = (counts[zombie.type] ?? 0) + 1;
         return counts;
@@ -619,6 +678,7 @@ window.__zombieNightDebug = {
     };
   },
   getPerfStats: getPerfStats,
+  getRenderIntegrity: getMonsterRenderIntegrity,
   start: startGame,
   equipWeapon: activateWeapon,
   grantXp(amount) {
@@ -640,6 +700,9 @@ window.__zombieNightDebug = {
   spawnPowerup(type = "flamethrower") {
     spawnPowerup(type, player.position.x + 2.4, player.position.z);
   },
+  spawnWeaponDrop(type = "flamethrower") {
+    spawnWeaponDrop(player.position.clone().addScaledVector(player.aimDirection, 2.4), type, "debug");
+  },
   stressLevel6(count = 90) {
     player.level = Math.max(player.level, 6);
     player.bestLevel = Math.max(player.bestLevel, player.level);
@@ -655,6 +718,69 @@ window.__zombieNightDebug = {
       spawnZombie(player.position.x + Math.cos(angle) * distance, player.position.z + Math.sin(angle) * distance, type);
     }
     rebuildSpatialGrid();
+    updateHud(true);
+  },
+  stressLevel16(count = 130) {
+    clearEntities();
+    player.level = Math.max(player.level, 16);
+    player.bestLevel = Math.max(player.bestLevel, player.level);
+    player.wave = Math.max(player.wave, 16);
+    player.xp = Math.min(player.xp, player.xpToNext - 1);
+    player.upgradeStats = {
+      damageMultiplier: 1.72,
+      cooldownMultiplier: 0.68,
+      areaMultiplier: 1.48,
+      speedMultiplier: 1.2,
+      pickupRadius: 6.4,
+      projectileBonus: 2,
+    };
+    player.upgradeStacks = {
+      damage: 4,
+      cadence: 3,
+      area: 3,
+      speed: 2,
+      pickup: 3,
+      projectile: 2,
+      autoWeapon: 2,
+    };
+    player.autoWeapons.guardianBlade.level = 1;
+    player.autoWeapons.orbitOrb.level = 1;
+    player.autoWeapons.sealRain.level = 1;
+    player.pendingLevelUps = 0;
+    player.pendingUpgradeChoices = [];
+    game.survivalTime = Math.max(game.survivalTime, 360);
+    game.zombiesToSpawn = 0;
+    renderUpgradeChoices();
+
+    const total = Math.max(0, Math.floor(Number(count) || 0));
+    const types = ["zombie", "runner", "brute", "caster"];
+    for (let index = 0; index < total; index += 1) {
+      const angle = (index / Math.max(total, 1)) * Math.PI * 2;
+      const distance = 9 + (index % 26) * 1.05;
+      const type = types[index % types.length];
+      spawnZombie(player.position.x + Math.cos(angle) * distance, player.position.z + Math.sin(angle) * distance, type);
+    }
+
+    const bossRing = [
+      ["visor", 17, -8],
+      ["gitcity", -16, 15],
+    ];
+    for (const [type, x, z] of bossRing) {
+      spawnZombie(player.position.x + x, player.position.z + z, type);
+    }
+
+    for (let index = 0; index < 72; index += 1) {
+      const angle = (index / 72) * Math.PI * 2;
+      const distance = 4 + (index % 12) * 1.4;
+      spawnXpGem(
+        tempVectorA.set(player.position.x + Math.cos(angle) * distance, 0, player.position.z + Math.sin(angle) * distance),
+        5 + (index % 4),
+      );
+    }
+
+    rebuildSpatialGrid();
+    assignMonsterRenderModes();
+    syncMonsterRenderer();
     updateHud(true);
   },
 };
@@ -765,7 +891,8 @@ function startGame() {
   game.nextWaveDelay = 0;
   game.spawnTimer = 0;
   game.zombiesToSpawn = 0;
-  game.powerupTimer = 2.5;
+  game.weaponDropCounter = 0;
+  game.weaponDropIndex = 0;
   game.survivalTime = 0;
   game.hudTimer = 0;
   game.leaderboardSubmitted = false;
@@ -850,7 +977,7 @@ function renderPerfOverlay() {
   }
 
   const stats = getPerfStats();
-  perfOverlay.textContent = `FPS ${stats.fpsAverage} · ${stats.quality}/${stats.qualityMode}\nU ${stats.updateMs}ms R ${stats.renderMs}ms · DC ${stats.drawCalls}\nZ ${stats.entities.zombies} B ${stats.entities.bullets} XP ${stats.entities.xpGems} FX ${stats.entities.effects}`;
+  perfOverlay.textContent = `FPS ${stats.fpsAverage} · ${stats.quality}/${stats.qualityMode}\nU ${stats.updateMs}ms R ${stats.renderMs}ms · DC ${stats.drawCalls}\nZ ${stats.entities.zombies} D ${stats.visibleDetailedZombies} I ${stats.instancedZombies}\nB ${stats.entities.bullets} XP ${stats.entities.xpGems} FX ${stats.entities.effects}`;
 }
 
 function getDefaultQualityLevel() {
@@ -961,6 +1088,9 @@ function applyQualitySettings(force = false) {
       : qualityManager.level === "medium"
         ? getGameConfig("quality.effectBudget.medium")
         : getGameConfig("quality.effectBudget.low");
+  if (isLateGamePerformanceMode()) {
+    qualityManager.effectBudget = Math.min(qualityManager.effectBudget, mobileTuned ? 16 : 24);
+  }
 
   if (force || Math.abs(pixelRatio - qualityManager.pixelRatio) > 0.01) {
     qualityManager.pixelRatio = pixelRatio;
@@ -973,6 +1103,14 @@ function applyQualitySettings(force = false) {
 
 function updateQualityManager(dt) {
   if (qualityManager.mode !== "auto") {
+    return;
+  }
+
+  if (isLateGamePerformanceMode() && qualityManager.level !== "low") {
+    qualityManager.level = "low";
+    qualityManager.fpsLowTimer = 0;
+    qualityManager.fpsHighTimer = 0;
+    applyQualitySettings();
     return;
   }
 
@@ -1039,10 +1177,10 @@ function prewarmEntityPools() {
   }
 
   const zombieWarmup = [
-    ["zombie", 34],
-    ["runner", 22],
-    ["brute", 18],
-    ["caster", 16],
+    ["zombie", 56],
+    ["runner", 40],
+    ["brute", 34],
+    ["caster", 30],
   ];
 
   for (const [type, count] of zombieWarmup) {
@@ -1051,15 +1189,15 @@ function prewarmEntityPools() {
     }
   }
 
-  for (let index = 0; index < 40; index += 1) {
+  for (let index = 0; index < 80; index += 1) {
     releaseProjectileMesh(createPooledProjectileMesh(), entityPools.bullets);
   }
 
-  for (let index = 0; index < 28; index += 1) {
+  for (let index = 0; index < 56; index += 1) {
     releaseProjectileMesh(createPooledProjectileMesh(), entityPools.enemyProjectiles);
   }
 
-  for (let index = 0; index < 120; index += 1) {
+  for (let index = 0; index < 180; index += 1) {
     releaseXpGemMesh(createPooledXpGemMesh());
   }
 
@@ -1119,16 +1257,54 @@ function buildWorld() {
   scene.add(grid);
 
   const fenceMaterial = new THREE.MeshStandardMaterial({ color: 0x403423, roughness: 0.88 });
+  const fence = new THREE.InstancedMesh(
+    getSharedGeometry("world-fence-post", () => new THREE.BoxGeometry(0.42, 1.8, 0.42)),
+    fenceMaterial,
+    72,
+  );
+  fence.castShadow = true;
+  fence.receiveShadow = true;
+  let fenceInstance = 0;
   for (let index = 0; index < 18; index += 1) {
-    addFencePost(index * 6.5 - 55, -58, fenceMaterial);
-    addFencePost(index * 6.5 - 55, 58, fenceMaterial);
-    addFencePost(-58, index * 6.5 - 55, fenceMaterial);
-    addFencePost(58, index * 6.5 - 55, fenceMaterial);
+    setStaticInstance(fence, fenceInstance, index * 6.5 - 55, 0.9, -58, 0);
+    fenceInstance += 1;
+    setStaticInstance(fence, fenceInstance, index * 6.5 - 55, 0.9, 58, 0);
+    fenceInstance += 1;
+    setStaticInstance(fence, fenceInstance, -58, 0.9, index * 6.5 - 55, 0);
+    fenceInstance += 1;
+    setStaticInstance(fence, fenceInstance, 58, 0.9, index * 6.5 - 55, 0);
+    fenceInstance += 1;
   }
+  fence.count = fenceInstance;
+  fence.instanceMatrix.needsUpdate = true;
+  scene.add(fence);
 
   const graveMaterial = new THREE.MeshStandardMaterial({ color: 0xa0aa9b, roughness: 0.84 });
   const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x496b42, roughness: 0.88 });
   const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6a4930, roughness: 0.88 });
+  const graves = new THREE.InstancedMesh(
+    getSharedGeometry("world-grave", () => new THREE.BoxGeometry(1.2, 1.8, 0.28)),
+    graveMaterial,
+    52,
+  );
+  const trunks = new THREE.InstancedMesh(
+    getSharedGeometry("world-tree-trunk", () => new THREE.CylinderGeometry(0.28, 0.38, 2.4, 7)),
+    trunkMaterial,
+    14,
+  );
+  const crowns = new THREE.InstancedMesh(
+    getSharedGeometry("world-tree-crown", () => new THREE.ConeGeometry(1.55, 3.1, 8)),
+    treeMaterial,
+    14,
+  );
+  graves.castShadow = true;
+  graves.receiveShadow = true;
+  trunks.castShadow = true;
+  trunks.receiveShadow = true;
+  crowns.castShadow = true;
+  crowns.receiveShadow = true;
+  let graveInstance = 0;
+  let treeInstance = 0;
 
   for (let index = 0; index < 52; index += 1) {
     const angle = index * 2.38;
@@ -1141,21 +1317,23 @@ function buildWorld() {
     }
 
     if (index % 5 === 0) {
-      const tree = createTree(treeMaterial, trunkMaterial);
-      tree.position.set(x, 0, z);
-      tree.rotation.y = angle;
-      scene.add(tree);
-      graveProps.push(tree);
+      setStaticInstance(trunks, treeInstance, x, 1.2, z, angle);
+      setStaticInstance(crowns, treeInstance, x, 3.2, z, angle);
+      treeInstance += 1;
     } else {
-      const grave = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.28), graveMaterial);
-      grave.position.set(x, 0.9, z);
-      grave.rotation.y = angle + Math.PI * 0.5;
-      grave.castShadow = true;
-      grave.receiveShadow = true;
-      scene.add(grave);
-      graveProps.push(grave);
+      setStaticInstance(graves, graveInstance, x, 0.9, z, angle + Math.PI * 0.5);
+      graveInstance += 1;
     }
   }
+  graves.count = graveInstance;
+  trunks.count = treeInstance;
+  crowns.count = treeInstance;
+  graves.instanceMatrix.needsUpdate = true;
+  trunks.instanceMatrix.needsUpdate = true;
+  crowns.instanceMatrix.needsUpdate = true;
+  scene.add(graves);
+  scene.add(trunks);
+  scene.add(crowns);
 
   const reticle = new THREE.Mesh(
     new THREE.TorusGeometry(0.65, 0.035, 8, 42),
@@ -1165,6 +1343,12 @@ function buildWorld() {
   reticle.rotation.x = Math.PI * 0.5;
   reticle.position.set(0, 0.06, -6);
   scene.add(reticle);
+}
+
+function setStaticInstance(mesh, index, x, y, z, rotationY) {
+  tempQuaternion.setFromAxisAngle(upVector, rotationY);
+  tempMatrix.compose(tempVectorA.set(x, y, z), tempQuaternion, tempScale);
+  mesh.setMatrixAt(index, tempMatrix);
 }
 
 function addFencePost(x, z, material) {
@@ -1388,13 +1572,7 @@ function createZombieMesh(type = "zombie") {
 
   const group = new THREE.Group();
   group.userData.lodState = "detail";
-  const palettes = {
-    zombie: { skin: 0x76a64f, cloth: 0x5d3b3b, eye: 0xff514d },
-    runner: { skin: 0x8ad05d, cloth: 0x273545, eye: 0x87f7ff },
-    brute: { skin: 0x8c6c4c, cloth: 0x493028, eye: 0xff9538 },
-    caster: { skin: 0x6f58a8, cloth: 0x272039, eye: 0xd978ff },
-  };
-  const palette = palettes[type] ?? palettes.zombie;
+  const palette = commonMonsterPalettes[type] ?? commonMonsterPalettes.zombie;
   const skin = new THREE.MeshStandardMaterial({ color: palette.skin, roughness: 0.82 });
   const shirt = new THREE.MeshStandardMaterial({ color: palette.cloth, roughness: 0.86 });
   const eye = new THREE.MeshStandardMaterial({
@@ -1482,14 +1660,16 @@ function createZombieMesh(type = "zombie") {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), eye);
     orb.position.set(0.86, 1.9, -0.16);
     group.add(orb);
-
-    const light = new THREE.PointLight(palette.eye, 1.2, 6);
-    light.position.copy(orb.position);
-    group.add(light);
   }
 
   attachZombieLodProxy(group, type, palette, bodyRadius, bodyHeight);
   return group;
+}
+
+function getCommonMonsterBodySpec(type) {
+  const bodyRadius = type === "runner" ? 0.44 : type === "brute" ? 0.9 : 0.62;
+  const bodyHeight = type === "brute" ? 1.72 : type === "runner" ? 1.32 : 1.45;
+  return { bodyRadius, bodyHeight };
 }
 
 function attachZombieLodProxy(group, type, palette, bodyRadius, bodyHeight) {
@@ -1524,6 +1704,271 @@ function getZombieProxyMaterial(type, palette) {
   }
 
   return assetCache.materials.get(key);
+}
+
+function isCommonMonsterType(type) {
+  return commonMonsterTypes.has(type);
+}
+
+function getCommonMonsterProxyYOffset(type) {
+  return type === "brute" ? 1.15 : 1;
+}
+
+function getInstancedMonsterBucket(type) {
+  if (monsterRenderer.instanced.has(type)) {
+    return monsterRenderer.instanced.get(type);
+  }
+
+  const { bodyRadius, bodyHeight } = getCommonMonsterBodySpec(type);
+  const palette = commonMonsterPalettes[type] ?? commonMonsterPalettes.zombie;
+  const mesh = new THREE.InstancedMesh(
+    getSharedGeometry(`zombie-instance-${type}`, () =>
+      new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
+    ),
+    getZombieProxyMaterial(type, palette),
+    220,
+  );
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.frustumCulled = false;
+  mesh.count = 0;
+  scene.add(mesh);
+
+  const bucket = { capacity: 220, count: 0, mesh };
+  monsterRenderer.instanced.set(type, bucket);
+  return bucket;
+}
+
+function resetInstancedMonsterBuckets() {
+  for (const bucket of monsterRenderer.instanced.values()) {
+    bucket.count = 0;
+    bucket.mesh.count = 0;
+  }
+}
+
+function syncMonsterRenderer() {
+  monsterRenderer.frame += 1;
+  const shouldRefreshModes = monsterRenderer.frame % getMonsterLodInterval() === 0;
+  perfStats.visibleDetailedZombies = 0;
+  perfStats.instancedZombies = 0;
+  resetInstancedMonsterBuckets();
+
+  if (shouldRefreshModes) {
+    assignMonsterRenderModes();
+  }
+
+  for (const zombie of zombies) {
+    zombie.renderedAsInstance = false;
+
+    if (!isCommonMonsterType(zombie.type)) {
+      zombie.mesh.visible = true;
+      zombie.renderVisibleFrame = monsterRenderer.frame;
+      continue;
+    }
+
+    const mode = zombie.renderMode || "detail";
+    if (mode === "instanced") {
+      zombie.mesh.visible = false;
+      if (addInstancedMonster(zombie)) {
+        continue;
+      }
+
+      zombie.mesh.visible = true;
+      zombie.renderMode = "proxy";
+      setZombieLod(zombie.mesh, true);
+      updateZombieShadow(zombie, "proxy");
+      zombie.renderVisibleFrame = monsterRenderer.frame;
+      continue;
+    }
+
+    zombie.mesh.visible = true;
+    setZombieLod(zombie.mesh, mode === "proxy");
+    updateZombieShadow(zombie, mode);
+    zombie.renderVisibleFrame = monsterRenderer.frame;
+    if (mode === "detail") {
+      perfStats.visibleDetailedZombies += 1;
+    }
+  }
+
+  for (const bucket of monsterRenderer.instanced.values()) {
+    bucket.mesh.count = bucket.count;
+    bucket.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+function getMonsterLodInterval() {
+  if (isLateGamePerformanceMode()) {
+    return usesMobileTuning() ? 7 : 5;
+  }
+
+  return usesMobileTuning() ? 6 : 4;
+}
+
+function assignMonsterRenderModes() {
+  const budget = getMonsterLodBudget();
+  const common = monsterRenderer.temporaryObjects;
+  common.length = 0;
+  refreshLivingPlayerTargets();
+
+  for (const zombie of zombies) {
+    if (!isCommonMonsterType(zombie.type)) {
+      continue;
+    }
+
+    zombie.lodDistanceSq = distanceXZSquared(player.position, zombie.mesh.position);
+    zombie.threatDistanceSq = getClosestLivingTargetDistanceSq(zombie.mesh.position);
+    common.push(zombie);
+  }
+
+  common.sort((first, second) => first.lodDistanceSq - second.lodDistanceSq);
+  let detailed = 0;
+  let proxy = 0;
+
+  for (const zombie of common) {
+    if (zombie.threatDistanceSq <= budget.closeThreatDistanceSq) {
+      if (detailed < budget.detailCount) {
+        zombie.renderMode = "detail";
+        detailed += 1;
+      } else {
+        zombie.renderMode = "proxy";
+        proxy += 1;
+      }
+    } else if (zombie.lodDistanceSq <= budget.detailDistanceSq && detailed < budget.detailCount) {
+      zombie.renderMode = "detail";
+      detailed += 1;
+    } else if (zombie.lodDistanceSq <= budget.proxyDistanceSq && proxy < budget.proxyCount) {
+      zombie.renderMode = "proxy";
+      proxy += 1;
+    } else {
+      zombie.renderMode = "instanced";
+    }
+  }
+}
+
+function getMonsterLodBudget() {
+  const mobile = usesMobileTuning();
+
+  if (isLateGamePerformanceMode()) {
+    const detailDistance = mobile ? 4.8 : 5.8;
+    const proxyDistance = mobile ? 8.6 : 10.5;
+    const closeThreatDistance = mobile ? 4.2 : 4.8;
+    return {
+      detailCount: 1,
+      proxyCount: 2,
+      detailDistanceSq: detailDistance * detailDistance,
+      proxyDistanceSq: proxyDistance * proxyDistance,
+      closeThreatDistanceSq: closeThreatDistance * closeThreatDistance,
+    };
+  }
+
+  const detailDistance = getZombieDetailDistance();
+  const proxyDistance = detailDistance * (zombies.length > 70 ? 1.25 : 1.6);
+  const closeThreatDistance = mobile ? 4.4 : 5;
+  return {
+    detailCount: mobile ? 12 : 18,
+    proxyCount: mobile ? 18 : 26,
+    detailDistanceSq: detailDistance * detailDistance,
+    proxyDistanceSq: proxyDistance * proxyDistance,
+    closeThreatDistanceSq: closeThreatDistance * closeThreatDistance,
+  };
+}
+
+function isLateGamePerformanceMode() {
+  if (!runtimeReady) {
+    return false;
+  }
+
+  return player.level >= 16 || zombies.length > 110;
+}
+
+function addInstancedMonster(zombie) {
+  const bucket = getInstancedMonsterBucket(zombie.type);
+  if (bucket.count >= bucket.capacity) {
+    perfStats.objectAllocWarnings += 1;
+    return false;
+  }
+
+  tempQuaternion.setFromAxisAngle(upVector, zombie.mesh.rotation.y);
+  tempVectorA.set(
+    zombie.mesh.position.x,
+    zombie.mesh.position.y + getCommonMonsterProxyYOffset(zombie.type),
+    zombie.mesh.position.z,
+  );
+  tempScale.set(1, 1, 1);
+  tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
+  bucket.mesh.setMatrixAt(bucket.count, tempMatrix);
+  bucket.count += 1;
+  zombie.renderedAsInstance = true;
+  zombie.renderVisibleFrame = monsterRenderer.frame;
+  perfStats.instancedZombies += 1;
+  return true;
+}
+
+function updateZombieShadow(zombie, mode) {
+  const shadowDistance = qualityManager.level === "high" ? 24 : qualityManager.level === "medium" ? 13 : 0;
+  const wantsShadow =
+    mode === "detail" && shadowDistance > 0 && distanceXZSquared(player.position, zombie.mesh.position) < shadowDistance * shadowDistance;
+
+  if (zombie.shadowEnabled === wantsShadow) {
+    return;
+  }
+
+  zombie.shadowEnabled = wantsShadow;
+  zombie.mesh.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = wantsShadow;
+      child.receiveShadow = wantsShadow && qualityManager.level === "high";
+    }
+  });
+}
+
+function getMonsterRenderIntegrity() {
+  refreshLivingPlayerTargets();
+
+  let invisibleZombies = 0;
+  let invisibleThreats = 0;
+  let closeInstancedThreats = 0;
+  let renderedAsMesh = 0;
+  let renderedAsInstance = 0;
+
+  for (const zombie of zombies) {
+    const meshVisible = zombie.mesh.visible === true;
+    const instanceVisible = isCommonMonsterType(zombie.type) && zombie.renderedAsInstance === true;
+    const threatDistanceSq = getClosestLivingTargetDistanceSq(zombie.mesh.position);
+    const closeThreatRadius = Math.max(1.25, (zombie.radius || 0.7) + 1.05);
+    const closeThreat = threatDistanceSq <= closeThreatRadius * closeThreatRadius;
+    const rangedThreat = canUseRangedAttack(zombie.type, Math.sqrt(threatDistanceSq));
+
+    if (meshVisible) {
+      renderedAsMesh += 1;
+    }
+
+    if (instanceVisible) {
+      renderedAsInstance += 1;
+    }
+
+    if (!meshVisible && !instanceVisible) {
+      invisibleZombies += 1;
+      if (closeThreat || rangedThreat) {
+        invisibleThreats += 1;
+      }
+    }
+
+    if (instanceVisible && closeThreat) {
+      closeInstancedThreats += 1;
+    }
+  }
+
+  return {
+    activeZombies: zombies.length,
+    renderedAsMesh,
+    renderedAsInstance,
+    invisibleZombies,
+    invisibleThreats,
+    closeInstancedThreats,
+    objectAllocWarnings: perfStats.objectAllocWarnings,
+  };
 }
 
 function createBossMesh(type) {
@@ -1614,10 +2059,6 @@ function createVisorMesh() {
     group.add(eye);
   }
 
-  const light = new THREE.PointLight(0x7edcff, 2.4, 10);
-  light.position.y = 2.3;
-  group.add(light);
-
   return group;
 }
 
@@ -1668,10 +2109,6 @@ function createHimetricaMesh() {
     segment.rotation.z = (index % 2 === 0 ? 0.6 : -0.6);
     group.add(segment);
   }
-
-  const light = new THREE.PointLight(0xff9d28, 2.8, 11);
-  light.position.y = 1.8;
-  group.add(light);
 
   return group;
 }
@@ -1770,10 +2207,6 @@ function createGitCityMesh() {
   );
   redLight.position.set(0, 4.24, 0);
   group.add(redLight);
-
-  const glow = new THREE.PointLight(0xf4d475, 1.4, 8);
-  glow.position.y = 2.0;
-  group.add(glow);
 
   return group;
 }
@@ -1893,10 +2326,6 @@ function createSofraMesh() {
     group.add(aura);
   }
 
-  const light = new THREE.PointLight(0x32b8ff, 4.2, 16);
-  light.position.y = 2.0;
-  group.add(light);
-
   return group;
 }
 
@@ -2007,6 +2436,63 @@ function createPowerupMesh(type) {
   return group;
 }
 
+function createPowerupLabelSprite(type) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 384;
+  canvas.height = 96;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  sprite.scale.set(3.9, 0.98, 1);
+  sprite.renderOrder = 24;
+  sprite.userData = {
+    canvas,
+    context: canvas.getContext("2d"),
+    texture,
+  };
+
+  drawPowerupLabel(sprite, type);
+  return sprite;
+}
+
+function drawPowerupLabel(sprite, type) {
+  const { canvas, context, texture } = sprite.userData;
+  const color = `#${(weapons[type]?.color ?? 0xffffff).toString(16).padStart(6, "0")}`;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "rgba(18, 10, 12, 0.62)";
+  context.fillRect(18, 22, 348, 52);
+  context.strokeStyle = "rgba(255, 255, 255, 0.42)";
+  context.lineWidth = 2;
+  context.strokeRect(18, 22, 348, 52);
+  context.fillStyle = color;
+  context.fillRect(22, 68, 340, 3);
+  context.shadowColor = "rgba(0, 0, 0, 0.82)";
+  context.shadowBlur = 6;
+  context.shadowOffsetY = 2;
+  context.fillStyle = "#fff5f3";
+  context.font = "900 30px Georgia, 'Times New Roman', serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(getPowerupDropLabel(type), 192, 48);
+  context.shadowBlur = 0;
+  context.shadowOffsetY = 0;
+  texture.needsUpdate = true;
+}
+
+function getPowerupDropLabel(type) {
+  return `1 ${weapons[type]?.label || "Arma"}`;
+}
+
 function getZombiePool(type) {
   if (!entityPools.zombies.has(type)) {
     entityPools.zombies.set(type, []);
@@ -2082,6 +2568,60 @@ function releaseProjectileMesh(mesh, pool) {
   pool.push(mesh);
 }
 
+function getEnemyProjectileInstanceMesh() {
+  if (enemyProjectileRenderer.mesh) {
+    return enemyProjectileRenderer.mesh;
+  }
+
+  const mesh = new THREE.InstancedMesh(
+    getSharedGeometry("enemy-projectile-instanced", () => new THREE.SphereGeometry(0.16, 8, 6)),
+    createPooledMaterial(0xd978ff),
+    enemyProjectileRenderer.capacity,
+  );
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.frustumCulled = false;
+  mesh.count = 0;
+  scene.add(mesh);
+  enemyProjectileRenderer.mesh = mesh;
+  return mesh;
+}
+
+function syncEnemyProjectileRenderer() {
+  const mesh = getEnemyProjectileInstanceMesh();
+  enemyProjectileRenderer.count = 0;
+
+  if (!isLateGamePerformanceMode()) {
+    mesh.count = 0;
+    for (const projectile of enemyProjectiles) {
+      projectile.mesh.visible = true;
+    }
+    return;
+  }
+
+  for (const projectile of enemyProjectiles) {
+    const useInstance = enemyProjectileRenderer.count < enemyProjectileRenderer.capacity;
+    projectile.mesh.visible = !useInstance;
+
+    if (!useInstance) {
+      continue;
+    }
+
+    const scale = projectile.mesh.scale.x;
+    tempQuaternion.identity();
+    tempVectorA.copy(projectile.mesh.position);
+    tempScale.set(scale, scale, scale);
+    tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
+    mesh.setMatrixAt(enemyProjectileRenderer.count, tempMatrix);
+    enemyProjectileRenderer.count += 1;
+  }
+
+  tempScale.set(1, 1, 1);
+  mesh.count = enemyProjectileRenderer.count;
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
 function createPooledXpGemMesh() {
   const geometry = getSharedGeometry("xp-gem-small", () => new THREE.OctahedronGeometry(0.24, 0));
   const mesh = new THREE.Mesh(geometry, createPooledMaterial(0x74d1ff));
@@ -2118,6 +2658,60 @@ function releaseXpGemMesh(mesh) {
   mesh.rotation.set(0, 0, 0);
   mesh.scale.set(1, 1, 1);
   entityPools.xpGems.push(mesh);
+}
+
+function getXpGemInstanceMesh() {
+  if (xpGemRenderer.mesh) {
+    return xpGemRenderer.mesh;
+  }
+
+  const mesh = new THREE.InstancedMesh(
+    getSharedGeometry("xp-gem-instanced", () => new THREE.OctahedronGeometry(0.24, 0)),
+    createPooledMaterial(0x74d1ff),
+    xpGemRenderer.capacity,
+  );
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.frustumCulled = false;
+  mesh.count = 0;
+  scene.add(mesh);
+  xpGemRenderer.mesh = mesh;
+  return mesh;
+}
+
+function syncXpGemRenderer() {
+  const mesh = getXpGemInstanceMesh();
+  xpGemRenderer.count = 0;
+
+  if (!isLateGamePerformanceMode()) {
+    mesh.count = 0;
+    for (const gem of xpGems) {
+      gem.mesh.visible = true;
+    }
+    return;
+  }
+
+  for (const gem of xpGems) {
+    const useInstance = xpGemRenderer.count < xpGemRenderer.capacity;
+    gem.mesh.visible = !useInstance;
+
+    if (!useInstance) {
+      continue;
+    }
+
+    const scale = gem.mesh.scale.x;
+    tempQuaternion.setFromAxisAngle(upVector, gem.mesh.rotation.y);
+    tempVectorA.set(gem.mesh.position.x, gem.mesh.position.y, gem.mesh.position.z);
+    tempScale.set(scale, scale, scale);
+    tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
+    mesh.setMatrixAt(xpGemRenderer.count, tempMatrix);
+    xpGemRenderer.count += 1;
+  }
+
+  tempScale.set(1, 1, 1);
+  mesh.count = xpGemRenderer.count;
+  mesh.instanceMatrix.needsUpdate = true;
 }
 
 function getEffectPool(type) {
@@ -2289,6 +2883,8 @@ function animate() {
   const frameStartedAt = performance.now();
   perfStats.dt = rawDt;
   perfStats.frameMs = rawDt * 1000;
+  perfStats.labelUpdates = 0;
+  perfStats.gridQueries = 0;
   const instantFps = rawDt > 0 ? 1 / rawDt : 60;
   perfStats.fpsAverage = perfStats.fpsAverage * 0.94 + instantFps * 0.06;
   updateQualityManager(rawDt);
@@ -2307,8 +2903,10 @@ function animate() {
     updateAutoWeapons(dt);
     updateUpgradeChoices(dt);
     updateSpawning(dt);
+    refreshLivingPlayerTargets();
     updateZombies(dt);
     rebuildSpatialGrid();
+    refreshLivingPlayerTargets();
     updateEnemyProjectiles(dt);
     updateBullets(dt);
     updateWaveFlow(dt);
@@ -2321,7 +2919,11 @@ function animate() {
   updateCamera(dt);
   updateEffects(dt);
   animateProps(clock.elapsedTime);
+  syncMonsterRenderer();
+  syncXpGemRenderer();
+  syncEnemyProjectileRenderer();
   perfStats.updateMs = performance.now() - updateStartedAt;
+  perfStats.logicMs = perfStats.updateMs;
   const renderStartedAt = performance.now();
   renderer.render(scene, camera);
   perfStats.renderMs = performance.now() - renderStartedAt;
@@ -2406,18 +3008,12 @@ function updatePlayer(dt) {
 }
 
 function updatePowerups(dt) {
-  game.powerupTimer -= dt;
-
-  if (game.powerupTimer <= 0 && powerups.length < 3) {
-    spawnPowerup(randomPowerupType());
-    game.powerupTimer = getPowerupInterval();
-  }
-
   for (let index = powerups.length - 1; index >= 0; index -= 1) {
     const powerup = powerups[index];
     powerup.age += dt;
     powerup.mesh.rotation.y += dt * 1.9;
     powerup.mesh.position.y = powerup.baseY + Math.sin(powerup.age * 4.4) * 0.16;
+    updatePowerupLabelPosition(powerup);
 
     if (distanceXZSquared(player.position, powerup.mesh.position) < powerup.radius * powerup.radius) {
       activateWeapon(powerup.type);
@@ -2428,6 +3024,11 @@ function updatePowerups(dt) {
 
 function spawnXpGem(position, value = 3) {
   const gemValue = Math.max(1, Math.floor(value));
+  if (xpGems.length >= getMaxVisibleXpGems()) {
+    mergeXpIntoExistingGem(position, gemValue);
+    return;
+  }
+
   const color = gemValue >= 25 ? 0xffd36d : gemValue >= 7 ? 0xd978ff : 0x74d1ff;
   const mesh = acquireXpGemMesh(color, gemValue);
   mesh.position.copy(position);
@@ -2443,15 +3044,46 @@ function spawnXpGem(position, value = 3) {
   });
 }
 
+function getMaxVisibleXpGems() {
+  return isLateGamePerformanceMode() ? 120 : 180;
+}
+
+function mergeXpIntoExistingGem(position, value) {
+  let target = xpGems[0];
+  let closestDistanceSq = target ? distanceXZSquared(position, target.mesh.position) : Infinity;
+
+  for (const gem of xpGems) {
+    const distanceSq = distanceXZSquared(position, gem.mesh.position);
+    if (distanceSq < closestDistanceSq) {
+      closestDistanceSq = distanceSq;
+      target = gem;
+    }
+  }
+
+  if (!target) {
+    return;
+  }
+
+  target.value += value;
+  target.radius = Math.min(1.25, target.radius + 0.025);
+  const color = target.value >= 25 ? 0xffd36d : target.value >= 7 ? 0xd978ff : 0x74d1ff;
+  target.mesh.material.color.setHex(color);
+  target.mesh.material.emissive.setHex(color);
+  target.mesh.scale.setScalar(Math.min(1.85, 1 + Math.log2(target.value + 1) * 0.12));
+}
+
 function updateXpGems(dt) {
   for (let index = xpGems.length - 1; index >= 0; index -= 1) {
     const gem = xpGems[index];
     gem.age += dt;
-    gem.mesh.rotation.y += dt * 3.1;
-    gem.mesh.rotation.x += dt * 1.7;
-    gem.mesh.position.y = gem.baseY + Math.sin(gem.age * 4.2) * 0.11;
-
     const distanceSq = distanceXZSquared(player.position, gem.mesh.position);
+    const farGem = isLateGamePerformanceMode() && distanceSq > 196;
+    if (!farGem) {
+      gem.mesh.rotation.y += dt * 3.1;
+      gem.mesh.rotation.x += dt * 1.7;
+      gem.mesh.position.y = gem.baseY + Math.sin(gem.age * 4.2) * 0.11;
+    }
+
     const pickupRadiusSq = player.upgradeStats.pickupRadius * player.upgradeStats.pickupRadius;
     if (distanceSq < pickupRadiusSq && distanceSq > 0.0064) {
       const distance = Math.sqrt(distanceSq);
@@ -2649,14 +3281,13 @@ function getAutoWeaponUnlockDescription() {
 }
 
 function spawnLevelPulse() {
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(2.8, 0.06, 8, 72),
-    new THREE.MeshBasicMaterial({ color: 0x8ef151, transparent: true, opacity: 0.82, depthWrite: false }),
-  );
+  const ring = acquireEffectMesh("pulse", createPooledPulseEffect);
   ring.rotation.x = Math.PI * 0.5;
   ring.position.copy(player.position);
   ring.position.y = 0.22;
-  addTimedEffect(ring, 0.55, true);
+  ring.scale.setScalar(2.8);
+  tintEffect(ring, 0x8ef151, 1.05);
+  addTimedEffect(ring, 0.55, true, "pulse");
 }
 
 function updateActiveWeapon(dt) {
@@ -2868,8 +3499,8 @@ function updateGuardianBlade(dt) {
   }
 
   weapon.cooldown = getPlayerCooldown(profile.cooldown);
-  const origin = player.position.clone();
-  const direction = target.zombie.mesh.position.clone().sub(origin);
+  const origin = tempVectorB.copy(player.position);
+  const direction = tempVectorC.subVectors(target.zombie.mesh.position, origin);
   direction.y = 0;
 
   if (direction.lengthSq() < 0.01) {
@@ -2878,7 +3509,7 @@ function updateGuardianBlade(dt) {
     direction.normalize();
   }
 
-  damageZombie(target.index, profile.damage * player.upgradeStats.damageMultiplier, true);
+  damageZombie(target.zombie, profile.damage * player.upgradeStats.damageMultiplier, true);
   spawnGuardianBladeEffect(origin, direction, profile.color);
   sendMultiplayerAttack("guardianBlade", origin, direction);
 }
@@ -2899,10 +3530,12 @@ function updateOrbitOrb(dt) {
 
   weapon.cooldown = getPlayerCooldown(profile.cooldown);
   const orbitRadius = profile.orbitRadius * Math.sqrt(player.upgradeStats.areaMultiplier);
-  const origin = player.position
-    .clone()
-    .add(new THREE.Vector3(Math.cos(weapon.angle) * orbitRadius, 0, Math.sin(weapon.angle) * orbitRadius));
-  const direction = origin.clone().sub(player.position).normalize();
+  const origin = tempVectorB.set(
+    player.position.x + Math.cos(weapon.angle) * orbitRadius,
+    0,
+    player.position.z + Math.sin(weapon.angle) * orbitRadius,
+  );
+  const direction = tempVectorC.subVectors(origin, player.position).normalize();
   const radius = profile.radius * player.upgradeStats.areaMultiplier;
   const damage = profile.damage * player.upgradeStats.damageMultiplier;
   damageZombiesAtPoint(origin, radius, damage, false);
@@ -2930,8 +3563,8 @@ function updateSealRain(dt) {
   }
 
   weapon.cooldown = getPlayerCooldown(profile.cooldown);
-  const origin = target.zombie.mesh.position.clone();
-  const direction = origin.clone().sub(player.position);
+  const origin = tempVectorB.copy(target.zombie.mesh.position);
+  const direction = tempVectorC.subVectors(origin, player.position);
   direction.y = 0;
 
   if (direction.lengthSq() < 0.01) {
@@ -2950,14 +3583,14 @@ function updateSealRain(dt) {
 function getClosestZombie(origin, maxRange = Infinity) {
   let closest = null;
   let closestDistanceSq = maxRange * maxRange;
-  const candidates = Number.isFinite(maxRange) ? queryZombiesNear(origin, maxRange) : zombies;
+  const candidates = Number.isFinite(maxRange) ? queryZombiesNear(origin, maxRange, spatialGrid.closestCandidates) : zombies;
 
   for (const zombie of candidates) {
     const distanceSq = distanceXZSquared(origin, zombie.mesh.position);
 
     if (distanceSq < closestDistanceSq) {
       closestDistanceSq = distanceSq;
-      closest = { zombie, index: getZombieIndex(zombie), distance: Math.sqrt(distanceSq) };
+      closest = { zombie, distanceSq };
     }
   }
 
@@ -2994,7 +3627,7 @@ function getPlayerCooldown(seconds) {
   return Math.max(0.045, seconds * player.upgradeStats.cooldownMultiplier);
 }
 
-function spawnPowerup(type = randomPowerupType(), x, z) {
+function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
   if (!weapons[type] || type === "pistol") {
     return;
   }
@@ -3002,17 +3635,79 @@ function spawnPowerup(type = randomPowerupType(), x, z) {
   const position =
     Number.isFinite(x) && Number.isFinite(z) ? new THREE.Vector3(x, 0, z) : getRandomPowerupPosition();
   const mesh = createPowerupMesh(type);
+  const labelSprite = createPowerupLabelSprite(type);
   mesh.position.set(position.x, 0.36, position.z);
   mesh.rotation.y = Math.random() * Math.PI * 2;
   scene.add(mesh);
+  scene.add(labelSprite);
 
-  powerups.push({
+  const powerup = {
     type,
     mesh,
+    labelSprite,
+    source: options.source || "kill",
     age: Math.random() * Math.PI,
     baseY: 0.36,
     radius: 1.45,
-  });
+  };
+  updatePowerupLabelPosition(powerup);
+  powerups.push(powerup);
+}
+
+function spawnWeaponDrop(position, type = getNextWeaponDropType(), source = "kill") {
+  if (powerups.length >= getMaxActiveWeaponDrops()) {
+    return false;
+  }
+
+  spawnPowerup(type, position.x, position.z, { source });
+  return true;
+}
+
+function maybeDropWeaponFromZombie(type, position) {
+  const profile = monsterProfiles[type] || {};
+
+  if (profile.boss) {
+    return spawnWeaponDrop(position, bossWeaponDrops[type] || getNextWeaponDropType(), type);
+  }
+
+  game.weaponDropCounter += type === "brute" || type === "caster" ? 2 : 1;
+  if (game.weaponDropCounter < getWeaponDropThreshold()) {
+    return false;
+  }
+
+  game.weaponDropCounter = 0;
+  return spawnWeaponDrop(position, getNextWeaponDropType(), type);
+}
+
+function getNextWeaponDropType() {
+  for (let attempt = 0; attempt < weaponDropTypes.length; attempt += 1) {
+    const index = (game.weaponDropIndex + attempt) % weaponDropTypes.length;
+    const type = weaponDropTypes[index];
+    if (type !== player.weapon) {
+      game.weaponDropIndex = (index + 1) % weaponDropTypes.length;
+      return type;
+    }
+  }
+
+  const type = weaponDropTypes[game.weaponDropIndex % weaponDropTypes.length];
+  game.weaponDropIndex = (game.weaponDropIndex + 1) % weaponDropTypes.length;
+  return type;
+}
+
+function getWeaponDropThreshold() {
+  return Math.max(3, 6 - Math.floor(player.wave / 5) - Math.floor(player.level / 8));
+}
+
+function getMaxActiveWeaponDrops() {
+  return usesMobileTuning() ? 4 : 5;
+}
+
+function updatePowerupLabelPosition(powerup) {
+  if (!powerup.labelSprite) {
+    return;
+  }
+
+  powerup.labelSprite.position.set(powerup.mesh.position.x, powerup.mesh.position.y + 1.18, powerup.mesh.position.z);
 }
 
 function activateWeapon(type) {
@@ -3039,11 +3734,6 @@ function resetWeapon() {
   player.axeSpinTimer = 0;
 }
 
-function randomPowerupType() {
-  const types = ["flamethrower", "axe", "katana", "crossbow", "talisman"];
-  return types[Math.floor(Math.random() * types.length)];
-}
-
 function getRandomPowerupPosition() {
   for (let attempt = 0; attempt < 14; attempt += 1) {
     const angle = Math.random() * Math.PI * 2;
@@ -3056,10 +3746,6 @@ function getRandomPowerupPosition() {
   }
 
   return new THREE.Vector3(12, 0, -10);
-}
-
-function getPowerupInterval() {
-  return Math.max(4.2, 10 - player.wave * 0.28 - game.survivalTime * 0.025) + Math.random() * 2.5;
 }
 
 function spawnFlameBurst() {
@@ -3168,6 +3854,7 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     attackCooldown: 0,
     damage: profile.damage,
     radius: profile.radius,
+    renderMode: "detail",
     score: profile.score,
     shadowEnabled: null,
     summonCooldown: type === "sofra" ? 1.8 : 0,
@@ -3217,8 +3904,10 @@ function updateBossLabel(sprite, health, force = false) {
   const { canvas, context, label, maxHealth, texture, type } = sprite.userData;
   const now = performance.now();
   const healthDelta = Math.abs(health - (sprite.userData.lastLabelHealth ?? maxHealth));
+  const labelInterval = usesMobileTuning() ? 110 : isLateGamePerformanceMode() ? 140 : 0;
+  const minHealthDelta = maxHealth * (isLateGamePerformanceMode() ? 0.055 : 0.035);
 
-  if (!force && usesMobileTuning() && now - (sprite.userData.lastLabelUpdate || 0) < 90 && healthDelta < maxHealth * 0.035) {
+  if (!force && labelInterval > 0 && now - (sprite.userData.lastLabelUpdate || 0) < labelInterval && healthDelta < minHealthDelta) {
     return;
   }
 
@@ -3251,6 +3940,7 @@ function updateBossLabel(sprite, health, force = false) {
   context.fillText(`VIDA ${Math.ceil(health)}/${Math.ceil(maxHealth)}`, 192, 105);
 
   texture.needsUpdate = true;
+  perfStats.labelUpdates += 1;
   sprite.userData.lastLabelHealth = health;
   sprite.userData.lastLabelUpdate = now;
 }
@@ -3364,7 +4054,6 @@ function updateZombies(dt) {
     toTarget.y = 0;
     const distance = toTarget.length();
     zombie.attackCooldown -= dt;
-    updateZombieLod(zombie);
     updateSofraSummons(zombie, dt);
 
     if (canUseRangedAttack(zombie.type, distance)) {
@@ -3491,13 +4180,17 @@ function setZombieLod(mesh, useProxy) {
 
 function getClosestPlayerTarget(position) {
   let closestTarget = null;
-  let closestDistance = Infinity;
+  let closestDistanceSq = Infinity;
 
-  for (const target of getLivingPlayerTargets()) {
-    const distance = distanceXZ(position, target.position);
+  if (livingPlayerTargets.length === 0) {
+    refreshLivingPlayerTargets();
+  }
 
-    if (distance < closestDistance) {
-      closestDistance = distance;
+  for (const target of livingPlayerTargets) {
+    const distanceSq = distanceXZSquared(position, target.position);
+
+    if (distanceSq < closestDistanceSq) {
+      closestDistanceSq = distanceSq;
       closestTarget = target;
     }
   }
@@ -3505,11 +4198,29 @@ function getClosestPlayerTarget(position) {
   return closestTarget;
 }
 
-function getLivingPlayerTargets() {
-  const targets = [];
+function getClosestLivingTargetDistanceSq(position) {
+  let closestDistanceSq = Infinity;
+
+  if (livingPlayerTargets.length === 0) {
+    refreshLivingPlayerTargets();
+  }
+
+  for (const target of livingPlayerTargets) {
+    closestDistanceSq = Math.min(closestDistanceSq, distanceXZSquared(position, target.position));
+  }
+
+  if (closestDistanceSq === Infinity) {
+    return distanceXZSquared(position, player.position);
+  }
+
+  return closestDistanceSq;
+}
+
+function refreshLivingPlayerTargets() {
+  livingPlayerTargets.length = 0;
 
   if (game.state === "playing" && player.health > 0) {
-    targets.push({
+    livingPlayerTargets.push({
       id: multiplayer.id || "local",
       isLocal: true,
       position: player.position,
@@ -3519,7 +4230,7 @@ function getLivingPlayerTargets() {
 
   for (const remotePlayer of remotePlayers.values()) {
     if (remotePlayer.state === "playing" && remotePlayer.health > 0) {
-      targets.push({
+      livingPlayerTargets.push({
         id: remotePlayer.id,
         isLocal: false,
         position: remotePlayer.mesh.position,
@@ -3529,12 +4240,17 @@ function getLivingPlayerTargets() {
     }
   }
 
-  return targets;
+  return livingPlayerTargets;
+}
+
+function getLivingPlayerTargets() {
+  return refreshLivingPlayerTargets();
 }
 
 function getProjectileHitTarget(projectile) {
-  for (const target of getLivingPlayerTargets()) {
-    if (distanceXZ(projectile.mesh.position, target.position) < projectile.radius + target.radius) {
+  for (const target of livingPlayerTargets) {
+    const hitRadius = projectile.radius + target.radius;
+    if (distanceXZSquared(projectile.mesh.position, target.position) < hitRadius * hitRadius) {
       return target;
     }
   }
@@ -3664,7 +4380,7 @@ function updateBullets(dt) {
     bullet.mesh.position.addScaledVector(bullet.velocity, dt);
 
     let hit = false;
-    const candidates = [...queryZombiesNear(bullet.mesh.position, bullet.radius + 2.1)];
+    const candidates = queryZombiesNear(bullet.mesh.position, bullet.radius + 2.1, spatialGrid.bulletCandidates);
     for (const zombie of candidates) {
       if (bullet.hitZombies.has(zombie.id)) {
         continue;
@@ -3675,8 +4391,7 @@ function updateBullets(dt) {
       if (distanceXZSquared(bullet.mesh.position, zombie.mesh.position) < hitRadius * hitRadius) {
         hit = true;
         bullet.hitZombies.add(zombie.id);
-        const zombieIndex = getZombieIndex(zombie);
-        damageZombie(zombieIndex, bullet.damage, true);
+        damageZombie(zombie, bullet.damage, true);
 
         if (bullet.explodeRadius > 0) {
           damageZombiesAtPoint(bullet.mesh.position, bullet.explodeRadius, bullet.explodeDamage || bullet.damage, false);
@@ -3717,7 +4432,7 @@ function damageZombiesInCone(range, minDot, amount, shouldFlash) {
 }
 
 function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shouldFlash, awardRewards = true) {
-  const candidates = [...queryZombiesNear(origin, range)];
+  const candidates = queryZombiesNear(origin, range, spatialGrid.coneCandidates);
   const rangeSq = range * range;
 
   for (const zombie of candidates) {
@@ -3731,8 +4446,7 @@ function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shoul
 
     const dot = tempVectorA.normalize().dot(direction);
     if (dot >= minDot) {
-      const index = getZombieIndex(zombie);
-      damageZombie(index, amount, shouldFlash, awardRewards);
+      damageZombie(zombie, amount, shouldFlash, awardRewards);
     }
   }
 }
@@ -3747,31 +4461,37 @@ function damageZombiesInRadius(radius, amount, shouldFlash) {
 }
 
 function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash, awardRewards = true) {
-  const candidates = [...queryZombiesNear(origin, radius)];
+  const candidates = queryZombiesNear(origin, radius, spatialGrid.radiusCandidates);
   const radiusSq = radius * radius;
 
   for (const zombie of candidates) {
     if (distanceXZSquared(origin, zombie.mesh.position) <= radiusSq) {
-      const index = getZombieIndex(zombie);
-      damageZombie(index, amount, shouldFlash, awardRewards);
+      damageZombie(zombie, amount, shouldFlash, awardRewards);
     }
   }
 }
 
 function damageZombiesAtPoint(position, radius, amount, shouldFlash, awardRewards = true) {
-  const candidates = [...queryZombiesNear(position, radius)];
+  const candidates = queryZombiesNear(
+    position,
+    radius,
+    spatialGrid.pointQueryActive ? spatialGrid.pointCandidatesNested : spatialGrid.pointCandidates,
+  );
   const radiusSq = radius * radius;
+  const wasPointQueryActive = spatialGrid.pointQueryActive;
+  spatialGrid.pointQueryActive = true;
 
   for (const zombie of candidates) {
     if (distanceXZSquared(position, zombie.mesh.position) <= radiusSq) {
-      const index = getZombieIndex(zombie);
-      damageZombie(index, amount, shouldFlash, awardRewards);
+      damageZombie(zombie, amount, shouldFlash, awardRewards);
     }
   }
+
+  spatialGrid.pointQueryActive = wasPointQueryActive;
 }
 
-function damageZombie(index, amount, shouldFlash, awardRewards = true) {
-  const zombie = zombies[index];
+function damageZombie(target, amount, shouldFlash, awardRewards = true) {
+  const zombie = typeof target === "number" ? zombies[target] : target;
 
   if (!zombie) {
     return false;
@@ -3791,7 +4511,7 @@ function damageZombie(index, amount, shouldFlash, awardRewards = true) {
     const xpPosition = zombie.mesh.position.clone();
     const xpValue = getXpValueForZombie(zombie.type);
     const shouldBurst = zombie.type === "sofra";
-    removeZombie(index);
+    removeZombieByRef(zombie);
     if (shouldBurst) {
       spawnSofraDeathBurst(xpPosition);
     }
@@ -3799,6 +4519,7 @@ function damageZombie(index, amount, shouldFlash, awardRewards = true) {
       spawnXpGem(xpPosition, xpValue);
       player.kills += 1;
       player.score += zombie.score;
+      maybeDropWeaponFromZombie(zombie.type, xpPosition);
     }
     return true;
   }
@@ -3848,7 +4569,16 @@ function addTimedEffect(mesh, duration, followPlayer = false, poolType = mesh.us
       material.userData.baseOpacity = material.opacity ?? 1;
     }
   });
-  effects.push({ mesh, duration, age: 0, followPlayer, poolType, baseScale: mesh.scale.clone() });
+  effects.push({
+    mesh,
+    duration,
+    age: 0,
+    followPlayer,
+    poolType,
+    baseScaleX: mesh.scale.x,
+    baseScaleY: mesh.scale.y,
+    baseScaleZ: mesh.scale.z,
+  });
 }
 
 function updateEffects(dt) {
@@ -3864,9 +4594,9 @@ function updateEffects(dt) {
 
     const scaleBoost = 1 + (1 - fade) * 0.32;
     effect.mesh.scale.set(
-      effect.baseScale.x * scaleBoost,
-      effect.baseScale.y * scaleBoost,
-      effect.baseScale.z * scaleBoost,
+      effect.baseScaleX * scaleBoost,
+      effect.baseScaleY * scaleBoost,
+      effect.baseScaleZ * scaleBoost,
     );
     effect.mesh.traverse((child) => {
       const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
@@ -3948,6 +4678,13 @@ function removeZombie(index) {
   spatialGrid.dirty = true;
 }
 
+function removeZombieByRef(zombie) {
+  const index = zombies.indexOf(zombie);
+  if (index >= 0) {
+    removeZombie(index);
+  }
+}
+
 function removeBullet(index) {
   const [bullet] = bullets.splice(index, 1);
   releaseProjectileMesh(bullet.mesh, entityPools.bullets);
@@ -3961,6 +4698,11 @@ function removeEnemyProjectile(index) {
 function removePowerup(index) {
   const [powerup] = powerups.splice(index, 1);
   scene.remove(powerup.mesh);
+  if (powerup.labelSprite) {
+    scene.remove(powerup.labelSprite);
+    powerup.labelSprite.material.map?.dispose();
+    powerup.labelSprite.material.dispose();
+  }
   disposeObject(powerup.mesh);
 }
 
@@ -3998,6 +4740,16 @@ function clearEntities() {
       scene.remove(effect.mesh);
       disposeObject(effect.mesh);
     }
+  }
+
+  resetInstancedMonsterBuckets();
+  if (xpGemRenderer.mesh) {
+    xpGemRenderer.count = 0;
+    xpGemRenderer.mesh.count = 0;
+  }
+  if (enemyProjectileRenderer.mesh) {
+    enemyProjectileRenderer.count = 0;
+    enemyProjectileRenderer.mesh.count = 0;
   }
 }
 
@@ -4437,10 +5189,17 @@ function getPerfStats() {
     mobileLayout: getMobileLayoutStats(),
     pixelRatio: Number(qualityManager.pixelRatio.toFixed(2)),
     updateMs: Number(perfStats.updateMs.toFixed(2)),
+    logicMs: Number(perfStats.logicMs.toFixed(2)),
     renderMs: Number(perfStats.renderMs.toFixed(2)),
     frameMs: Number(perfStats.totalFrameMs?.toFixed(2) || 0),
     drawCalls: renderer.info.render.calls,
+    visibleDetailedZombies: perfStats.visibleDetailedZombies,
+    instancedZombies: perfStats.instancedZombies,
+    labelUpdates: perfStats.labelUpdates,
+    gridQueries: perfStats.gridQueries,
+    objectAllocWarnings: perfStats.objectAllocWarnings,
     skippedEffects: perfStats.skippedEffects,
+    renderIntegrity: getMonsterRenderIntegrity(),
     entities: {
       zombies: zombies.length,
       bullets: bullets.length,
@@ -5381,9 +6140,10 @@ function getSpatialCellKey(x, z) {
   return `${Math.floor(x / spatialGridCellSize)},${Math.floor(z / spatialGridCellSize)}`;
 }
 
-function queryZombiesNear(position, radius) {
+function queryZombiesNear(position, radius, candidates = spatialGrid.candidates) {
   ensureSpatialGrid();
-  spatialGrid.candidates.length = 0;
+  perfStats.gridQueries += 1;
+  candidates.length = 0;
   const minX = Math.floor((position.x - radius) / spatialGridCellSize);
   const maxX = Math.floor((position.x + radius) / spatialGridCellSize);
   const minZ = Math.floor((position.z - radius) / spatialGridCellSize);
@@ -5393,12 +6153,14 @@ function queryZombiesNear(position, radius) {
     for (let cellZ = minZ; cellZ <= maxZ; cellZ += 1) {
       const cell = spatialGrid.cells.get(`${cellX},${cellZ}`);
       if (cell) {
-        spatialGrid.candidates.push(...cell);
+        for (const zombie of cell) {
+          candidates.push(zombie);
+        }
       }
     }
   }
 
-  return spatialGrid.candidates;
+  return candidates;
 }
 
 function getZombieIndex(zombie) {
