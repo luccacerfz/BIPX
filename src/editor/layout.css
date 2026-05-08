@@ -1,0 +1,251 @@
+.bipx-editor {
+  position: fixed;
+  inset: 10px;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: 42px 1fr 145px;
+  grid-template-columns: 220px minmax(260px, 1fr) 340px;
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "hierarchy game inspector"
+    "console console console";
+  overflow: hidden;
+  border: 1px solid rgba(155, 180, 205, 0.28);
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  color: #d8e1ea;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  pointer-events: none;
+}
+
+.bipx-editor-active .message {
+  display: none !important;
+}
+
+.bipx-editor.is-hidden {
+  display: none;
+}
+
+.bipx-editor * {
+  box-sizing: border-box;
+}
+
+.bipx-editor__toolbar,
+.bipx-editor__hierarchy,
+.bipx-editor__inspector,
+.bipx-editor__console {
+  pointer-events: auto;
+}
+
+.bipx-editor__toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(155, 180, 205, 0.2);
+  background: rgba(30, 35, 44, 0.96);
+}
+
+.bipx-editor__toolbar strong {
+  margin-right: auto;
+  color: #8ef151;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bipx-editor button,
+.bipx-editor select,
+.bipx-editor input {
+  border: 1px solid rgba(155, 180, 205, 0.24);
+  border-radius: 7px;
+  background: rgba(9, 12, 16, 0.82);
+  color: #eef6ff;
+  font: inherit;
+}
+
+.bipx-editor button,
+.bipx-editor select {
+  min-height: 28px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+.bipx-editor label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #9fb0c0;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.bipx-editor__hierarchy {
+  grid-area: hierarchy;
+  padding: 12px;
+  border-right: 1px solid rgba(155, 180, 205, 0.18);
+  background: rgba(12, 15, 20, 0.86);
+}
+
+.bipx-editor__game-view {
+  grid-area: game;
+  display: grid;
+  place-items: start center;
+  padding-top: 8px;
+  border-inline: 1px solid rgba(155, 180, 205, 0.14);
+  color: rgba(216, 225, 234, 0.42);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.bipx-editor__inspector {
+  grid-area: inspector;
+  overflow: auto;
+  padding: 12px;
+  border-left: 1px solid rgba(155, 180, 205, 0.18);
+  background: rgba(12, 15, 20, 0.9);
+}
+
+.bipx-editor__console {
+  grid-area: console;
+  overflow: auto;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(155, 180, 205, 0.18);
+  background: rgba(7, 9, 12, 0.94);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+}
+
+.bipx-editor h2 {
+  margin: 0 0 10px;
+  color: #7fd7ff;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bipx-editor__tree-group {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.bipx-editor__tree-item {
+  width: 100%;
+  text-align: left;
+}
+
+.bipx-editor__tree-item--child {
+  width: calc(100% - 16px);
+  margin-left: 16px;
+  color: #b8c4cf;
+}
+
+.bipx-editor__tree-item.is-selected {
+  border-color: rgba(142, 241, 81, 0.64);
+  background: rgba(142, 241, 81, 0.14);
+  color: #f6fff2;
+}
+
+.bipx-editor__selected {
+  margin-bottom: 12px;
+  padding: 9px;
+  border: 1px solid rgba(127, 215, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(127, 215, 255, 0.08);
+  color: #eef6ff;
+  font-weight: 900;
+}
+
+.bipx-editor__fields {
+  display: grid;
+  gap: 10px;
+}
+
+.bipx-editor__field {
+  display: grid;
+  grid-template-columns: 1fr minmax(90px, 1.2fr) 74px auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(155, 180, 205, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.bipx-editor__field input[type="range"] {
+  width: 100%;
+}
+
+.bipx-editor__field input[type="color"] {
+  width: 100%;
+  min-height: 30px;
+  padding: 2px;
+}
+
+.bipx-editor__number {
+  width: 74px;
+  min-height: 30px;
+  padding: 4px 6px;
+}
+
+.bipx-editor__field-reset {
+  min-height: 26px;
+  padding-inline: 7px;
+  color: #ffcf9c;
+}
+
+.bipx-editor__empty,
+.bipx-editor__console pre {
+  margin: 0;
+  color: #9fb0c0;
+  white-space: pre-wrap;
+}
+
+.bipx-editor-toggle {
+  position: fixed;
+  right: 14px;
+  top: 14px;
+  z-index: 21;
+  border: 1px solid rgba(142, 241, 81, 0.5);
+  border-radius: 10px;
+  background: rgba(12, 18, 14, 0.86);
+  color: #8ef151;
+  padding: 8px 10px;
+  font-weight: 900;
+}
+
+@media (max-width: 860px) {
+  .bipx-editor {
+    grid-template-rows: 42px 130px 1fr 140px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "toolbar"
+      "hierarchy"
+      "inspector"
+      "console";
+  }
+
+  .bipx-editor__game-view {
+    display: none;
+  }
+
+  .bipx-editor__hierarchy {
+    overflow: auto;
+    border-right: 0;
+    border-bottom: 1px solid rgba(155, 180, 205, 0.18);
+  }
+
+  .bipx-editor__toolbar {
+    overflow-x: auto;
+  }
+
+  .bipx-editor__field {
+    grid-template-columns: 1fr;
+  }
+}

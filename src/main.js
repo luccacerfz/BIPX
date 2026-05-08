@@ -1,5 +1,15 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
-import { getConfig } from "./config/index.js";
+import {
+  forceConfigTarget,
+  getAllOverrides,
+  getConfig,
+  getRuntimeConfig,
+  resetAllConfig,
+  resetConfig,
+  setAllOverrides,
+  setConfig,
+  subscribeConfig,
+} from "./config/index.js";
 
 const canvas = document.querySelector("#game-canvas");
 const healthFill = document.querySelector("#health-fill");
@@ -25,9 +35,11 @@ const message = document.querySelector("#message");
 const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
 const messageCopy = document.querySelector("#message-copy");
+const openLoginButton = document.querySelector("#open-login-button");
 const playButton = document.querySelector("#play-button");
 const playButtonLabel = document.querySelector("#play-button-label");
 const multiplayerButton = document.querySelector("#multiplayer-button");
+const loginBackButton = document.querySelector("#login-back-button");
 const playerNameInput = document.querySelector("#player-name");
 const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
@@ -85,6 +97,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 applyQualitySettings(true);
+subscribeConfig(() => applyRuntimeConfig(true));
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
@@ -221,6 +234,17 @@ const monsterProfiles = {
     score: 140,
     minWave: 4,
     boss: true,
+  },
+  sofra: {
+    label: "SOFRA",
+    health: 38,
+    speed: 4.25,
+    radius: 1.28,
+    damage: 20,
+    score: 180,
+    minWave: 5,
+    boss: true,
+    projectileColor: 0x32b8ff,
   },
 };
 
@@ -399,6 +423,22 @@ if (playButtonLabel && multiplayer.enabled) {
 }
 updateHud();
 animate();
+
+openLoginButton?.addEventListener("click", () => {
+  message.classList.add("message--login");
+  playerNameInput?.focus();
+});
+
+loginBackButton?.addEventListener("click", () => {
+  if (message.classList.contains("message--game-over")) {
+    messageTitle.textContent = "BIPX";
+    messageKicker.textContent = "☠ Noite Zumbi ☠";
+    messageCopy.textContent = "Escolha seu nome antes de entrar no cemiterio.";
+    playButton.innerHTML = "<span aria-hidden=\"true\">▶</span><span id=\"play-button-label\">Entrar no jogo</span>";
+  }
+  message.classList.remove("message--game-over");
+  message.classList.remove("message--login");
+});
 
 playButton.addEventListener("click", () => {
   if (game.state !== "playing") {
@@ -617,6 +657,82 @@ window.__zombieNightDebug = {
   },
 };
 
+window.__bipxConfig = {
+  get(path) {
+    return path ? getGameConfig(path) : getRuntimeConfig();
+  },
+  set(path, value) {
+    setConfig(path, normalizeConfigConsoleValue(value));
+    return getGameConfig(path);
+  },
+  reset(path) {
+    if (path) {
+      resetConfig(path);
+    } else {
+      resetAllConfig();
+    }
+    return getRuntimeConfig();
+  },
+  resetAll() {
+    resetAllConfig();
+    return getRuntimeConfig();
+  },
+  overrides() {
+    return getAllOverrides();
+  },
+  import(overrides) {
+    setAllOverrides(overrides);
+    return getRuntimeConfig();
+  },
+  target(target) {
+    forceConfigTarget(target);
+    return getRuntimeConfig();
+  },
+  apply() {
+    applyRuntimeConfig(true);
+    return getRuntimeConfig();
+  },
+  help() {
+    return [
+      "__bipxConfig.get('camera.zoomScale')",
+      "__bipxConfig.set('camera.zoomScale', 1.6)",
+      "__bipxConfig.set('fog.density', 0.018)",
+      "__bipxConfig.set('lighting.player.intensity', 4)",
+      "__bipxConfig.set('lighting.player.distance', 42)",
+      "__bipxConfig.target('mobile') // desktop | mobile | tablet",
+      "__bipxConfig.reset('fog.density')",
+      "__bipxConfig.resetAll()",
+    ].join("\n");
+  },
+};
+
+if (shouldLoadLocalEditor()) {
+  void import("./editor/index.js");
+}
+
+function shouldLoadLocalEditor() {
+  const host = window.location.hostname;
+  const params = new URLSearchParams(window.location.search);
+  const editorRequested = params.get("editor") === "1" || params.get("admin") === "editor";
+  const localHost =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "0.0.0.0" ||
+    host.startsWith("192.168.") ||
+    host.startsWith("10.");
+
+  return localHost && editorRequested;
+}
+
+function normalizeConfigConsoleValue(value) {
+  if (typeof value === "string" && value.startsWith("#")) {
+    return value;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) && value !== "" ? numberValue : value;
+}
+
 if (queryParams.get("autoplay") === "1") {
   requestAnimationFrame(() => {
     startGame();
@@ -655,6 +771,8 @@ function startGame() {
   game.skillHudSignature = "";
   nextZombieId = 1;
   spatialGrid.dirty = true;
+  message.classList.remove("message--game-over");
+  message.classList.remove("message--login");
   message.classList.add("is-hidden");
   startNextWave();
   updateHud(true);
@@ -1351,6 +1469,10 @@ function getZombieProxyMaterial(type, palette) {
 }
 
 function createBossMesh(type) {
+  if (type === "sofra") {
+    return createSofraMesh();
+  }
+
   if (type === "visor") {
     return createVisorMesh();
   }
@@ -1594,6 +1716,128 @@ function createGitCityMesh() {
   const glow = new THREE.PointLight(0xf4d475, 1.4, 8);
   glow.position.y = 2.0;
   group.add(glow);
+
+  return group;
+}
+
+function createSofraMesh() {
+  const group = new THREE.Group();
+  const skin = new THREE.MeshStandardMaterial({
+    color: 0x108ee8,
+    emissive: 0x075dd6,
+    emissiveIntensity: 0.52,
+    roughness: 0.42,
+  });
+  const shirt = new THREE.MeshStandardMaterial({ color: 0xe6e8ed, roughness: 0.78 });
+  const pants = new THREE.MeshStandardMaterial({ color: 0x17233f, roughness: 0.72 });
+  const tie = new THREE.MeshStandardMaterial({ color: 0x5734a8, emissive: 0x23105a, emissiveIntensity: 0.35 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x081019, roughness: 0.64 });
+  const bone = new THREE.MeshStandardMaterial({ color: 0xd6f5ff, roughness: 0.48 });
+  const flame = new THREE.MeshBasicMaterial({ color: 0x60d7ff, transparent: true, opacity: 0.72 });
+  const eye = new THREE.MeshStandardMaterial({ color: 0xeaffff, emissive: 0x9df7ff, emissiveIntensity: 1.9 });
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.9, 1.68, 10), shirt);
+  torso.position.y = 1.44;
+  torso.rotation.x = -0.08;
+  torso.castShadow = true;
+  group.add(torso);
+
+  const rippedHem = new THREE.Mesh(new THREE.ConeGeometry(0.95, 0.42, 8, 1, true), shirt);
+  rippedHem.position.y = 0.7;
+  rippedHem.rotation.y = Math.PI / 8;
+  rippedHem.castShadow = true;
+  group.add(rippedHem);
+
+  const tieMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.18, 0.06), tie);
+  tieMesh.position.set(0, 1.46, -0.76);
+  tieMesh.rotation.z = -0.14;
+  group.add(tieMesh);
+
+  const badge = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.035), bone);
+  badge.position.set(0.38, 1.72, -0.78);
+  group.add(badge);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 12), skin);
+  head.position.set(0, 2.55, -0.05);
+  head.scale.set(0.95, 1.08, 0.86);
+  head.castShadow = true;
+  group.add(head);
+
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.28, 0.22), dark);
+  jaw.position.set(0, 2.28, -0.46);
+  jaw.rotation.x = -0.14;
+  group.add(jaw);
+
+  for (const side of [-1, 1]) {
+    const eyeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), eye);
+    eyeMesh.position.set(side * 0.19, 2.61, -0.43);
+    group.add(eyeMesh);
+
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.05), dark);
+    brow.position.set(side * 0.19, 2.75, -0.42);
+    brow.rotation.z = side * -0.24;
+    group.add(brow);
+
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 1.46, 0.28), skin);
+    arm.position.set(side * 0.94, 1.42, -0.2);
+    arm.rotation.z = side * 0.22;
+    arm.rotation.x = -0.28;
+    arm.castShadow = true;
+    group.add(arm);
+
+    const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.48, 0.34), shirt);
+    sleeve.position.set(side * 0.76, 1.86, -0.08);
+    sleeve.rotation.z = side * 0.16;
+    sleeve.castShadow = true;
+    group.add(sleeve);
+
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), skin);
+    hand.position.set(side * 1.08, 0.72, -0.62);
+    hand.scale.set(1.15, 0.75, 1);
+    group.add(hand);
+
+    for (let finger = 0; finger < 4; finger += 1) {
+      const claw = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.46, 8), dark);
+      claw.position.set(side * (1.12 + finger * 0.04), 0.58 - finger * 0.025, -0.84);
+      claw.rotation.x = Math.PI * 0.5;
+      claw.rotation.z = side * (0.18 + finger * 0.08);
+      group.add(claw);
+    }
+
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.36, 1.08, 0.34), pants);
+    leg.position.set(side * 0.32, 0.18, 0.03);
+    leg.castShadow = true;
+    group.add(leg);
+
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.22, 0.78), dark);
+    shoe.position.set(side * 0.34, -0.42, -0.18);
+    shoe.castShadow = true;
+    group.add(shoe);
+
+    const shoulderFlame = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.9, 9), flame);
+    shoulderFlame.position.set(side * 0.66, 2.34, 0.14);
+    shoulderFlame.rotation.z = side * -0.2;
+    group.add(shoulderFlame);
+  }
+
+  for (let tuft = 0; tuft < 4; tuft += 1) {
+    const hair = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 7), dark);
+    hair.position.set((tuft - 1.5) * 0.12, 3.0 + tuft * 0.02, -0.06);
+    hair.rotation.z = (tuft - 1.5) * -0.28;
+    group.add(hair);
+  }
+
+  for (let index = 0; index < 7; index += 1) {
+    const aura = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.75, 8), flame);
+    const angle = (index / 7) * Math.PI * 2;
+    aura.position.set(Math.cos(angle) * 0.82, 1.55 + (index % 3) * 0.35, Math.sin(angle) * 0.44 + 0.22);
+    aura.rotation.z = Math.sin(angle) * 0.28;
+    group.add(aura);
+  }
+
+  const light = new THREE.PointLight(0x32b8ff, 4.2, 16);
+  light.position.y = 2.0;
+  group.add(light);
 
   return group;
 }
@@ -2856,6 +3100,7 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     radius: profile.radius,
     score: profile.score,
     shadowEnabled: null,
+    summonCooldown: type === "sofra" ? 1.8 : 0,
     wobble: Math.random() * Math.PI * 2,
   });
   if (labelSprite) {
@@ -2943,6 +3188,10 @@ function getBossLabelHeight(type) {
     return 5.15;
   }
 
+  if (type === "sofra") {
+    return 4.25;
+  }
+
   if (type === "dinzo") {
     return 2.95;
   }
@@ -2951,6 +3200,10 @@ function getBossLabelHeight(type) {
 }
 
 function getBossAccentColor(type) {
+  if (type === "sofra") {
+    return "#32b8ff";
+  }
+
   if (type === "visor") {
     return "#7edcff";
   }
@@ -2972,6 +3225,7 @@ function spawnBossPreview() {
     ["himetrica", 8, -8],
     ["dinzo", -10, 7],
     ["gitcity", 10, 8],
+    ["sofra", 0, 11],
   ];
 
   for (const [type, x, z] of previewBosses) {
@@ -2997,6 +3251,7 @@ function pickMonsterType() {
     himetrica: Math.min(0.028 + game.survivalTime * 0.0008 + player.wave * 0.005, 0.11),
     dinzo: Math.min(0.032 + game.survivalTime * 0.0009 + player.wave * 0.005, 0.12),
     gitcity: Math.min(0.018 + game.survivalTime * 0.0007 + player.wave * 0.004, 0.085),
+    sofra: Math.min(0.012 + game.survivalTime * 0.00055 + player.wave * 0.0035, 0.065),
   };
 
   const totalWeight = availableTypes.reduce((sum, type) => sum + (weights[type] ?? 0.02), 0);
@@ -3025,6 +3280,7 @@ function updateZombies(dt) {
     const distance = toTarget.length();
     zombie.attackCooldown -= dt;
     updateZombieLod(zombie);
+    updateSofraSummons(zombie, dt);
 
     if (canUseRangedAttack(zombie.type, distance)) {
       if (distance > 0.05) {
@@ -3056,6 +3312,34 @@ function updateZombies(dt) {
   }
 
   spatialGrid.dirty = true;
+}
+
+function updateSofraSummons(zombie, dt) {
+  if (zombie.type !== "sofra" || zombies.length >= maxActiveZombies - 3) {
+    return;
+  }
+
+  zombie.summonCooldown -= dt;
+  if (zombie.summonCooldown > 0) {
+    return;
+  }
+
+  zombie.summonCooldown = 5.5;
+  const summonTypes = ["runner", "zombie", "caster"];
+  const summonCount = player.wave >= 8 ? 3 : 2;
+
+  for (let index = 0; index < summonCount; index += 1) {
+    const angle = (index / summonCount) * Math.PI * 2 + Math.random() * 0.35;
+    const distance = 2.2 + Math.random() * 1.3;
+    const type = summonTypes[(index + player.wave) % summonTypes.length];
+    spawnZombie(
+      zombie.mesh.position.x + Math.cos(angle) * distance,
+      zombie.mesh.position.z + Math.sin(angle) * distance,
+      type,
+    );
+  }
+
+  spawnExplosion(zombie.mesh.position, monsterProfiles.sofra.projectileColor, 2.6);
 }
 
 function updateZombieLod(zombie) {
@@ -3212,11 +3496,16 @@ function canUseRangedAttack(type, distance) {
   return (
     (type === "caster" && distance < 16 && distance > 4.2) ||
     (type === "visor" && distance < 18 && distance > 4.4) ||
-    (type === "himetrica" && distance < 15 && distance > 3.6)
+    (type === "himetrica" && distance < 15 && distance > 3.6) ||
+    (type === "sofra" && distance < 20 && distance > 3.8)
   );
 }
 
 function getRangedCooldown(type) {
+  if (type === "sofra") {
+    return 0.72;
+  }
+
   if (type === "visor") {
     return 1.1;
   }
@@ -3243,8 +3532,8 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
   direction.normalize();
   const profile = monsterProfiles[zombie.type] ?? monsterProfiles.caster;
   const projectileColor = profile.projectileColor ?? 0xd978ff;
-  const projectileSpeed = zombie.type === "himetrica" ? 19 : zombie.type === "visor" ? 13 : 14;
-  const projectileSize = zombie.type === "visor" ? 0.3 : zombie.type === "himetrica" ? 0.2 : 0.24;
+  const projectileSpeed = zombie.type === "sofra" ? 23 : zombie.type === "himetrica" ? 19 : zombie.type === "visor" ? 13 : 14;
+  const projectileSize = zombie.type === "sofra" ? 0.28 : zombie.type === "visor" ? 0.3 : zombie.type === "himetrica" ? 0.2 : 0.24;
   const mesh = acquireProjectileMesh(entityPools.enemyProjectiles, projectileColor, projectileSize + 0.18);
   mesh.position.copy(zombie.mesh.position);
   mesh.position.y = 1.38;
@@ -3416,7 +3705,11 @@ function damageZombie(index, amount, shouldFlash, awardRewards = true) {
   if (zombie.health <= 0) {
     const xpPosition = zombie.mesh.position.clone();
     const xpValue = getXpValueForZombie(zombie.type);
+    const shouldBurst = zombie.type === "sofra";
     removeZombie(index);
+    if (shouldBurst) {
+      spawnSofraDeathBurst(xpPosition);
+    }
     if (awardRewards) {
       spawnXpGem(xpPosition, xpValue);
       player.kills += 1;
@@ -3426,6 +3719,17 @@ function damageZombie(index, amount, shouldFlash, awardRewards = true) {
   }
 
   return false;
+}
+
+function spawnSofraDeathBurst(position) {
+  spawnExplosion(position, monsterProfiles.sofra.projectileColor, 5.2);
+  damageZombiesAtPoint(position, 5.2, 12 + player.wave * 0.8, true, false);
+
+  for (const target of getLivingPlayerTargets()) {
+    if (distanceXZ(position, target.position) < 5.4) {
+      damagePlayerTarget(target, 10 + Math.floor(player.wave * 0.45));
+    }
+  }
 }
 
 function updateWaveFlow(dt) {
@@ -3649,6 +3953,8 @@ function endGame() {
   messageTitle.textContent = "Fim da noite";
   messageCopy.textContent = `${player.score} pontos · Nivel ${player.bestLevel}`;
   playButton.innerHTML = "<span aria-hidden=\"true\">↻</span>Reiniciar";
+  message.classList.add("message--game-over");
+  message.classList.add("message--login");
   message.classList.remove("is-hidden");
 }
 
@@ -4779,14 +5085,55 @@ function getTouchDeadZone() {
 }
 
 function resizeRenderer() {
+  applyRuntimeConfig(false);
+  applyQualitySettings(true);
+}
+
+function applyRuntimeConfig(updateQuality = true) {
   const fogColor = getGameConfig("fog.color");
-  scene.background = new THREE.Color(fogColor);
+  scene.background.set(fogColor);
   scene.fog.color.set(fogColor);
   scene.fog.density = getGameConfig("fog.density");
   camera.fov = getGameConfig("camera.fov");
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  applyQualitySettings(true);
+
+  const refs = scene.userData.editorRefs;
+  refs.hemiLight?.color.set(getGameConfig("lighting.hemi.skyColor"));
+  refs.hemiLight?.groundColor.set(getGameConfig("lighting.hemi.groundColor"));
+  if (refs.hemiLight) {
+    refs.hemiLight.intensity = getGameConfig("lighting.hemi.intensity");
+  }
+
+  if (refs.moonLight) {
+    refs.moonLight.color.set(getGameConfig("lighting.moon.color"));
+    refs.moonLight.intensity = getGameConfig("lighting.moon.intensity");
+    refs.moonLight.shadow.bias = getGameConfig("lighting.moon.shadowBias");
+    updateShadowMapSize(refs.moonLight, getGameConfig("lighting.moon.shadowMapSize"));
+  }
+
+  if (refs.playerLight) {
+    refs.playerLight.color.set(getGameConfig("lighting.player.color"));
+    refs.playerLight.intensity = getGameConfig("lighting.player.intensity");
+    refs.playerLight.distance = getGameConfig("lighting.player.distance");
+    refs.playerLight.position.y = getGameConfig("lighting.player.height");
+  }
+
+  if (updateQuality) {
+    applyQualitySettings(true);
+  }
+}
+
+function updateShadowMapSize(light, mapSize) {
+  const nextSize = Math.max(256, Math.floor(Number(mapSize) || 1024));
+  if (light.shadow.mapSize.x === nextSize && light.shadow.mapSize.y === nextSize) {
+    return;
+  }
+
+  light.shadow.mapSize.set(nextSize, nextSize);
+  light.shadow.map?.dispose();
+  light.shadow.map = null;
+  light.shadow.needsUpdate = true;
 }
 
 function ensureSpatialGrid() {

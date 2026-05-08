@@ -52,24 +52,72 @@
       </section>
 
       <section id="message" class="message" aria-live="polite">
-        <div class="message__panel">
-          <p id="message-kicker" class="message__kicker">Noite 3D</p>
-          <h1 id="message-title">Zombie Night</h1>
-          <p id="message-copy">Sobreviva no cemiterio enquanto a horda fecha o cerco. Escolha jogar sozinho ou entrar na sala online com ate 4 players.</p>
+        <div class="main-menu__region" aria-label="Regiao do servidor">
+          <span aria-hidden="true">🌐</span>
+          <strong>Regiao: Brasil</strong>
+          <span class="main-menu__signal" aria-hidden="true"></span>
+        </div>
+
+        <div class="message__panel main-menu">
+          <div class="main-menu__brand" aria-label="BIPX Noite Zumbi">
+            <h1 id="message-title">BIPX</h1>
+            <p id="message-kicker" class="message__kicker">☠ Noite Zumbi ☠</p>
+          </div>
+        </div>
+
+        <div class="mode-actions main-menu__actions" aria-label="Menu principal">
+          <button id="open-login-button" class="primary-button main-menu__button" type="button">
+            <span aria-hidden="true">▶</span>
+            Jogar
+          </button>
+          <button class="secondary-button main-menu__button" type="button" disabled>
+            <span aria-hidden="true">🛒</span>
+            Loja
+          </button>
+          <button class="secondary-button main-menu__button" type="button" disabled>
+            <span aria-hidden="true">🏆</span>
+            Ranking
+          </button>
+          <button class="secondary-button main-menu__button" type="button" disabled>
+            <span aria-hidden="true">★</span>
+            Conquistas
+          </button>
+          <button class="secondary-button main-menu__button" type="button" disabled>
+            <span aria-hidden="true">⚙</span>
+            Configuracoes
+          </button>
+          <button class="secondary-button main-menu__button" type="button" disabled>
+            <span aria-hidden="true">👤</span>
+            Creditos
+          </button>
+        </div>
+
+        <div class="main-menu__login" aria-label="Login do jogador">
+          <button id="login-back-button" class="main-menu__back" type="button">← Menu</button>
+          <strong>☠ Sobreviva a horda</strong>
+          <p id="message-copy">Escolha seu nome antes de entrar no cemiterio.</p>
           <label class="name-field" for="player-name">
-            <span>Nome do player</span>
+            <span>Nome do jogador</span>
             <input id="player-name" maxlength="16" autocomplete="nickname" placeholder="Ex: Lucca" />
           </label>
-          <div class="mode-actions" aria-label="Escolha o modo de jogo">
-            <button id="play-button" class="primary-button" type="button">
+          <div class="mode-actions main-menu__login-actions" aria-label="Escolha o modo de jogo">
+            <button id="play-button" class="primary-button main-menu__button" type="button">
               <span aria-hidden="true">▶</span>
-              <span id="play-button-label">Single player</span>
+              <span id="play-button-label">Entrar no jogo</span>
             </button>
-            <button id="multiplayer-button" class="secondary-button" type="button">
+            <button id="multiplayer-button" class="secondary-button main-menu__button" type="button">
               <span aria-hidden="true">🌐</span>
               Multiplayer
             </button>
           </div>
+        </div>
+
+        <div class="main-menu__footer" aria-label="Links sociais">
+          <strong>Versao 0.3.1</strong>
+          <span aria-hidden="true">|</span>
+          <span>Discord</span>
+          <span>Instagram</span>
+          <span>YouTube</span>
         </div>
       </section>
 
