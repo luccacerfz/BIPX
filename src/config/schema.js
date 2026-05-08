@@ -91,6 +91,22 @@ export const CONFIG_SCHEMA = Object.freeze({
           stickRadiusDesktop: { type: "number", min: 0.1, max: 1, step: 0.01 },
           deadZoneMobile: { type: "number", min: 0.01, max: 0.5, step: 0.01 },
           deadZoneDesktop: { type: "number", min: 0.01, max: 0.5, step: 0.01 },
+          fireAimDeadZone: { type: "number", min: 0.01, max: 0.5, step: 0.01 },
+          aimAssistRange: { type: "number", min: 0, max: 42, step: 0.5 },
+        },
+      },
+      hud: {
+        label: "HUD",
+        fields: {
+          mobileInterval: { type: "number", min: 0.03, max: 1, step: 0.01 },
+          desktopInterval: { type: "number", min: 0.03, max: 1, step: 0.01 },
+        },
+      },
+      labels: {
+        label: "Labels",
+        fields: {
+          mobileInterval: { type: "number", min: 0.03, max: 1, step: 0.01 },
+          desktopInterval: { type: "number", min: 0.03, max: 1, step: 0.01 },
         },
       },
       partyHud: {

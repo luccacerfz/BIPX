@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.mjs",
     "verify": "npx --yes --package playwright node tools/verify-canvas.mjs",
-    "verify:performance": "npx --yes --package playwright node tools/verify-performance.mjs"
+    "verify:performance": "npx --yes --package playwright node tools/verify-performance.mjs",
+    "verify:mobile": "npx --yes --package playwright node tools/verify-mobile.mjs"
   }
 }

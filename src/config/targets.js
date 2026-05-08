@@ -1,4 +1,4 @@
-export const CONFIG_TARGETS = Object.freeze(["desktop", "mobile", "tablet"]);
+export const CONFIG_TARGETS = Object.freeze(["desktop", "mobilePro", "mobile", "tablet"]);
 
 let forcedTarget = null;
 
@@ -28,6 +28,11 @@ export function resolveConfigTarget(options = {}) {
   const height = options.height ?? getViewportHeight();
   const shortestSide = Math.min(width, height);
   const longestSide = Math.max(width, height);
+  const deviceRatio = getDevicePixelRatio();
+
+  if (hasTouch && shortestSide >= 390 && shortestSide <= 460 && longestSide >= 800 && longestSide <= 960 && deviceRatio >= 2.5) {
+    return "mobilePro";
+  }
 
   if (hasTouch && shortestSide < 680) {
     return "mobile";
@@ -66,4 +71,12 @@ function getViewportHeight() {
   }
 
   return window.innerHeight || 720;
+}
+
+function getDevicePixelRatio() {
+  if (typeof window === "undefined") {
+    return 1;
+  }
+
+  return window.devicePixelRatio || 1;
 }

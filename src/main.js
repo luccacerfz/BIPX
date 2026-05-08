@@ -51,6 +51,9 @@ const requestedQuality = sanitizeQuality(queryParams.get("quality"));
 const perfOverlayEnabled = queryParams.get("perf") === "1";
 const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
 
+setViewportCssVars();
+applyMobileLayoutState();
+
 const qualityManager = {
   mode: requestedQuality,
   level: requestedQuality === "auto" ? getDefaultQualityLevel() : requestedQuality,
@@ -403,8 +406,12 @@ const game = {
   hudTimer: 0,
   leaderboardSubmitted: false,
   partyHudTimer: 0,
+  labelTimer: 0,
+  labelFrameReady: true,
   skillHudSignature: "",
   touchVector: new THREE.Vector2(0, 0),
+  touchAimActive: false,
+  touchAimPointerId: null,
 };
 
 scene.add(player.mesh);
@@ -465,7 +472,10 @@ playerNameInput?.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("resize", resizeRenderer);
+window.addEventListener("resize", resizeRenderer, { passive: true });
+window.addEventListener("orientationchange", resizeRenderer, { passive: true });
+window.visualViewport?.addEventListener("resize", resizeRenderer, { passive: true });
+window.visualViewport?.addEventListener("scroll", resizeRenderer, { passive: true });
 window.addEventListener("keydown", (event) => {
   const upgradeIndex = ["Digit1", "Digit2", "Digit3", "Numpad1", "Numpad2", "Numpad3"].indexOf(event.code);
   if (upgradeIndex >= 0 && player.pendingUpgradeChoices.length > 0) {
@@ -493,12 +503,13 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-window.addEventListener("mousemove", (event) => {
-  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-});
+window.addEventListener("mousemove", (event) => updatePointerFromClient(event.clientX, event.clientY));
 
-window.addEventListener("mousedown", () => {
+window.addEventListener("mousedown", (event) => {
+  if (isInteractiveOverlay(event.target)) {
+    return;
+  }
+
   game.shooting = true;
 });
 
@@ -506,23 +517,11 @@ window.addEventListener("mouseup", () => {
   game.shooting = false;
 });
 
-touchFire.addEventListener("pointerdown", (event) => {
-  event.preventDefault();
-  touchFire.setPointerCapture?.(event.pointerId);
-  game.shooting = true;
-});
-
-touchFire.addEventListener("pointerup", () => {
-  game.shooting = false;
-});
-
-touchFire.addEventListener("pointercancel", () => {
-  game.shooting = false;
-});
-
-touchFire.addEventListener("lostpointercapture", () => {
-  game.shooting = false;
-});
+touchFire.addEventListener("pointerdown", handleFirePointerDown);
+touchFire.addEventListener("pointermove", handleFirePointerMove);
+touchFire.addEventListener("pointerup", handleFirePointerEnd);
+touchFire.addEventListener("pointercancel", handleFirePointerEnd);
+touchFire.addEventListener("lostpointercapture", handleFirePointerEnd);
 
 touchStick.addEventListener("pointerdown", handleStickMove);
 touchStick.addEventListener("pointermove", handleStickMove);
@@ -699,7 +698,7 @@ window.__bipxConfig = {
       "__bipxConfig.set('fog.density', 0.018)",
       "__bipxConfig.set('lighting.player.intensity', 4)",
       "__bipxConfig.set('lighting.player.distance', 42)",
-      "__bipxConfig.target('mobile') // desktop | mobile | tablet",
+      "__bipxConfig.target('mobilePro') // desktop | mobilePro | mobile | tablet",
       "__bipxConfig.reset('fog.density')",
       "__bipxConfig.resetAll()",
     ].join("\n");
@@ -768,7 +767,12 @@ function startGame() {
   game.hudTimer = 0;
   game.leaderboardSubmitted = false;
   game.partyHudTimer = 0;
+  game.labelTimer = 0;
+  game.labelFrameReady = true;
   game.skillHudSignature = "";
+  game.touchAimActive = false;
+  game.touchAimPointerId = null;
+  resetStick();
   nextZombieId = 1;
   spatialGrid.dirty = true;
   message.classList.remove("message--game-over");
@@ -853,16 +857,66 @@ function getDefaultQualityLevel() {
   return "high";
 }
 
+function setViewportCssVars() {
+  const viewport = window.visualViewport;
+  const width = viewport?.width || window.innerWidth || 1280;
+  const height = viewport?.height || window.innerHeight || 720;
+  document.documentElement.style.setProperty("--app-width", `${width}px`);
+  document.documentElement.style.setProperty("--app-height", `${height}px`);
+}
+
+function applyMobileLayoutState() {
+  const stats = getMobileLayoutStats();
+  document.documentElement.dataset.mobileProfile = stats.profile;
+  document.documentElement.dataset.orientation = stats.isPortrait ? "portrait" : "landscape";
+  document.documentElement.dataset.touch = stats.hasTouch ? "true" : "false";
+}
+
+function getMobileLayoutStats() {
+  const viewport = window.visualViewport;
+  const width = viewport?.width || window.innerWidth || 1280;
+  const height = viewport?.height || window.innerHeight || 720;
+  const shortestSide = Math.min(width, height);
+  const longestSide = Math.max(width, height);
+  const hasTouch = isTouchDevice();
+  const deviceRatio = window.devicePixelRatio || 1;
+  const isMobilePro =
+    hasTouch && shortestSide >= 390 && shortestSide <= 460 && longestSide >= 800 && longestSide <= 960 && deviceRatio >= 2.5;
+  const profile = isMobilePro
+    ? "mobilePro"
+    : hasTouch && shortestSide < 680
+      ? "mobile"
+      : hasTouch && shortestSide < 1100 && longestSide < 1600
+        ? "tablet"
+        : "desktop";
+
+  return {
+    width,
+    height,
+    shortestSide,
+    longestSide,
+    deviceRatio,
+    hasTouch,
+    isPortrait: height >= width,
+    profile,
+  };
+}
+
+function getMobileLayoutProfile() {
+  return getMobileLayoutStats().profile;
+}
+
 function isTouchDevice() {
   return window.matchMedia?.("(pointer: coarse)")?.matches || navigator.maxTouchPoints > 0;
 }
 
 function isCompactViewport() {
-  return Math.min(window.innerWidth, window.innerHeight) < 680;
+  const viewport = window.visualViewport;
+  return Math.min(viewport?.width || window.innerWidth, viewport?.height || window.innerHeight) < 680;
 }
 
 function usesMobileTuning() {
-  return isTouchDevice() || isCompactViewport();
+  return getMobileLayoutProfile() !== "desktop" || isCompactViewport();
 }
 
 function getGameConfig(path) {
@@ -2234,6 +2288,7 @@ function animate() {
   const instantFps = rawDt > 0 ? 1 / rawDt : 60;
   perfStats.fpsAverage = perfStats.fpsAverage * 0.94 + instantFps * 0.06;
   updateQualityManager(rawDt);
+  updateLabelThrottle(dt);
   const updateStartedAt = performance.now();
 
   if (game.state === "playing") {
@@ -2271,8 +2326,19 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
+function updateLabelThrottle(dt) {
+  game.labelTimer -= dt;
+  game.labelFrameReady = game.labelTimer <= 0;
+
+  if (game.labelFrameReady) {
+    game.labelTimer = usesMobileTuning()
+      ? getGameConfig("gameplay.labels.mobileInterval")
+      : getGameConfig("gameplay.labels.desktopInterval");
+  }
+}
+
 function updateAim() {
-  if (game.touchVector.lengthSq() > 0.0025) {
+  if (game.touchAimActive || game.touchVector.lengthSq() > 0.0025) {
     const reticle = scene.getObjectByName("reticle");
     if (reticle) {
       reticle.position.copy(player.position).addScaledVector(player.aimDirection, 5);
@@ -3104,7 +3170,7 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     wobble: Math.random() * Math.PI * 2,
   });
   if (labelSprite) {
-    updateBossLabelPosition(zombies[zombies.length - 1]);
+    updateBossLabelPosition(zombies[zombies.length - 1], true);
   }
   nextZombieId += 1;
   spatialGrid.dirty = true;
@@ -3133,16 +3199,25 @@ function createBossLabelSprite(label, maxHealth, type) {
     context: canvas.getContext("2d"),
     label,
     maxHealth,
+    lastLabelHealth: maxHealth,
+    lastLabelUpdate: 0,
     texture,
     type,
   };
 
-  updateBossLabel(sprite, maxHealth);
+  updateBossLabel(sprite, maxHealth, true);
   return sprite;
 }
 
-function updateBossLabel(sprite, health) {
+function updateBossLabel(sprite, health, force = false) {
   const { canvas, context, label, maxHealth, texture, type } = sprite.userData;
+  const now = performance.now();
+  const healthDelta = Math.abs(health - (sprite.userData.lastLabelHealth ?? maxHealth));
+
+  if (!force && usesMobileTuning() && now - (sprite.userData.lastLabelUpdate || 0) < 90 && healthDelta < maxHealth * 0.035) {
+    return;
+  }
+
   const healthRatio = Math.max(0, Math.min(1, health / maxHealth));
   const accent = getBossAccentColor(type);
 
@@ -3172,10 +3247,16 @@ function updateBossLabel(sprite, health) {
   context.fillText(`VIDA ${Math.ceil(health)}/${Math.ceil(maxHealth)}`, 192, 105);
 
   texture.needsUpdate = true;
+  sprite.userData.lastLabelHealth = health;
+  sprite.userData.lastLabelUpdate = now;
 }
 
-function updateBossLabelPosition(zombie) {
+function updateBossLabelPosition(zombie, force = false) {
   if (!zombie.labelSprite) {
+    return;
+  }
+
+  if (!force && !game.labelFrameReady) {
     return;
   }
 
@@ -3964,7 +4045,9 @@ function updateHud(force = false) {
     if (game.hudTimer > 0) {
       return;
     }
-    game.hudTimer = qualityManager.level === "low" ? 0.18 : 0.1;
+    game.hudTimer = usesMobileTuning()
+      ? getGameConfig("gameplay.hud.mobileInterval")
+      : getGameConfig("gameplay.hud.desktopInterval");
   }
 
   const healthRatio = Math.max(player.health, 0) / player.maxHealth;
@@ -4339,6 +4422,7 @@ function getPerfStats() {
     fpsAverage: Number(perfStats.fpsAverage.toFixed(1)),
     quality: qualityManager.level,
     qualityMode: qualityManager.mode,
+    mobileLayout: getMobileLayoutStats(),
     pixelRatio: Number(qualityManager.pixelRatio.toFixed(2)),
     updateMs: Number(perfStats.updateMs.toFixed(2)),
     renderMs: Number(perfStats.renderMs.toFixed(2)),
@@ -4528,8 +4612,10 @@ function updateRemotePlayers(dt) {
       turnAlpha,
     );
 
-    remotePlayer.labelSprite.position.copy(remotePlayer.mesh.position);
-    remotePlayer.labelSprite.position.y = 3.1;
+    if (game.labelFrameReady) {
+      remotePlayer.labelSprite.position.copy(remotePlayer.mesh.position);
+      remotePlayer.labelSprite.position.y = 3.1;
+    }
     remotePlayer.combatTimer = Math.max(0, remotePlayer.combatTimer - dt);
 
     if (remotePlayer.shooting && remotePlayer.state === "playing" && remotePlayer.combatTimer <= 0) {
@@ -4838,22 +4924,29 @@ function updatePartyHud() {
   }
 
   partyListElement.innerHTML = partyPlayers
+    .slice(0, multiplayer.maxPlayers)
     .map((partyPlayer, index) => {
       const healthRatio = Math.max(0, Math.min(1, partyPlayer.health / partyPlayer.maxHealth));
+      const displayName = truncateHudName(partyPlayer.name, usesMobileTuning() ? 7 : 12);
       return `
-        <div class="party-card" style="border-left-color: ${partyPlayer.color}">
+        <div class="party-card${partyPlayer.isLocal ? " party-card--local" : ""}" style="--party-color: ${partyPlayer.color}">
           <div class="party-card__top">
-            <span>${index + 1}. ${escapeHtml(partyPlayer.name)}${partyPlayer.isLocal ? " (voce)" : ""}</span>
+            <span>${index + 1}. ${escapeHtml(displayName)}${partyPlayer.isLocal ? " você" : ""}</span>
             <span class="party-card__score">Nv ${partyPlayer.level}</span>
           </div>
           <div class="party-card__health" aria-hidden="true">
-            <div class="party-card__health-fill" style="transform: scaleX(${healthRatio}); background: ${partyPlayer.color}"></div>
+            <div class="party-card__health-fill" style="transform: scaleX(${healthRatio})"></div>
           </div>
           <div class="party-card__meta">${Math.floor(partyPlayer.health)}/${Math.floor(partyPlayer.maxHealth)} vida · ${Math.floor(partyPlayer.score)} pts</div>
         </div>
       `;
     })
     .join("");
+}
+
+function truncateHudName(name, maxLength) {
+  const safeName = String(name || "P?");
+  return safeName.length > maxLength ? `${safeName.slice(0, Math.max(1, maxLength - 1))}…` : safeName;
 }
 
 function getPartyPlayers() {
@@ -5038,6 +5131,82 @@ function rotateDirectionY(direction, angle) {
   ).normalize();
 }
 
+function updatePointerFromClient(clientX, clientY) {
+  pointer.x = (clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+}
+
+function isInteractiveOverlay(target) {
+  return target instanceof Element && Boolean(target.closest("button, input, .touch-controls, .message, .upgrade-panel"));
+}
+
+function handleFirePointerDown(event) {
+  event.preventDefault();
+  touchFire.setPointerCapture?.(event.pointerId);
+  game.shooting = true;
+  game.touchAimPointerId = event.pointerId;
+  handleFireAim(event, true);
+}
+
+function handleFirePointerMove(event) {
+  if (game.touchAimPointerId !== event.pointerId) {
+    return;
+  }
+
+  event.preventDefault();
+  handleFireAim(event, false);
+}
+
+function handleFirePointerEnd(event) {
+  if (game.touchAimPointerId !== null && event.pointerId !== game.touchAimPointerId) {
+    return;
+  }
+
+  game.shooting = false;
+  game.touchAimActive = false;
+  game.touchAimPointerId = null;
+}
+
+function handleFireAim(event, allowAssist) {
+  updatePointerFromClient(event.clientX, event.clientY);
+
+  const rect = touchFire.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const offsetX = event.clientX - centerX;
+  const offsetY = event.clientY - centerY;
+  const rawDistance = Math.hypot(offsetX, offsetY);
+  const deadZone = rect.width * getTouchFireAimDeadZone();
+
+  if (rawDistance > deadZone) {
+    player.aimDirection.set(offsetX, 0, offsetY).normalize();
+    game.touchAimActive = true;
+    return;
+  }
+
+  game.touchAimActive = allowAssist && applyTouchAimAssist();
+}
+
+function applyTouchAimAssist() {
+  if (!usesMobileTuning()) {
+    return false;
+  }
+
+  const target = getClosestZombie(player.position, getGameConfig("gameplay.touch.aimAssistRange"));
+  if (!target) {
+    return false;
+  }
+
+  const direction = tempVectorA.subVectors(target.zombie.mesh.position, player.position);
+  direction.y = 0;
+  if (direction.lengthSq() < 0.1) {
+    return false;
+  }
+
+  player.aimDirection.copy(direction.normalize());
+  return true;
+}
+
 function handleStickMove(event) {
   event.preventDefault();
   touchStick.setPointerCapture?.(event.pointerId);
@@ -5084,7 +5253,13 @@ function getTouchDeadZone() {
   return usesMobileTuning() ? getGameConfig("gameplay.touch.deadZoneMobile") : getGameConfig("gameplay.touch.deadZoneDesktop");
 }
 
+function getTouchFireAimDeadZone() {
+  return getGameConfig("gameplay.touch.fireAimDeadZone");
+}
+
 function resizeRenderer() {
+  setViewportCssVars();
+  applyMobileLayoutState();
   applyRuntimeConfig(false);
   applyQualitySettings(true);
 }

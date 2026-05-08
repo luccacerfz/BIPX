@@ -18,11 +18,16 @@ html,
 body {
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   margin: 0;
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: none;
   background: #050706;
   color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -38,6 +43,8 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
+  width: var(--app-width, 100vw);
+  height: var(--app-height, 100dvh);
 }
 
 #game-canvas {
@@ -221,6 +228,30 @@ button {
   letter-spacing: 0;
 }
 
+.party-list {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(720px, calc(100vw - 20px));
+  overflow: hidden;
+}
+
+.party-list:empty {
+  display: none;
+}
+
+.party-card {
+  --party-color: var(--sky);
+  display: grid;
+  min-width: 132px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--party-color);
+  border-radius: 8px;
+  background: rgba(5, 10, 11, 0.5);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(8px);
+}
+
 .party-card__top {
   display: flex;
   justify-content: space-between;
@@ -231,7 +262,7 @@ button {
 }
 
 .party-card__score {
-  color: var(--amber);
+  color: var(--party-color);
 }
 
 .party-card__health {
@@ -245,7 +276,7 @@ button {
 .party-card__health-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--blood), var(--acid));
+  background: var(--party-color);
   transform-origin: left center;
 }
 
@@ -254,11 +285,6 @@ button {
   color: var(--muted);
   font-size: 0.62rem;
   font-weight: 800;
-}
-
-.party-list,
-.party-card {
-  display: none;
 }
 
 .leaderboard-panel {
@@ -429,6 +455,7 @@ button {
   position: fixed;
   inset: 0;
   z-index: 4;
+  min-height: var(--app-height, 100dvh);
   display: grid;
   grid-template-columns: minmax(320px, 1fr) minmax(260px, 0.44fr);
   grid-template-rows: auto 1fr auto;
@@ -443,7 +470,8 @@ button {
     radial-gradient(circle at 76% 12%, rgba(169, 255, 112, 0.12), transparent 18%),
     radial-gradient(circle at 16% 78%, rgba(116, 209, 255, 0.13), transparent 22%),
     linear-gradient(90deg, rgba(2, 5, 6, 0.18), rgba(2, 5, 6, 0.52));
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 body:has(.message:not(.is-hidden)) .survivor-hud,
@@ -865,35 +893,40 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel {
 
 @media (max-width: 680px) {
   .hud {
-    top: max(3px, env(safe-area-inset-top));
+    top: max(2px, env(safe-area-inset-top));
   }
 
   .survivor-hud {
-    gap: 3px;
-    padding: 0 6px;
+    gap: 1px;
+    padding: 0 max(5px, env(safe-area-inset-right)) 0 max(5px, env(safe-area-inset-left));
   }
 
   .survivor-hud__xp {
-    height: 7px;
+    height: 6px;
     border-width: 1px;
   }
 
   .survivor-hud__row {
-    gap: 8px;
+    gap: 6px;
   }
 
   .survivor-hud__row--stats {
-    min-height: 18px;
+    min-height: 16px;
     overflow: hidden;
   }
 
+  .survivor-hud__row--combat {
+    min-height: 13px;
+    align-items: center;
+  }
+
   .hud__stat {
-    gap: 3px;
-    font-size: 0.66rem;
+    gap: 2px;
+    font-size: 0.59rem;
   }
 
   .hud__stat--online {
-    max-width: 82px;
+    max-width: 62px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -903,57 +936,112 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel {
   }
 
   .hud__stat--level {
-    font-size: 0.76rem;
+    font-size: 0.68rem;
   }
 
   .hud__stat--weapon {
-    max-width: 45vw;
+    max-width: 37vw;
+  }
+
+  .hud__stat--weapon small {
+    display: none;
   }
 
   .health {
-    min-width: 124px;
-    gap: 5px;
+    min-width: 102px;
+    gap: 4px;
   }
 
   .health__track {
-    width: 98px;
-    height: 12px;
+    width: 78px;
+    height: 10px;
     border-width: 1px;
   }
 
   .health strong {
-    font-size: 0.62rem;
+    font-size: 0.56rem;
   }
 
   .skill-list {
-    max-width: calc(100vw - 12px);
-    min-height: 25px;
-    gap: 2px 7px;
+    max-width: calc(100vw - 10px);
+    min-height: 18px;
+    max-height: 18px;
+    gap: 1px 6px;
+    overflow: hidden;
   }
 
   .skill-chip {
-    min-width: 28px;
-    font-size: 0.92rem;
+    min-width: 22px;
+    font-size: 0.72rem;
+  }
+
+  .skill-chip small {
+    margin-top: 0;
+    font-size: 0.38em;
+  }
+
+  .party-list {
+    position: fixed;
+    top: max(25px, calc(env(safe-area-inset-top) + 24px));
+    right: max(5px, env(safe-area-inset-right));
+    z-index: 4;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: min(56vw, 232px);
+  }
+
+  .party-card {
+    min-width: 0;
+    max-width: 54px;
+    height: 16px;
+    padding: 1px 4px 2px;
+    border-left-width: 2px;
+    border-radius: 4px;
+    background: rgba(4, 8, 10, 0.68);
+    box-shadow: none;
+  }
+
+  .party-card__top {
+    gap: 3px;
+    font-size: 0.48rem;
+    line-height: 1;
+  }
+
+  .party-card__top span:first-child {
+    max-width: 32px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .party-card__score,
+  .party-card__meta {
+    display: none;
+  }
+
+  .party-card__health {
+    height: 3px;
+    margin-top: 2px;
   }
 
   .touch-controls {
     display: flex;
-    inset: auto max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    inset: auto max(14px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   }
 
   .touch-stick {
-    width: min(132px, 30vw);
-    height: min(132px, 30vw);
+    width: clamp(118px, 30vw, 128px);
+    height: clamp(118px, 30vw, 128px);
   }
 
   .touch-stick__knob {
-    width: min(54px, 12vw);
-    height: min(54px, 12vw);
+    width: clamp(48px, 12vw, 54px);
+    height: clamp(48px, 12vw, 54px);
   }
 
   .touch-fire {
-    width: min(100px, 23vw);
-    height: min(100px, 23vw);
+    width: clamp(88px, 23vw, 98px);
+    height: clamp(88px, 23vw, 98px);
   }
 
   .upgrade-panel {
@@ -970,15 +1058,15 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel {
   }
 
   .leaderboard-panel {
-    top: max(44px, calc(env(safe-area-inset-top) + 38px));
+    top: max(62px, calc(env(safe-area-inset-top) + 58px));
     right: max(8px, env(safe-area-inset-right));
     bottom: auto;
-    width: min(168px, calc(100vw - 20px));
-    max-height: 82px;
-    padding: 6px;
-    border-radius: 8px;
+    width: min(118px, calc(100vw - 20px));
+    max-height: 24px;
+    padding: 4px 6px;
+    border-radius: 999px;
     overflow: hidden;
-    opacity: 0.58;
+    opacity: 0.5;
   }
 
   .leaderboard-panel__title {
@@ -986,31 +1074,14 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel {
   }
 
   .leaderboard-panel__title strong {
-    font-size: 0.54rem;
+    font-size: 0.48rem;
   }
 
   .leaderboard-panel__title span {
-    font-size: 0.5rem;
-  }
-
-  .leaderboard-list {
-    gap: 3px;
-    margin-top: 5px;
-  }
-
-  .leaderboard-list li {
-    grid-template-columns: auto 1fr;
-    min-height: 18px;
-    padding: 3px 5px;
-    gap: 5px;
-    font-size: 0.56rem;
-  }
-
-  .leaderboard-list li:nth-child(n + 4) {
     display: none;
   }
 
-  .leaderboard-list__meta {
+  .leaderboard-list {
     display: none;
   }
 
@@ -1081,6 +1152,107 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel {
   }
 
   body:has(.message:not(.is-hidden)) .leaderboard-panel {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) and (max-height: 520px) {
+  .hud {
+    top: max(2px, env(safe-area-inset-top));
+  }
+
+  .survivor-hud {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "xp xp"
+      "stats skills"
+      "combat skills";
+    gap: 1px 8px;
+    padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+  }
+
+  .survivor-hud__xp {
+    grid-area: xp;
+    height: 5px;
+    border-width: 1px;
+  }
+
+  .survivor-hud__row--stats {
+    grid-area: stats;
+    min-height: 16px;
+    gap: 8px;
+  }
+
+  .survivor-hud__row--combat {
+    grid-area: combat;
+    min-height: 13px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .skill-list {
+    grid-area: skills;
+    align-self: center;
+    justify-content: flex-end;
+    max-width: 38vw;
+    min-height: 34px;
+    max-height: 34px;
+    gap: 1px 7px;
+    overflow: hidden;
+  }
+
+  .hud__stat {
+    font-size: 0.62rem;
+  }
+
+  .hud__stat--level {
+    margin-left: 0;
+    font-size: 0.72rem;
+  }
+
+  .health {
+    min-width: 110px;
+  }
+
+  .health__track {
+    width: 86px;
+    height: 10px;
+    border-width: 1px;
+  }
+
+  .touch-controls {
+    inset: auto max(18px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  }
+
+  .touch-stick {
+    width: min(122px, 22vw);
+    height: min(122px, 22vw);
+  }
+
+  .touch-fire {
+    width: min(92px, 17vw);
+    height: min(92px, 17vw);
+  }
+
+  .party-list {
+    top: max(40px, calc(env(safe-area-inset-top) + 38px));
+    right: max(12px, env(safe-area-inset-right));
+    max-width: 34vw;
+  }
+
+  .leaderboard-panel {
+    top: auto;
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(116px, calc(env(safe-area-inset-bottom) + 108px));
+    width: 112px;
+    max-height: 24px;
+    padding: 4px 6px;
+    border-radius: 999px;
+    opacity: 0.45;
+  }
+
+  .leaderboard-list,
+  .leaderboard-panel__title span {
     display: none;
   }
 }

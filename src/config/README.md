@@ -5,9 +5,9 @@ quality, and gameplay values.
 
 ## Files
 
-- `defaults.js`: baseline values for `desktop`, `mobile`, and `tablet`
+- `defaults.js`: baseline values for `desktop`, `mobilePro`, `mobile`, and `tablet`
 - `schema.js`: metadata for editor controls (type, min, max, step)
-- `targets.js`: target resolution (`desktop` / `mobile` / `tablet`)
+- `targets.js`: target resolution (`desktop` / `mobilePro` / `mobile` / `tablet`)
 - `runtime.js`: override store + localStorage persistence + subscriptions
 - `index.js`: public exports
 
