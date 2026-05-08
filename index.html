@@ -68,27 +68,11 @@
         <div class="mode-actions main-menu__actions" aria-label="Menu principal">
           <button id="open-login-button" class="primary-button main-menu__button" type="button">
             <span aria-hidden="true">▶</span>
-            Jogar
+            JOGAR
           </button>
-          <button class="secondary-button main-menu__button" type="button" disabled>
-            <span aria-hidden="true">🛒</span>
-            Loja
-          </button>
-          <button class="secondary-button main-menu__button" type="button" disabled>
+          <button id="menu-ranking-button" class="secondary-button main-menu__button" type="button">
             <span aria-hidden="true">🏆</span>
-            Ranking
-          </button>
-          <button class="secondary-button main-menu__button" type="button" disabled>
-            <span aria-hidden="true">★</span>
-            Conquistas
-          </button>
-          <button class="secondary-button main-menu__button" type="button" disabled>
-            <span aria-hidden="true">⚙</span>
-            Configuracoes
-          </button>
-          <button class="secondary-button main-menu__button" type="button" disabled>
-            <span aria-hidden="true">👤</span>
-            Creditos
+            RANKING
           </button>
         </div>
 
@@ -109,6 +93,27 @@
               <span aria-hidden="true">🌐</span>
               Multiplayer
             </button>
+          </div>
+        </div>
+
+        <div class="main-menu__ranking" aria-label="Leaderboard">
+          <div class="main-menu__ranking-header">
+            <button id="ranking-back-button" class="main-menu__back" type="button">← Menu</button>
+            <div>
+              <p class="main-menu__ranking-kicker">Hall da horda</p>
+              <h2>Leaderboard</h2>
+            </div>
+            <span id="menu-leaderboard-count">0 jogadores</span>
+          </div>
+          <div class="main-menu__ranking-table" role="table" aria-label="Ranking historico detalhado">
+            <div class="main-menu__ranking-row main-menu__ranking-row--head" role="row">
+              <span>#</span>
+              <span>Jogador</span>
+              <span>Zumbis</span>
+              <span>Tempo</span>
+              <span>Perks usadas</span>
+            </div>
+            <ol id="menu-leaderboard-list" class="main-menu__ranking-list"></ol>
           </div>
         </div>
 

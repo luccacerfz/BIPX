@@ -172,6 +172,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
     buffer: Buffer.alloc(0),
     lastSeen: Date.now(),
     sessionBestScore: 0,
+    sessionBestKills: 0,
     sessionBestWave: 1,
     sessionBestLevel: 1,
     sessionBestBuild: [],
@@ -185,6 +186,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
       health: 100,
       maxHealth: 100,
       score: 0,
+      kills: 0,
       wave: 1,
       level: 1,
       bestLevel: 1,
@@ -405,6 +407,7 @@ function normalizePlayerState(state, fallback) {
     health: clampNumber(state?.health, 0, maxHealth, fallbackHealth),
     maxHealth,
     score: Math.max(0, Math.floor(clampNumber(state?.score, 0, 999_999, fallback.score))),
+    kills: Math.max(0, Math.floor(clampNumber(state?.kills, 0, 999_999, fallback.kills ?? 0))),
     wave: Math.max(1, Math.floor(clampNumber(state?.wave, 1, 999, fallback.wave))),
     level,
     bestLevel,
@@ -564,6 +567,7 @@ function updatePlayerHistory(client, previousState) {
   if (state.state === "playing" && previousState !== "playing") {
     client.sessionStartedAt = Date.now();
     client.sessionBestScore = state.score;
+    client.sessionBestKills = state.kills;
     client.sessionBestWave = state.wave;
     client.sessionBestLevel = state.level;
     client.sessionBestBuild = normalizeBuildSummary(state.build);
@@ -573,6 +577,7 @@ function updatePlayerHistory(client, previousState) {
 
   if (state.state === "playing") {
     client.sessionBestScore = Math.max(client.sessionBestScore, state.score);
+    client.sessionBestKills = Math.max(client.sessionBestKills, state.kills);
     client.sessionBestWave = Math.max(client.sessionBestWave, state.wave);
     if (state.level >= client.sessionBestLevel) {
       client.sessionBestLevel = state.level;
@@ -582,6 +587,11 @@ function updatePlayerHistory(client, previousState) {
 
   if (state.score > record.bestScore) {
     record.bestScore = state.score;
+    changed = true;
+  }
+
+  if (state.kills > (record.bestKills || 0)) {
+    record.bestKills = state.kills;
     changed = true;
   }
 
@@ -596,8 +606,14 @@ function updatePlayerHistory(client, previousState) {
     changed = true;
   }
 
-  if (record.lastScore !== state.score || record.lastWave !== state.wave || record.lastLevel !== state.level) {
+  if (
+    record.lastScore !== state.score ||
+    record.lastKills !== state.kills ||
+    record.lastWave !== state.wave ||
+    record.lastLevel !== state.level
+  ) {
     record.lastScore = state.score;
+    record.lastKills = state.kills;
     record.lastWave = state.wave;
     record.lastLevel = state.level;
     record.lastBuild = normalizeBuildSummary(state.build);
@@ -625,6 +641,7 @@ function finishPlayerSession(client) {
   const endedAt = new Date().toISOString();
   const durationMs = Math.max(0, Date.now() - client.sessionStartedAt);
   const score = Math.max(client.sessionBestScore, client.state.score);
+  const kills = Math.max(client.sessionBestKills, client.state.kills || 0);
   const wave = Math.max(client.sessionBestWave, client.state.wave);
   const level = Math.max(client.sessionBestLevel, client.state.level);
   const build =
@@ -633,13 +650,16 @@ function finishPlayerSession(client) {
       : normalizeBuildSummary(client.state.build);
 
   record.totalScore += score;
+  record.totalKills += kills;
   record.totalPlayMs += durationMs;
   record.lastScore = score;
+  record.lastKills = kills;
   record.lastWave = wave;
   record.lastLevel = level;
   record.lastBuild = build;
   record.lastSeenAt = endedAt;
   record.bestScore = Math.max(record.bestScore, score);
+  record.bestKills = Math.max(record.bestKills || 0, kills);
   record.bestWave = Math.max(record.bestWave, wave);
   if (level >= record.bestLevel) {
     record.bestLevel = level;
@@ -650,6 +670,7 @@ function finishPlayerSession(client) {
     id: crypto.randomUUID(),
     name: client.name,
     score,
+    kills,
     wave,
     level,
     build,
@@ -660,6 +681,7 @@ function finishPlayerSession(client) {
   leaderboardStore.sessions = leaderboardStore.sessions.slice(-historyLimit);
   client.sessionStartedAt = null;
   client.sessionBestScore = 0;
+  client.sessionBestKills = 0;
   client.sessionBestWave = 1;
   client.sessionBestLevel = 1;
   client.sessionBestBuild = [];
@@ -672,6 +694,7 @@ function recordSoloLeaderboardSession(data) {
   const record = getOrCreatePlayerRecord(name);
   const endedAt = new Date().toISOString();
   const score = Math.max(0, Math.floor(clampNumber(data?.score, 0, 999_999, 0)));
+  const kills = Math.max(0, Math.floor(clampNumber(data?.kills, 0, 999_999, 0)));
   const wave = Math.max(1, Math.floor(clampNumber(data?.wave, 1, 999, 1)));
   const level = Math.max(1, Math.floor(clampNumber(data?.level ?? data?.bestLevel, 1, 999, 1)));
   const build = normalizeBuildSummary(data?.build);
@@ -680,13 +703,16 @@ function recordSoloLeaderboardSession(data) {
   record.name = name;
   record.gamesPlayed += 1;
   record.totalScore += score;
+  record.totalKills += kills;
   record.totalPlayMs += durationMs;
   record.lastScore = score;
+  record.lastKills = kills;
   record.lastWave = wave;
   record.lastLevel = level;
   record.lastBuild = build;
   record.lastSeenAt = endedAt;
   record.bestScore = Math.max(record.bestScore, score);
+  record.bestKills = Math.max(record.bestKills || 0, kills);
   record.bestWave = Math.max(record.bestWave, wave);
 
   if (level >= record.bestLevel) {
@@ -698,6 +724,7 @@ function recordSoloLeaderboardSession(data) {
     id: crypto.randomUUID(),
     name,
     score,
+    kills,
     wave,
     level,
     build,
@@ -718,13 +745,16 @@ function getOrCreatePlayerRecord(name) {
     leaderboardStore.players[key] = {
       name: safeName,
       bestScore: 0,
+      bestKills: 0,
       bestWave: 1,
       bestLevel: 1,
       bestBuild: [],
       gamesPlayed: 0,
       totalScore: 0,
+      totalKills: 0,
       totalPlayMs: 0,
       lastScore: 0,
+      lastKills: 0,
       lastWave: 1,
       lastLevel: 1,
       lastBuild: [],
@@ -734,6 +764,9 @@ function getOrCreatePlayerRecord(name) {
   }
 
   const record = leaderboardStore.players[key];
+  record.bestKills = Math.max(0, Math.floor(Number(record.bestKills) || 0));
+  record.totalKills = Math.max(0, Math.floor(Number(record.totalKills) || 0));
+  record.lastKills = Math.max(0, Math.floor(Number(record.lastKills) || 0));
   record.bestLevel = Math.max(1, Math.floor(Number(record.bestLevel) || 1));
   record.bestBuild = normalizeBuildSummary(record.bestBuild);
   record.lastLevel = Math.max(1, Math.floor(Number(record.lastLevel) || 1));
@@ -783,12 +816,15 @@ function getLeaderboardSnapshot() {
       rank: index + 1,
       name: record.name,
       bestScore: record.bestScore,
+      bestKills: Math.max(0, Math.floor(Number(record.bestKills) || 0)),
       bestWave: record.bestWave,
       bestLevel: Math.max(1, Math.floor(Number(record.bestLevel) || 1)),
       bestBuild: normalizeBuildSummary(record.bestBuild),
       gamesPlayed: record.gamesPlayed,
       totalScore: record.totalScore,
+      totalKills: Math.max(0, Math.floor(Number(record.totalKills) || 0)),
       lastScore: record.lastScore,
+      lastKills: Math.max(0, Math.floor(Number(record.lastKills) || 0)),
       lastWave: record.lastWave,
       lastLevel: Math.max(1, Math.floor(Number(record.lastLevel) || 1)),
       lastBuild: normalizeBuildSummary(record.lastBuild),
@@ -803,6 +839,7 @@ function getLeaderboardSnapshot() {
     .map((session) => ({
       name: session.name,
       score: session.score,
+      kills: Math.max(0, Math.floor(Number(session.kills) || 0)),
       wave: session.wave,
       level: Math.max(1, Math.floor(Number(session.level) || 1)),
       build: normalizeBuildSummary(session.build),
@@ -952,13 +989,16 @@ function mapLeaderboardPlayerFromRow(row) {
   return {
     name: sanitizePlayerName(row.name),
     bestScore: Math.max(0, Math.floor(Number(row.best_score) || 0)),
+    bestKills: Math.max(0, Math.floor(Number(row.best_kills) || 0)),
     bestWave: Math.max(1, Math.floor(Number(row.best_wave) || 1)),
     bestLevel: Math.max(1, Math.floor(Number(row.best_level) || 1)),
     bestBuild: normalizeBuildSummary(row.best_build),
     gamesPlayed: Math.max(0, Math.floor(Number(row.games_played) || 0)),
     totalScore: Math.max(0, Math.floor(Number(row.total_score) || 0)),
+    totalKills: Math.max(0, Math.floor(Number(row.total_kills) || 0)),
     totalPlayMs: Math.max(0, Math.floor(Number(row.total_play_ms) || 0)),
     lastScore: Math.max(0, Math.floor(Number(row.last_score) || 0)),
+    lastKills: Math.max(0, Math.floor(Number(row.last_kills) || 0)),
     lastWave: Math.max(1, Math.floor(Number(row.last_wave) || 1)),
     lastLevel: Math.max(1, Math.floor(Number(row.last_level) || 1)),
     lastBuild: normalizeBuildSummary(row.last_build),
@@ -972,13 +1012,16 @@ function mapLeaderboardPlayerToRow(playerKey, record) {
     player_key: playerKey,
     name: sanitizePlayerName(record.name),
     best_score: Math.max(0, Math.floor(Number(record.bestScore) || 0)),
+    best_kills: Math.max(0, Math.floor(Number(record.bestKills) || 0)),
     best_wave: Math.max(1, Math.floor(Number(record.bestWave) || 1)),
     best_level: Math.max(1, Math.floor(Number(record.bestLevel) || 1)),
     best_build: normalizeBuildSummary(record.bestBuild),
     games_played: Math.max(0, Math.floor(Number(record.gamesPlayed) || 0)),
     total_score: Math.max(0, Math.floor(Number(record.totalScore) || 0)),
+    total_kills: Math.max(0, Math.floor(Number(record.totalKills) || 0)),
     total_play_ms: Math.max(0, Math.floor(Number(record.totalPlayMs) || 0)),
     last_score: Math.max(0, Math.floor(Number(record.lastScore) || 0)),
+    last_kills: Math.max(0, Math.floor(Number(record.lastKills) || 0)),
     last_wave: Math.max(1, Math.floor(Number(record.lastWave) || 1)),
     last_level: Math.max(1, Math.floor(Number(record.lastLevel) || 1)),
     last_build: normalizeBuildSummary(record.lastBuild),
@@ -992,6 +1035,7 @@ function mapLeaderboardSessionFromRow(row) {
     id: row.id,
     name: sanitizePlayerName(row.name),
     score: Math.max(0, Math.floor(Number(row.score) || 0)),
+    kills: Math.max(0, Math.floor(Number(row.kills) || 0)),
     wave: Math.max(1, Math.floor(Number(row.wave) || 1)),
     level: Math.max(1, Math.floor(Number(row.level) || 1)),
     build: normalizeBuildSummary(row.build),
@@ -1008,6 +1052,7 @@ function mapLeaderboardSessionToRow(session) {
     player_key: getPlayerRecordKey(session.name),
     name: sanitizePlayerName(session.name),
     score: Math.max(0, Math.floor(Number(session.score) || 0)),
+    kills: Math.max(0, Math.floor(Number(session.kills) || 0)),
     wave: Math.max(1, Math.floor(Number(session.wave) || 1)),
     level: Math.max(1, Math.floor(Number(session.level) || 1)),
     build: normalizeBuildSummary(session.build),

@@ -36,10 +36,14 @@ const messageKicker = document.querySelector("#message-kicker");
 const messageTitle = document.querySelector("#message-title");
 const messageCopy = document.querySelector("#message-copy");
 const openLoginButton = document.querySelector("#open-login-button");
+const menuRankingButton = document.querySelector("#menu-ranking-button");
 const playButton = document.querySelector("#play-button");
 const playButtonLabel = document.querySelector("#play-button-label");
 const multiplayerButton = document.querySelector("#multiplayer-button");
 const loginBackButton = document.querySelector("#login-back-button");
+const rankingBackButton = document.querySelector("#ranking-back-button");
+const menuLeaderboardCountElement = document.querySelector("#menu-leaderboard-count");
+const menuLeaderboardListElement = document.querySelector("#menu-leaderboard-list");
 const playerNameInput = document.querySelector("#player-name");
 const touchStick = document.querySelector("#touch-stick");
 const touchKnob = document.querySelector("#touch-knob");
@@ -242,7 +246,7 @@ const monsterProfiles = {
     score: 95,
     minWave: 3,
     boss: true,
-    projectileColor: 0xff9d28,
+    projectileColor: 0xfff45c,
   },
   dinzo: {
     label: "Dinzo",
@@ -253,6 +257,7 @@ const monsterProfiles = {
     score: 105,
     minWave: 2,
     boss: true,
+    projectileColor: 0xc93337,
   },
   gitcity: {
     label: "GitCity",
@@ -488,8 +493,21 @@ updateHud();
 animate();
 
 openLoginButton?.addEventListener("click", () => {
+  message.classList.remove("message--ranking");
   message.classList.add("message--login");
   playerNameInput?.focus();
+});
+
+menuRankingButton?.addEventListener("click", () => {
+  message.classList.remove("message--login");
+  message.classList.remove("message--game-over");
+  message.classList.add("message--ranking");
+  updateLeaderboardHud();
+  void loadLeaderboardSnapshot();
+});
+
+rankingBackButton?.addEventListener("click", () => {
+  message.classList.remove("message--ranking");
 });
 
 loginBackButton?.addEventListener("click", () => {
@@ -501,6 +519,7 @@ loginBackButton?.addEventListener("click", () => {
   }
   message.classList.remove("message--game-over");
   message.classList.remove("message--login");
+  message.classList.remove("message--ranking");
 });
 
 playButton.addEventListener("click", () => {
@@ -542,7 +561,7 @@ window.addEventListener("keydown", (event) => {
 
   keys.add(event.code);
 
-  if (event.code === "Enter" && game.state !== "playing") {
+  if (event.code === "Enter" && game.state !== "playing" && !message.classList.contains("message--ranking")) {
     startGame();
   }
 
@@ -619,6 +638,10 @@ window.__zombieNightDebug = {
       zombies: zombies.length,
       bullets: bullets.length,
       enemyProjectiles: enemyProjectiles.length,
+      enemyProjectileDetails: enemyProjectiles.slice(0, 12).map((projectile) => ({
+        kind: projectile.visualKind ?? "orb",
+        source: projectile.sourceType ?? "caster",
+      })),
       powerups: powerups.length,
       powerupDetails: powerups.map((powerup) => ({
         type: powerup.type,
@@ -908,6 +931,7 @@ function startGame() {
   spatialGrid.dirty = true;
   message.classList.remove("message--game-over");
   message.classList.remove("message--login");
+  message.classList.remove("message--ranking");
   message.classList.add("is-hidden");
   startNextWave();
   updateHud(true);
@@ -2565,7 +2589,252 @@ function releaseProjectileMesh(mesh, pool) {
   mesh.visible = false;
   mesh.position.set(9999, 9999, 9999);
   mesh.scale.set(1, 1, 1);
+  mesh.rotation.set(0, 0, 0);
   pool.push(mesh);
+}
+
+function createBoletoProjectileMesh() {
+  const group = new THREE.Group();
+  const paperMaterial = new THREE.MeshBasicMaterial({ color: 0xd7d2c8 });
+  const grayMaterial = new THREE.MeshBasicMaterial({ color: 0x8d9097 });
+  const redMaterial = new THREE.MeshBasicMaterial({ color: 0xc72f35 });
+  const inkMaterial = new THREE.MeshBasicMaterial({ color: 0x22252a });
+
+  for (let cardIndex = 0; cardIndex < 3; cardIndex += 1) {
+    const card = new THREE.Group();
+    card.position.set((cardIndex - 1) * 0.16, cardIndex % 2 === 0 ? 0 : 0.07, (cardIndex - 1) * 0.07);
+    card.rotation.z = (cardIndex - 1) * 0.16;
+
+    const sheet = new THREE.Mesh(
+      new THREE.BoxGeometry(0.72, 0.035, 0.44),
+      cardIndex === 1 ? paperMaterial : grayMaterial,
+    );
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.045, 0.07), redMaterial);
+    stripe.position.set(0, 0.03, -0.15);
+
+    card.add(sheet, stripe);
+
+    for (let lineIndex = 0; lineIndex < 5; lineIndex += 1) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.045, 0.16), inkMaterial);
+      bar.position.set(-0.22 + lineIndex * 0.055, 0.035, 0.1);
+      card.add(bar);
+    }
+
+    group.add(card);
+  }
+
+  group.userData.enemyProjectileVisual = "boleto";
+  group.scale.setScalar(0.92);
+  return group;
+}
+
+function createLightningProjectileMesh() {
+  const group = new THREE.Group();
+  const coreMaterial = new THREE.MeshBasicMaterial({ color: 0xfff45c });
+  const glowMaterial = new THREE.MeshBasicMaterial({ color: 0xffb703, transparent: true, opacity: 0.72 });
+  const points = [
+    [-0.18, -0.48],
+    [0.16, -0.18],
+    [-0.08, 0.12],
+    [0.2, 0.48],
+  ];
+
+  for (let pointIndex = 0; pointIndex < points.length - 1; pointIndex += 1) {
+    const [startX, startZ] = points[pointIndex];
+    const [endX, endZ] = points[pointIndex + 1];
+    const deltaX = endX - startX;
+    const deltaZ = endZ - startZ;
+    const length = Math.hypot(deltaX, deltaZ);
+    const angle = Math.atan2(deltaX, deltaZ);
+    const segment = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.13, length), coreMaterial);
+    segment.position.set((startX + endX) * 0.5, 0, (startZ + endZ) * 0.5);
+    segment.rotation.y = angle;
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.07, length * 1.08), glowMaterial);
+    glow.position.copy(segment.position);
+    glow.rotation.copy(segment.rotation);
+    group.add(glow, segment);
+  }
+
+  group.userData.enemyProjectileVisual = "lightning";
+  group.scale.setScalar(1.05);
+  return group;
+}
+
+function createEvilEyeProjectileMesh() {
+  const group = new THREE.Group();
+  const outer = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.055, 32), new THREE.MeshBasicMaterial({ color: 0x1457ff }));
+  const white = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.065, 32), new THREE.MeshBasicMaterial({ color: 0xf8fbff }));
+  const iris = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.075, 32), new THREE.MeshBasicMaterial({ color: 0x42b8ff }));
+  const pupil = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.085, 24), new THREE.MeshBasicMaterial({ color: 0x06121f }));
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+
+  white.position.y = 0.025;
+  iris.position.y = 0.055;
+  pupil.position.y = 0.085;
+  shine.position.set(0.055, 0.13, -0.055);
+  group.add(outer, white, iris, pupil, shine);
+  group.userData.enemyProjectileVisual = "evilEye";
+  return group;
+}
+
+function createBriefcaseProjectileMesh() {
+  const group = new THREE.Group();
+  const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x3f4754 });
+  const lidMaterial = new THREE.MeshBasicMaterial({ color: 0x273140 });
+  const metalMaterial = new THREE.MeshBasicMaterial({ color: 0xffd166 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.42, 0.34), bodyMaterial);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.36), lidMaterial);
+  const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.2, 0.045), metalMaterial);
+  const rightPost = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.2, 0.045), metalMaterial.clone());
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.045, 0.045), metalMaterial.clone());
+  const claspLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.04), metalMaterial.clone());
+  const claspRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.04), metalMaterial.clone());
+
+  lid.position.y = 0.24;
+  leftPost.position.set(-0.17, 0.36, -0.02);
+  rightPost.position.set(0.17, 0.36, -0.02);
+  handle.position.set(0, 0.47, -0.02);
+  claspLeft.position.set(-0.12, 0.03, -0.2);
+  claspRight.position.set(0.12, 0.03, -0.2);
+  group.add(body, lid, leftPost, rightPost, handle, claspLeft, claspRight);
+  group.userData.enemyProjectileVisual = "briefcase";
+  group.scale.setScalar(0.86);
+  return group;
+}
+
+function getEnemyProjectileSpec(type) {
+  if (type === "dinzo") {
+    return {
+      kind: "boleto",
+      color: 0xc93337,
+      speed: 14.5,
+      radius: 0.52,
+      height: 1.22,
+      spawnOffset: 1.05,
+      lifespan: 2.55,
+      impactRadius: 2.6,
+    };
+  }
+
+  if (type === "himetrica") {
+    return {
+      kind: "lightning",
+      color: 0xfff45c,
+      speed: 22,
+      radius: 0.42,
+      height: 1.48,
+      spawnOffset: 1.0,
+      lifespan: 1.9,
+      impactRadius: 2.9,
+    };
+  }
+
+  if (type === "visor") {
+    return {
+      kind: "evilEye",
+      color: 0x42b8ff,
+      speed: 13,
+      radius: 0.54,
+      height: 1.46,
+      spawnOffset: 1.05,
+      lifespan: 2.45,
+      impactRadius: 2.5,
+    };
+  }
+
+  if (type === "sofra") {
+    return {
+      kind: "briefcase",
+      color: 0x32b8ff,
+      speed: 23,
+      radius: 0.56,
+      height: 1.34,
+      spawnOffset: 1.1,
+      lifespan: 2.25,
+      impactRadius: 3.0,
+    };
+  }
+
+  const profile = monsterProfiles[type] ?? monsterProfiles.caster;
+  return {
+    kind: "orb",
+    color: profile.projectileColor ?? 0xd978ff,
+    speed: 14,
+    radius: 0.42,
+    height: 1.38,
+    spawnOffset: 0.9,
+    lifespan: 2.25,
+    impactRadius: 2.4,
+  };
+}
+
+function createEnemyProjectileVisual(spec) {
+  if (spec.kind === "boleto") {
+    return { mesh: createBoletoProjectileMesh(), pooled: false };
+  }
+
+  if (spec.kind === "lightning") {
+    return { mesh: createLightningProjectileMesh(), pooled: false };
+  }
+
+  if (spec.kind === "evilEye") {
+    return { mesh: createEvilEyeProjectileMesh(), pooled: false };
+  }
+
+  if (spec.kind === "briefcase") {
+    return { mesh: createBriefcaseProjectileMesh(), pooled: false };
+  }
+
+  return {
+    mesh: acquireProjectileMesh(entityPools.enemyProjectiles, spec.color, spec.radius),
+    pooled: true,
+  };
+}
+
+function releaseEnemyProjectileVisual(projectile) {
+  if (!projectile) {
+    return;
+  }
+
+  if (projectile.pooled) {
+    releaseProjectileMesh(projectile.mesh, entityPools.enemyProjectiles);
+    return;
+  }
+
+  scene.remove(projectile.mesh);
+  disposeObject(projectile.mesh);
+}
+
+function animateEnemyProjectileVisual(projectile, dt) {
+  const mesh = projectile.mesh;
+  const phase = projectile.phase ?? 0;
+  const bob = Math.sin(projectile.age * 12 + phase) * 0.06;
+  mesh.position.y = projectile.baseY + bob;
+
+  if (projectile.visualKind === "boleto") {
+    mesh.rotation.x = Math.sin(projectile.age * 9 + phase) * 0.2;
+    mesh.rotation.z = Math.sin(projectile.age * 16 + phase) * 0.32;
+    return;
+  }
+
+  if (projectile.visualKind === "lightning") {
+    const pulse = 1 + Math.sin(projectile.age * 38 + phase) * 0.08;
+    mesh.scale.setScalar(projectile.baseScale * pulse);
+    mesh.rotation.z = Math.sin(projectile.age * 30 + phase) * 0.18;
+    return;
+  }
+
+  if (projectile.visualKind === "evilEye") {
+    mesh.rotation.y += dt * 4.2;
+    mesh.rotation.z += dt * 2.8;
+    return;
+  }
+
+  if (projectile.visualKind === "briefcase") {
+    mesh.rotation.x += dt * 5.6;
+    mesh.rotation.z = Math.sin(projectile.age * 10 + phase) * 0.28;
+  }
 }
 
 function getEnemyProjectileInstanceMesh() {
@@ -2601,7 +2870,8 @@ function syncEnemyProjectileRenderer() {
   }
 
   for (const projectile of enemyProjectiles) {
-    const useInstance = enemyProjectileRenderer.count < enemyProjectileRenderer.capacity;
+    const canInstance = projectile.pooled && projectile.visualKind === "orb";
+    const useInstance = canInstance && enemyProjectileRenderer.count < enemyProjectileRenderer.capacity;
     projectile.mesh.visible = !useInstance;
 
     if (!useInstance) {
@@ -4298,6 +4568,7 @@ function canUseRangedAttack(type, distance) {
     (type === "caster" && distance < 16 && distance > 4.2) ||
     (type === "visor" && distance < 18 && distance > 4.4) ||
     (type === "himetrica" && distance < 15 && distance > 3.6) ||
+    (type === "dinzo" && distance < 16 && distance > 3.5) ||
     (type === "sofra" && distance < 20 && distance > 3.8)
   );
 }
@@ -4313,6 +4584,10 @@ function getRangedCooldown(type) {
 
   if (type === "himetrica") {
     return 0.85;
+  }
+
+  if (type === "dinzo") {
+    return 1.2;
   }
 
   return 1.45;
@@ -4331,25 +4606,32 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
   }
 
   direction.normalize();
-  const profile = monsterProfiles[zombie.type] ?? monsterProfiles.caster;
-  const projectileColor = profile.projectileColor ?? 0xd978ff;
-  const projectileSpeed = zombie.type === "sofra" ? 23 : zombie.type === "himetrica" ? 19 : zombie.type === "visor" ? 13 : 14;
-  const projectileSize = zombie.type === "sofra" ? 0.28 : zombie.type === "visor" ? 0.3 : zombie.type === "himetrica" ? 0.2 : 0.24;
-  const mesh = acquireProjectileMesh(entityPools.enemyProjectiles, projectileColor, projectileSize + 0.18);
+  const projectileSpec = getEnemyProjectileSpec(zombie.type);
+  const projectileVisual = createEnemyProjectileVisual(projectileSpec);
+  const mesh = projectileVisual.mesh;
+  const forwardRotation = Math.atan2(direction.x, direction.z);
   mesh.position.copy(zombie.mesh.position);
-  mesh.position.y = 1.38;
-  mesh.position.addScaledVector(direction, 0.9);
+  mesh.position.y = projectileSpec.height;
+  mesh.position.addScaledVector(direction, projectileSpec.spawnOffset);
+  mesh.rotation.y = forwardRotation;
   scene.add(mesh);
 
   enemyProjectiles.push({
     mesh,
+    pooled: projectileVisual.pooled,
+    visualKind: projectileSpec.kind,
+    sourceType: zombie.type,
     age: 0,
+    phase: Math.random() * Math.PI * 2,
+    baseY: projectileSpec.height,
+    baseScale: mesh.scale.x,
     damage: zombie.damage + Math.floor(player.wave * 0.35),
-    lifespan: 2.25,
-    radius: projectileSize + 0.18,
-    color: projectileColor,
+    lifespan: projectileSpec.lifespan,
+    radius: projectileSpec.radius,
+    color: projectileSpec.color,
+    impactRadius: projectileSpec.impactRadius,
     targetId: target.id,
-    velocity: direction.multiplyScalar(projectileSpeed),
+    velocity: direction.clone().multiplyScalar(projectileSpec.speed),
   });
 }
 
@@ -4358,11 +4640,12 @@ function updateEnemyProjectiles(dt) {
     const projectile = enemyProjectiles[index];
     projectile.age += dt;
     projectile.mesh.position.addScaledVector(projectile.velocity, dt);
+    animateEnemyProjectileVisual(projectile, dt);
 
     const hitTarget = getProjectileHitTarget(projectile);
     if (hitTarget) {
       damagePlayerTarget(hitTarget, projectile.damage);
-      spawnExplosion(projectile.mesh.position, projectile.color, 2.4);
+      spawnExplosion(projectile.mesh.position, projectile.color, projectile.impactRadius ?? 2.4);
       removeEnemyProjectile(index);
       continue;
     }
@@ -4692,7 +4975,7 @@ function removeBullet(index) {
 
 function removeEnemyProjectile(index) {
   const [projectile] = enemyProjectiles.splice(index, 1);
-  releaseProjectileMesh(projectile.mesh, entityPools.enemyProjectiles);
+  releaseEnemyProjectileVisual(projectile);
 }
 
 function removePowerup(index) {
@@ -5225,6 +5508,7 @@ function sendMultiplayerState() {
       health: player.health,
       maxHealth: player.maxHealth,
       score: player.score,
+      kills: player.kills,
       wave: Math.max(player.wave, 1),
       level: player.level,
       bestLevel: player.bestLevel,
@@ -5789,6 +6073,7 @@ async function submitSoloLeaderboardSession() {
       body: JSON.stringify({
         name: player.name,
         score: player.score,
+        kills: player.kills,
         wave: Math.max(player.wave, 1),
         level: player.level,
         bestLevel: player.bestLevel,
@@ -5836,13 +6121,27 @@ function getExplicitWebsocketOrigin() {
 }
 
 function updateLeaderboardHud() {
-  if (!leaderboardListElement || !leaderboardCountElement) {
-    return;
+  const leaders = multiplayer.leaderboard.players;
+  const totalPlayers = multiplayer.leaderboard.totalPlayers;
+
+  if (leaderboardCountElement) {
+    leaderboardCountElement.textContent = `${totalPlayers} players`;
   }
 
-  const leaders = multiplayer.leaderboard.players;
-  leaderboardCountElement.textContent = `${multiplayer.leaderboard.totalPlayers} players`;
+  if (leaderboardListElement) {
+    renderCompactLeaderboard(leaders);
+  }
 
+  if (menuLeaderboardCountElement) {
+    menuLeaderboardCountElement.textContent = `${totalPlayers} jogadores`;
+  }
+
+  if (menuLeaderboardListElement) {
+    renderMenuLeaderboard(leaders);
+  }
+}
+
+function renderCompactLeaderboard(leaders) {
   if (leaders.length === 0) {
     leaderboardListElement.innerHTML = `
       <li>
@@ -5869,6 +6168,115 @@ function updateLeaderboardHud() {
       `;
     })
     .join("");
+}
+
+function renderMenuLeaderboard(leaders) {
+  if (leaders.length === 0) {
+    menuLeaderboardListElement.innerHTML = `
+      <li>
+        <span class="menu-rank">–</span>
+        <span class="menu-player">
+          <span class="menu-player__avatar" data-tier="rookie">☠</span>
+          <span class="menu-player__name">
+            <strong>Nenhum jogador ainda</strong>
+            <small>jogue uma partida para gravar</small>
+          </span>
+        </span>
+        <span class="menu-stat">0<small>zumbis</small></span>
+        <span class="menu-stat">0:00<small>tempo</small></span>
+        <span class="menu-perks"><span class="menu-perk menu-perk--empty">sem perks</span></span>
+      </li>
+    `;
+    return;
+  }
+
+  menuLeaderboardListElement.innerHTML = leaders
+    .slice(0, 10)
+    .map((leader) => {
+      const avatar = getLeaderboardAvatar(leader);
+      const bestScore = Math.floor(Number(leader.bestScore) || 0);
+      const kills = Math.max(
+        Math.floor(Number(leader.bestKills) || 0),
+        Math.floor(Number(leader.lastKills) || 0),
+        Math.floor(bestScore / 12),
+      );
+      const totalPlayMs = Math.max(0, Math.floor(Number(leader.totalPlayMs) || 0));
+      const gamesPlayed = Math.max(0, Math.floor(Number(leader.gamesPlayed) || 0));
+      const bestLevel = Math.floor(Number(leader.bestLevel) || 1);
+      const bestWave = Math.floor(Number(leader.bestWave) || 1);
+      const build = Array.isArray(leader.bestBuild) && leader.bestBuild.length > 0 ? leader.bestBuild : leader.lastBuild;
+
+      return `
+        <li>
+          <span class="menu-rank">#${leader.rank}</span>
+          <span class="menu-player">
+            <span class="menu-player__avatar" data-tier="${avatar.tier}" title="${gamesPlayed} partidas">${avatar.glyph}</span>
+            <span class="menu-player__name">
+              <strong>${escapeHtml(leader.name)}</strong>
+              <small>${gamesPlayed} ${gamesPlayed === 1 ? "partida" : "partidas"} · Nv${bestLevel} · O${bestWave}</small>
+            </span>
+          </span>
+          <span class="menu-stat">${formatHudNumber(kills)}<small>zumbis</small></span>
+          <span class="menu-stat">${formatSurvivalTime(totalPlayMs / 1000)}<small>tempo jogado</small></span>
+          <span class="menu-perks">${renderLeaderboardPerks(build)}</span>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function getLeaderboardAvatar(leader) {
+  const gamesPlayed = Math.max(0, Math.floor(Number(leader.gamesPlayed) || 0));
+
+  if (gamesPlayed >= 25) {
+    return { glyph: "♛", tier: "legend" };
+  }
+
+  if (gamesPlayed >= 10) {
+    return { glyph: "👹", tier: "elite" };
+  }
+
+  if (gamesPlayed >= 4) {
+    return { glyph: "🗡", tier: "veteran" };
+  }
+
+  return { glyph: "☠", tier: "rookie" };
+}
+
+function renderLeaderboardPerks(build = []) {
+  const perks = Array.isArray(build) ? build.filter(Boolean).slice(0, 6) : [];
+
+  if (perks.length === 0) {
+    return `<span class="menu-perk menu-perk--empty">sem perks</span>`;
+  }
+
+  return perks
+    .map(
+      (perk) =>
+        `<span class="menu-perk" title="${escapeHtml(perk)}">${escapeHtml(getLeaderboardPerkIcon(perk))}</span>`,
+    )
+    .join("");
+}
+
+function getLeaderboardPerkIcon(perk) {
+  const text = String(perk || "").toLowerCase();
+
+  if (text.includes("lâmina") || text.includes("lamina")) return "🗡";
+  if (text.includes("orbe")) return "🟣";
+  if (text.includes("chuva")) return "☄";
+  if (text.includes("dano")) return "◆";
+  if (text.includes("cadência") || text.includes("cadencia")) return "⚡";
+  if (text.includes("área") || text.includes("area")) return "◎";
+  if (text.includes("velocidade")) return "➤";
+  if (text.includes("coleta")) return "✦";
+  if (text.includes("vida")) return "♥";
+  if (text.includes("projétil") || text.includes("projetil")) return "✚";
+  if (text.includes("lança") || text.includes("lanca")) return "🔥";
+  if (text.includes("machado")) return "🪓";
+  if (text.includes("katana")) return "⚔";
+  if (text.includes("besta")) return "🏹";
+  if (text.includes("selo")) return "📜";
+  return "✦";
 }
 
 function escapeHtml(value) {

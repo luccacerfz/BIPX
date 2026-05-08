@@ -124,10 +124,12 @@ try {
     window.__zombieNightDebug.spawnZombieAhead(11, "visor");
     window.__zombieNightDebug.spawnZombieAhead(12, "himetrica");
     window.__zombieNightDebug.spawnZombieAhead(13, "dinzo");
-    window.__zombieNightDebug.spawnZombieAhead(14, "gitcity");
+    window.__zombieNightDebug.spawnZombieAhead(14, "sofra");
+    window.__zombieNightDebug.spawnZombieAhead(15, "gitcity");
     return window.__zombieNightDebug.getState();
   });
 
+  await page.waitForTimeout(400);
   const lateSpawn = await page.evaluate(() => {
     window.__zombieNightDebug.setSurvivalTime(85);
     return window.__zombieNightDebug.getState();
@@ -168,11 +170,17 @@ try {
   assert(bossState.monsters.visor >= 1, "Visor boss did not spawn");
   assert(bossState.monsters.himetrica >= 1, "Himetrica boss did not spawn");
   assert(bossState.monsters.dinzo >= 1, "Dinzo boss did not spawn");
+  assert(bossState.monsters.sofra >= 1, "Sofra boss did not spawn");
   assert(bossState.monsters.gitcity >= 1, "GitCity boss did not spawn");
   assert(bossState.bossLabels.visor >= 1, "Visor label did not spawn");
   assert(bossState.bossLabels.himetrica >= 1, "Himetrica label did not spawn");
   assert(bossState.bossLabels.dinzo >= 1, "Dinzo label did not spawn");
+  assert(bossState.bossLabels.sofra >= 1, "Sofra label did not spawn");
   assert(bossState.bossLabels.gitcity >= 1, "GitCity label did not spawn");
+  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "visor" && projectile.kind === "evilEye"), "Visor did not fire an evil-eye projectile");
+  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "himetrica" && projectile.kind === "lightning"), "Himetrica did not fire a lightning projectile");
+  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "dinzo" && projectile.kind === "boleto"), "Dinzo did not fire a boleto projectile");
+  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "sofra" && projectile.kind === "briefcase"), "Sofra did not fire a briefcase projectile");
   assert(lateSpawn.spawnInterval < initial.spawnInterval, "zombie spawn interval did not increase over time");
   assert(canvas.uniqueColors >= 40, "canvas has too few color samples");
   assert(canvas.lumaStdDev >= 3, "canvas pixel variance is too low");
