@@ -8,26 +8,26 @@ const baseConfig = {
   },
   lighting: {
     hemi: {
-      skyColor: 0xd7e8ff,
-      groundColor: 0x38485c,
-      intensity: 3.1,
+      skyColor: 0xe7f4ff,
+      groundColor: 0x556c61,
+      intensity: 3.7,
     },
     moon: {
       color: 0xf1f7ff,
-      intensity: 4.2,
+      intensity: 4.9,
       shadowMapSize: 2048,
       shadowBias: -0.0005,
     },
     player: {
       color: 0xffe2ab,
-      intensity: 5.4,
-      distance: 58,
+      intensity: 6.1,
+      distance: 64,
       height: 4.5,
     },
   },
   fog: {
-    color: 0x17212a,
-    density: 0.009,
+    color: 0x22323b,
+    density: 0.0065,
   },
   quality: {
     highPixelRatio: 2,
@@ -84,25 +84,32 @@ export const DEFAULT_CONFIG = Object.freeze({
         zoomScale: 1.82,
         height: 16.2,
         depth: 19.2,
-        lookAhead: 2.95,
+        lookAhead: 1.45,
       },
       lighting: {
+        hemi: {
+          skyColor: 0xf0f8ff,
+          groundColor: 0x64786d,
+          intensity: 4.4,
+        },
         moon: {
+          intensity: 5.4,
           shadowMapSize: 1024,
           shadowBias: -0.0018,
         },
         player: {
-          intensity: 3.8,
-          distance: 35,
+          intensity: 5.2,
+          distance: 48,
           height: 4.2,
         },
       },
       fog: {
-        density: 0.021,
+        color: 0x2a3d46,
+        density: 0.013,
       },
       quality: {
-        mobileHighPixelRatio: 1.65,
-        mobileMediumPixelRatio: 1.35,
+        mobileHighPixelRatio: 1.52,
+        mobileMediumPixelRatio: 1.2,
         mobileLowPixelRatio: 0.95,
         effectBudget: {
           mobileHigh: 58,
@@ -139,17 +146,24 @@ export const DEFAULT_CONFIG = Object.freeze({
         zoomScale: 2,
       },
       lighting: {
+        hemi: {
+          skyColor: 0xf0f8ff,
+          groundColor: 0x607469,
+          intensity: 4.2,
+        },
         moon: {
+          intensity: 5.1,
           shadowMapSize: 1024,
           shadowBias: -0.002,
         },
         player: {
-          intensity: 3.5,
-          distance: 32,
+          intensity: 4.8,
+          distance: 44,
         },
       },
       fog: {
-        density: 0.024,
+        color: 0x2a3d46,
+        density: 0.016,
       },
     }),
   ),

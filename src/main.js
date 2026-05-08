@@ -409,7 +409,10 @@ const game = {
   labelTimer: 0,
   labelFrameReady: true,
   skillHudSignature: "",
+  cameraLookDirection: new THREE.Vector3(0, 0, -1),
   touchVector: new THREE.Vector2(0, 0),
+  touchStickPointerId: null,
+  touchStickRect: null,
   touchAimActive: false,
   touchAimPointerId: null,
 };
@@ -770,6 +773,7 @@ function startGame() {
   game.labelTimer = 0;
   game.labelFrameReady = true;
   game.skillHudSignature = "";
+  game.cameraLookDirection.copy(player.aimDirection);
   game.touchAimActive = false;
   game.touchAimPointerId = null;
   resetStick();
@@ -1103,18 +1107,18 @@ function buildWorld() {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(140, 140),
-    new THREE.MeshStandardMaterial({ color: 0x151a13, roughness: 0.96, metalness: 0.02 }),
+    new THREE.MeshStandardMaterial({ color: 0x242c20, roughness: 0.94, metalness: 0.02 }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  const grid = new THREE.GridHelper(140, 56, 0x365940, 0x1d2a21);
+  const grid = new THREE.GridHelper(140, 56, 0x5f8d66, 0x304235);
   grid.material.transparent = true;
-  grid.material.opacity = 0.34;
+  grid.material.opacity = 0.3;
   scene.add(grid);
 
-  const fenceMaterial = new THREE.MeshStandardMaterial({ color: 0x2b241c, roughness: 0.88 });
+  const fenceMaterial = new THREE.MeshStandardMaterial({ color: 0x403423, roughness: 0.88 });
   for (let index = 0; index < 18; index += 1) {
     addFencePost(index * 6.5 - 55, -58, fenceMaterial);
     addFencePost(index * 6.5 - 55, 58, fenceMaterial);
@@ -1122,9 +1126,9 @@ function buildWorld() {
     addFencePost(58, index * 6.5 - 55, fenceMaterial);
   }
 
-  const graveMaterial = new THREE.MeshStandardMaterial({ color: 0x7f887b, roughness: 0.86 });
-  const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x314d2e, roughness: 0.9 });
-  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x4b3425, roughness: 0.9 });
+  const graveMaterial = new THREE.MeshStandardMaterial({ color: 0xa0aa9b, roughness: 0.84 });
+  const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x496b42, roughness: 0.88 });
+  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6a4930, roughness: 0.88 });
 
   for (let index = 0; index < 52; index += 1) {
     const angle = index * 2.38;
@@ -3885,7 +3889,15 @@ function updateEffects(dt) {
 }
 
 function updateCamera(dt) {
-  const cameraTarget = tempVectorB.copy(player.position).addScaledVector(player.aimDirection, getCameraLookAhead());
+  const lookAlpha = 1 - Math.pow(usesMobileTuning() ? 0.045 : 0.012, dt);
+  game.cameraLookDirection.lerp(player.aimDirection, lookAlpha);
+  if (game.cameraLookDirection.lengthSq() < 0.1) {
+    game.cameraLookDirection.copy(player.aimDirection);
+  } else {
+    game.cameraLookDirection.normalize();
+  }
+
+  const cameraTarget = tempVectorB.copy(player.position).addScaledVector(game.cameraLookDirection, getCameraLookAhead());
   cameraTarget.y = 1.2;
 
   const desiredPosition = tempVectorC.set(
@@ -3893,7 +3905,7 @@ function updateCamera(dt) {
     player.position.y + getCameraHeight(),
     player.position.z + getCameraDepth(),
   );
-  camera.position.lerp(desiredPosition, 1 - Math.pow(0.001, dt));
+  camera.position.lerp(desiredPosition, 1 - Math.pow(usesMobileTuning() ? 0.008 : 0.001, dt));
   camera.lookAt(cameraTarget);
 }
 
@@ -5179,7 +5191,7 @@ function handleFireAim(event, allowAssist) {
   const deadZone = rect.width * getTouchFireAimDeadZone();
 
   if (rawDistance > deadZone) {
-    player.aimDirection.set(offsetX, 0, offsetY).normalize();
+    setTouchAimDirection(offsetX, offsetY, 0.34);
     game.touchAimActive = true;
     return;
   }
@@ -5203,19 +5215,28 @@ function applyTouchAimAssist() {
     return false;
   }
 
-  player.aimDirection.copy(direction.normalize());
+  setTouchAimDirection(direction.x, direction.z, 0.28);
   return true;
 }
 
 function handleStickMove(event) {
   event.preventDefault();
-  touchStick.setPointerCapture?.(event.pointerId);
+  if (event.type === "pointerdown" || game.touchStickPointerId === null) {
+    const rect = touchStick.getBoundingClientRect();
+    game.touchStickPointerId = event.pointerId;
+    game.touchStickRect = {
+      centerX: rect.left + rect.width / 2,
+      centerY: rect.top + rect.height / 2,
+      width: rect.width,
+    };
+    touchStick.setPointerCapture?.(event.pointerId);
+  } else if (game.touchStickPointerId !== event.pointerId) {
+    return;
+  }
 
-  const rect = touchStick.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  const offsetX = event.clientX - centerX;
-  const offsetY = event.clientY - centerY;
+  const rect = game.touchStickRect;
+  const offsetX = event.clientX - rect.centerX;
+  const offsetY = event.clientY - rect.centerY;
   const maxDistance = rect.width * getTouchStickRadiusFactor();
   const rawDistance = Math.hypot(offsetX, offsetY);
   const distance = Math.min(rawDistance, maxDistance);
@@ -5236,13 +5257,34 @@ function handleStickMove(event) {
   game.touchVector.set(Math.cos(angle) * response, Math.sin(angle) * response);
 
   if (game.touchVector.lengthSq() > 0.0025) {
-    player.aimDirection.set(game.touchVector.x, 0, game.touchVector.y).normalize();
+    setTouchAimDirection(game.touchVector.x, game.touchVector.y, 0.55);
   }
 }
 
-function resetStick() {
+function resetStick(event) {
+  if (event && game.touchStickPointerId !== null && game.touchStickPointerId !== event.pointerId) {
+    return;
+  }
+
   touchKnob.style.transform = "translate(-50%, -50%)";
   game.touchVector.set(0, 0);
+  game.touchStickPointerId = null;
+  game.touchStickRect = null;
+}
+
+function setTouchAimDirection(x, z, alpha = 1) {
+  const direction = tempVectorA.set(x, 0, z);
+  if (direction.lengthSq() < 0.001) {
+    return;
+  }
+
+  direction.normalize();
+  player.aimDirection.lerp(direction, alpha);
+  if (player.aimDirection.lengthSq() < 0.01) {
+    player.aimDirection.copy(direction);
+  } else {
+    player.aimDirection.normalize();
+  }
 }
 
 function getTouchStickRadiusFactor() {
