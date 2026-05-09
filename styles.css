@@ -357,10 +357,10 @@ button {
 
 .leaderboard-list li {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(86px, 1fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 30px;
+  min-height: 42px;
   padding: 6px 8px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
@@ -369,13 +369,61 @@ button {
   font-weight: 800;
 }
 
+.leaderboard-list li.leaderboard-list__item--local {
+  outline: 1px solid color-mix(in srgb, var(--party-color) 58%, transparent);
+  background: color-mix(in srgb, var(--party-color) 18%, rgba(255, 255, 255, 0.04));
+}
+
+.leaderboard-list li.leaderboard-list__item--dead {
+  opacity: 0.62;
+}
+
 .leaderboard-list__rank {
   color: var(--amber);
+}
+
+.leaderboard-list__player {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.leaderboard-list__player strong,
+.leaderboard-list__player small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-list__player small {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.leaderboard-list__health {
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-list__health span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--party-color, var(--acid));
+  transform-origin: left center;
 }
 
 .leaderboard-list__meta {
   color: var(--muted);
   font-size: 0.68rem;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .upgrade-panel {

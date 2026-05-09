@@ -46,6 +46,7 @@ try {
   await page.mouse.up();
 
   const beforeAutoWeapon = await page.evaluate(() => {
+    window.__zombieNightDebug.unlockAutoWeapon("guardianBlade");
     window.__zombieNightDebug.spawnZombieAhead(14, "runner");
     return window.__zombieNightDebug.getState();
   });
@@ -81,6 +82,20 @@ try {
   await page.mouse.up();
 
   const afterFlame = await page.evaluate(() => window.__zombieNightDebug.getState());
+
+  const beforeFrost = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnZombieAhead(3.4, "brute");
+    window.__zombieNightDebug.equipWeapon("frostNova");
+    return window.__zombieNightDebug.getState();
+  });
+
+  await page.mouse.down();
+  await page.waitForTimeout(180);
+  await page.mouse.up();
+
+  const afterFrost = await page.evaluate(() => window.__zombieNightDebug.getState());
+
+  const playerDamageState = await page.evaluate(() => window.__zombieNightDebug.damagePlayer(13));
 
   const beforeAxe = await page.evaluate(() => {
     window.__zombieNightDebug.spawnZombieAhead(2.4);
@@ -230,7 +245,7 @@ try {
   assert(initial.powerups === 0, "weapon powerups spawned without kills");
   assert(moved.player.z < initial.player.z - 0.1, "keyboard movement did not change player position");
   assert(fired.bullets >= 1, "shooting did not create bullets");
-  assert(initial.autoWeapons.guardianBlade === 1, "guardian blade did not start unlocked");
+  assert(initial.autoWeapons.guardianBlade === 0, "guardian blade should not start unlocked");
   assert(afterAutoWeapon.score > beforeAutoWeapon.score, "automatic weapon did not defeat a monster without shooting");
   assert(
     afterAutoWeapon.xpGems > beforeAutoWeapon.xpGems || afterAutoWeapon.xp > beforeAutoWeapon.xp || afterAutoWeapon.level > beforeAutoWeapon.level,
@@ -242,6 +257,13 @@ try {
   assert(JSON.stringify(afterUpgradeChoice.build) !== JSON.stringify(levelUpChoices.build), "upgrade choice did not alter build");
   assert(beforeFlame.weapon === "flamethrower", "flamethrower did not equip");
   assert(afterFlame.score > beforeFlame.score, "flamethrower did not defeat a monster");
+  assert(afterFlame.statuses.burning >= 1 || afterFlame.damageNumbers >= beforeFlame.damageNumbers, "flamethrower did not apply burn feedback");
+  assert(beforeFrost.weapon === "frostNova", "frost orb did not equip");
+  assert(afterFrost.statuses.frozen >= 1, "frost orb did not freeze monsters");
+  assert(
+    playerDamageState.damageNumberDetails.some((number) => number.variant === "playerDamage"),
+    "player damage did not spawn a red negative number",
+  );
   assert(beforeAxe.weapon === "axe", "axe did not equip");
   assert(afterAxe.score > beforeAxe.score, "axe spin did not defeat a zombie");
   assert(beforeKatana.weapon === "katana", "katana did not equip");
@@ -341,6 +363,9 @@ try {
         afterUpgradeChoice,
         beforeFlame,
         afterFlame,
+        beforeFrost,
+        afterFrost,
+        playerDamageState,
         beforeAxe,
         afterAxe,
         beforeKatana,
