@@ -12,6 +12,7 @@ import {
 } from "./config/index.js";
 
 const canvas = document.querySelector("#game-canvas");
+const audioToggleButton = document.querySelector("#audio-toggle");
 const healthFill = document.querySelector("#health-fill");
 const healthValueElement = document.querySelector("#health-value");
 const timeValueElement = document.querySelector("#time-value");
@@ -84,6 +85,547 @@ const perfStats = {
   skippedEffects: 0,
   poolExpansions: {},
 };
+
+const audioManager = {
+  context: null,
+  masterGain: null,
+  musicGain: null,
+  noiseBuffer: null,
+  music: null,
+  muted: loadAudioMuted(),
+  unlocked: false,
+  activeVoices: 0,
+  musicPulseTimer: 0,
+  lastPlayed: new Map(),
+  lastEvent: "idle",
+  masterVolume: 0.72,
+  groups: {
+    music: 0.62,
+    player: 0.82,
+    weapons: 0.72,
+    monsters: 0.52,
+    bosses: 0.88,
+    ui: 0.72,
+    drops: 0.82,
+    xp: 0.48,
+  },
+  init() {
+    this.updateToggle();
+  },
+  ensureContext() {
+    if (this.context) {
+      return true;
+    }
+
+    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextConstructor) {
+      this.updateToggle();
+      return false;
+    }
+
+    this.context = new AudioContextConstructor();
+    this.masterGain = this.context.createGain();
+    this.musicGain = this.context.createGain();
+    this.musicGain.gain.value = 0;
+    const compressor = this.context.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 18;
+    compressor.ratio.value = 8;
+    compressor.attack.value = 0.006;
+    compressor.release.value = 0.18;
+    this.musicGain.connect(this.masterGain);
+    this.masterGain.connect(compressor);
+    compressor.connect(this.context.destination);
+    this.noiseBuffer = this.createNoiseBuffer();
+    this.applyMasterVolume();
+    this.updateToggle();
+    return true;
+  },
+  unlock() {
+    if (!this.ensureContext()) {
+      return false;
+    }
+
+    const finalizeUnlock = () => {
+      this.unlocked = true;
+      this.updateToggle();
+      if (game.state === "playing" && !this.muted) {
+        this.startMusic();
+      }
+    };
+
+    if (this.context.state === "suspended") {
+      this.context.resume().then(finalizeUnlock).catch(() => this.updateToggle());
+    } else {
+      finalizeUnlock();
+    }
+
+    return true;
+  },
+  toggleMute() {
+    this.setMuted(!this.muted);
+    if (!this.muted) {
+      this.unlock();
+      this.play("uiSelect", { priority: 3 });
+    }
+    return this.getState();
+  },
+  setMuted(muted) {
+    this.muted = Boolean(muted);
+    try {
+      localStorage.setItem("bipxAudioMuted", this.muted ? "1" : "0");
+    } catch {
+      // localStorage can be unavailable in privacy modes.
+    }
+    this.applyMasterVolume();
+    this.updateToggle();
+  },
+  applyMasterVolume() {
+    if (!this.masterGain || !this.context) {
+      return;
+    }
+
+    const targetVolume = this.muted ? 0.0001 : this.masterVolume;
+    this.masterGain.gain.setTargetAtTime(targetVolume, this.context.currentTime, 0.025);
+  },
+  updateToggle() {
+    if (!audioToggleButton) {
+      return;
+    }
+
+    audioToggleButton.textContent = this.muted ? "Som: OFF" : "Som: ON";
+    audioToggleButton.setAttribute("aria-pressed", this.muted ? "true" : "false");
+    audioToggleButton.title = this.unlocked ? "Alternar som" : "Clique para liberar o som";
+  },
+  startRun() {
+    this.play("gameStart", { priority: 3 });
+    if (this.unlocked && !this.muted) {
+      this.startMusic();
+    }
+  },
+  endRun() {
+    this.play("gameOver", { priority: 4 });
+    this.stopMusic(1.15);
+  },
+  update(dt) {
+    if (!this.context || !this.unlocked || this.muted) {
+      return;
+    }
+
+    if (game.state !== "playing") {
+      this.fadeMusicToSilence();
+      return;
+    }
+
+    this.startMusic();
+    this.updateMusicLayers(dt);
+  },
+  startMusic() {
+    if (!this.context || this.music) {
+      return;
+    }
+
+    const base = this.createMusicOscillator("sine", 46);
+    const horde = this.createMusicOscillator("sawtooth", 92);
+    const boss = this.createMusicOscillator("triangle", 34);
+    const danger = this.createMusicOscillator("square", 176);
+    this.music = { base, horde, boss, danger };
+    this.musicPulseTimer = 0.2;
+  },
+  createMusicOscillator(type, frequency) {
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    const filter = this.context.createBiquadFilter();
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    filter.type = "lowpass";
+    filter.frequency.value = type === "square" ? 520 : 180;
+    gain.gain.value = 0.0001;
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.musicGain);
+    oscillator.start();
+    return { oscillator, gain, filter };
+  },
+  createNoiseBuffer() {
+    const duration = 1.8;
+    const buffer = this.context.createBuffer(1, Math.floor(this.context.sampleRate * duration), this.context.sampleRate);
+    const data = buffer.getChannelData(0);
+    let previous = 0;
+    for (let index = 0; index < data.length; index += 1) {
+      previous = previous * 0.58 + (Math.random() * 2 - 1) * 0.42;
+      data[index] = previous;
+    }
+    return buffer;
+  },
+  updateMusicLayers(dt) {
+    if (!this.music) {
+      return;
+    }
+
+    const now = this.context.currentTime;
+    const hordeIntensity = audioClamp01((zombies.length - 10) / 105);
+    const hasBoss = zombies.some((zombie) => monsterProfiles[zombie.type]?.boss);
+    const dangerIntensity = player.health / player.maxHealth < 0.34 ? 1 : 0;
+    this.musicGain.gain.setTargetAtTime(this.groups.music, now, 0.08);
+    this.music.base.gain.gain.setTargetAtTime(0.028, now, 0.25);
+    this.music.horde.gain.gain.setTargetAtTime(0.018 * hordeIntensity, now, 0.18);
+    this.music.boss.gain.gain.setTargetAtTime(hasBoss ? 0.028 : 0.0001, now, 0.16);
+    this.music.danger.gain.gain.setTargetAtTime(0.012 * dangerIntensity, now, 0.05);
+    this.music.horde.filter.frequency.setTargetAtTime(140 + hordeIntensity * 420, now, 0.12);
+    this.music.danger.oscillator.frequency.setTargetAtTime(176 + Math.sin(performance.now() * 0.018) * 9, now, 0.02);
+
+    this.musicPulseTimer -= dt;
+    if (this.musicPulseTimer <= 0) {
+      this.musicPulseTimer = Math.max(0.34, 0.86 - hordeIntensity * 0.28 - (hasBoss ? 0.16 : 0));
+      this.play("musicPulse", { priority: 0, hordeIntensity, boss: hasBoss });
+    }
+  },
+  fadeMusicToSilence() {
+    if (!this.music || !this.context) {
+      return;
+    }
+
+    this.musicGain.gain.setTargetAtTime(0.0001, this.context.currentTime, 0.2);
+  },
+  stopMusic(fadeSeconds = 0.35) {
+    if (!this.music || !this.context) {
+      return;
+    }
+
+    const music = this.music;
+    const stopAt = this.context.currentTime + fadeSeconds;
+    this.musicGain.gain.setTargetAtTime(0.0001, this.context.currentTime, Math.max(0.03, fadeSeconds * 0.35));
+    for (const layer of Object.values(music)) {
+      try {
+        layer.oscillator.stop(stopAt + 0.08);
+      } catch {
+        // Stopping an already-stopped oscillator is harmless.
+      }
+    }
+    this.music = null;
+  },
+  play(type, options = {}) {
+    if (this.muted || !this.unlocked || !this.ensureContext()) {
+      return false;
+    }
+
+    if (!this.canPlay(type, options)) {
+      return false;
+    }
+
+    this.lastEvent = type;
+    switch (type) {
+      case "gameStart":
+        this.playTone({ group: "ui", frequency: 146, duration: 0.18, gain: 0.08, type: "triangle" });
+        this.playTone({ group: "ui", frequency: 293, duration: 0.28, gain: 0.06, delay: 0.08, type: "sine" });
+        break;
+      case "gameOver":
+        this.playTone({ group: "ui", frequency: 180, duration: 0.5, gain: 0.09, type: "sawtooth", endFrequency: 58 });
+        this.playNoise({ group: "monsters", duration: 0.38, gain: 0.05, filterFrequency: 420 });
+        break;
+      case "uiSelect":
+        this.playTone({ group: "ui", frequency: 380, duration: 0.08, gain: 0.035, type: "triangle" });
+        this.playTone({ group: "ui", frequency: 570, duration: 0.08, gain: 0.025, delay: 0.045, type: "triangle" });
+        break;
+      case "pistol":
+        this.playTone({ group: "weapons", frequency: 760, duration: 0.045, gain: 0.04, type: "square", endFrequency: 380 });
+        this.playNoise({ group: "weapons", duration: 0.035, gain: 0.035, filterFrequency: 2400 });
+        break;
+      case "flamethrower":
+        this.playNoise({ group: "weapons", duration: 0.11, gain: 0.045, filterFrequency: 720 });
+        this.playTone({ group: "weapons", frequency: 92, duration: 0.1, gain: 0.025, type: "sawtooth" });
+        break;
+      case "axe":
+        this.playNoise({ group: "weapons", duration: 0.14, gain: 0.05, filterFrequency: 980 });
+        this.playTone({ group: "weapons", frequency: 190, duration: 0.13, gain: 0.045, type: "triangle", endFrequency: 90 });
+        break;
+      case "katana":
+      case "autoBlade":
+        this.playTone({ group: "weapons", frequency: 620, duration: 0.16, gain: 0.035, type: "triangle", endFrequency: 1180 });
+        this.playNoise({ group: "weapons", duration: 0.08, gain: 0.025, filterFrequency: 3200 });
+        break;
+      case "crossbow":
+        this.playTone({ group: "weapons", frequency: 510, duration: 0.14, gain: 0.04, type: "triangle", endFrequency: 260 });
+        break;
+      case "talisman":
+      case "sealRain":
+        this.playTone({ group: "weapons", frequency: 260, duration: 0.16, gain: 0.036, type: "sine" });
+        this.playTone({ group: "weapons", frequency: 780, duration: 0.2, gain: 0.03, delay: 0.035, type: "triangle" });
+        break;
+      case "orbitOrb":
+        this.playTone({ group: "weapons", frequency: 330, duration: 0.12, gain: 0.035, type: "sine", endFrequency: 495 });
+        break;
+      case "hit":
+        this.playNoise({ group: "monsters", duration: 0.035, gain: 0.028, filterFrequency: 1200 });
+        break;
+      case "kill":
+        this.playTone({ group: "monsters", frequency: 96, duration: 0.13, gain: 0.052, type: "triangle", endFrequency: 54 });
+        break;
+      case "xpDrop":
+        this.playTone({ group: "xp", frequency: 1080, duration: 0.04, gain: 0.012, type: "sine" });
+        break;
+      case "xp":
+        this.playTone({ group: "xp", frequency: 920 + Math.min(360, (options.value || 0) * 18), duration: 0.07, gain: 0.028, type: "sine" });
+        break;
+      case "levelUp":
+        for (const [index, frequency] of [330, 494, 659, 988].entries()) {
+          this.playTone({ group: "ui", frequency, duration: 0.16, gain: 0.04, delay: index * 0.055, type: "triangle" });
+        }
+        break;
+      case "upgradeChoice":
+        this.playRarityChime(options.rarity || "common", "ui");
+        break;
+      case "perkDrop":
+        this.playRarityChime(options.rarity || "rare", "drops");
+        break;
+      case "bossChest":
+        this.playTone({ group: "drops", frequency: 132, duration: 0.25, gain: 0.065, type: "triangle" });
+        this.playTone({ group: "drops", frequency: 528, duration: 0.2, gain: 0.04, delay: 0.07, type: "sine" });
+        break;
+      case "weaponPickup":
+        this.playTone({ group: "drops", frequency: 230, duration: 0.12, gain: 0.04, type: "triangle" });
+        this.playTone({ group: "drops", frequency: 460, duration: 0.16, gain: 0.035, delay: 0.04, type: "triangle" });
+        break;
+      case "weaponEvolve":
+        this.playRarityChime("legendary", "drops");
+        this.playTone({ group: "drops", frequency: 90, duration: 0.42, gain: 0.06, type: "sawtooth", endFrequency: 180 });
+        break;
+      case "playerDamage":
+        this.playNoise({ group: "player", duration: 0.16, gain: 0.055, filterFrequency: 520 });
+        this.playTone({ group: "player", frequency: 118, duration: 0.18, gain: 0.05, type: "sawtooth", endFrequency: 70 });
+        break;
+      case "bossAttack":
+        this.playBossAttack(options.boss || "caster");
+        break;
+      case "musicPulse":
+        this.playTone({
+          group: "music",
+          frequency: options.boss ? 64 : 74,
+          duration: 0.11,
+          gain: 0.025 + (options.hordeIntensity || 0) * 0.015,
+          type: "triangle",
+          endFrequency: 42,
+        });
+        break;
+      default:
+        this.playTone({ group: "ui", frequency: 440, duration: 0.12, gain: 0.03, type: "sine" });
+        break;
+    }
+
+    return true;
+  },
+  canPlay(type, options = {}) {
+    const priority = options.priority ?? 1;
+    const maxVoices = usesMobileTuning() ? 14 : 28;
+    if (this.activeVoices >= maxVoices && priority < 3) {
+      return false;
+    }
+
+    const cooldown = getAudioCooldown(type);
+    const now = this.context.currentTime;
+    const last = this.lastPlayed.get(type) ?? -Infinity;
+    if (now - last < cooldown && priority < 3) {
+      return false;
+    }
+
+    this.lastPlayed.set(type, now);
+    return true;
+  },
+  playRarityChime(rarity, group = "drops") {
+    const rank = getRarityRank(rarity);
+    const base = rarity === "legendary" ? 330 : rarity === "epic" ? 294 : rarity === "rare" ? 247 : 196;
+    const notes = rank >= 3 ? [base, base * 1.5, base * 2, base * 3] : rank >= 2 ? [base, base * 1.25, base * 1.8] : [base, base * 1.5];
+    notes.forEach((frequency, index) => {
+      this.playTone({
+        group,
+        frequency,
+        duration: rank >= 3 ? 0.22 : 0.14,
+        gain: rank >= 3 ? 0.05 : 0.038,
+        delay: index * 0.055,
+        type: rank >= 2 ? "triangle" : "sine",
+      });
+    });
+    if (rank >= 3) {
+      this.playNoise({ group, duration: 0.32, gain: 0.026, filterFrequency: 3600, delay: 0.04 });
+    }
+  },
+  playBossAttack(boss) {
+    if (boss === "visor") {
+      this.playTone({ group: "bosses", frequency: 880, duration: 0.18, gain: 0.04, type: "sine", endFrequency: 1320 });
+      this.playNoise({ group: "bosses", duration: 0.12, gain: 0.025, filterFrequency: 2600 });
+      return;
+    }
+
+    if (boss === "himetrica") {
+      this.playNoise({ group: "bosses", duration: 0.1, gain: 0.05, filterFrequency: 4200 });
+      this.playTone({ group: "bosses", frequency: 1280, duration: 0.08, gain: 0.035, type: "square", endFrequency: 620 });
+      return;
+    }
+
+    if (boss === "dinzo") {
+      this.playTone({ group: "bosses", frequency: 84, duration: 0.22, gain: 0.052, type: "sawtooth", endFrequency: 54 });
+      this.playNoise({ group: "bosses", duration: 0.08, gain: 0.02, filterFrequency: 680 });
+      return;
+    }
+
+    if (boss === "sofra") {
+      this.playTone({ group: "bosses", frequency: 220, duration: 0.1, gain: 0.045, type: "square" });
+      this.playTone({ group: "bosses", frequency: 330, duration: 0.08, gain: 0.03, delay: 0.045, type: "square" });
+      return;
+    }
+
+    if (boss === "gitcity") {
+      this.playTone({ group: "bosses", frequency: 640, duration: 0.22, gain: 0.03, type: "sawtooth", endFrequency: 1120 });
+      this.playNoise({ group: "bosses", duration: 0.06, gain: 0.02, filterFrequency: 1800 });
+      return;
+    }
+
+    this.playTone({ group: "monsters", frequency: 330, duration: 0.12, gain: 0.028, type: "triangle" });
+  },
+  playTone({ group = "ui", frequency = 440, endFrequency = null, duration = 0.12, gain = 0.04, delay = 0, type = "sine" } = {}) {
+    if (!this.context) {
+      return;
+    }
+
+    const now = this.context.currentTime + delay;
+    const oscillator = this.context.createOscillator();
+    const gainNode = this.context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, now);
+    if (endFrequency) {
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), now + duration);
+    }
+    const outputGain = gain * this.groups[group] * getAudioMixScale(group);
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0002, outputGain), now + 0.012);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    oscillator.connect(gainNode);
+    gainNode.connect(group === "music" && this.musicGain ? this.musicGain : this.masterGain);
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.02);
+    this.trackVoice(oscillator);
+  },
+  playNoise({ group = "ui", duration = 0.1, gain = 0.04, filterFrequency = 1200, delay = 0 } = {}) {
+    if (!this.context) {
+      return;
+    }
+
+    const now = this.context.currentTime + delay;
+    const source = this.context.createBufferSource();
+    const filter = this.context.createBiquadFilter();
+    const gainNode = this.context.createGain();
+    source.buffer = this.noiseBuffer || this.createNoiseBuffer();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(filterFrequency, now);
+    filter.Q.value = 0.9;
+    const outputGain = gain * this.groups[group] * getAudioMixScale(group);
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0002, outputGain), now + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    source.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(group === "music" && this.musicGain ? this.musicGain : this.masterGain);
+    const maxOffset = Math.max(0, source.buffer.duration - duration - 0.02);
+    source.start(now, Math.random() * maxOffset, duration + 0.02);
+    source.stop(now + duration + 0.02);
+    this.trackVoice(source);
+  },
+  trackVoice(node) {
+    this.activeVoices += 1;
+    node.onended = () => {
+      this.activeVoices = Math.max(0, this.activeVoices - 1);
+    };
+  },
+  playTestSound(type = "levelUp") {
+    this.unlock();
+    if (this.context) {
+      this.unlocked = true;
+    }
+    const normalizedType = type === "legendary" ? "perkDrop" : type;
+    return this.play(normalizedType, {
+      rarity: type === "legendary" ? "legendary" : type === "epic" ? "epic" : type === "rare" ? "rare" : "common",
+      boss: ["visor", "himetrica", "dinzo", "sofra", "gitcity"].includes(type) ? type : undefined,
+      priority: 4,
+    });
+  },
+  getState() {
+    return {
+      supported: Boolean(window.AudioContext || window.webkitAudioContext),
+      muted: this.muted,
+      unlocked: this.unlocked,
+      contextState: this.context?.state ?? "none",
+      activeVoices: this.activeVoices,
+      musicActive: Boolean(this.music),
+      masterVolume: this.masterVolume,
+      groups: { ...this.groups },
+      lastEvent: this.lastEvent,
+    };
+  },
+};
+
+function loadAudioMuted() {
+  try {
+    return localStorage.getItem("bipxAudioMuted") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function audioClamp01(value) {
+  return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function getAudioCooldown(type) {
+  const cooldowns = {
+    xp: 0.035,
+    xpDrop: 0.12,
+    hit: 0.045,
+    kill: 0.08,
+    pistol: 0.055,
+    flamethrower: 0.07,
+    axe: 0.18,
+    katana: 0.12,
+    crossbow: 0.18,
+    talisman: 0.22,
+    autoBlade: 0.11,
+    orbitOrb: 0.14,
+    sealRain: 0.2,
+    bossAttack: 0.18,
+    musicPulse: 0.16,
+    perkDrop: 0.12,
+    bossChest: 0.35,
+    weaponPickup: 0.2,
+    weaponEvolve: 0.6,
+    levelUp: 0.45,
+    upgradeChoice: 0.12,
+    playerDamage: 0.22,
+    gameStart: 0.7,
+    gameOver: 0.7,
+    uiSelect: 0.06,
+  };
+  return (cooldowns[type] ?? 0.08) * (usesMobileTuning() ? 1.35 : 1);
+}
+
+function getAudioMixScale(group) {
+  if (group === "xp") {
+    return zombies.length > 90 ? 0.45 : zombies.length > 45 ? 0.7 : 1;
+  }
+
+  if (group === "weapons") {
+    return zombies.length > 110 ? 0.68 : zombies.length > 70 ? 0.82 : 1;
+  }
+
+  if (group === "monsters") {
+    return zombies.length > 90 ? 0.62 : zombies.length > 50 ? 0.78 : 1;
+  }
+
+  if (group === "drops") {
+    return usesMobileTuning() && zombies.length > 100 ? 0.82 : 1;
+  }
+
+  return 1;
+}
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(getGameConfig("fog.color"));
@@ -697,16 +1239,29 @@ if (multiplayer.enabled) {
 if (playButtonLabel && multiplayer.enabled) {
   playButtonLabel.textContent = "Jogar multiplayer";
 }
+audioManager.init();
 updateHud();
 animate();
 
+audioToggleButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  audioManager.toggleMute();
+});
+
+for (const eventName of ["pointerdown", "touchstart", "keydown"]) {
+  window.addEventListener(eventName, () => audioManager.unlock(), { once: true, passive: true });
+}
+
 openLoginButton?.addEventListener("click", () => {
+  audioManager.play("uiSelect", { priority: 3 });
   message.classList.remove("message--ranking");
   message.classList.add("message--login");
   playerNameInput?.focus();
 });
 
 menuRankingButton?.addEventListener("click", () => {
+  audioManager.play("uiSelect", { priority: 3 });
   message.classList.remove("message--login");
   message.classList.remove("message--game-over");
   message.classList.add("message--ranking");
@@ -715,10 +1270,12 @@ menuRankingButton?.addEventListener("click", () => {
 });
 
 rankingBackButton?.addEventListener("click", () => {
+  audioManager.play("uiSelect", { priority: 3 });
   message.classList.remove("message--ranking");
 });
 
 loginBackButton?.addEventListener("click", () => {
+  audioManager.play("uiSelect", { priority: 3 });
   if (message.classList.contains("message--game-over")) {
     messageTitle.textContent = "BIPX";
     messageKicker.textContent = "☠ Noite Zumbi ☠";
@@ -731,6 +1288,7 @@ loginBackButton?.addEventListener("click", () => {
 });
 
 playButton.addEventListener("click", () => {
+  audioManager.play("uiSelect", { priority: 3 });
   if (game.state !== "playing") {
     updateLocalPlayerName(playerNameInput?.value);
     startGame();
@@ -738,6 +1296,7 @@ playButton.addEventListener("click", () => {
 });
 
 multiplayerButton?.addEventListener("click", () => {
+  audioManager.play("uiSelect", { priority: 3 });
   updateLocalPlayerName(playerNameInput?.value);
   window.location.assign(multiplayerEntryUrl);
 });
@@ -751,6 +1310,7 @@ playerNameInput?.addEventListener("keydown", (event) => {
     event.preventDefault();
     event.stopPropagation();
     updateLocalPlayerName(playerNameInput.value);
+    audioManager.play("uiSelect", { priority: 3 });
     startGame();
   }
 });
@@ -770,6 +1330,7 @@ window.addEventListener("keydown", (event) => {
   keys.add(event.code);
 
   if (event.code === "Enter" && game.state !== "playing" && !message.classList.contains("message--ranking")) {
+    audioManager.play("uiSelect", { priority: 3 });
     startGame();
   }
 
@@ -920,6 +1481,16 @@ window.__zombieNightDebug = {
         status: multiplayer.status,
       },
     };
+  },
+  getAudioState() {
+    return audioManager.getState();
+  },
+  toggleMute() {
+    return audioManager.toggleMute();
+  },
+  playTestSound(type = "levelUp") {
+    audioManager.playTestSound(type);
+    return audioManager.getState();
   },
   getPerfStats: getPerfStats,
   getRenderIntegrity: getMonsterRenderIntegrity,
@@ -1198,6 +1769,7 @@ function startGame() {
   resetStick();
   nextZombieId = 1;
   spatialGrid.dirty = true;
+  audioManager.startRun();
   message.classList.remove("message--game-over");
   message.classList.remove("message--login");
   message.classList.remove("message--ranking");
@@ -3635,6 +4207,7 @@ function animate() {
   }
 
   updateMultiplayer(dt);
+  audioManager.update(dt);
   updateCamera(dt);
   updateEffects(dt);
   animateProps(clock.elapsedTime);
@@ -3777,6 +4350,7 @@ function spawnXpGem(position, value = 3) {
   const gemValue = Math.max(1, Math.floor(value));
   if (xpGems.length >= getMaxVisibleXpGems()) {
     mergeXpIntoExistingGem(position, gemValue);
+    audioManager.play("xpDrop", { value: gemValue, priority: 0 });
     return;
   }
 
@@ -3793,6 +4367,7 @@ function spawnXpGem(position, value = 3) {
     baseY: 0.52,
     radius: 0.5,
   });
+  audioManager.play("xpDrop", { value: gemValue, priority: 0 });
 }
 
 function getMaxVisibleXpGems() {
@@ -3852,7 +4427,14 @@ function updateXpGems(dt) {
 }
 
 function collectXp(value) {
-  player.xp += Math.max(0, Math.floor(value));
+  const xpGain = Math.max(0, Math.floor(value));
+  if (xpGain <= 0) {
+    return;
+  }
+
+  player.xp += xpGain;
+  audioManager.play("xp", { value: xpGain, priority: 1 });
+  let leveledUp = false;
 
   while (player.xp >= player.xpToNext) {
     player.xp -= player.xpToNext;
@@ -3860,8 +4442,13 @@ function collectXp(value) {
     player.bestLevel = Math.max(player.bestLevel, player.level);
     player.xpToNext = getXpToNext(player.level);
     player.pendingLevelUps += 1;
+    leveledUp = true;
     spawnLevelPulse();
     activateLevelUpPerks();
+  }
+
+  if (leveledUp) {
+    audioManager.play("levelUp", { priority: 3 });
   }
 
   if (player.pendingLevelUps > 0 && player.pendingUpgradeChoices.length === 0) {
@@ -3937,6 +4524,7 @@ function openBossRewardChoices(bossType = "boss") {
   player.pendingUpgradeChoices = choices;
   player.pendingUpgradeSource = "bossChest";
   triggerPerkAnimation("bossChest", player.position, "rare", bossType);
+  audioManager.play("bossChest", { priority: 3 });
   renderUpgradeChoices();
   return true;
 }
@@ -4034,6 +4622,7 @@ function chooseUpgrade(index) {
     return;
   }
 
+  audioManager.play("upgradeChoice", { rarity: choice.rarity, priority: 3 });
   applyUpgrade(choice);
   if (player.pendingUpgradeSource === "level") {
     player.pendingLevelUps = Math.max(0, player.pendingLevelUps - 1);
@@ -4200,6 +4789,7 @@ function tryEvolveWeapons() {
 }
 
 function spawnEvolutionBurst(label, color = rarityStyles.legendary.color) {
+  audioManager.play("weaponEvolve", { priority: 4 });
   spawnWeaponPulse(color);
   spawnTemporaryDropLabel(`ARMA EVOLUÍDA: ${label}`, "legendary", "✦", player.position, 1.45);
 }
@@ -4296,6 +4886,7 @@ function updateShooting(dt) {
 
   player.shotCooldown = getPlayerCooldown(Math.max(0.1, 0.2 - player.wave * 0.006));
   spawnBullet();
+  audioManager.play("pistol", { priority: 1 });
   sendMultiplayerAttack("pistol");
 }
 
@@ -4309,6 +4900,7 @@ function updateFlamethrower(dt) {
   if (player.shotCooldown <= 0) {
     player.shotCooldown = getPlayerCooldown(0.065);
     spawnFlameBurst();
+    audioManager.play("flamethrower", { priority: 1 });
     sendMultiplayerAttack("flamethrower");
   }
 }
@@ -4320,6 +4912,7 @@ function updateAxeAttack() {
 
   player.shotCooldown = getPlayerCooldown(0.48);
   startAxeSpin();
+  audioManager.play("axe", { priority: 2 });
   sendMultiplayerAttack("axe");
 }
 
@@ -4331,6 +4924,7 @@ function updateKatanaAttack() {
   player.shotCooldown = getPlayerCooldown(0.28);
   damageZombiesInCone(5.8, Math.cos(0.92), 7, true);
   spawnKatanaSlash();
+  audioManager.play("katana", { priority: 2 });
   sendMultiplayerAttack("katana");
 }
 
@@ -4348,6 +4942,7 @@ function updateCrossbowAttack() {
     radius: 0.24,
     speed: 42,
   });
+  audioManager.play("crossbow", { priority: 2 });
   sendMultiplayerAttack("crossbow");
 }
 
@@ -4366,6 +4961,7 @@ function updateTalismanAttack() {
     radius: 0.32,
     speed: 25,
   });
+  audioManager.play("talisman", { priority: 2 });
   sendMultiplayerAttack("talisman");
 }
 
@@ -4476,6 +5072,7 @@ function updateGuardianBlade(dt) {
   }
   spawnGuardianBladeEffect(origin, direction, color);
   recordAutoWeaponAttack(origin);
+  audioManager.play("autoBlade", { priority: evolved ? 2 : 1 });
   sendMultiplayerAttack("guardianBlade", origin, direction);
 }
 
@@ -4511,6 +5108,7 @@ function updateOrbitOrb(dt) {
   }
   spawnOrbitOrbEffect(origin, color, radius);
   recordAutoWeaponAttack(origin);
+  audioManager.play("orbitOrb", { priority: evolved ? 2 : 1 });
   sendMultiplayerAttack("orbitOrb", origin, direction);
 }
 
@@ -4562,6 +5160,7 @@ function updateSealRain(dt) {
     spawnSealRainEffect(origin, color, radius);
   }
   recordAutoWeaponAttack(origin);
+  audioManager.play("sealRain", { priority: evolved ? 2 : 1 });
   sendMultiplayerAttack("sealRain", origin, direction);
 }
 
@@ -4681,6 +5280,7 @@ function spawnPerkDropAt(position, perkId, rarity = null, source = "perk") {
   };
   updatePowerupLabelPosition(powerup);
   powerups.push(powerup);
+  audioManager.play("perkDrop", { rarity: dropRarity, priority: dropRarity === "legendary" ? 4 : 2 });
   if (dropRarity === "legendary") {
     triggerPerkAnimation("legendaryDrop", position, dropRarity);
   }
@@ -4716,6 +5316,7 @@ function spawnBossRewardChestAt(position, bossType = "boss") {
   };
   updatePowerupLabelPosition(powerup);
   powerups.push(powerup);
+  audioManager.play("bossChest", { priority: 3 });
   return true;
 }
 
@@ -4876,6 +5477,7 @@ function collectPowerup(powerup) {
     const perk = upgradeById.get(powerup.perkId);
     if (perk && isUpgradeAvailable(perk)) {
       applyUpgrade(perk);
+      audioManager.play("upgradeChoice", { rarity: perk.rarity, priority: 2 });
       updateHud(true);
     }
     return true;
@@ -4897,6 +5499,7 @@ function activateWeapon(type) {
   player.weapon = type;
   player.weaponTimer = weapons[type].duration;
   player.shotCooldown = 0;
+  audioManager.play("weaponPickup", { priority: 2 });
 
   if (type === "axe") {
     startAxeSpin();
@@ -5529,6 +6132,7 @@ function damageLocalPlayer(amount) {
   }
 
   const reducedAmount = amount * (1 - player.damageReduction);
+  audioManager.play("playerDamage", { priority: 3 });
   if (player.damageReduction > 0) {
     triggerPerkAnimation("ironBlood", player.position, "rare");
   }
@@ -5640,6 +6244,7 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
     targetId: target.id,
     velocity: direction.clone().multiplyScalar(projectileSpec.speed),
   });
+  audioManager.play("bossAttack", { boss: zombie.type, priority: monsterProfiles[zombie.type]?.boss ? 3 : 1 });
 }
 
 function updateEnemyProjectiles(dt) {
@@ -5835,6 +6440,7 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
     return false;
   }
 
+  const profile = monsterProfiles[zombie.type] ?? {};
   const finalDamage = applyDamagePerks(zombie, amount);
   zombie.health -= finalDamage;
 
@@ -5847,10 +6453,10 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
   }
 
   if (zombie.health <= 0) {
+    audioManager.play("kill", { priority: profile.boss ? 3 : 1 });
     const xpPosition = zombie.mesh.position.clone();
     const xpValue = getXpValueForZombie(zombie.type);
     const shouldBurst = zombie.type === "sofra";
-    const profile = monsterProfiles[zombie.type] ?? {};
     removeZombieByRef(zombie);
     if (shouldBurst) {
       spawnSofraDeathBurst(xpPosition);
@@ -5867,6 +6473,10 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
       maybeDropWeaponFromZombie(zombie.type, xpPosition);
     }
     return true;
+  }
+
+  if (shouldFlash) {
+    audioManager.play("hit", { priority: 0 });
   }
 
   return false;
@@ -6138,6 +6748,7 @@ function pulseHealth() {
 function endGame() {
   game.state = "dead";
   game.shooting = false;
+  audioManager.endRun();
   player.pendingUpgradeChoices = [];
   player.pendingLevelUps = 0;
   renderUpgradeChoices();

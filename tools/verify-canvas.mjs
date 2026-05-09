@@ -15,6 +15,9 @@ try {
   await page.waitForTimeout(2500);
 
   const initial = await page.evaluate(() => window.__zombieNightDebug.getState());
+  const initialAudio = await page.evaluate(() => window.__zombieNightDebug.getAudioState());
+  const toggledAudio = await page.evaluate(() => window.__zombieNightDebug.toggleMute());
+  const restoredAudio = await page.evaluate(() => window.__zombieNightDebug.toggleMute());
 
   await page.keyboard.down("w");
   await page.waitForTimeout(450);
@@ -163,6 +166,10 @@ try {
   const canvas = await page.evaluate(readCanvasStats);
 
   assert(initial.state === "playing", "game did not enter playing state");
+  assert(typeof initialAudio.supported === "boolean", "audio debug state did not expose support flag");
+  assert(typeof initialAudio.muted === "boolean", "audio debug state did not expose mute flag");
+  assert(toggledAudio.muted !== initialAudio.muted, "audio mute toggle did not change state");
+  assert(restoredAudio.muted === initialAudio.muted, "audio mute toggle did not restore state");
   assert(initial.wave >= 1, "wave did not start");
   assert(initial.zombies >= 1, "zombies did not spawn");
   assert(initial.powerups === 0, "weapon powerups spawned without kills");
@@ -230,6 +237,9 @@ try {
       {
         ok: true,
         initial,
+        initialAudio,
+        toggledAudio,
+        restoredAudio,
         moved,
         fired,
         beforeAutoWeapon,

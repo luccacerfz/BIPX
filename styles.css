@@ -52,6 +52,31 @@ button {
   outline: none;
 }
 
+.audio-toggle {
+  position: fixed;
+  top: max(66px, calc(env(safe-area-inset-top, 0px) + 10px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: 6;
+  min-width: 76px;
+  border: 1px solid rgba(116, 209, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(5, 8, 9, 0.62);
+  color: #dff6ff;
+  cursor: pointer;
+  padding: 6px 9px;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  contain: layout style paint;
+}
+
+.audio-toggle[aria-pressed="true"] {
+  border-color: rgba(216, 68, 68, 0.48);
+  color: #ffb0a8;
+}
+
 .hud {
   position: fixed;
   top: 4px;
