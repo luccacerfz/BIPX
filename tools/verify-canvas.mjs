@@ -23,6 +23,14 @@ try {
       element.textContent.trim(),
     ),
   );
+  const leaderboardAvatars = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(".menu-player__avatar")).map((element) => ({
+      tier: element.getAttribute("data-tier"),
+      title: element.getAttribute("title") || "",
+      label: element.querySelector(".menu-player__avatar-rank")?.textContent?.trim() || "",
+    })),
+  );
+  const avatarTierProbe = await page.evaluate(() => window.__zombieNightDebug.getAvatarTierForScore(2000));
 
   await page.keyboard.down("w");
   await page.waitForTimeout(450);
@@ -177,6 +185,13 @@ try {
   assert(restoredAudio.muted === initialAudio.muted, "audio mute toggle did not restore state");
   assert(leaderboardHeaders.includes("Level"), "leaderboard header did not include Level column");
   assert(leaderboardHeaders.includes("Pontuação"), "leaderboard header did not include score column");
+  assert(avatarTierProbe.tier === "diamond", "score-based diamond avatar threshold is wrong");
+  assert(
+    leaderboardAvatars.every((avatar) =>
+      ["bronze", "silver", "gold", "platinum", "diamond", "master", "legend"].includes(avatar.tier),
+    ),
+    "leaderboard avatar tier outside score rank set",
+  );
   assert(initial.wave >= 1, "wave did not start");
   assert(initial.zombies >= 1, "zombies did not spawn");
   assert(initial.powerups === 0, "weapon powerups spawned without kills");
@@ -248,6 +263,8 @@ try {
         toggledAudio,
         restoredAudio,
         leaderboardHeaders,
+        leaderboardAvatars,
+        avatarTierProbe,
         moved,
         fired,
         beforeAutoWeapon,

@@ -1492,6 +1492,9 @@ window.__zombieNightDebug = {
     audioManager.playTestSound(type);
     return audioManager.getState();
   },
+  getAvatarTierForScore(score = 0) {
+    return getLeaderboardAvatar({ bestScore: Math.max(0, Number(score) || 0) });
+  },
   getPerfStats: getPerfStats,
   getRenderIntegrity: getMonsterRenderIntegrity,
   start: startGame,
@@ -7854,7 +7857,10 @@ function renderMenuLeaderboard(leaders) {
       <li>
         <span class="menu-rank">–</span>
         <span class="menu-player">
-          <span class="menu-player__avatar" data-tier="rookie">☠</span>
+          <span class="menu-player__avatar" data-tier="bronze" title="Bronze">
+            <span class="menu-player__avatar-icon">◆</span>
+            <span class="menu-player__avatar-rank">BR</span>
+          </span>
           <span class="menu-player__name">
             <strong>Nenhum jogador ainda</strong>
             <small>jogue uma partida para gravar</small>
@@ -7890,10 +7896,13 @@ function renderMenuLeaderboard(leaders) {
         <li>
           <span class="menu-rank">#${leader.rank}</span>
           <span class="menu-player">
-            <span class="menu-player__avatar" data-tier="${avatar.tier}" title="${gamesPlayed} partidas">${avatar.glyph}</span>
+            <span class="menu-player__avatar" data-tier="${avatar.tier}" title="${escapeHtml(avatar.label)} · ${formatHudNumber(bestScore)} pontos">
+              <span class="menu-player__avatar-icon">${avatar.glyph}</span>
+              <span class="menu-player__avatar-rank">${avatar.short}</span>
+            </span>
             <span class="menu-player__name">
               <strong>${escapeHtml(leader.name)}</strong>
-              <small>${gamesPlayed} ${gamesPlayed === 1 ? "partida" : "partidas"} · O${bestWave}</small>
+              <small>${gamesPlayed} ${gamesPlayed === 1 ? "partida" : "partidas"} · ${avatar.label} · O${bestWave}</small>
             </span>
           </span>
           <span class="menu-stat">${formatHudNumber(kills)}<small>zumbis</small></span>
@@ -7907,22 +7916,19 @@ function renderMenuLeaderboard(leaders) {
     .join("");
 }
 
+const leaderboardAvatarTiers = [
+  { minScore: 10000, tier: "legend", label: "Lenda", short: "LD", glyph: "♛" },
+  { minScore: 5000, tier: "master", label: "Mestre", short: "MS", glyph: "♜" },
+  { minScore: 2000, tier: "diamond", label: "Diamante", short: "DM", glyph: "◆" },
+  { minScore: 1200, tier: "platinum", label: "Platina", short: "PL", glyph: "✦" },
+  { minScore: 500, tier: "gold", label: "Ouro", short: "OU", glyph: "✹" },
+  { minScore: 150, tier: "silver", label: "Prata", short: "PR", glyph: "✧" },
+  { minScore: 0, tier: "bronze", label: "Bronze", short: "BR", glyph: "◆" },
+];
+
 function getLeaderboardAvatar(leader) {
-  const gamesPlayed = Math.max(0, Math.floor(Number(leader.gamesPlayed) || 0));
-
-  if (gamesPlayed >= 25) {
-    return { glyph: "♛", tier: "legend" };
-  }
-
-  if (gamesPlayed >= 10) {
-    return { glyph: "👹", tier: "elite" };
-  }
-
-  if (gamesPlayed >= 4) {
-    return { glyph: "🗡", tier: "veteran" };
-  }
-
-  return { glyph: "☠", tier: "rookie" };
+  const bestScore = Math.max(0, Math.floor(Number(leader.bestScore) || 0));
+  return leaderboardAvatarTiers.find((tier) => bestScore >= tier.minScore) ?? leaderboardAvatarTiers.at(-1);
 }
 
 function renderLeaderboardPerks(build = []) {
