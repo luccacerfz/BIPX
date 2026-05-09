@@ -667,6 +667,7 @@ const tempVectorA = new THREE.Vector3();
 const tempVectorB = new THREE.Vector3();
 const tempVectorC = new THREE.Vector3();
 const tempQuaternion = new THREE.Quaternion();
+const tempEuler = new THREE.Euler();
 const tempMatrix = new THREE.Matrix4();
 const tempScale = new THREE.Vector3(1, 1, 1);
 const tempColor = new THREE.Color();
@@ -798,47 +799,47 @@ const hudUpgradeIcons = {
 const monsterProfiles = {
   zombie: {
     label: "Zumbi",
-    health: 2,
+    health: 4.2,
     speed: 3.3,
     radius: 0.78,
-    damage: 8,
+    damage: 13,
     score: 10,
     minWave: 1,
   },
   runner: {
     label: "Corredor",
-    health: 1.5,
+    health: 3.2,
     speed: 6.1,
     radius: 0.58,
-    damage: 6,
+    damage: 11,
     score: 14,
     minWave: 2,
   },
   brute: {
     label: "Bruto",
-    health: 8,
+    health: 17,
     speed: 2.2,
     radius: 1.18,
-    damage: 15,
+    damage: 27,
     score: 26,
     minWave: 3,
   },
   caster: {
     label: "Invocador",
-    health: 3.5,
+    health: 8.5,
     speed: 2.8,
     radius: 0.82,
-    damage: 7,
+    damage: 16,
     score: 18,
     minWave: 4,
     projectileColor: 0xd978ff,
   },
   visor: {
     label: "Visor",
-    health: 18,
+    health: 70,
     speed: 2.7,
     radius: 1.14,
-    damage: 16,
+    damage: 34,
     score: 90,
     minWave: 2,
     boss: true,
@@ -846,10 +847,10 @@ const monsterProfiles = {
   },
   himetrica: {
     label: "Himetrica",
-    health: 16,
+    health: 78,
     speed: 3.6,
     radius: 1.05,
-    damage: 18,
+    damage: 39,
     score: 95,
     minWave: 3,
     boss: true,
@@ -857,10 +858,10 @@ const monsterProfiles = {
   },
   dinzo: {
     label: "Dinzo",
-    health: 23,
+    health: 92,
     speed: 1.55,
     radius: 1.42,
-    damage: 13,
+    damage: 31,
     score: 105,
     minWave: 2,
     boss: true,
@@ -868,10 +869,10 @@ const monsterProfiles = {
   },
   gitcity: {
     label: "GitCity",
-    health: 32,
+    health: 140,
     speed: 1.15,
     radius: 1.58,
-    damage: 22,
+    damage: 46,
     score: 140,
     minWave: 4,
     boss: true,
@@ -879,10 +880,10 @@ const monsterProfiles = {
   },
   sofra: {
     label: "SOFRA",
-    health: 38,
+    health: 160,
     speed: 4.25,
     radius: 1.28,
-    damage: 20,
+    damage: 42,
     score: 180,
     minWave: 5,
     boss: true,
@@ -890,37 +891,37 @@ const monsterProfiles = {
   },
   cowWalker: {
     label: "Vaca Machado",
-    health: 5.5,
+    health: 14,
     speed: 3.05,
     radius: 0.86,
-    damage: 12,
+    damage: 24,
     score: 20,
     minWave: 10,
   },
   cowCharger: {
     label: "Vaca Investida",
-    health: 4.2,
+    health: 11,
     speed: 5.75,
     radius: 0.78,
-    damage: 10,
+    damage: 21,
     score: 24,
     minWave: 10,
   },
   cowBrute: {
     label: "Touro Carrasco",
-    health: 13,
+    health: 34,
     speed: 2.15,
     radius: 1.24,
-    damage: 19,
+    damage: 38,
     score: 38,
     minWave: 10,
   },
   angelSheep: {
     label: "Ovelha Celestial",
-    health: 135,
+    health: 620,
     speed: 2.15,
     radius: 1.48,
-    damage: 18,
+    damage: 44,
     score: 360,
     minWave: 999,
     boss: true,
@@ -929,10 +930,10 @@ const monsterProfiles = {
   },
   bloodCow: {
     label: "Vaca Sanguinária",
-    health: 260,
+    health: 1250,
     speed: 2.55,
     radius: 1.72,
-    damage: 27,
+    damage: 64,
     score: 620,
     minWave: 999,
     boss: true,
@@ -941,10 +942,10 @@ const monsterProfiles = {
   },
   plumaFinance: {
     label: "Pluma Finance",
-    health: 320,
+    health: 1700,
     speed: 2.85,
     radius: 1.36,
-    damage: 24,
+    damage: 58,
     score: 900,
     minWave: 999,
     boss: true,
@@ -969,9 +970,9 @@ const eliteProfiles = {
   furious: {
     label: "Furioso",
     color: 0xff514d,
-    healthMultiplier: 1.38,
-    speedMultiplier: 1.32,
-    damageMultiplier: 1.48,
+    healthMultiplier: 1.75,
+    speedMultiplier: 1.38,
+    damageMultiplier: 1.85,
     scoreMultiplier: 1.35,
     xpMultiplier: 1.25,
     reachBonus: 0.12,
@@ -979,9 +980,9 @@ const eliteProfiles = {
   armored: {
     label: "Blindado",
     color: 0x9fb4c7,
-    healthMultiplier: 2.55,
+    healthMultiplier: 3.25,
     speedMultiplier: 0.82,
-    damageMultiplier: 1.22,
+    damageMultiplier: 1.45,
     scoreMultiplier: 1.55,
     xpMultiplier: 1.5,
     reachBonus: 0.05,
@@ -989,9 +990,9 @@ const eliteProfiles = {
   executioner: {
     label: "Carrasco",
     color: 0xffb13b,
-    healthMultiplier: 1.72,
+    healthMultiplier: 2.25,
     speedMultiplier: 0.95,
-    damageMultiplier: 1.62,
+    damageMultiplier: 2.05,
     scoreMultiplier: 1.7,
     xpMultiplier: 1.65,
     reachBonus: 0.82,
@@ -1770,7 +1771,7 @@ window.__zombieNightDebug = {
     syncMonsterRenderer();
     updateHud(true);
   },
-  stressLevel16(count = 240) {
+  stressLevel16(count = 360) {
     clearEntities();
     game.perfStressImmortal = true;
     player.level = Math.max(player.level, 16);
@@ -1805,7 +1806,7 @@ window.__zombieNightDebug = {
     game.zombiesToSpawn = 0;
     renderUpgradeChoices();
 
-    const total = Math.max(220, Math.floor(Number(count) || 0));
+    const total = Math.max(340, Math.floor(Number(count) || 0));
     const types = ["zombie", "runner", "brute", "caster"];
     for (let index = 0; index < total; index += 1) {
       const angle = (index / Math.max(total, 1)) * Math.PI * 2;
@@ -2207,7 +2208,7 @@ function updateQualityManager(dt) {
     return;
   }
 
-  if (mobileTuned && zombies.length > 145 && qualityManager.level !== "low") {
+  if (mobileTuned && zombies.length > 260 && qualityManager.level !== "low") {
     qualityManager.level = "low";
     qualityManager.fpsLowTimer = 0;
     qualityManager.fpsHighTimer = 0;
@@ -2215,7 +2216,7 @@ function updateQualityManager(dt) {
     return;
   }
 
-  if (isLateGamePerformanceMode() && qualityManager.level !== "low") {
+  if (!mobileTuned && zombies.length > 360 && qualityManager.level !== "low") {
     qualityManager.level = "low";
     qualityManager.fpsLowTimer = 0;
     qualityManager.fpsHighTimer = 0;
@@ -2289,13 +2290,13 @@ function prewarmEntityPools() {
   }
 
   const zombieWarmup = [
-    ["zombie", 96],
-    ["runner", 74],
-    ["brute", 66],
-    ["caster", 66],
-    ["cowWalker", 54],
-    ["cowCharger", 44],
-    ["cowBrute", 34],
+    ["zombie", 140],
+    ["runner", 120],
+    ["brute", 112],
+    ["caster", 112],
+    ["cowWalker", 90],
+    ["cowCharger", 78],
+    ["cowBrute", 64],
     ["visor", 2],
     ["himetrica", 1],
     ["dinzo", 1],
@@ -2912,35 +2913,110 @@ function attachZombieLodProxy(group, type, palette, bodyRadius, bodyHeight) {
 }
 
 function createZombieLodProxy(type, palette, bodyRadius, bodyHeight) {
-  const proxy = new THREE.Group();
-  const body = new THREE.Mesh(
-    getSharedGeometry(`zombie-proxy-${type}`, () =>
-      new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
-    ),
-    getZombieProxyMaterial(type, palette),
+  const proxy = new THREE.Mesh(
+    getSharedGeometry(`zombie-proxy-merged-${type}`, () => createZombieProxyGeometry(type, palette, bodyRadius, bodyHeight)),
+    getZombieProxyMergedMaterial(),
   );
-  body.position.y = getCommonMonsterProxyYOffset(type);
-  body.userData.isLodProxy = true;
-
-  const head = new THREE.Mesh(
-    getSharedGeometry(`zombie-proxy-head-${type}`, () => new THREE.SphereGeometry(bodyRadius * 0.52, 8, 6)),
-    getZombieProxyHeadMaterial(type, palette),
-  );
-  head.position.y = getCommonMonsterHeadYOffset(type);
-  head.position.z = -bodyRadius * 0.18;
-  head.userData.isLodProxy = true;
-
   proxy.name = "zombie-lod-proxy";
   proxy.visible = false;
   proxy.userData.isLodProxy = true;
-  proxy.add(body, head);
   return proxy;
+}
+
+function createZombieProxyGeometry(type, palette, bodyRadius, bodyHeight) {
+  const bodyY = getCommonMonsterProxyYOffset(type);
+  const headY = getCommonMonsterHeadYOffset(type);
+  const geometries = [
+    createColoredProxyPart(
+      new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
+      tempColor.setHex(palette.cloth).lerp(tempColorB.setHex(palette.skin), 0.42).multiplyScalar(1.48),
+      new THREE.Matrix4().makeTranslation(0, bodyY, 0),
+    ),
+    createColoredProxyPart(
+      new THREE.SphereGeometry(bodyRadius * 0.52, 8, 6),
+      tempColor.setHex(palette.skin).lerp(tempColorB.setHex(palette.eye), 0.12).multiplyScalar(1.36),
+      new THREE.Matrix4().makeTranslation(0, headY, -bodyRadius * 0.18),
+    ),
+  ];
+
+  const armGeometry = new THREE.CylinderGeometry(bodyRadius * 0.14, bodyRadius * 0.18, bodyHeight * 0.64, 5);
+  const armColor = tempColor.setHex(palette.cloth).lerp(tempColorB.setHex(palette.skin), 0.3).multiplyScalar(1.34);
+  for (const side of [-1, 1]) {
+    geometries.push(
+      createColoredProxyPart(
+        armGeometry,
+        armColor,
+        new THREE.Matrix4()
+          .makeRotationZ(side * -0.22)
+          .premultiply(
+            new THREE.Matrix4().makeTranslation(
+              side * bodyRadius * 0.78,
+              bodyY + bodyHeight * 0.03,
+              -bodyRadius * 0.06,
+            ),
+          ),
+      ),
+    );
+  }
+
+  armGeometry.dispose();
+  return mergeColoredProxyGeometries(geometries);
+}
+
+function createColoredProxyPart(geometry, color, matrix) {
+  const workingGeometry = geometry.toNonIndexed();
+  workingGeometry.applyMatrix4(matrix);
+  const positions = workingGeometry.getAttribute("position");
+  const colors = new Float32Array(positions.count * 3);
+  for (let index = 0; index < positions.count; index += 1) {
+    colors[index * 3] = color.r;
+    colors[index * 3 + 1] = color.g;
+    colors[index * 3 + 2] = color.b;
+  }
+  workingGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  return workingGeometry;
+}
+
+function mergeColoredProxyGeometries(geometries) {
+  const totalVertices = geometries.reduce((total, geometry) => total + geometry.getAttribute("position").count, 0);
+  const positions = new Float32Array(totalVertices * 3);
+  const colors = new Float32Array(totalVertices * 3);
+  let offset = 0;
+
+  for (const geometry of geometries) {
+    const geometryPositions = geometry.getAttribute("position").array;
+    const geometryColors = geometry.getAttribute("color").array;
+    positions.set(geometryPositions, offset * 3);
+    colors.set(geometryColors, offset * 3);
+    offset += geometry.getAttribute("position").count;
+    geometry.dispose();
+  }
+
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  merged.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  merged.computeBoundingSphere();
+  return merged;
+}
+
+function getZombieProxyMergedMaterial() {
+  if (!assetCache.materials.has("zombie-proxy-merged")) {
+    assetCache.materials.set(
+      "zombie-proxy-merged",
+      new THREE.MeshBasicMaterial({
+        fog: true,
+        vertexColors: true,
+      }),
+    );
+  }
+
+  return assetCache.materials.get("zombie-proxy-merged");
 }
 
 function getZombieProxyMaterial(type, palette) {
   const key = `zombie-proxy-${type}`;
   if (!assetCache.materials.has(key)) {
-    const color = new THREE.Color(palette.cloth).lerp(new THREE.Color(palette.skin), 0.42).multiplyScalar(1.32);
+    const color = tempColor.setHex(palette.cloth).lerp(tempColorB.setHex(palette.skin), 0.42).multiplyScalar(1.48).clone();
     assetCache.materials.set(
       key,
       new THREE.MeshBasicMaterial({
@@ -2956,7 +3032,7 @@ function getZombieProxyMaterial(type, palette) {
 function getZombieProxyHeadMaterial(type, palette) {
   const key = `zombie-proxy-head-${type}`;
   if (!assetCache.materials.has(key)) {
-    const color = new THREE.Color(palette.skin).lerp(new THREE.Color(palette.eye), 0.12).multiplyScalar(1.22);
+    const color = tempColor.setHex(palette.skin).lerp(tempColorB.setHex(palette.eye), 0.12).multiplyScalar(1.36).clone();
     assetCache.materials.set(
       key,
       new THREE.MeshBasicMaterial({
@@ -3018,20 +3094,33 @@ function getInstancedMonsterBucket(type) {
     getZombieInstanceMaterial(`${type}-head`, palette),
     capacity,
   );
+  const armMesh = new THREE.InstancedMesh(
+    getSharedGeometry(`zombie-instance-arm-${type}`, () =>
+      new THREE.CylinderGeometry(bodyRadius * 0.14, bodyRadius * 0.18, bodyHeight * 0.64, 5),
+    ),
+    getZombieInstanceMaterial(`${type}-arm`, palette),
+    capacity * 2,
+  );
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   headMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  armMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   headMesh.castShadow = false;
   headMesh.receiveShadow = false;
+  armMesh.castShadow = false;
+  armMesh.receiveShadow = false;
   mesh.frustumCulled = false;
   headMesh.frustumCulled = false;
+  armMesh.frustumCulled = false;
   mesh.count = 0;
   headMesh.count = 0;
+  armMesh.count = 0;
   scene.add(mesh);
   scene.add(headMesh);
+  scene.add(armMesh);
 
-  const bucket = { capacity, count: 0, mesh, headMesh };
+  const bucket = { capacity, count: 0, armCount: 0, mesh, headMesh, armMesh };
   monsterRenderer.instanced.set(type, bucket);
   return bucket;
 }
@@ -3039,8 +3128,10 @@ function getInstancedMonsterBucket(type) {
 function resetInstancedMonsterBuckets() {
   for (const bucket of monsterRenderer.instanced.values()) {
     bucket.count = 0;
+    bucket.armCount = 0;
     bucket.mesh.count = 0;
     bucket.headMesh.count = 0;
+    bucket.armMesh.count = 0;
   }
 }
 
@@ -3091,13 +3182,18 @@ function syncMonsterRenderer() {
   for (const bucket of monsterRenderer.instanced.values()) {
     bucket.mesh.count = bucket.count;
     bucket.headMesh.count = bucket.count;
+    bucket.armMesh.count = bucket.armCount;
     bucket.mesh.instanceMatrix.needsUpdate = true;
     bucket.headMesh.instanceMatrix.needsUpdate = true;
+    bucket.armMesh.instanceMatrix.needsUpdate = true;
     if (bucket.mesh.instanceColor) {
       bucket.mesh.instanceColor.needsUpdate = true;
     }
     if (bucket.headMesh.instanceColor) {
       bucket.headMesh.instanceColor.needsUpdate = true;
+    }
+    if (bucket.armMesh.instanceColor) {
+      bucket.armMesh.instanceColor.needsUpdate = true;
     }
   }
 }
@@ -3155,12 +3251,12 @@ function getMonsterLodBudget() {
   const mobile = usesMobileTuning();
 
   if (isLateGamePerformanceMode()) {
-    const detailDistance = mobile ? 4.8 : 5.8;
-    const proxyDistance = mobile ? 8.6 : 10.5;
-    const closeThreatDistance = mobile ? 4.2 : 4.8;
+    const detailDistance = mobile ? 9.5 : 12.5;
+    const proxyDistance = mobile ? 34 : 42;
+    const closeThreatDistance = mobile ? 7.2 : 8.5;
     return {
-      detailCount: 1,
-      proxyCount: 2,
+      detailCount: mobile ? 10 : 20,
+      proxyCount: mobile ? 72 : 120,
       detailDistanceSq: detailDistance * detailDistance,
       proxyDistanceSq: proxyDistance * proxyDistance,
       closeThreatDistanceSq: closeThreatDistance * closeThreatDistance,
@@ -3168,11 +3264,11 @@ function getMonsterLodBudget() {
   }
 
   const detailDistance = getZombieDetailDistance();
-  const proxyDistance = detailDistance * (zombies.length > 70 ? 1.25 : 1.6);
+  const proxyDistance = detailDistance * (zombies.length > 70 ? 2.4 : 2.8);
   const closeThreatDistance = mobile ? 4.4 : 5;
   return {
-    detailCount: mobile ? 12 : 18,
-    proxyCount: mobile ? 18 : 26,
+    detailCount: mobile ? 12 : 24,
+    proxyCount: mobile ? 70 : 112,
     detailDistanceSq: detailDistance * detailDistance,
     proxyDistanceSq: proxyDistance * proxyDistance,
     closeThreatDistanceSq: closeThreatDistance * closeThreatDistance,
@@ -3190,22 +3286,22 @@ function isLateGamePerformanceMode() {
 function getMaxActiveZombies() {
   const profile = getMobileLayoutProfile();
   if (qualityManager.level === "low") {
-    return profile === "desktop" ? 280 : profile === "mobilePro" ? 240 : 215;
+    return profile === "desktop" ? 460 : profile === "mobilePro" ? 360 : 315;
   }
 
   if (profile === "mobilePro") {
-    return 285;
+    return 420;
   }
 
   if (profile === "mobile") {
-    return 245;
+    return 360;
   }
 
   if (profile === "tablet") {
-    return 315;
+    return 470;
   }
 
-  return 360;
+  return 560;
 }
 
 function addInstancedMonster(zombie) {
@@ -3229,11 +3325,34 @@ function addInstancedMonster(zombie) {
   tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
   bucket.headMesh.setMatrixAt(bucket.count, tempMatrix);
   bucket.headMesh.setColorAt(bucket.count, getMonsterInstanceHeadColor(zombie));
+  addInstancedMonsterArms(bucket, zombie);
   bucket.count += 1;
   zombie.renderedAsInstance = true;
   zombie.renderVisibleFrame = monsterRenderer.frame;
   perfStats.instancedZombies += 1;
   return true;
+}
+
+function addInstancedMonsterArms(bucket, zombie) {
+  const { bodyRadius, bodyHeight } = getCommonMonsterBodySpec(zombie.type);
+  const armY = zombie.mesh.position.y + getCommonMonsterProxyYOffset(zombie.type) + bodyHeight * 0.03;
+  const cos = Math.cos(zombie.mesh.rotation.y);
+  const sin = Math.sin(zombie.mesh.rotation.y);
+
+  for (const side of [-1, 1]) {
+    const localX = side * bodyRadius * 0.78;
+    const localZ = -bodyRadius * 0.06;
+    tempVectorA.set(
+      zombie.mesh.position.x + cos * localX - sin * localZ,
+      armY,
+      zombie.mesh.position.z + sin * localX + cos * localZ,
+    );
+    tempQuaternion.setFromEuler(tempEuler.set(0, zombie.mesh.rotation.y, side * -0.22, "YXZ"));
+    tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
+    bucket.armMesh.setMatrixAt(bucket.armCount, tempMatrix);
+    bucket.armMesh.setColorAt(bucket.armCount, getMonsterInstanceColor(zombie));
+    bucket.armCount += 1;
+  }
 }
 
 function getMonsterInstanceColor(zombie) {
@@ -6564,11 +6683,11 @@ function spawnCuttingMoonWave() {
 function startNextWave() {
   player.wave += 1;
   waveElement.textContent = player.wave.toString();
-  const wavePressure = Math.floor(Math.pow(Math.max(0, player.wave - 1), 1.22) * 4.6);
-  const survivalPressure = Math.floor(game.survivalTime / 8);
+  const wavePressure = Math.floor(Math.pow(Math.max(0, player.wave - 1), 1.32) * 7.8);
+  const survivalPressure = Math.floor(game.survivalTime / 6);
   game.zombiesToSpawn = Math.min(
-    14 + player.wave * 7 + wavePressure + survivalPressure,
-    Math.max(170, getMaxActiveZombies() - 10),
+    24 + player.wave * 11 + wavePressure + survivalPressure,
+    Math.max(240, getMaxActiveZombies() - 8),
   );
   game.spawnTimer = 0.2;
   game.trapTimer = Math.min(game.trapTimer, player.wave >= 4 ? 3.4 : 4.8);
@@ -6734,9 +6853,9 @@ function removeTrap(index) {
 }
 
 function getZombieSpawnInterval() {
-  const wavePressure = Math.min(0.58, player.wave * 0.034 + Math.max(0, player.wave - 10) * 0.011);
-  const timePressure = Math.min(0.18, game.survivalTime * 0.0035);
-  return Math.max(0.045, 0.76 - wavePressure - timePressure);
+  const wavePressure = Math.min(0.66, player.wave * 0.043 + Math.max(0, player.wave - 10) * 0.017);
+  const timePressure = Math.min(0.22, game.survivalTime * 0.0045);
+  return Math.max(0.032, 0.7 - wavePressure - timePressure);
 }
 
 function spawnZombie(x, z, type = pickMonsterType()) {
@@ -6810,12 +6929,12 @@ function getWaveDifficultyScale() {
   const wave = Math.max(1, player.wave);
   const lateWave = Math.max(0, wave - 8);
   const time = Math.max(0, game.survivalTime);
-  const bossPressure = wave >= 20 ? 0.4 : wave >= 10 ? 0.18 : 0;
+  const bossPressure = wave >= 20 ? 1.2 : wave >= 10 ? 0.55 : 0;
 
   return {
-    health: 1 + wave * 0.105 + Math.pow(lateWave, 1.18) * 0.055 + Math.min(0.75, time / 260) + bossPressure,
-    damage: 1 + wave * 0.072 + Math.max(0, wave - 10) * 0.045 + Math.min(0.55, time / 340),
-    speed: 1 + Math.min(0.22, wave * 0.006),
+    health: 1.35 + wave * 0.18 + Math.pow(lateWave, 1.22) * 0.11 + Math.min(1.4, time / 190) + bossPressure,
+    damage: 1.28 + wave * 0.115 + Math.max(0, wave - 10) * 0.075 + Math.min(1.1, time / 260) + bossPressure * 0.45,
+    speed: 1 + Math.min(0.3, wave * 0.008),
   };
 }
 

@@ -50,7 +50,7 @@ try {
     return window.__zombieNightDebug.getState();
   });
 
-  await page.waitForTimeout(1250);
+  await page.waitForTimeout(3400);
   const afterAutoWeapon = await page.evaluate(() => window.__zombieNightDebug.getState());
 
   const beforeXpPickup = await page.evaluate(() => {
@@ -227,7 +227,10 @@ try {
   assert(fired.bullets >= 1, "shooting did not create bullets");
   assert(initial.autoWeapons.guardianBlade === 1, "guardian blade did not start unlocked");
   assert(afterAutoWeapon.score > beforeAutoWeapon.score, "automatic weapon did not defeat a monster without shooting");
-  assert(afterAutoWeapon.xpGems > beforeAutoWeapon.xpGems, "defeated monster did not drop XP");
+  assert(
+    afterAutoWeapon.xpGems > beforeAutoWeapon.xpGems || afterAutoWeapon.xp > beforeAutoWeapon.xp || afterAutoWeapon.level > beforeAutoWeapon.level,
+    "defeated monster did not drop or collect XP",
+  );
   assert(afterXpPickup.xp > beforeXpPickup.xp || afterXpPickup.level > beforeXpPickup.level, "XP gem was not collected");
   assert(levelUpChoices.level > beforeLevelUp.level, "XP did not trigger level up");
   assert(levelUpChoices.pendingUpgradeChoices.length >= 1, "level up did not create upgrade choices");
