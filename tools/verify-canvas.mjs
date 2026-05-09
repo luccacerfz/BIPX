@@ -30,7 +30,7 @@ try {
       label: element.querySelector(".menu-player__avatar-rank")?.textContent?.trim() || "",
     })),
   );
-  const avatarTierProbe = await page.evaluate(() => window.__zombieNightDebug.getAvatarTierForScore(2000));
+  const avatarTierProbe = await page.evaluate(() => window.__zombieNightDebug.getAvatarTierForScore(20000));
 
   await page.keyboard.down("w");
   await page.waitForTimeout(450);
@@ -137,6 +137,7 @@ try {
   const casterState = await page.evaluate(() => window.__zombieNightDebug.getState());
 
   const bossState = await page.evaluate(() => {
+    window.__zombieNightDebug.clearCombatEntities();
     window.__zombieNightDebug.spawnZombieAhead(11, "visor");
     window.__zombieNightDebug.spawnZombieAhead(12, "himetrica");
     window.__zombieNightDebug.spawnZombieAhead(13, "dinzo");
@@ -144,6 +145,33 @@ try {
     window.__zombieNightDebug.spawnZombieAhead(15, "gitcity");
     return window.__zombieNightDebug.getState();
   });
+
+  await page.waitForTimeout(450);
+  const signatureBossAttackState = await page.evaluate(() => window.__zombieNightDebug.getState());
+
+  const hordePlusSpawnState = await page.evaluate(() => {
+    window.__zombieNightDebug.clearCombatEntities();
+    window.__zombieNightDebug.spawnDamageNumber(37, false);
+    window.__zombieNightDebug.spawnDamageNumber(128, true);
+    window.__zombieNightDebug.spawnTrap("profaneCircle", 4.8);
+    window.__zombieNightDebug.spawnZombieAhead(8, "cowWalker");
+    window.__zombieNightDebug.spawnZombieAhead(9, "cowCharger");
+    window.__zombieNightDebug.spawnZombieAhead(10, "cowBrute");
+    return window.__zombieNightDebug.getState();
+  });
+
+  await page.waitForTimeout(2100);
+  const hordePlusTrapState = await page.evaluate(() => window.__zombieNightDebug.getState());
+
+  const hordePlusBossState = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnMilestoneBoss("angelSheep");
+    window.__zombieNightDebug.spawnMilestoneBoss("bloodCow");
+    window.__zombieNightDebug.spawnMilestoneBoss("plumaFinance");
+    return window.__zombieNightDebug.getState();
+  });
+
+  await page.waitForTimeout(1450);
+  const hordePlusAttackState = await page.evaluate(() => window.__zombieNightDebug.getState());
 
   await page.waitForTimeout(400);
   const lateSpawn = await page.evaluate(() => {
@@ -231,11 +259,35 @@ try {
   assert(bossState.bossLabels.dinzo >= 1, "Dinzo label did not spawn");
   assert(bossState.bossLabels.sofra >= 1, "Sofra label did not spawn");
   assert(bossState.bossLabels.gitcity >= 1, "GitCity label did not spawn");
-  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "visor" && projectile.kind === "evilEye"), "Visor did not fire an evil-eye projectile");
-  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "himetrica" && projectile.kind === "lightning"), "Himetrica did not fire a lightning projectile");
-  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "dinzo" && projectile.kind === "boleto"), "Dinzo did not fire a boleto projectile");
-  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "sofra" && projectile.kind === "briefcase"), "Sofra did not fire a briefcase projectile");
-  assert(lateSpawn.enemyProjectileDetails.some((projectile) => projectile.source === "gitcity" && projectile.kind === "airplane"), "GitCity did not fire a tiny airplane projectile");
+  assert(hordePlusSpawnState.damageNumberDetails.some((number) => number.crit === false), "normal white damage number did not spawn");
+  assert(hordePlusSpawnState.damageNumberDetails.some((number) => number.crit === true), "critical yellow damage number did not spawn");
+  assert(hordePlusSpawnState.trapDetails.some((trap) => trap.type === "profaneCircle"), "profane trap did not spawn");
+  assert(
+    !hordePlusTrapState.trapDetails.some((trap) => trap.type === "profaneCircle" && !trap.triggered),
+    "profane trap did not trigger or clear",
+  );
+  assert(hordePlusSpawnState.monsters.cowWalker >= 1, "cow walker did not spawn");
+  assert(hordePlusSpawnState.monsters.cowCharger >= 1, "cow charger did not spawn");
+  assert(hordePlusSpawnState.monsters.cowBrute >= 1, "cow brute did not spawn");
+  assert(hordePlusBossState.monsters.angelSheep >= 1, "Ovelha Celestial boss did not spawn");
+  assert(hordePlusBossState.monsters.bloodCow >= 1, "Vaca Sanguinaria boss did not spawn");
+  assert(hordePlusBossState.monsters.plumaFinance >= 1, "Pluma Finance boss did not spawn");
+  assert(hordePlusBossState.bossLabels.angelSheep >= 1, "Ovelha Celestial label did not spawn");
+  assert(hordePlusBossState.bossLabels.bloodCow >= 1, "Vaca Sanguinaria label did not spawn");
+  assert(hordePlusBossState.bossLabels.plumaFinance >= 1, "Pluma Finance label did not spawn");
+  assert(
+    hordePlusAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "angelSheep" && projectile.kind === "feather"),
+    "Ovelha Celestial did not fire feather projectiles",
+  );
+  assert(
+    hordePlusAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "plumaFinance" && projectile.kind === "tornado"),
+    "Pluma Finance did not fire tornado projectiles",
+  );
+  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "visor" && projectile.kind === "evilEye"), "Visor did not fire an evil-eye projectile");
+  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "himetrica" && projectile.kind === "lightning"), "Himetrica did not fire a lightning projectile");
+  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "dinzo" && projectile.kind === "boleto"), "Dinzo did not fire a boleto projectile");
+  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "sofra" && projectile.kind === "briefcase"), "Sofra did not fire a briefcase projectile");
+  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "gitcity" && projectile.kind === "airplane"), "GitCity did not fire a tiny airplane projectile");
   assert(lateSpawn.spawnInterval < initial.spawnInterval, "zombie spawn interval did not increase over time");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "rare"), "rare perk drop did not spawn");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "epic"), "epic perk drop did not spawn");
@@ -287,6 +339,11 @@ try {
         monsterState,
         casterState,
         bossState,
+        signatureBossAttackState,
+        hordePlusSpawnState,
+        hordePlusTrapState,
+        hordePlusBossState,
+        hordePlusAttackState,
         lateSpawn,
         rarityDropState,
         chestDropState,

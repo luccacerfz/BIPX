@@ -521,7 +521,7 @@ async function loadLeaderboardFromSupabase() {
   try {
     const [players, sessions] = await Promise.all([
       supabaseRequest(
-        "/leaderboard_players?select=*&order=best_score.desc,best_level.desc,best_wave.desc,games_played.desc,total_score.desc",
+        "/leaderboard_players?select=*&order=total_score.desc,best_score.desc,best_level.desc,best_wave.desc,games_played.desc",
       ),
       supabaseRequest(`/leaderboard_sessions?select=*&order=ended_at.desc&limit=${historyLimit}`),
     ]);
@@ -805,11 +805,11 @@ function getLeaderboardSnapshot() {
   const players = Object.values(leaderboardStore.players)
     .sort(
       (first, second) =>
+        second.totalScore - first.totalScore ||
         second.bestScore - first.bestScore ||
         (Number(second.bestLevel) || 1) - (Number(first.bestLevel) || 1) ||
         second.bestWave - first.bestWave ||
-        second.gamesPlayed - first.gamesPlayed ||
-        second.totalScore - first.totalScore,
+        second.gamesPlayed - first.gamesPlayed,
     )
     .slice(0, leaderboardLimit)
     .map((record, index) => ({

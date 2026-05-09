@@ -36,7 +36,7 @@ async function runStressScenario(name, viewport, minFps) {
 
     await page.goto(url.toString(), { waitUntil: "networkidle" });
     await page.waitForTimeout(1400);
-    await page.evaluate(() => window.__zombieNightDebug.stressLevel16(130));
+    await page.evaluate(() => window.__zombieNightDebug.stressLevel16(170));
     const frameSample = await page.evaluate(sampleAnimationFrames, 12_000);
     const stats = await page.evaluate(() => window.__zombieNightDebug.getPerfStats());
     const state = await page.evaluate(() => window.__zombieNightDebug.getState());
@@ -49,9 +49,10 @@ async function runStressScenario(name, viewport, minFps) {
     const expansionsAfterRestart = JSON.stringify(restartStats.poolExpansions);
 
     assert(state.level >= 16, `${name} did not reach level 16`);
-    assert(stats.entities.zombies >= 130, `${name} stress horde too small: ${stats.entities.zombies}`);
-    assert(stats.instancedZombies >= 95, `${name} did not instance enough monsters: ${stats.instancedZombies}`);
-    assert(stats.drawCalls < 120, `${name} draw calls too high: ${stats.drawCalls}`);
+    assert(stats.entities.zombies >= 160, `${name} stress horde too small: ${stats.entities.zombies}`);
+    assert(stats.instancedZombies >= 125, `${name} did not instance enough monsters: ${stats.instancedZombies}`);
+    assert(stats.drawCalls < 130, `${name} draw calls too high: ${stats.drawCalls}`);
+    assert(stats.entities.damageNumbers <= 42, `${name} damage number budget was not enforced`);
     assert(stats.fpsAverage >= minFps, `${name} FPS too low: ${stats.fpsAverage}`);
     assert(frameSample.averageFps >= minFps, `${name} sampled FPS too low: ${frameSample.averageFps}`);
     assert(stats.entities.effects <= 24, `${name} late-game effect budget was not enforced`);
