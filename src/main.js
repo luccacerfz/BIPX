@@ -670,8 +670,10 @@ const tempQuaternion = new THREE.Quaternion();
 const tempMatrix = new THREE.Matrix4();
 const tempScale = new THREE.Vector3(1, 1, 1);
 const tempColor = new THREE.Color();
+const tempColorB = new THREE.Color();
 const damageNumberLifetime = 0.82;
 const damageNumberMergeWindowMs = 80;
+const groundItemLifetime = 10;
 
 const assetCache = {
   geometries: new Map(),
@@ -720,7 +722,7 @@ const rarityStyles = {
     border: "rgba(116, 209, 255, 0.56)",
     glow: "rgba(116, 209, 255, 0.26)",
     accent: "#74d1ff",
-    weight: 72,
+    weight: 88,
     animated: false,
   },
   rare: {
@@ -730,7 +732,7 @@ const rarityStyles = {
     border: "rgba(255, 216, 74, 0.86)",
     glow: "rgba(255, 216, 74, 0.38)",
     accent: "#ffd84a",
-    weight: 20,
+    weight: 7,
     animated: false,
   },
   epic: {
@@ -740,7 +742,7 @@ const rarityStyles = {
     border: "rgba(255, 138, 42, 0.9)",
     glow: "rgba(255, 138, 42, 0.46)",
     accent: "#ff8a2a",
-    weight: 7,
+    weight: 3.2,
     animated: true,
   },
   legendary: {
@@ -750,12 +752,12 @@ const rarityStyles = {
     border: "rgba(255, 215, 106, 0.96)",
     glow: "rgba(255, 215, 106, 0.62)",
     accent: "#fff2a8",
-    weight: 1,
+    weight: 0.35,
     animated: true,
   },
 };
 const rarityOrder = { common: 0, rare: 1, epic: 2, legendary: 3 };
-const bossRewardRarityWeights = { rare: 70, epic: 25, legendary: 5 };
+const bossRewardRarityWeights = { rare: 86, epic: 13, legendary: 1 };
 
 const hudWeaponIcons = {
   pistol: "🔫",
@@ -967,9 +969,9 @@ const eliteProfiles = {
   furious: {
     label: "Furioso",
     color: 0xff514d,
-    healthMultiplier: 1.22,
+    healthMultiplier: 1.38,
     speedMultiplier: 1.32,
-    damageMultiplier: 1.28,
+    damageMultiplier: 1.48,
     scoreMultiplier: 1.35,
     xpMultiplier: 1.25,
     reachBonus: 0.12,
@@ -977,9 +979,9 @@ const eliteProfiles = {
   armored: {
     label: "Blindado",
     color: 0x9fb4c7,
-    healthMultiplier: 2.05,
+    healthMultiplier: 2.55,
     speedMultiplier: 0.82,
-    damageMultiplier: 1.12,
+    damageMultiplier: 1.22,
     scoreMultiplier: 1.55,
     xpMultiplier: 1.5,
     reachBonus: 0.05,
@@ -987,9 +989,9 @@ const eliteProfiles = {
   executioner: {
     label: "Carrasco",
     color: 0xffb13b,
-    healthMultiplier: 1.45,
+    healthMultiplier: 1.72,
     speedMultiplier: 0.95,
-    damageMultiplier: 1.38,
+    damageMultiplier: 1.62,
     scoreMultiplier: 1.7,
     xpMultiplier: 1.65,
     reachBonus: 0.82,
@@ -1589,6 +1591,8 @@ window.__zombieNightDebug = {
         animated: Boolean(rarityStyles[powerup.rarity]?.animated),
         hasLabel: Boolean(powerup.labelSprite),
         source: powerup.source,
+        life: Number((powerup.life ?? 0).toFixed(2)),
+        ttl: Number((powerup.ttl ?? groundItemLifetime).toFixed(2)),
       })),
       monsters: zombies.reduce((counts, zombie) => {
         counts[zombie.type] = (counts[zombie.type] ?? 0) + 1;
@@ -1738,6 +1742,7 @@ window.__zombieNightDebug = {
   },
   clearCombatEntities() {
     clearEntities();
+    player.maxHealth = Math.max(player.maxHealth, 1000);
     player.health = player.maxHealth;
     game.state = "playing";
     return this.getState();
@@ -1765,7 +1770,7 @@ window.__zombieNightDebug = {
     syncMonsterRenderer();
     updateHud(true);
   },
-  stressLevel16(count = 170) {
+  stressLevel16(count = 240) {
     clearEntities();
     game.perfStressImmortal = true;
     player.level = Math.max(player.level, 16);
@@ -1800,7 +1805,7 @@ window.__zombieNightDebug = {
     game.zombiesToSpawn = 0;
     renderUpgradeChoices();
 
-    const total = Math.max(160, Math.floor(Number(count) || 0));
+    const total = Math.max(220, Math.floor(Number(count) || 0));
     const types = ["zombie", "runner", "brute", "caster"];
     for (let index = 0; index < total; index += 1) {
       const angle = (index / Math.max(total, 1)) * Math.PI * 2;
@@ -2193,6 +2198,23 @@ function updateQualityManager(dt) {
     return;
   }
 
+  const mobileTuned = usesMobileTuning();
+  if (mobileTuned && zombies.length > 80 && qualityManager.level === "high") {
+    qualityManager.level = "medium";
+    qualityManager.fpsLowTimer = 0;
+    qualityManager.fpsHighTimer = 0;
+    applyQualitySettings();
+    return;
+  }
+
+  if (mobileTuned && zombies.length > 145 && qualityManager.level !== "low") {
+    qualityManager.level = "low";
+    qualityManager.fpsLowTimer = 0;
+    qualityManager.fpsHighTimer = 0;
+    applyQualitySettings();
+    return;
+  }
+
   if (isLateGamePerformanceMode() && qualityManager.level !== "low") {
     qualityManager.level = "low";
     qualityManager.fpsLowTimer = 0;
@@ -2208,10 +2230,12 @@ function updateQualityManager(dt) {
 
   qualityManager.evaluationTimer = 0.75;
 
-  if (perfStats.fpsAverage < 36) {
+  const lowFpsThreshold = mobileTuned ? 48 : 40;
+  const highFpsThreshold = mobileTuned ? 58 : 55;
+  if (perfStats.fpsAverage < lowFpsThreshold) {
     qualityManager.fpsLowTimer += 0.75;
     qualityManager.fpsHighTimer = 0;
-  } else if (perfStats.fpsAverage > 55 && effects.length < qualityManager.effectBudget * 0.45) {
+  } else if (perfStats.fpsAverage > highFpsThreshold && effects.length < qualityManager.effectBudget * 0.45) {
     qualityManager.fpsHighTimer += 0.75;
     qualityManager.fpsLowTimer = 0;
   } else {
@@ -2219,11 +2243,12 @@ function updateQualityManager(dt) {
     qualityManager.fpsHighTimer = Math.max(0, qualityManager.fpsHighTimer - 0.75);
   }
 
-  if (qualityManager.fpsLowTimer >= 1.5 && qualityManager.level === "high") {
+  const downgradeDelay = mobileTuned ? 0.75 : 1.5;
+  if (qualityManager.fpsLowTimer >= downgradeDelay && qualityManager.level === "high") {
     qualityManager.level = "medium";
     qualityManager.fpsLowTimer = 0;
     applyQualitySettings();
-  } else if (qualityManager.fpsLowTimer >= 1.5 && qualityManager.level === "medium") {
+  } else if (qualityManager.fpsLowTimer >= downgradeDelay && qualityManager.level === "medium") {
     qualityManager.level = "low";
     qualityManager.fpsLowTimer = 0;
     applyQualitySettings();
@@ -2264,13 +2289,21 @@ function prewarmEntityPools() {
   }
 
   const zombieWarmup = [
-    ["zombie", 56],
-    ["runner", 40],
-    ["brute", 34],
-    ["caster", 30],
-    ["cowWalker", 28],
-    ["cowCharger", 22],
-    ["cowBrute", 18],
+    ["zombie", 96],
+    ["runner", 74],
+    ["brute", 66],
+    ["caster", 66],
+    ["cowWalker", 54],
+    ["cowCharger", 44],
+    ["cowBrute", 34],
+    ["visor", 2],
+    ["himetrica", 1],
+    ["dinzo", 1],
+    ["gitcity", 2],
+    ["sofra", 1],
+    ["angelSheep", 1],
+    ["bloodCow", 1],
+    ["plumaFinance", 1],
   ];
 
   for (const [type, count] of zombieWarmup) {
@@ -2872,30 +2905,62 @@ function attachEliteMarker(group) {
 
 function attachZombieLodProxy(group, type, palette, bodyRadius, bodyHeight) {
   const detailChildren = [...group.children];
-  const proxy = new THREE.Mesh(
-    getSharedGeometry(`zombie-proxy-${type}`, () =>
-      new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
-    ),
-    getZombieProxyMaterial(type, palette),
-  );
-  proxy.name = "zombie-lod-proxy";
-  proxy.position.y = type === "brute" ? 1.15 : 1;
-  proxy.castShadow = false;
-  proxy.receiveShadow = false;
-  proxy.visible = false;
-  proxy.userData.isLodProxy = true;
+  const proxy = createZombieLodProxy(type, palette, bodyRadius, bodyHeight);
   group.userData.detailChildren = detailChildren;
   group.userData.lodProxy = proxy;
   group.add(proxy);
 }
 
+function createZombieLodProxy(type, palette, bodyRadius, bodyHeight) {
+  const proxy = new THREE.Group();
+  const body = new THREE.Mesh(
+    getSharedGeometry(`zombie-proxy-${type}`, () =>
+      new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
+    ),
+    getZombieProxyMaterial(type, palette),
+  );
+  body.position.y = getCommonMonsterProxyYOffset(type);
+  body.userData.isLodProxy = true;
+
+  const head = new THREE.Mesh(
+    getSharedGeometry(`zombie-proxy-head-${type}`, () => new THREE.SphereGeometry(bodyRadius * 0.52, 8, 6)),
+    getZombieProxyHeadMaterial(type, palette),
+  );
+  head.position.y = getCommonMonsterHeadYOffset(type);
+  head.position.z = -bodyRadius * 0.18;
+  head.userData.isLodProxy = true;
+
+  proxy.name = "zombie-lod-proxy";
+  proxy.visible = false;
+  proxy.userData.isLodProxy = true;
+  proxy.add(body, head);
+  return proxy;
+}
+
 function getZombieProxyMaterial(type, palette) {
   const key = `zombie-proxy-${type}`;
   if (!assetCache.materials.has(key)) {
+    const color = new THREE.Color(palette.cloth).lerp(new THREE.Color(palette.skin), 0.42).multiplyScalar(1.32);
     assetCache.materials.set(
       key,
       new THREE.MeshBasicMaterial({
-        color: palette.cloth,
+        color,
+        fog: true,
+      }),
+    );
+  }
+
+  return assetCache.materials.get(key);
+}
+
+function getZombieProxyHeadMaterial(type, palette) {
+  const key = `zombie-proxy-head-${type}`;
+  if (!assetCache.materials.has(key)) {
+    const color = new THREE.Color(palette.skin).lerp(new THREE.Color(palette.eye), 0.12).multiplyScalar(1.22);
+    assetCache.materials.set(
+      key,
+      new THREE.MeshBasicMaterial({
+        color,
         fog: true,
       }),
     );
@@ -2928,6 +2993,11 @@ function getCommonMonsterProxyYOffset(type) {
   return type === "brute" || type === "cowBrute" ? 1.15 : 1;
 }
 
+function getCommonMonsterHeadYOffset(type) {
+  const { bodyHeight } = getCommonMonsterBodySpec(type);
+  return getCommonMonsterProxyYOffset(type) + bodyHeight * 0.56 + 0.42;
+}
+
 function getInstancedMonsterBucket(type) {
   if (monsterRenderer.instanced.has(type)) {
     return monsterRenderer.instanced.get(type);
@@ -2935,21 +3005,33 @@ function getInstancedMonsterBucket(type) {
 
   const { bodyRadius, bodyHeight } = getCommonMonsterBodySpec(type);
   const palette = commonMonsterPalettes[type] ?? commonMonsterPalettes.zombie;
+  const capacity = 420;
   const mesh = new THREE.InstancedMesh(
     getSharedGeometry(`zombie-instance-${type}`, () =>
       new THREE.CylinderGeometry(bodyRadius * 0.82, bodyRadius * 0.96, bodyHeight + 0.55, 5),
     ),
     getZombieInstanceMaterial(type, palette),
-    220,
+    capacity,
+  );
+  const headMesh = new THREE.InstancedMesh(
+    getSharedGeometry(`zombie-instance-head-${type}`, () => new THREE.SphereGeometry(bodyRadius * 0.52, 8, 6)),
+    getZombieInstanceMaterial(`${type}-head`, palette),
+    capacity,
   );
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  headMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.castShadow = false;
   mesh.receiveShadow = false;
+  headMesh.castShadow = false;
+  headMesh.receiveShadow = false;
   mesh.frustumCulled = false;
+  headMesh.frustumCulled = false;
   mesh.count = 0;
+  headMesh.count = 0;
   scene.add(mesh);
+  scene.add(headMesh);
 
-  const bucket = { capacity: 220, count: 0, mesh };
+  const bucket = { capacity, count: 0, mesh, headMesh };
   monsterRenderer.instanced.set(type, bucket);
   return bucket;
 }
@@ -2958,6 +3040,7 @@ function resetInstancedMonsterBuckets() {
   for (const bucket of monsterRenderer.instanced.values()) {
     bucket.count = 0;
     bucket.mesh.count = 0;
+    bucket.headMesh.count = 0;
   }
 }
 
@@ -3007,9 +3090,14 @@ function syncMonsterRenderer() {
 
   for (const bucket of monsterRenderer.instanced.values()) {
     bucket.mesh.count = bucket.count;
+    bucket.headMesh.count = bucket.count;
     bucket.mesh.instanceMatrix.needsUpdate = true;
+    bucket.headMesh.instanceMatrix.needsUpdate = true;
     if (bucket.mesh.instanceColor) {
       bucket.mesh.instanceColor.needsUpdate = true;
+    }
+    if (bucket.headMesh.instanceColor) {
+      bucket.headMesh.instanceColor.needsUpdate = true;
     }
   }
 }
@@ -3102,22 +3190,22 @@ function isLateGamePerformanceMode() {
 function getMaxActiveZombies() {
   const profile = getMobileLayoutProfile();
   if (qualityManager.level === "low") {
-    return profile === "desktop" ? 190 : profile === "mobilePro" ? 175 : 160;
+    return profile === "desktop" ? 280 : profile === "mobilePro" ? 240 : 215;
   }
 
   if (profile === "mobilePro") {
-    return 190;
+    return 285;
   }
 
   if (profile === "mobile") {
-    return 170;
+    return 245;
   }
 
   if (profile === "tablet") {
-    return 200;
+    return 315;
   }
 
-  return 220;
+  return 360;
 }
 
 function addInstancedMonster(zombie) {
@@ -3137,6 +3225,10 @@ function addInstancedMonster(zombie) {
   tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
   bucket.mesh.setMatrixAt(bucket.count, tempMatrix);
   bucket.mesh.setColorAt(bucket.count, getMonsterInstanceColor(zombie));
+  tempVectorA.y = zombie.mesh.position.y + getCommonMonsterHeadYOffset(zombie.type);
+  tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
+  bucket.headMesh.setMatrixAt(bucket.count, tempMatrix);
+  bucket.headMesh.setColorAt(bucket.count, getMonsterInstanceHeadColor(zombie));
   bucket.count += 1;
   zombie.renderedAsInstance = true;
   zombie.renderVisibleFrame = monsterRenderer.frame;
@@ -3151,7 +3243,16 @@ function getMonsterInstanceColor(zombie) {
 
   const palette = commonMonsterPalettes[zombie.type] ?? commonMonsterPalettes.zombie;
   const base = zombie.variantColor ?? palette.cloth;
-  return tempColor.setHex(base);
+  return tempColor.setHex(base).lerp(tempColorB.setHex(palette.skin), 0.24).multiplyScalar(1.18);
+}
+
+function getMonsterInstanceHeadColor(zombie) {
+  const palette = commonMonsterPalettes[zombie.type] ?? commonMonsterPalettes.zombie;
+  if (zombie.eliteType) {
+    return tempColor.setHex(eliteProfiles[zombie.eliteType]?.color ?? 0xffd36d).lerp(tempColorB.setHex(palette.skin), 0.18);
+  }
+
+  return tempColor.setHex(palette.skin).lerp(tempColorB.setHex(palette.eye), 0.14).multiplyScalar(1.16);
 }
 
 function updateZombieShadow(zombie, mode) {
@@ -5091,11 +5192,17 @@ function updatePlayer(dt) {
 function updatePowerups(dt) {
   for (let index = powerups.length - 1; index >= 0; index -= 1) {
     const powerup = powerups[index];
+    powerup.life = (powerup.life ?? 0) + dt;
     powerup.age += dt;
     powerup.mesh.rotation.y += dt * 1.9;
     powerup.mesh.position.y = powerup.baseY + Math.sin(powerup.age * 4.4) * 0.16;
     updatePowerupLabelPosition(powerup);
     animateDropLabel(powerup, dt);
+
+    if (powerup.life >= (powerup.ttl ?? groundItemLifetime)) {
+      removePowerup(index);
+      continue;
+    }
 
     if (distanceXZSquared(player.position, powerup.mesh.position) < powerup.radius * powerup.radius) {
       if (collectPowerup(powerup)) {
@@ -5331,7 +5438,7 @@ function rollUpgradeChoices(source = "level") {
   }
 
   const choices = [];
-  const forceRare = source === "level" && player.rarityPity >= 4;
+  const forceRare = source === "level" && player.rarityPity >= 8;
   while (choices.length < 3 && available.length > 0) {
     let pool = available;
     if (forceRare && choices.length === 0) {
@@ -6032,6 +6139,8 @@ function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
     labelSprite,
     source: options.source || "kill",
     age: Math.random() * Math.PI,
+    life: 0,
+    ttl: groundItemLifetime,
     baseY: 0.36,
     radius: 1.45,
   };
@@ -6069,6 +6178,8 @@ function spawnPerkDropAt(position, perkId, rarity = null, source = "perk") {
     source,
     sparkleTimer: 0,
     age: Math.random() * Math.PI,
+    life: 0,
+    ttl: groundItemLifetime,
     baseY: 0.36,
     radius: 1.45,
   };
@@ -6105,6 +6216,8 @@ function spawnBossRewardChestAt(position, bossType = "boss") {
     source: bossType,
     sparkleTimer: 0.2,
     age: Math.random() * Math.PI,
+    life: 0,
+    ttl: groundItemLifetime,
     baseY: 0.28,
     radius: 1.65,
   };
@@ -6146,12 +6259,15 @@ function maybeDropPerkFromZombie(type, position) {
   }
 
   const chanceByType = {
-    zombie: 0.012,
-    runner: 0.018,
-    brute: 0.07,
-    caster: 0.08,
+    zombie: 0.004,
+    runner: 0.007,
+    brute: 0.028,
+    caster: 0.033,
+    cowWalker: 0.009,
+    cowCharger: 0.012,
+    cowBrute: 0.038,
   };
-  const levelBonus = Math.min(0.035, Math.max(0, player.level - 4) * 0.0025);
+  const levelBonus = Math.min(0.014, Math.max(0, player.level - 5) * 0.0012);
   const dropChance = (chanceByType[type] ?? 0.015) + levelBonus;
   if (Math.random() > dropChance) {
     return false;
@@ -6164,8 +6280,8 @@ function maybeDropPerkFromZombie(type, position) {
 function rollPerkDrop(type) {
   const elite = type === "brute" || type === "caster";
   const weights = elite
-    ? { rare: 72, epic: 24, legendary: 4 }
-    : { rare: 88, epic: 11, legendary: 1 };
+    ? { rare: 90, epic: 9, legendary: 1 }
+    : { rare: 97, epic: 2.8, legendary: 0.2 };
   const available = upgradeDefinitions.filter(
     (upgrade) => upgrade.kind === "perk" && isUpgradeAvailable(upgrade, "rare", "perkDrop"),
   );
@@ -6448,9 +6564,11 @@ function spawnCuttingMoonWave() {
 function startNextWave() {
   player.wave += 1;
   waveElement.textContent = player.wave.toString();
+  const wavePressure = Math.floor(Math.pow(Math.max(0, player.wave - 1), 1.22) * 4.6);
+  const survivalPressure = Math.floor(game.survivalTime / 8);
   game.zombiesToSpawn = Math.min(
-    10 + player.wave * 5 + Math.floor(game.survivalTime / 10),
-    Math.max(120, getMaxActiveZombies() - 18),
+    14 + player.wave * 7 + wavePressure + survivalPressure,
+    Math.max(170, getMaxActiveZombies() - 10),
   );
   game.spawnTimer = 0.2;
   game.trapTimer = Math.min(game.trapTimer, player.wave >= 4 ? 3.4 : 4.8);
@@ -6616,7 +6734,9 @@ function removeTrap(index) {
 }
 
 function getZombieSpawnInterval() {
-  return Math.max(0.08, 0.82 - player.wave * 0.045 - game.survivalTime * 0.006);
+  const wavePressure = Math.min(0.58, player.wave * 0.034 + Math.max(0, player.wave - 10) * 0.011);
+  const timePressure = Math.min(0.18, game.survivalTime * 0.0035);
+  return Math.max(0.045, 0.76 - wavePressure - timePressure);
 }
 
 function spawnZombie(x, z, type = pickMonsterType()) {
@@ -6634,7 +6754,8 @@ function spawnZombie(x, z, type = pickMonsterType()) {
   }
   scene.add(mesh);
 
-  const baseHealth = profile.health + Math.floor(player.wave / 3) + Math.floor(game.survivalTime / 90);
+  const difficulty = getWaveDifficultyScale();
+  const baseHealth = (profile.health + Math.floor(game.survivalTime / 120)) * difficulty.health;
   const maxHealth = Math.max(1, baseHealth * (eliteProfile?.healthMultiplier ?? 1));
   const labelSprite = profile.boss ? createBossLabelSprite(profile.label, maxHealth, type) : null;
   if (labelSprite) {
@@ -6649,10 +6770,10 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     health: maxHealth,
     maxHealth,
     labelSprite,
-    speed: (profile.speed + Math.min(player.wave * 0.2 + game.survivalTime * 0.012, 5.4) + Math.random() * 0.7) *
+    speed: (profile.speed + Math.min(player.wave * 0.16 + game.survivalTime * 0.01, 5.8) * difficulty.speed + Math.random() * 0.7) *
       (eliteProfile?.speedMultiplier ?? 1),
     attackCooldown: 0,
-    damage: profile.damage * (eliteProfile?.damageMultiplier ?? 1),
+    damage: profile.damage * difficulty.damage * (eliteProfile?.damageMultiplier ?? 1),
     radius: profile.radius,
     reachBonus: eliteProfile?.reachBonus ?? 0,
     renderMode: "detail",
@@ -6672,17 +6793,30 @@ function spawnZombie(x, z, type = pickMonsterType()) {
 }
 
 function rollEliteType(type) {
-  if (player.wave < 7 || cowMonsterTypes.has(type) && player.wave < 10) {
+  if (player.wave < 6 || cowMonsterTypes.has(type) && player.wave < 10) {
     return null;
   }
 
-  const chance = Math.min(0.28, 0.035 + (player.wave - 7) * 0.011 + game.survivalTime * 0.00035);
+  const chance = Math.min(0.42, 0.045 + (player.wave - 6) * 0.017 + game.survivalTime * 0.0005);
   if (Math.random() > chance) {
     return null;
   }
 
   const eliteTypes = Object.keys(eliteProfiles);
   return eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
+}
+
+function getWaveDifficultyScale() {
+  const wave = Math.max(1, player.wave);
+  const lateWave = Math.max(0, wave - 8);
+  const time = Math.max(0, game.survivalTime);
+  const bossPressure = wave >= 20 ? 0.4 : wave >= 10 ? 0.18 : 0;
+
+  return {
+    health: 1 + wave * 0.105 + Math.pow(lateWave, 1.18) * 0.055 + Math.min(0.75, time / 260) + bossPressure,
+    damage: 1 + wave * 0.072 + Math.max(0, wave - 10) * 0.045 + Math.min(0.55, time / 340),
+    speed: 1 + Math.min(0.22, wave * 0.006),
+  };
 }
 
 function getMonsterVariantColor(type, eliteType = null) {

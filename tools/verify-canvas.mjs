@@ -291,6 +291,7 @@ try {
   assert(lateSpawn.spawnInterval < initial.spawnInterval, "zombie spawn interval did not increase over time");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "rare"), "rare perk drop did not spawn");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "epic"), "epic perk drop did not spawn");
+  assert(rarityDropState.powerupDetails.every((powerup) => powerup.ttl === 10), "ground drops did not expose a 10s lifetime");
   assert(
     rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "legendary" && powerup.animated),
     "legendary perk drop did not spawn with animation flag",
