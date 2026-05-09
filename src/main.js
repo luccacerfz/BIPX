@@ -348,6 +348,18 @@ const audioManager = {
       case "crossbow":
         this.playTone({ group: "weapons", frequency: 510, duration: 0.14, gain: 0.04, type: "triangle", endFrequency: 260 });
         break;
+      case "thunderstaff":
+        this.playNoise({ group: "weapons", duration: 0.09, gain: 0.045, filterFrequency: 4200 });
+        this.playTone({ group: "weapons", frequency: 980, duration: 0.12, gain: 0.035, type: "square", endFrequency: 420 });
+        break;
+      case "boneCannon":
+        this.playTone({ group: "weapons", frequency: 118, duration: 0.16, gain: 0.052, type: "sawtooth", endFrequency: 64 });
+        this.playNoise({ group: "weapons", duration: 0.12, gain: 0.04, filterFrequency: 760 });
+        break;
+      case "frostNova":
+        this.playTone({ group: "weapons", frequency: 720, duration: 0.18, gain: 0.035, type: "sine", endFrequency: 360 });
+        this.playNoise({ group: "weapons", duration: 0.1, gain: 0.025, filterFrequency: 2400 });
+        break;
       case "talisman":
       case "sealRain":
         this.playTone({ group: "weapons", frequency: 260, duration: 0.16, gain: 0.036, type: "sine" });
@@ -588,6 +600,9 @@ function getAudioCooldown(type) {
     katana: 0.12,
     crossbow: 0.18,
     talisman: 0.22,
+    thunderstaff: 0.18,
+    boneCannon: 0.26,
+    frostNova: 0.32,
     autoBlade: 0.11,
     orbitOrb: 0.14,
     sealRain: 0.2,
@@ -674,7 +689,11 @@ const tempColor = new THREE.Color();
 const tempColorB = new THREE.Color();
 const damageNumberLifetime = 0.82;
 const damageNumberMergeWindowMs = 80;
-const groundItemLifetime = 10;
+const groundItemLifetime = 20;
+const bossHealthPotionAmount = 10;
+const playerBaseMaxHealth = 200;
+const playerBaseDamageMultiplier = 2;
+const playerNetworkMaxHealthCap = 600;
 
 const assetCache = {
   geometries: new Map(),
@@ -698,21 +717,24 @@ const spatialGrid = {
 
 const weapons = {
   pistol: { label: "Pistola", duration: 0 },
-  flamethrower: { label: "Lança-chamas", duration: 10, color: 0xff7a28 },
-  axe: { label: "Machado", duration: 8, color: 0x7fd7ff },
-  katana: { label: "Katana", duration: 10, color: 0x8ffcff },
-  crossbow: { label: "Besta", duration: 11, color: 0xffd36d },
-  talisman: { label: "Selo", duration: 9, color: 0xd978ff },
+  flamethrower: { label: "Lança-chamas", duration: 20, color: 0xff7a28 },
+  axe: { label: "Machado", duration: 16, color: 0x7fd7ff },
+  katana: { label: "Katana", duration: 20, color: 0x8ffcff },
+  crossbow: { label: "Besta", duration: 22, color: 0xffd36d },
+  talisman: { label: "Selo", duration: 18, color: 0xd978ff },
+  thunderstaff: { label: "Cajado de Raio", duration: 20, color: 0xfff45c },
+  boneCannon: { label: "Canhão de Ossos", duration: 22, color: 0xe7e0c7 },
+  frostNova: { label: "Orbe de Gelo", duration: 20, color: 0x7edcff },
 };
 
-const weaponDropTypes = ["flamethrower", "axe", "katana", "crossbow", "talisman"];
+const weaponDropTypes = ["flamethrower", "axe", "katana", "crossbow", "talisman", "thunderstaff", "boneCannon", "frostNova"];
 const bossWeaponDrops = {
   visor: "talisman",
-  himetrica: "katana",
-  dinzo: "axe",
+  himetrica: "thunderstaff",
+  dinzo: "boneCannon",
   gitcity: "crossbow",
   sofra: "flamethrower",
-  angelSheep: "talisman",
+  angelSheep: "frostNova",
   bloodCow: "axe",
   plumaFinance: "crossbow",
 };
@@ -779,6 +801,9 @@ const hudWeaponIcons = {
   katana: "⚔",
   crossbow: "🏹",
   talisman: "📜",
+  thunderstaff: "⚡",
+  boneCannon: "☠",
+  frostNova: "❄",
   guardianBlade: "🗡",
   orbitOrb: "🟣",
   sealRain: "☄",
@@ -1337,8 +1362,8 @@ const multiplayer = {
 
 const player = {
   name: loadPlayerName(),
-  health: 100,
-  maxHealth: 100,
+  health: playerBaseMaxHealth,
+  maxHealth: playerBaseMaxHealth,
   score: 0,
   kills: 0,
   wave: 0,
@@ -1599,6 +1624,7 @@ window.__zombieNightDebug = {
       powerupDetails: powerups.map((powerup) => ({
         type: powerup.type,
         kind: powerup.kind ?? "weapon",
+        amount: powerup.amount ?? null,
         label: powerup.label ?? getPowerupDropLabel(powerup.type),
         rarity: powerup.rarity ?? "common",
         animated: Boolean(rarityStyles[powerup.rarity]?.animated),
@@ -1720,6 +1746,10 @@ window.__zombieNightDebug = {
   spawnBossRewardChest(bossType = "visor") {
     spawnBossRewardChestAt(player.position.clone().addScaledVector(player.aimDirection, 2.8), bossType);
   },
+  spawnHealthPotion(amount = bossHealthPotionAmount) {
+    spawnHealthPotionAt(player.position.clone().addScaledVector(player.aimDirection, 2.2), Math.max(1, Number(amount) || bossHealthPotionAmount), "debug");
+    return this.getState();
+  },
   openBossReward(bossType = "debug") {
     openBossRewardChoices(bossType);
   },
@@ -1793,7 +1823,7 @@ window.__zombieNightDebug = {
     player.health = player.maxHealth;
     player.xp = Math.min(player.xp, player.xpToNext - 1);
     player.upgradeStats = {
-      damageMultiplier: 1.72,
+      damageMultiplier: playerBaseDamageMultiplier * 1.72,
       cooldownMultiplier: 0.68,
       areaMultiplier: 1.48,
       speedMultiplier: 1.2,
@@ -2003,7 +2033,7 @@ function startGame() {
 
 function createDefaultUpgradeStats() {
   return {
-    damageMultiplier: 1,
+    damageMultiplier: playerBaseDamageMultiplier,
     cooldownMultiplier: 1,
     areaMultiplier: 1,
     speedMultiplier: 1,
@@ -2028,7 +2058,7 @@ function createDefaultPerkCooldowns() {
 }
 
 function resetProgressionState() {
-  player.maxHealth = 100;
+  player.maxHealth = playerBaseMaxHealth;
   player.level = 1;
   player.bestLevel = 1;
   player.xp = 0;
@@ -3219,6 +3249,15 @@ function getMonsterLodInterval() {
 }
 
 function assignMonsterRenderModes() {
+  if (shouldKeepFullMonsterMeshes()) {
+    for (const zombie of zombies) {
+      if (isCommonMonsterType(zombie.type)) {
+        zombie.renderMode = "detail";
+      }
+    }
+    return;
+  }
+
   const budget = getMonsterLodBudget();
   const common = monsterRenderer.temporaryObjects;
   common.length = 0;
@@ -3257,6 +3296,10 @@ function assignMonsterRenderModes() {
       zombie.renderMode = "instanced";
     }
   }
+}
+
+function shouldKeepFullMonsterMeshes() {
+  return queryParams.get("monsterLod") !== "1";
 }
 
 function getMonsterLodBudget() {
@@ -4045,6 +4088,64 @@ function createPowerupMesh(type) {
     group.add(halo);
   }
 
+  if (type === "thunderstaff") {
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 1.55, 10), metal);
+    staff.rotation.z = Math.PI * 0.12;
+    staff.position.y = 0.78;
+    staff.castShadow = true;
+    group.add(staff);
+
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), glow);
+    crystal.position.set(0.18, 1.55, 0);
+    crystal.castShadow = true;
+    group.add(crystal);
+
+    const arc = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42, 0.025, 6, 24, Math.PI * 1.45),
+      new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.78 }),
+    );
+    arc.position.y = 1.34;
+    arc.rotation.x = Math.PI * 0.5;
+    arc.rotation.z = -0.4;
+    group.add(arc);
+  }
+
+  if (type === "boneCannon") {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.18, 12), glow);
+    barrel.rotation.z = Math.PI * 0.5;
+    barrel.position.y = 0.78;
+    barrel.castShadow = true;
+    group.add(barrel);
+
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.52, 0.18), metal);
+    grip.position.set(-0.34, 0.54, 0);
+    grip.rotation.z = -0.18;
+    grip.castShadow = true;
+    group.add(grip);
+
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), glow);
+    skull.position.set(0.68, 0.78, 0);
+    group.add(skull);
+  }
+
+  if (type === "frostNova") {
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), glow);
+    orb.position.y = 0.9;
+    orb.castShadow = true;
+    group.add(orb);
+
+    for (const angle of [0, Math.PI * 0.5, Math.PI]) {
+      const ringMesh = new THREE.Mesh(
+        new THREE.TorusGeometry(0.58, 0.026, 8, 32),
+        new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.66 }),
+      );
+      ringMesh.position.y = 0.9;
+      ringMesh.rotation.x = Math.PI * 0.5;
+      ringMesh.rotation.z = angle;
+      group.add(ringMesh);
+    }
+  }
+
   const light = new THREE.PointLight(glowColor, 1.6, 7);
   light.position.y = 1.1;
   group.add(light);
@@ -4110,6 +4211,51 @@ function createBossRewardChestMesh(bossType = "boss") {
   ring.rotation.x = Math.PI * 0.5;
   ring.position.y = 0.1;
   group.add(base, lid, lock, ring);
+  return group;
+}
+
+function createHealthPotionMesh() {
+  const group = new THREE.Group();
+  const glass = new THREE.MeshStandardMaterial({
+    color: 0xff4f68,
+    emissive: 0xb6102e,
+    emissiveIntensity: 0.72,
+    roughness: 0.34,
+    transparent: true,
+    opacity: 0.92,
+  });
+  const cork = new THREE.MeshStandardMaterial({ color: 0x8b5a36, roughness: 0.72 });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xff5f7a, transparent: true, opacity: 0.72 });
+
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.045, 8, 36), ringMaterial);
+  ring.rotation.x = Math.PI * 0.5;
+  ring.position.y = 0.08;
+  group.add(ring);
+
+  const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.7, 14), glass);
+  bottle.position.y = 0.66;
+  bottle.castShadow = true;
+  group.add(bottle);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.34, 12), glass);
+  neck.position.y = 1.17;
+  neck.castShadow = true;
+  group.add(neck);
+
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.16, 10), cork);
+  cap.position.y = 1.44;
+  cap.castShadow = true;
+  group.add(cap);
+
+  const crossVertical = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.36, 0.035), white);
+  crossVertical.position.set(0, 0.68, -0.345);
+  group.add(crossVertical);
+
+  const crossHorizontal = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.09, 0.035), white);
+  crossHorizontal.position.set(0, 0.68, -0.35);
+  group.add(crossHorizontal);
+
   return group;
 }
 
@@ -5914,6 +6060,21 @@ function updateShooting(dt) {
     return;
   }
 
+  if (player.weapon === "thunderstaff") {
+    updateThunderstaffAttack();
+    return;
+  }
+
+  if (player.weapon === "boneCannon") {
+    updateBoneCannonAttack();
+    return;
+  }
+
+  if (player.weapon === "frostNova") {
+    updateFrostNovaAttack();
+    return;
+  }
+
   if (!game.shooting || player.shotCooldown > 0) {
     return;
   }
@@ -5999,6 +6160,51 @@ function updateTalismanAttack() {
   sendMultiplayerAttack("talisman");
 }
 
+function updateThunderstaffAttack() {
+  if (!game.shooting || player.shotCooldown > 0) {
+    return;
+  }
+
+  player.shotCooldown = getPlayerCooldown(0.34);
+  damageZombiesInCone(18.5, Math.cos(0.12), 5.6, true);
+  spawnRemoteBeam(player.position, player.aimDirection, weapons.thunderstaff.color, 14);
+  audioManager.play("thunderstaff", { priority: 2 });
+  sendMultiplayerAttack("thunderstaff");
+}
+
+function updateBoneCannonAttack() {
+  if (!game.shooting || player.shotCooldown > 0) {
+    return;
+  }
+
+  player.shotCooldown = getPlayerCooldown(0.58);
+  spawnPlayerProjectiles({
+    color: weapons.boneCannon.color,
+    damage: 3,
+    explodeDamage: 8,
+    explodeRadius: 5.8,
+    explodeColor: weapons.boneCannon.color,
+    lifespan: 1.65,
+    pierceHits: 0,
+    radius: 0.34,
+    speed: 27,
+  });
+  audioManager.play("boneCannon", { priority: 2 });
+  sendMultiplayerAttack("boneCannon");
+}
+
+function updateFrostNovaAttack() {
+  if (!game.shooting || player.shotCooldown > 0) {
+    return;
+  }
+
+  player.shotCooldown = getPlayerCooldown(0.82);
+  damageZombiesInRadius(7.2, 6.8, true);
+  spawnWeaponPulse(weapons.frostNova.color);
+  audioManager.play("frostNova", { priority: 2 });
+  sendMultiplayerAttack("frostNova");
+}
+
 function spawnBullet() {
   spawnPlayerProjectiles({
     color: 0xfff2a3,
@@ -6021,6 +6227,7 @@ function spawnPlayerProjectiles(config) {
       angleOffset,
       damage: config.damage * player.upgradeStats.damageMultiplier,
       explodeDamage: (config.explodeDamage || 0) * player.upgradeStats.damageMultiplier,
+      explodeColor: config.explodeColor || 0,
       explodeRadius: (config.explodeRadius || 0) * areaMultiplier,
       radius: config.radius * Math.sqrt(areaMultiplier),
     });
@@ -6031,6 +6238,7 @@ function spawnProjectile({
   color,
   damage,
   explodeDamage = 0,
+  explodeColor = 0,
   explodeRadius = 0,
   lifespan,
   pierceHits = 0,
@@ -6052,6 +6260,7 @@ function spawnProjectile({
     age: 0,
     damage,
     explodeDamage,
+    explodeColor,
     explodeRadius,
     hitZombies: new Set(),
     lifespan,
@@ -6360,6 +6569,41 @@ function spawnBossRewardChestAt(position, bossType = "boss") {
   return true;
 }
 
+function spawnHealthPotionAt(position, amount = bossHealthPotionAmount, source = "boss") {
+  const mesh = createHealthPotionMesh();
+  const labelSprite = createDropLabelSprite({
+    label: `+${amount} Vida`,
+    rarity: "common",
+    icon: "❤",
+  });
+  mesh.position.copy(position);
+  mesh.position.x += (Math.random() - 0.5) * 1.4;
+  mesh.position.z += (Math.random() - 0.5) * 1.4;
+  mesh.position.y = 0.34;
+  mesh.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(mesh);
+  scene.add(labelSprite);
+
+  const powerup = {
+    kind: "healthPotion",
+    type: "healthPotion",
+    amount,
+    label: `+${amount} Vida`,
+    rarity: "common",
+    mesh,
+    labelSprite,
+    source,
+    age: Math.random() * Math.PI,
+    life: 0,
+    ttl: groundItemLifetime,
+    baseY: 0.34,
+    radius: 1.35,
+  };
+  updatePowerupLabelPosition(powerup);
+  powerups.push(powerup);
+  return true;
+}
+
 function spawnWeaponDrop(position, type = getNextWeaponDropType(), source = "kill") {
   if (powerups.length >= getMaxActiveWeaponDrops()) {
     return false;
@@ -6528,6 +6772,17 @@ function collectPowerup(powerup) {
 
   if (powerup.kind === "bossChest") {
     return openBossRewardChoices(powerup.bossType);
+  }
+
+  if (powerup.kind === "healthPotion") {
+    const previousHealth = player.health;
+    player.health = Math.min(player.maxHealth, player.health + (powerup.amount || bossHealthPotionAmount));
+    if (player.health > previousHealth) {
+      pulseHealth();
+      audioManager.play("xp", { priority: 1 });
+      updateHud(true);
+    }
+    return true;
   }
 
   activateWeapon(powerup.type);
@@ -8040,7 +8295,7 @@ function updateBullets(dt) {
 
         if (bullet.explodeRadius > 0) {
           damageZombiesAtPoint(bullet.mesh.position, bullet.explodeRadius, bullet.explodeDamage || bullet.damage, false);
-          spawnExplosion(bullet.mesh.position, weapons.talisman.color, bullet.explodeRadius);
+          spawnExplosion(bullet.mesh.position, bullet.explodeColor || weapons.talisman.color, bullet.explodeRadius);
           break;
         }
 
@@ -8221,6 +8476,7 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true) {
       player.score += zombie.score;
       if (profile.boss) {
         player.bossKills += 1;
+        spawnHealthPotionAt(xpPosition, bossHealthPotionAmount, zombie.type);
       }
       maybeTriggerKillPerks(zombie.type, xpPosition);
       maybeDropPerkFromZombie(zombie.type, xpPosition);
@@ -9048,8 +9304,8 @@ function createRemotePlayer(playerData) {
     id: playerData.id,
     name: playerData.name || "P?",
     color: playerData.color || "#74d1ff",
-    health: 100,
-    maxHealth: 100,
+    health: playerBaseMaxHealth,
+    maxHealth: playerBaseMaxHealth,
     score: 0,
     wave: 1,
     level: 1,
@@ -9081,7 +9337,7 @@ function updateRemotePlayerState(remotePlayer, state) {
     remotePlayer.aimDirection.normalize();
   }
 
-  remotePlayer.maxHealth = Math.max(1, Math.min(300, Number(state.maxHealth) || remotePlayer.maxHealth || 100));
+  remotePlayer.maxHealth = Math.max(1, Math.min(playerNetworkMaxHealthCap, Number(state.maxHealth) || remotePlayer.maxHealth || playerBaseMaxHealth));
   remotePlayer.health = Math.max(0, Math.min(remotePlayer.maxHealth, Number(state.health) || 0));
   remotePlayer.score = Math.max(0, Number(state.score) || 0);
   remotePlayer.wave = Math.max(1, Number(state.wave) || 1);
@@ -9101,7 +9357,7 @@ function applyNetworkPlayerState(playerId, state, amount = 0) {
 
   if (playerId === multiplayer.id) {
     const previousHealth = player.health;
-    player.maxHealth = Math.max(1, Math.min(300, Number(state.maxHealth) || player.maxHealth));
+    player.maxHealth = Math.max(1, Math.min(playerNetworkMaxHealthCap, Number(state.maxHealth) || player.maxHealth));
     player.health = Math.max(0, Math.min(player.maxHealth, Number(state.health) || 0));
 
     if (player.health < previousHealth || amount > 0) {
@@ -9180,49 +9436,70 @@ function applyRemoteAttackDamage(origin, direction, weapon) {
   }
 
   if (weapon === "flamethrower") {
-    damageZombiesInConeFrom(origin, direction, 10.5, Math.cos(0.58), 1.1, false, false);
+    damageZombiesInConeFrom(origin, direction, 10.5, Math.cos(0.58), getRemoteAttackDamage(1.1), false, false);
     return;
   }
 
   if (weapon === "axe") {
-    damageZombiesInRadiusAt(origin, 4.4, 5, false, false);
+    damageZombiesInRadiusAt(origin, 4.4, getRemoteAttackDamage(5), false, false);
     return;
   }
 
   if (weapon === "katana") {
-    damageZombiesInConeFrom(origin, direction, 5.8, Math.cos(0.92), 5, true, false);
+    damageZombiesInConeFrom(origin, direction, 5.8, Math.cos(0.92), getRemoteAttackDamage(5), true, false);
     return;
   }
 
   if (weapon === "crossbow") {
-    damageZombiesInConeFrom(origin, direction, 28, Math.cos(0.08), 4, true, false);
+    damageZombiesInConeFrom(origin, direction, 28, Math.cos(0.08), getRemoteAttackDamage(4), true, false);
     return;
   }
 
   if (weapon === "talisman") {
     const explosionPoint = origin.clone().addScaledVector(direction, 8.5);
-    damageZombiesAtPoint(explosionPoint, 4.8, 4, false, false);
+    damageZombiesAtPoint(explosionPoint, 4.8, getRemoteAttackDamage(4), false, false);
     spawnExplosion(explosionPoint, weapons.talisman.color, 4.8);
     return;
   }
 
+  if (weapon === "thunderstaff") {
+    damageZombiesInConeFrom(origin, direction, 18.5, Math.cos(0.12), getRemoteAttackDamage(5.2), true, false);
+    return;
+  }
+
+  if (weapon === "boneCannon") {
+    const explosionPoint = origin.clone().addScaledVector(direction, 9.5);
+    damageZombiesAtPoint(explosionPoint, 5.8, getRemoteAttackDamage(7.2), false, false);
+    spawnExplosion(explosionPoint, weapons.boneCannon.color, 5.8);
+    return;
+  }
+
+  if (weapon === "frostNova") {
+    damageZombiesInRadiusAt(origin, 7.2, getRemoteAttackDamage(6.2), true, false);
+    return;
+  }
+
   if (weapon === "guardianBlade") {
-    damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.04), 1.6, true, false);
+    damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.04), getRemoteAttackDamage(1.6), true, false);
     return;
   }
 
   if (weapon === "orbitOrb") {
-    damageZombiesAtPoint(origin, 1.45, 1.4, false, false);
+    damageZombiesAtPoint(origin, 1.45, getRemoteAttackDamage(1.4), false, false);
     return;
   }
 
   if (weapon === "sealRain") {
-    damageZombiesAtPoint(origin, 3.5, 4.8, false, false);
+    damageZombiesAtPoint(origin, 3.5, getRemoteAttackDamage(4.8), false, false);
     spawnExplosion(origin, autoWeaponProfiles.sealRain.color, 3.5);
     return;
   }
 
-  damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.06), 1, true, false);
+  damageZombiesInConeFrom(origin, direction, 24, Math.cos(0.06), getRemoteAttackDamage(1), true, false);
+}
+
+function getRemoteAttackDamage(amount) {
+  return amount * playerBaseDamageMultiplier;
 }
 
 function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
@@ -9258,7 +9535,17 @@ function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
     return;
   }
 
-  spawnRemoteBeam(origin, direction, color, weapon === "crossbow" ? 8.5 : weapon === "talisman" ? 6 : 5.5);
+  if (weapon === "frostNova") {
+    spawnRemotePulse(origin, color, 6.4);
+    return;
+  }
+
+  spawnRemoteBeam(
+    origin,
+    direction,
+    color,
+    weapon === "crossbow" ? 8.5 : weapon === "talisman" ? 6 : weapon === "thunderstaff" ? 14 : weapon === "boneCannon" ? 7.5 : 5.5,
+  );
 }
 
 function spawnDirectionalConeEffect(origin, direction, color) {
@@ -9323,6 +9610,18 @@ function getRemoteAttackInterval(weapon) {
 
   if (weapon === "talisman") {
     return 0.72;
+  }
+
+  if (weapon === "thunderstaff") {
+    return 0.34;
+  }
+
+  if (weapon === "boneCannon") {
+    return 0.58;
+  }
+
+  if (weapon === "frostNova") {
+    return 0.82;
   }
 
   return 0.2;
@@ -9771,6 +10070,7 @@ function getLeaderboardPerkIcon(perk) {
   if (text.includes("lua")) return "🌙";
   if (text.includes("fôlego") || text.includes("folego")) return "♻";
   if (text.includes("pacto")) return "👹";
+  if (text.includes("gelo")) return "❄";
   if (text.includes("lâmina") || text.includes("lamina")) return "🗡";
   if (text.includes("orbe")) return "🟣";
   if (text.includes("chuva")) return "☄";
@@ -9786,6 +10086,8 @@ function getLeaderboardPerkIcon(perk) {
   if (text.includes("katana")) return "⚔";
   if (text.includes("besta")) return "🏹";
   if (text.includes("selo")) return "📜";
+  if (text.includes("cajado") || text.includes("raio")) return "⚡";
+  if (text.includes("canhão") || text.includes("canhao") || text.includes("ossos")) return "☠";
   return "✦";
 }
 

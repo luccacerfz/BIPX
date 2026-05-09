@@ -10,6 +10,8 @@ await loadLocalEnv();
 const port = Number(process.env.PORT ?? 5173);
 const host = process.env.HOST ?? "0.0.0.0";
 const maxPlayersPerRoom = 4;
+const playerBaseMaxHealth = 200;
+const playerNetworkMaxHealthCap = 600;
 const websocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const leaderboardPath = process.env.LEADERBOARD_FILE || path.join(root, ".data", "leaderboard.json");
 const leaderboardLimit = 10;
@@ -183,8 +185,8 @@ function joinMultiplayerRoom(requestUrl, socket) {
       rotation: 0,
       aimX: 0,
       aimZ: -1,
-      health: 100,
-      maxHealth: 100,
+      health: playerBaseMaxHealth,
+      maxHealth: playerBaseMaxHealth,
       score: 0,
       kills: 0,
       wave: 1,
@@ -393,7 +395,7 @@ function handleClientMessage(client, rawMessage) {
 }
 
 function normalizePlayerState(state, fallback) {
-  const maxHealth = clampNumber(state?.maxHealth, 1, 300, fallback.maxHealth ?? 100);
+  const maxHealth = clampNumber(state?.maxHealth, 1, playerNetworkMaxHealthCap, fallback.maxHealth ?? playerBaseMaxHealth);
   const fallbackHealth = Number.isFinite(Number(fallback.health)) ? Math.min(Number(fallback.health), maxHealth) : maxHealth;
   const level = Math.max(1, Math.floor(clampNumber(state?.level, 1, 999, fallback.level ?? 1)));
   const bestLevel = Math.max(level, Math.floor(clampNumber(state?.bestLevel, 1, 999, fallback.bestLevel ?? 1)));

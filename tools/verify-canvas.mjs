@@ -191,6 +191,11 @@ try {
     return window.__zombieNightDebug.getState();
   });
 
+  const potionDropState = await page.evaluate(() => {
+    window.__zombieNightDebug.spawnHealthPotion(10);
+    return window.__zombieNightDebug.getState();
+  });
+
   const bossRewardChoices = await page.evaluate(() => {
     window.__zombieNightDebug.setLevel(10);
     window.__zombieNightDebug.openBossReward("visor");
@@ -294,12 +299,16 @@ try {
   assert(lateSpawn.spawnInterval < initial.spawnInterval, "zombie spawn interval did not increase over time");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "rare"), "rare perk drop did not spawn");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "epic"), "epic perk drop did not spawn");
-  assert(rarityDropState.powerupDetails.every((powerup) => powerup.ttl === 10), "ground drops did not expose a 10s lifetime");
+  assert(rarityDropState.powerupDetails.every((powerup) => powerup.ttl === 20), "ground drops did not expose a 20s lifetime");
   assert(
     rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "legendary" && powerup.animated),
     "legendary perk drop did not spawn with animation flag",
   );
   assert(chestDropState.powerupDetails.some((powerup) => powerup.kind === "bossChest" && powerup.rarity === "rare"), "boss reward chest did not spawn as rare");
+  assert(
+    potionDropState.powerupDetails.some((powerup) => powerup.kind === "healthPotion" && powerup.amount === 10 && powerup.label === "+10 Vida"),
+    "health potion drop did not spawn with +10 life",
+  );
   assert(bossRewardChoices.pendingUpgradeSource === "bossChest", "boss reward did not open special choices");
   assert(
     bossRewardChoices.pendingUpgradeRarities.length === 3 &&

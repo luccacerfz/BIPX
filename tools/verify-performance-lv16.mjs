@@ -33,6 +33,7 @@ async function runStressScenario(name, viewport, minFps) {
     url.searchParams.set("offline", "1");
     url.searchParams.set("quality", "auto");
     url.searchParams.set("perf", "1");
+    url.searchParams.set("monsterLod", "1");
 
     await page.goto(url.toString(), { waitUntil: "networkidle" });
     await page.waitForTimeout(1400);
