@@ -691,6 +691,7 @@ const spatialGrid = {
   pointCandidates: [],
   pointCandidatesNested: [],
   radiusCandidates: [],
+  separationCandidates: [],
   pointQueryActive: false,
 };
 
@@ -760,14 +761,14 @@ const rarityStyles = {
 const rarityOrder = { common: 0, rare: 1, epic: 2, legendary: 3 };
 const bossRewardRarityWeights = { rare: 86, epic: 13, legendary: 1 };
 const bossAiProfiles = {
-  visor: { minDistance: 5.8, idealDistance: 10.5, maxDistance: 18, strafeSpeed: 0.62, retargetInterval: 1.1 },
-  himetrica: { minDistance: 4.8, idealDistance: 8.4, maxDistance: 15, strafeSpeed: 0.82, retargetInterval: 0.9 },
-  dinzo: { minDistance: 4.4, idealDistance: 8.8, maxDistance: 16, strafeSpeed: 0.46, retargetInterval: 1.25 },
-  gitcity: { minDistance: 6.2, idealDistance: 12.5, maxDistance: 19, strafeSpeed: 0.38, retargetInterval: 1.4 },
-  sofra: { minDistance: 5.2, idealDistance: 10.2, maxDistance: 20, strafeSpeed: 0.72, retargetInterval: 0.95 },
-  angelSheep: { minDistance: 6.4, idealDistance: 13.5, maxDistance: 22, strafeSpeed: 0.5, retargetInterval: 1.2 },
-  bloodCow: { minDistance: 0, idealDistance: 2.7, maxDistance: 0, strafeSpeed: 0.28, retargetInterval: 0.85 },
-  plumaFinance: { minDistance: 7.2, idealDistance: 15.5, maxDistance: 24, strafeSpeed: 0.64, retargetInterval: 1.05 },
+  visor: { minDistance: 6.4, idealDistance: 11.2, maxDistance: 18, strafeSpeed: 0.46, retargetInterval: 1.35 },
+  himetrica: { minDistance: 5.5, idealDistance: 9.2, maxDistance: 15, strafeSpeed: 0.58, retargetInterval: 1.15 },
+  dinzo: { minDistance: 5.1, idealDistance: 9.4, maxDistance: 16, strafeSpeed: 0.34, retargetInterval: 1.45 },
+  gitcity: { minDistance: 6.9, idealDistance: 13.2, maxDistance: 19, strafeSpeed: 0.28, retargetInterval: 1.65 },
+  sofra: { minDistance: 6.2, idealDistance: 11.4, maxDistance: 20, strafeSpeed: 0.52, retargetInterval: 1.25 },
+  angelSheep: { minDistance: 7.2, idealDistance: 14.2, maxDistance: 22, strafeSpeed: 0.36, retargetInterval: 1.45 },
+  bloodCow: { minDistance: 0, idealDistance: 2.7, maxDistance: 0, strafeSpeed: 0.22, retargetInterval: 1.05 },
+  plumaFinance: { minDistance: 8.2, idealDistance: 16.2, maxDistance: 24, strafeSpeed: 0.48, retargetInterval: 1.3 },
 };
 
 const hudWeaponIcons = {
@@ -846,56 +847,56 @@ const monsterProfiles = {
   },
   visor: {
     label: "Visor",
-    health: 53,
+    health: 42,
     speed: 2.7,
     radius: 1.14,
-    damage: 34,
+    damage: 18,
     score: 90,
-    minWave: 2,
+    minWave: 6,
     boss: true,
     projectileColor: 0x7edcff,
   },
   himetrica: {
     label: "Himetrica",
-    health: 58,
+    health: 45,
     speed: 3.6,
     radius: 1.05,
-    damage: 39,
+    damage: 20,
     score: 95,
-    minWave: 3,
+    minWave: 7,
     boss: true,
     projectileColor: 0xfff45c,
   },
   dinzo: {
     label: "Dinzo",
-    health: 69,
+    health: 52,
     speed: 1.55,
     radius: 1.42,
-    damage: 31,
+    damage: 17,
     score: 105,
-    minWave: 2,
+    minWave: 6,
     boss: true,
     projectileColor: 0xc93337,
   },
   gitcity: {
     label: "GitCity",
-    health: 104,
+    health: 78,
     speed: 1.15,
     radius: 1.58,
-    damage: 46,
+    damage: 24,
     score: 140,
-    minWave: 4,
+    minWave: 8,
     boss: true,
     projectileColor: 0xb9dcff,
   },
   sofra: {
     label: "SOFRA",
-    health: 120,
+    health: 86,
     speed: 4.25,
     radius: 1.28,
-    damage: 42,
+    damage: 22,
     score: 180,
-    minWave: 5,
+    minWave: 9,
     boss: true,
     projectileColor: 0x32b8ff,
   },
@@ -928,10 +929,10 @@ const monsterProfiles = {
   },
   angelSheep: {
     label: "Ovelha Celestial",
-    health: 460,
+    health: 360,
     speed: 2.15,
     radius: 1.48,
-    damage: 44,
+    damage: 26,
     score: 360,
     minWave: 999,
     boss: true,
@@ -940,10 +941,10 @@ const monsterProfiles = {
   },
   bloodCow: {
     label: "Vaca Sanguinária",
-    health: 923,
+    health: 720,
     speed: 2.55,
     radius: 1.72,
-    damage: 64,
+    damage: 36,
     score: 620,
     minWave: 999,
     boss: true,
@@ -952,10 +953,10 @@ const monsterProfiles = {
   },
   plumaFinance: {
     label: "Pluma Finance",
-    health: 1245,
+    health: 920,
     speed: 2.85,
     radius: 1.36,
-    damage: 58,
+    damage: 32,
     score: 900,
     minWave: 999,
     boss: true,
@@ -6886,7 +6887,8 @@ function spawnZombie(x, z, type = pickMonsterType()) {
   scene.add(mesh);
 
   const difficulty = getWaveDifficultyScale();
-  const baseHealth = (profile.health + Math.floor(game.survivalTime / 120)) * difficulty.health;
+  const balance = getMonsterBalanceModifiers(type, profile);
+  const baseHealth = (profile.health + Math.floor(game.survivalTime / 120)) * difficulty.health * balance.health;
   const maxHealth = Math.max(1, baseHealth * (eliteProfile?.healthMultiplier ?? 1));
   const labelSprite = profile.boss ? createBossLabelSprite(profile.label, maxHealth, type) : null;
   if (labelSprite) {
@@ -6902,9 +6904,10 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     maxHealth,
     labelSprite,
     speed: (profile.speed + Math.min(player.wave * 0.16 + game.survivalTime * 0.01, 5.8) * difficulty.speed + Math.random() * 0.7) *
-      (eliteProfile?.speedMultiplier ?? 1),
+      (eliteProfile?.speedMultiplier ?? 1) *
+      balance.speed,
     attackCooldown: 0,
-    damage: profile.damage * difficulty.damage * (eliteProfile?.damageMultiplier ?? 1),
+    damage: profile.damage * difficulty.damage * (eliteProfile?.damageMultiplier ?? 1) * balance.damage,
     radius: profile.radius,
     reachBonus: eliteProfile?.reachBonus ?? 0,
     renderMode: "detail",
@@ -6948,10 +6951,43 @@ function getWaveDifficultyScale() {
   const bossPressure = wave >= 20 ? 1.2 : wave >= 10 ? 0.55 : 0;
 
   return {
-    health: 1.35 + wave * 0.18 + Math.pow(lateWave, 1.22) * 0.11 + Math.min(1.4, time / 190) + bossPressure,
-    damage: 1.28 + wave * 0.115 + Math.max(0, wave - 10) * 0.075 + Math.min(1.1, time / 260) + bossPressure * 0.45,
+    health: 1.08 + wave * 0.12 + Math.pow(lateWave, 1.22) * 0.11 + Math.min(1.35, time / 210) + bossPressure,
+    damage: 0.98 + wave * 0.075 + Math.max(0, wave - 10) * 0.075 + Math.min(1.0, time / 285) + bossPressure * 0.42,
     speed: 1 + Math.min(0.3, wave * 0.008),
   };
+}
+
+function getMonsterBalanceModifiers(type, profile) {
+  if (!profile.boss) {
+    return { health: 1, damage: 1, speed: 1 };
+  }
+
+  if (profile.milestoneBoss) {
+    if (type === "angelSheep") {
+      return { health: 0.78, damage: 0.62, speed: 0.92 };
+    }
+
+    if (type === "bloodCow") {
+      return { health: 0.86, damage: 0.74, speed: 0.94 };
+    }
+
+    return { health: 0.9, damage: 0.78, speed: 0.96 };
+  }
+
+  const wave = Math.max(1, player.wave);
+  if (wave <= 6) {
+    return { health: 0.68, damage: 0.58, speed: 0.9 };
+  }
+
+  if (wave <= 9) {
+    return { health: 0.78, damage: 0.68, speed: 0.94 };
+  }
+
+  if (wave <= 14) {
+    return { health: 0.88, damage: 0.78, speed: 0.97 };
+  }
+
+  return { health: 0.98, damage: 0.88, speed: 1 };
 }
 
 function getMonsterVariantColor(type, eliteType = null) {
@@ -7164,11 +7200,11 @@ function pickMonsterType() {
     runner: Math.min(0.35 + player.wave * 0.08 + game.survivalTime * 0.004, 1.35),
     brute: Math.min(0.2 + player.wave * 0.045 + game.survivalTime * 0.002, 0.85),
     caster: Math.min(0.18 + player.wave * 0.04 + game.survivalTime * 0.002, 0.75),
-    visor: Math.min(0.035 + game.survivalTime * 0.0009 + player.wave * 0.006, 0.13),
-    himetrica: Math.min(0.028 + game.survivalTime * 0.0008 + player.wave * 0.005, 0.11),
-    dinzo: Math.min(0.032 + game.survivalTime * 0.0009 + player.wave * 0.005, 0.12),
-    gitcity: Math.min(0.018 + game.survivalTime * 0.0007 + player.wave * 0.004, 0.085),
-    sofra: Math.min(0.012 + game.survivalTime * 0.00055 + player.wave * 0.0035, 0.065),
+    visor: Math.min(0.018 + game.survivalTime * 0.00055 + player.wave * 0.0035, 0.085),
+    himetrica: Math.min(0.015 + game.survivalTime * 0.0005 + player.wave * 0.003, 0.075),
+    dinzo: Math.min(0.017 + game.survivalTime * 0.00055 + player.wave * 0.0032, 0.08),
+    gitcity: Math.min(0.011 + game.survivalTime * 0.00042 + player.wave * 0.0026, 0.06),
+    sofra: Math.min(0.008 + game.survivalTime * 0.00035 + player.wave * 0.0022, 0.045),
   };
 
   const totalWeight = availableTypes.reduce((sum, type) => sum + (weights[type] ?? 0.02), 0);
@@ -7245,8 +7281,9 @@ function updateZombies(dt) {
 
     if (distance > 0.05) {
       toTarget.normalize();
-      zombie.mesh.position.addScaledVector(toTarget, zombie.speed * dt);
-      zombie.mesh.rotation.y = getForwardRotation(toTarget);
+      const moveDirection = getZombieCrowdAwareMoveDirection(zombie, toTarget, distance);
+      zombie.mesh.position.addScaledVector(moveDirection, zombie.speed * dt);
+      zombie.mesh.rotation.y = getForwardRotation(moveDirection);
     }
 
     if (distance < zombie.radius + 0.72 + (zombie.reachBonus || 0) && zombie.attackCooldown <= 0) {
@@ -7258,6 +7295,84 @@ function updateZombies(dt) {
   }
 
   spatialGrid.dirty = true;
+}
+
+function getZombieCrowdAwareMoveDirection(zombie, targetDirection, targetDistance) {
+  const moveDirection = tempVectorC.copy(targetDirection);
+  if (zombies.length < 8 || targetDistance < zombie.radius + 0.95) {
+    return moveDirection;
+  }
+
+  addZombieLaneOffset(zombie, targetDirection, moveDirection, 0.14);
+  if (!shouldQueryZombieSeparation(zombie, targetDistance)) {
+    return moveDirection.normalize();
+  }
+
+  const separationRadius = Math.min(3.2, Math.max(1.75, zombie.radius + 1.55));
+  const candidates = queryZombiesNear(zombie.mesh.position, separationRadius, spatialGrid.separationCandidates);
+  let neighborCount = 0;
+
+  for (const neighbor of candidates) {
+    if (neighbor === zombie || monsterProfiles[neighbor.type]?.boss) {
+      continue;
+    }
+
+    const offsetX = zombie.mesh.position.x - neighbor.mesh.position.x;
+    const offsetZ = zombie.mesh.position.z - neighbor.mesh.position.z;
+    const distanceSq = offsetX * offsetX + offsetZ * offsetZ;
+    if (distanceSq <= 0.0001) {
+      continue;
+    }
+
+    const minDistance = zombie.radius + neighbor.radius + 0.72;
+    const minDistanceSq = minDistance * minDistance;
+    if (distanceSq >= minDistanceSq) {
+      continue;
+    }
+
+    const distance = Math.sqrt(distanceSq);
+    const force = ((minDistanceSq - distanceSq) / minDistanceSq) * 1.35;
+    moveDirection.x += (offsetX / distance) * force;
+    moveDirection.z += (offsetZ / distance) * force;
+    neighborCount += 1;
+
+    if (neighborCount >= 7) {
+      break;
+    }
+  }
+
+  if (neighborCount >= 3) {
+    addZombieLaneOffset(zombie, targetDirection, moveDirection, 0.34);
+  }
+
+  if (moveDirection.lengthSq() <= 0.01) {
+    return targetDirection;
+  }
+
+  return moveDirection.normalize();
+}
+
+function shouldQueryZombieSeparation(zombie, targetDistance) {
+  if (targetDistance > 20) {
+    return false;
+  }
+
+  const frame = monsterRenderer.frame || 0;
+  if (zombies.length > 260) {
+    return zombie.id % 12 === frame % 12;
+  }
+
+  if (zombies.length > 150) {
+    return zombie.id % 4 === frame % 4;
+  }
+
+  return true;
+}
+
+function addZombieLaneOffset(zombie, targetDirection, moveDirection, amount) {
+  const laneSide = zombie.id % 2 === 0 ? 1 : -1;
+  moveDirection.x += targetDirection.z * laneSide * amount;
+  moveDirection.z -= targetDirection.x * laneSide * amount;
 }
 
 function getBossPlayerTarget(zombie, dt) {
@@ -7278,9 +7393,9 @@ function getBossPlayerTarget(zombie, dt) {
   for (const target of livingPlayerTargets) {
     const healthRatio = clamp((target.health ?? 1) / Math.max(target.maxHealth ?? 1, 1), 0.05, 1);
     const distanceScore = Math.max(1, distanceXZSquared(zombie.mesh.position, target.position));
-    const weakTargetBias = 0.48 + healthRatio * 0.62;
-    const stickyBias = target.id === zombie.bossTargetId ? 0.86 : 1;
-    const bloodCowBias = zombie.type === "bloodCow" ? 0.82 : 1;
+    const weakTargetBias = 0.74 + healthRatio * 0.42;
+    const stickyBias = target.id === zombie.bossTargetId ? 0.92 : 1;
+    const bloodCowBias = zombie.type === "bloodCow" ? 0.88 : 1;
     const score = distanceScore * weakTargetBias * stickyBias * bloodCowBias;
 
     if (score < bestScore) {
@@ -7343,7 +7458,7 @@ function updateBossMovement(zombie, direction, distance, aiProfile, dt) {
     return;
   }
 
-  const enrageSpeed = getBossHealthRatio(zombie) < 0.42 ? 1.16 : 1;
+  const enrageSpeed = getBossHealthRatio(zombie) < 0.35 ? 1.08 : 1;
   move.normalize();
   zombie.mesh.position.addScaledVector(move, zombie.speed * enrageSpeed * dt);
   zombie.mesh.position.x = clamp(zombie.mesh.position.x, -worldLimit + 2.2, worldLimit - 2.2);
@@ -7354,31 +7469,31 @@ function executeBossRangedAttack(zombie, target) {
   const healthRatio = getBossHealthRatio(zombie);
 
   if (zombie.type === "angelSheep") {
-    spawnEnemyProjectileSpread(zombie, target, healthRatio < 0.45 ? 5 : 3, healthRatio < 0.45 ? 0.2 : 0.24);
+    spawnEnemyProjectileSpread(zombie, target, healthRatio < 0.32 ? 4 : 3, healthRatio < 0.32 ? 0.22 : 0.26);
     return;
   }
 
-  if (zombie.type === "himetrica" && healthRatio < 0.64) {
-    spawnEnemyProjectileSpread(zombie, target, 3, 0.11);
+  if (zombie.type === "himetrica" && healthRatio < 0.42) {
+    spawnEnemyProjectileSpread(zombie, target, 2, 0.12);
     return;
   }
 
-  if (zombie.type === "gitcity" && healthRatio < 0.68) {
-    spawnEnemyProjectileSpread(zombie, target, 3, 0.16);
-    return;
-  }
-
-  if (zombie.type === "dinzo" && healthRatio < 0.58) {
+  if (zombie.type === "gitcity" && healthRatio < 0.45) {
     spawnEnemyProjectileSpread(zombie, target, 2, 0.18);
     return;
   }
 
-  if (zombie.type === "visor" && healthRatio < 0.5) {
+  if (zombie.type === "dinzo" && healthRatio < 0.38) {
+    spawnEnemyProjectileSpread(zombie, target, 2, 0.18);
+    return;
+  }
+
+  if (zombie.type === "visor" && healthRatio < 0.34) {
     spawnEnemyProjectileSpread(zombie, target, 2, 0.15);
     return;
   }
 
-  if (zombie.type === "plumaFinance" && healthRatio < 0.55) {
+  if (zombie.type === "plumaFinance" && healthRatio < 0.38) {
     spawnEnemyProjectileSpread(zombie, target, 2, 0.22);
     return;
   }
@@ -7388,13 +7503,13 @@ function executeBossRangedAttack(zombie, target) {
 
 function getBossAttackCooldown(zombie) {
   const healthRatio = getBossHealthRatio(zombie);
-  const enrageMultiplier = healthRatio < 0.38 ? 0.72 : healthRatio < 0.68 ? 0.86 : 1;
+  const enrageMultiplier = healthRatio < 0.32 ? 0.84 : healthRatio < 0.6 ? 0.94 : 1;
   return getRangedCooldown(zombie.type) * enrageMultiplier;
 }
 
 function getBossMeleeCooldown(zombie) {
   const healthRatio = getBossHealthRatio(zombie);
-  return healthRatio < 0.4 ? 0.52 : 0.68;
+  return healthRatio < 0.35 ? 0.72 : 0.86;
 }
 
 function getBossHealthRatio(zombie) {
@@ -7643,31 +7758,31 @@ function canUseRangedAttack(type, distance) {
 
 function getRangedCooldown(type) {
   if (type === "angelSheep") {
-    return 1.05;
+    return 1.45;
   }
 
   if (type === "plumaFinance") {
-    return 1.55;
+    return 1.95;
   }
 
   if (type === "sofra") {
-    return 0.72;
+    return 1.25;
   }
 
   if (type === "visor") {
-    return 1.1;
+    return 1.55;
   }
 
   if (type === "himetrica") {
-    return 0.85;
+    return 1.25;
   }
 
   if (type === "dinzo") {
-    return 1.2;
+    return 1.7;
   }
 
   if (type === "gitcity") {
-    return 1.35;
+    return 1.9;
   }
 
   return 1.45;
