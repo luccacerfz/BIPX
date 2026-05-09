@@ -1146,7 +1146,7 @@ const upgradeDefinitions = [
   },
   {
     id: "cadence",
-    label: "+Cadência",
+    label: "Attack Speed",
     description: "Reduz o tempo entre ataques e deixa sua build mais agressiva.",
     rarity: "common",
     kind: "stat",
@@ -1312,6 +1312,8 @@ const traps = [];
 const damageNumbers = [];
 const graveProps = [];
 const remotePlayers = new Map();
+const serverMonsterById = new Map();
+const serverProjectileById = new Map();
 const livingPlayerTargets = [];
 const entityPools = {
   zombies: new Map(),
@@ -1349,6 +1351,7 @@ const multiplayer = {
   leaderboard: {
     totalPlayers: 0,
     players: [],
+    livePlayers: [],
     recentSessions: [],
     status: "idle",
     generatedAt: null,
@@ -1416,11 +1419,17 @@ const game = {
   survivalTime: 0,
   hudTimer: 0,
   leaderboardSubmitted: false,
+  leaderboardLiveTimer: 0,
+  leaderboardRefreshTimer: 0,
+  lastLiveLeaderboardSentAt: 0,
+  lastLiveLeaderboardSignature: "",
   partyHudTimer: 0,
   labelTimer: 0,
   labelFrameReady: true,
   skillHudSignature: "",
   onlineScoreboardSignature: "",
+  serverWorldSeq: 0,
+  serverWorldActive: false,
   perfStressImmortal: false,
   cameraLookDirection: new THREE.Vector3(0, 0, -1),
   touchVector: new THREE.Vector2(0, 0),
@@ -1692,6 +1701,12 @@ window.__zombieNightDebug = {
         x: Number(player.position.x.toFixed(3)),
         z: Number(player.position.z.toFixed(3)),
       },
+      serverWorld: {
+        active: game.serverWorldActive,
+        seq: game.serverWorldSeq,
+        monsters: [...serverMonsterById.keys()],
+        projectiles: [...serverProjectileById.keys()],
+      },
       liveScoreboard: getOnlineScoreboardPlayers().map((scoreboardPlayer) => ({
         rank: scoreboardPlayer.rank,
         name: scoreboardPlayer.name,
@@ -1717,6 +1732,11 @@ window.__zombieNightDebug = {
             rank: leader.rank,
             name: leader.name,
             bestScore: leader.bestScore,
+          })),
+          livePlayers: multiplayer.leaderboard.livePlayers.map((leader) => ({
+            rank: leader.rank,
+            name: leader.name,
+            score: leader.score,
           })),
         },
         room: multiplayer.room,
@@ -2047,10 +2067,16 @@ function startGame() {
   game.survivalTime = 0;
   game.hudTimer = 0;
   game.leaderboardSubmitted = false;
+  game.leaderboardLiveTimer = 0;
+  game.leaderboardRefreshTimer = 0;
+  game.lastLiveLeaderboardSentAt = 0;
+  game.lastLiveLeaderboardSignature = "";
   game.partyHudTimer = 0;
   game.labelTimer = 0;
   game.labelFrameReady = true;
   game.skillHudSignature = "";
+  game.serverWorldSeq = 0;
+  game.serverWorldActive = false;
   game.perfStressImmortal = false;
   game.cameraLookDirection.copy(player.aimDirection);
   game.touchAimActive = false;
@@ -2063,7 +2089,14 @@ function startGame() {
   message.classList.remove("message--login");
   message.classList.remove("message--ranking");
   message.classList.add("is-hidden");
-  startNextWave();
+  if (usesServerAuthoritativeWorld()) {
+    clearServerSyncedWorld();
+    player.wave = 1;
+    waveElement.textContent = "1";
+    sendMultiplayerState();
+  } else {
+    startNextWave();
+  }
   updateHud(true);
   updateMultiplayerHud();
 }
@@ -5387,28 +5420,35 @@ function animate() {
     if (game.perfStressImmortal) {
       updateAim();
       updateHud();
+      updateLiveLeaderboardSync(dt);
     } else {
       updateAim();
       updatePlayer(dt);
       updatePerks(dt);
       updatePowerups(dt);
       updateXpGems(dt);
-      updateTraps(dt);
       ensureSpatialGrid();
       updateActiveWeapon(dt);
       updateShooting(dt);
       updateAutoWeapons(dt);
       updateUpgradeChoices(dt);
-      updateSpawning(dt);
-      updateTrapSpawner(dt);
-      refreshLivingPlayerTargets();
-      updateZombies(dt);
-      rebuildSpatialGrid();
-      refreshLivingPlayerTargets();
-      updateEnemyProjectiles(dt);
+      if (usesServerAuthoritativeWorld()) {
+        updateServerWorldInterpolation(dt);
+        rebuildSpatialGrid();
+      } else {
+        updateTraps(dt);
+        updateSpawning(dt);
+        updateTrapSpawner(dt);
+        refreshLivingPlayerTargets();
+        updateZombies(dt);
+        rebuildSpatialGrid();
+        refreshLivingPlayerTargets();
+        updateEnemyProjectiles(dt);
+        updateWaveFlow(dt);
+      }
       updateBullets(dt);
-      updateWaveFlow(dt);
       updateHud();
+      updateLiveLeaderboardSync(dt);
     }
   } else {
     updateAim();
@@ -7229,10 +7269,10 @@ function getZombieSpawnInterval() {
   return Math.max(0.032, 0.7 - wavePressure - timePressure);
 }
 
-function spawnZombie(x, z, type = pickMonsterType()) {
+function spawnZombie(x, z, type = pickMonsterType(), options = {}) {
   const profile = monsterProfiles[type] ?? monsterProfiles.zombie;
   const mesh = acquireZombieMesh(type);
-  const eliteType = profile.boss ? null : rollEliteType(type);
+  const eliteType = options.eliteType ?? (profile.boss ? null : rollEliteType(type));
   const eliteProfile = eliteType ? eliteProfiles[eliteType] : null;
   mesh.userData.poolType = type;
   if (Number.isFinite(x) && Number.isFinite(z)) {
@@ -7247,18 +7287,20 @@ function spawnZombie(x, z, type = pickMonsterType()) {
   const difficulty = getWaveDifficultyScale();
   const balance = getMonsterBalanceModifiers(type, profile);
   const baseHealth = (profile.health + Math.floor(game.survivalTime / 120)) * difficulty.health * balance.health;
-  const maxHealth = Math.max(1, baseHealth * (eliteProfile?.healthMultiplier ?? 1));
+  const maxHealth = Math.max(1, Number(options.maxHealth) || baseHealth * (eliteProfile?.healthMultiplier ?? 1));
   const labelSprite = profile.boss ? createBossLabelSprite(profile.label, maxHealth, type) : null;
   if (labelSprite) {
     scene.add(labelSprite);
   }
 
   const zombie = {
-    id: nextZombieId,
+    id: Number.isFinite(Number(options.id)) ? Number(options.id) : nextZombieId,
+    serverControlled: Boolean(options.serverControlled),
+    serverId: Number.isFinite(Number(options.id)) ? Number(options.id) : null,
     mesh,
     type,
     eliteType,
-    health: maxHealth,
+    health: Math.max(0, Number.isFinite(Number(options.health)) ? Number(options.health) : maxHealth),
     maxHealth,
     labelSprite,
     speed: (profile.speed + Math.min(player.wave * 0.16 + game.survivalTime * 0.01, 5.8) * difficulty.speed + Math.random() * 0.7) *
@@ -7280,6 +7322,8 @@ function spawnZombie(x, z, type = pickMonsterType()) {
     bossTargetId: null,
     bossStrafeDirection: Math.random() < 0.5 ? -1 : 1,
     bossStrafeTimer: 0.6 + Math.random() * 1.1,
+    targetPosition: new THREE.Vector3(mesh.position.x, 0, mesh.position.z),
+    targetRotation: mesh.rotation.y,
     variantColor: getMonsterVariantColor(type, eliteType),
     wobble: Math.random() * Math.PI * 2,
   };
@@ -7288,8 +7332,9 @@ function spawnZombie(x, z, type = pickMonsterType()) {
   if (labelSprite) {
     updateBossLabelPosition(zombies[zombies.length - 1], true);
   }
-  nextZombieId += 1;
+  nextZombieId = Math.max(nextZombieId + 1, zombie.id + 1);
   spatialGrid.dirty = true;
+  return zombie;
 }
 
 function rollEliteType(type) {
@@ -8577,6 +8622,10 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
     return false;
   }
 
+  if (zombie.serverControlled) {
+    return false;
+  }
+
   const profile = monsterProfiles[zombie.type] ?? {};
   const damageResult = applyDamagePerks(zombie, amount);
   const finalDamage = damageResult.damage;
@@ -9026,6 +9075,7 @@ function endGame() {
   player.pendingLevelUps = 0;
   renderUpgradeChoices();
   sendMultiplayerState();
+  void submitLiveLeaderboardSnapshot({ clear: true });
   void submitSoloLeaderboardSession();
   messageKicker.textContent = `Onda ${player.wave}`;
   messageTitle.textContent = "Fim da noite";
@@ -9183,6 +9233,10 @@ function shouldUseMultiplayer() {
   return queryParams.has("ws");
 }
 
+function usesServerAuthoritativeWorld() {
+  return multiplayer.connected;
+}
+
 function sanitizeRoomName(roomName) {
   return String(roomName || "cemiterio")
     .trim()
@@ -9311,6 +9365,10 @@ function handleMultiplayerMessage(rawMessage) {
       }
     }
 
+    if (messageData.world) {
+      syncServerWorld(messageData.world);
+    }
+
     updateMultiplayerHud();
     sendMultiplayerState();
     updateLocalPlayerName(playerNameInput?.value || player.name);
@@ -9354,6 +9412,31 @@ function handleMultiplayerMessage(rawMessage) {
     return;
   }
 
+  if (messageData.type === "worldState") {
+    syncServerWorld(messageData.world);
+    return;
+  }
+
+  if (messageData.type === "roomWave") {
+    syncRoomWave(messageData);
+    return;
+  }
+
+  if (messageData.type === "monsterHit") {
+    handleServerMonsterHit(messageData);
+    return;
+  }
+
+  if (messageData.type === "monsterKilled") {
+    handleServerMonsterKilled(messageData);
+    return;
+  }
+
+  if (messageData.type === "playerReward") {
+    applyServerPlayerReward(messageData);
+    return;
+  }
+
   if (messageData.type === "playerAttack") {
     handleRemoteAttack(messageData.id, messageData.attack);
     return;
@@ -9391,6 +9474,256 @@ function updateMultiplayer(dt) {
       : getGameConfig("gameplay.partyHud.desktopInterval");
     updateMultiplayerHud();
   }
+}
+
+function syncServerWorld(world) {
+  if (!world || !multiplayer.connected) {
+    return;
+  }
+
+  game.serverWorldActive = true;
+  game.serverWorldSeq = Math.max(game.serverWorldSeq, Number(world.seq) || 0);
+  player.wave = Math.max(1, Math.floor(Number(world.wave) || 1));
+  game.zombiesToSpawn = Math.max(0, Math.floor(Number(world.zombiesToSpawn) || 0));
+  waveElement.textContent = player.wave.toString();
+
+  const activeMonsterIds = new Set();
+  for (const monsterState of world.monsters ?? []) {
+    const monsterId = Number(monsterState.id);
+    if (!Number.isFinite(monsterId)) {
+      continue;
+    }
+
+    activeMonsterIds.add(monsterId);
+    syncServerMonster(monsterId, monsterState);
+  }
+
+  for (const zombie of [...zombies]) {
+    if (!zombie.serverControlled || !activeMonsterIds.has(zombie.serverId)) {
+      removeZombieByRef(zombie);
+    }
+  }
+
+  for (const [monsterId, zombie] of [...serverMonsterById.entries()]) {
+    if (!activeMonsterIds.has(monsterId) || !zombies.includes(zombie)) {
+      serverMonsterById.delete(monsterId);
+    }
+  }
+
+  const activeProjectileIds = new Set();
+  for (const projectileState of world.projectiles ?? []) {
+    const projectileId = Number(projectileState.id);
+    if (!Number.isFinite(projectileId)) {
+      continue;
+    }
+    activeProjectileIds.add(projectileId);
+    syncServerProjectile(projectileId, projectileState);
+  }
+
+  for (const [projectileId, projectile] of [...serverProjectileById.entries()]) {
+    if (!activeProjectileIds.has(projectileId)) {
+      removeServerProjectile(projectile);
+      serverProjectileById.delete(projectileId);
+    }
+  }
+
+  spatialGrid.dirty = true;
+  updateHud(true);
+}
+
+function syncServerMonster(monsterId, monsterState) {
+  let zombie = serverMonsterById.get(monsterId);
+  const type = monsterProfiles[monsterState.type] ? monsterState.type : "zombie";
+
+  if (!zombie) {
+    zombie = spawnZombie(Number(monsterState.x) || 0, Number(monsterState.z) || 0, type, {
+      id: monsterId,
+      serverControlled: true,
+      eliteType: monsterState.eliteType || null,
+      health: Number(monsterState.health),
+      maxHealth: Number(monsterState.maxHealth),
+    });
+    serverMonsterById.set(monsterId, zombie);
+  }
+
+  zombie.type = type;
+  zombie.serverControlled = true;
+  zombie.serverId = monsterId;
+  zombie.eliteType = monsterState.eliteType || null;
+  zombie.health = Math.max(0, Number(monsterState.health) || 0);
+  zombie.maxHealth = Math.max(1, Number(monsterState.maxHealth) || zombie.maxHealth || 1);
+  zombie.targetPosition.set(Number(monsterState.x) || 0, 0, Number(monsterState.z) || 0);
+  zombie.targetRotation = Number(monsterState.rotation) || 0;
+
+  if (zombie.labelSprite) {
+    zombie.labelSprite.userData.maxHealth = zombie.maxHealth;
+    updateBossLabel(zombie.labelSprite, zombie.health);
+  }
+}
+
+function updateServerWorldInterpolation(dt) {
+  const moveAlpha = 1 - Math.pow(0.0004, dt);
+  const turnAlpha = 1 - Math.pow(0.0006, dt);
+
+  for (const zombie of zombies) {
+    if (!zombie.serverControlled || !zombie.targetPosition) {
+      continue;
+    }
+    zombie.mesh.position.x += (zombie.targetPosition.x - zombie.mesh.position.x) * moveAlpha;
+    zombie.mesh.position.z += (zombie.targetPosition.z - zombie.mesh.position.z) * moveAlpha;
+    zombie.mesh.rotation.y = lerpAngle(zombie.mesh.rotation.y, zombie.targetRotation || 0, turnAlpha);
+    updateBossLabelPosition(zombie);
+  }
+
+  for (const projectile of serverProjectileById.values()) {
+    projectile.mesh.position.x += (projectile.targetPosition.x - projectile.mesh.position.x) * moveAlpha;
+    projectile.mesh.position.y += (projectile.targetPosition.y - projectile.mesh.position.y) * moveAlpha;
+    projectile.mesh.position.z += (projectile.targetPosition.z - projectile.mesh.position.z) * moveAlpha;
+    projectile.mesh.rotation.y = lerpAngle(projectile.mesh.rotation.y, projectile.targetRotation || 0, turnAlpha);
+    animateEnemyProjectileVisual(projectile, dt);
+  }
+}
+
+function syncServerProjectile(projectileId, projectileState) {
+  let projectile = serverProjectileById.get(projectileId);
+  const sourceType = monsterProfiles[projectileState.sourceType] ? projectileState.sourceType : "caster";
+
+  if (!projectile) {
+    const spec = getEnemyProjectileSpec(sourceType);
+    const visual = createEnemyProjectileVisual(spec);
+    const mesh = visual.mesh;
+    mesh.position.set(Number(projectileState.x) || 0, Number(projectileState.y) || spec.height, Number(projectileState.z) || 0);
+    mesh.rotation.y = Number(projectileState.rotation) || 0;
+    scene.add(mesh);
+    projectile = {
+      id: projectileId,
+      mesh,
+      pooled: visual.pooled,
+      visualKind: spec.kind,
+      sourceType,
+      age: 0,
+      phase: Math.random() * Math.PI * 2,
+      baseY: spec.height,
+      baseScale: mesh.scale.x,
+      damage: 0,
+      lifespan: spec.lifespan,
+      radius: spec.radius,
+      color: spec.color,
+      impactRadius: spec.impactRadius,
+      homing: Boolean(spec.homing),
+      speed: spec.speed,
+      targetId: null,
+      velocity: new THREE.Vector3(),
+      targetPosition: new THREE.Vector3(),
+      targetRotation: mesh.rotation.y,
+      serverControlled: true,
+    };
+    serverProjectileById.set(projectileId, projectile);
+  }
+
+  projectile.age += perfStats.dt || 0.016;
+  projectile.targetPosition.set(
+    Number(projectileState.x) || 0,
+    Number(projectileState.y) || projectile.baseY,
+    Number(projectileState.z) || 0,
+  );
+  projectile.targetRotation = Number(projectileState.rotation) || 0;
+}
+
+function removeServerProjectile(projectile) {
+  if (!projectile?.mesh) {
+    return;
+  }
+  scene.remove(projectile.mesh);
+  releaseEnemyProjectileVisual(projectile);
+}
+
+function clearServerSyncedWorld() {
+  for (const zombie of [...zombies]) {
+    removeZombieByRef(zombie);
+  }
+  while (enemyProjectiles.length > 0) {
+    removeEnemyProjectile(enemyProjectiles.length - 1);
+  }
+  while (traps.length > 0) {
+    removeTrap(traps.length - 1);
+  }
+  for (const projectile of [...serverProjectileById.values()]) {
+    removeServerProjectile(projectile);
+  }
+  serverMonsterById.clear();
+  serverProjectileById.clear();
+  game.serverWorldActive = false;
+  game.serverWorldSeq = 0;
+}
+
+function syncRoomWave(messageData) {
+  player.wave = Math.max(1, Math.floor(Number(messageData.wave) || 1));
+  game.zombiesToSpawn = Math.max(0, Math.floor(Number(messageData.zombiesToSpawn) || 0));
+  waveElement.textContent = player.wave.toString();
+}
+
+function handleServerMonsterHit(messageData) {
+  const zombie = serverMonsterById.get(Number(messageData.id));
+  if (!zombie) {
+    return;
+  }
+
+  const amount = Math.max(0, Number(messageData.amount) || 0);
+  zombie.health = Math.max(0, Number(messageData.health) || zombie.health - amount);
+  spawnDamageNumber(zombie.mesh.position, amount, false, zombie.id);
+  applyWeaponHitEffect(zombie, messageData.hitEffect, amount);
+  flashZombie(zombie.mesh);
+  if (zombie.labelSprite) {
+    updateBossLabel(zombie.labelSprite, zombie.health, true);
+  }
+}
+
+function handleServerMonsterKilled(messageData) {
+  const monsterState = messageData.monster || {};
+  const zombie = serverMonsterById.get(Number(monsterState.id));
+  const position = zombie
+    ? zombie.mesh.position.clone()
+    : new THREE.Vector3(Number(monsterState.x) || player.position.x, 0, Number(monsterState.z) || player.position.z);
+  const type = monsterProfiles[monsterState.type] ? monsterState.type : "zombie";
+  const profile = monsterProfiles[type] ?? {};
+
+  if (zombie) {
+    audioManager.play("kill", { priority: profile.boss ? 3 : 1 });
+    removeZombieByRef(zombie);
+    serverMonsterById.delete(Number(monsterState.id));
+  }
+
+  if (type === "sofra") {
+    spawnSofraDeathBurst(position);
+  }
+}
+
+function applyServerPlayerReward(messageData) {
+  const totalScore = Number(messageData.totalScore);
+  const totalKills = Number(messageData.totalKills);
+  if (Number.isFinite(totalScore)) {
+    player.score = Math.max(0, Math.floor(totalScore));
+  }
+  if (Number.isFinite(totalKills)) {
+    player.kills = Math.max(0, Math.floor(totalKills));
+  }
+  collectXp(Math.max(0, Number(messageData.xp) || 0));
+
+  const monsterState = messageData.monster || {};
+  const rewardPosition = new THREE.Vector3(
+    Number(monsterState.x) || player.position.x,
+    0,
+    Number(monsterState.z) || player.position.z,
+  );
+
+  if (messageData.boss) {
+    player.bossKills += 1;
+    spawnHealthPotionAt(rewardPosition, bossHealthPotionAmount, monsterState.type || "boss");
+    spawnBossRewardChestAt(rewardPosition.clone().add(new THREE.Vector3(1.2, 0, 0.8)), monsterState.type || "boss");
+  }
+
+  updateHud(true);
 }
 
 function getPlayerBuildSummary() {
@@ -9489,6 +9822,9 @@ function sendMultiplayerAttack(kind, origin = player.position, direction = playe
       z: origin.z,
       aimX: attackDirection.x,
       aimZ: attackDirection.z,
+      damageMultiplier: player.upgradeStats.damageMultiplier,
+      areaMultiplier: getAreaMultiplier(),
+      projectileBonus: getProjectileBonus(),
     },
   });
 }
@@ -9666,7 +10002,7 @@ function handleRemoteAttack(playerId, attack) {
 }
 
 function applyRemoteAttackDamage(origin, direction, weapon) {
-  if (game.state !== "playing") {
+  if (game.state !== "playing" || usesServerAuthoritativeWorld()) {
     return;
   }
 
@@ -10057,6 +10393,7 @@ function updateLeaderboard(leaderboard, status = "ready") {
   multiplayer.leaderboard = {
     totalPlayers: Number(snapshot.totalPlayers) || 0,
     players: Array.isArray(snapshot.players) ? snapshot.players.slice(0, 10) : [],
+    livePlayers: Array.isArray(snapshot.livePlayers) ? snapshot.livePlayers.slice(0, 40) : [],
     recentSessions: Array.isArray(snapshot.recentSessions) ? snapshot.recentSessions.slice(0, 10) : [],
     status,
     generatedAt: snapshot.generatedAt || null,
@@ -10117,6 +10454,81 @@ async function submitSoloLeaderboardSession() {
   }
 }
 
+function createLiveLeaderboardPayload(state = game.state) {
+  return {
+    name: player.name,
+    score: Math.max(0, Math.floor(Number(player.score) || 0)),
+    kills: Math.max(0, Math.floor(Number(player.kills) || 0)),
+    wave: Math.max(player.wave, 1),
+    level: Math.max(player.level, 1),
+    bestLevel: Math.max(player.bestLevel, player.level, 1),
+    build: getPlayerBuildSummary(),
+    durationMs: Math.floor(game.survivalTime * 1000),
+    state,
+  };
+}
+
+function getLiveLeaderboardSignature() {
+  const build = getPlayerBuildSummary().join(",");
+  return [
+    player.name,
+    Math.floor(Number(player.score) || 0),
+    Math.floor(Number(player.kills) || 0),
+    Math.max(player.wave, 1),
+    Math.max(player.level, 1),
+    Math.floor(game.survivalTime / 8),
+    build,
+    game.state,
+  ].join("|");
+}
+
+function updateLiveLeaderboardSync(dt) {
+  if (game.state !== "playing") {
+    return;
+  }
+
+  game.leaderboardLiveTimer -= dt;
+  game.leaderboardRefreshTimer -= dt;
+
+  if (game.leaderboardLiveTimer <= 0) {
+    game.leaderboardLiveTimer = 2;
+    const signature = getLiveLeaderboardSignature();
+    const now = performance.now();
+    const shouldRenewPresence = now - game.lastLiveLeaderboardSentAt > 8_000;
+
+    if (signature !== game.lastLiveLeaderboardSignature || shouldRenewPresence) {
+      game.lastLiveLeaderboardSignature = signature;
+      game.lastLiveLeaderboardSentAt = now;
+      void submitLiveLeaderboardSnapshot();
+    }
+  }
+
+  if (game.leaderboardRefreshTimer <= 0) {
+    game.leaderboardRefreshTimer = 4;
+    void loadLeaderboardSnapshot({ clearBeforeFetch: false });
+  }
+}
+
+async function submitLiveLeaderboardSnapshot({ clear = false } = {}) {
+  if (!clear && game.state !== "playing") {
+    return;
+  }
+
+  try {
+    const response = await fetch(getLeaderboardApiUrl("/api/leaderboard/live"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      keepalive: clear,
+      body: JSON.stringify(createLiveLeaderboardPayload(clear ? "dead" : game.state)),
+    });
+
+    if (response.ok && !clear) {
+      updateLeaderboard(await response.json());
+    }
+  } catch {
+  }
+}
+
 function getLeaderboardApiUrl(pathname) {
   const wsOrigin = getExplicitWebsocketOrigin();
   if (wsOrigin) {
@@ -10169,12 +10581,15 @@ function updateOnlineScoreboardHud(force = false) {
     return;
   }
 
-  const scoreboardPlayers = getOnlineScoreboardPlayers();
-  const modeLabel = multiplayer.connected ? `${scoreboardPlayers.length}/${multiplayer.maxPlayers} online` : "solo";
+  const scoreboard = getProjectedOnlineLeaderboard();
+  const scoreboardPlayers = scoreboard.entries;
+  const modeLabel = scoreboard.liveCount > 0
+    ? `${scoreboard.liveCount} ao vivo`
+    : `${scoreboard.totalPlayers} players`;
   const signature = `${modeLabel}|${scoreboardPlayers
     .map(
       (scoreboardPlayer) =>
-        `${scoreboardPlayer.id}:${scoreboardPlayer.rank}:${Math.floor(scoreboardPlayer.score)}:${Math.floor(scoreboardPlayer.kills)}:${Math.floor(scoreboardPlayer.health)}:${scoreboardPlayer.level}:${scoreboardPlayer.wave}:${scoreboardPlayer.state}`,
+        `${scoreboardPlayer.key}:${scoreboardPlayer.rank}:${Math.floor(scoreboardPlayer.score)}:${Math.floor(scoreboardPlayer.kills)}:${scoreboardPlayer.level}:${scoreboardPlayer.wave}:${scoreboardPlayer.isLive}:${scoreboardPlayer.isLocal}:${Math.floor(scoreboardPlayer.liveScore || 0)}`,
     )
     .join("|")}`;
 
@@ -10188,17 +10603,180 @@ function updateOnlineScoreboardHud(force = false) {
 }
 
 function getOnlineScoreboardPlayers() {
-  return getPartyPlayers().map((scoreboardPlayer, index) => ({
-    ...scoreboardPlayer,
-    rank: index + 1,
-    score: Math.max(0, Math.floor(Number(scoreboardPlayer.score) || 0)),
-    kills: Math.max(0, Math.floor(Number(scoreboardPlayer.kills) || 0)),
-    wave: Math.max(1, Math.floor(Number(scoreboardPlayer.wave) || 1)),
-    level: Math.max(1, Math.floor(Number(scoreboardPlayer.level) || 1)),
-    health: Math.max(0, Number(scoreboardPlayer.health) || 0),
-    maxHealth: Math.max(1, Number(scoreboardPlayer.maxHealth) || 1),
-    state: scoreboardPlayer.state || "menu",
-  }));
+  return getProjectedOnlineLeaderboard().entries;
+}
+
+function getProjectedOnlineLeaderboard() {
+  const projectedEntries = new Map();
+  const historicalKeys = new Set();
+  const liveKeys = new Set();
+
+  for (const leader of multiplayer.leaderboard.players) {
+    const entry = createHistoricalLeaderboardEntry(leader);
+    historicalKeys.add(entry.key);
+    mergeProjectedLeaderboardEntry(projectedEntries, entry);
+  }
+
+  for (const liveLeader of multiplayer.leaderboard.livePlayers) {
+    const entry = createLiveLeaderboardEntry(liveLeader);
+    liveKeys.add(entry.key);
+    mergeProjectedLeaderboardEntry(projectedEntries, entry);
+  }
+
+  if (game.state === "playing" || player.score > 0) {
+    const localEntry = createLiveLeaderboardEntry({
+      name: player.name,
+      score: player.score,
+      kills: player.kills,
+      wave: Math.max(player.wave, 1),
+      level: player.level,
+      bestLevel: player.bestLevel,
+      build: getPlayerBuildSummary(),
+      durationMs: Math.floor(game.survivalTime * 1000),
+    }, {
+      color: multiplayer.color,
+      isLocal: true,
+      source: "local",
+    });
+    liveKeys.add(localEntry.key);
+    mergeProjectedLeaderboardEntry(projectedEntries, localEntry);
+  }
+
+  for (const remotePlayer of remotePlayers.values()) {
+    if (remotePlayer.state !== "playing" && remotePlayer.score <= 0) {
+      continue;
+    }
+
+    const remoteEntry = createLiveLeaderboardEntry({
+      name: remotePlayer.name,
+      score: remotePlayer.score,
+      kills: remotePlayer.kills,
+      wave: remotePlayer.wave,
+      level: remotePlayer.level,
+      bestLevel: remotePlayer.bestLevel,
+      build: remotePlayer.build,
+      durationMs: 0,
+    }, {
+      color: remotePlayer.color,
+      source: "room",
+    });
+    liveKeys.add(remoteEntry.key);
+    mergeProjectedLeaderboardEntry(projectedEntries, remoteEntry);
+  }
+
+  const rankedEntries = [...projectedEntries.values()]
+    .sort(
+      (first, second) =>
+        second.score - first.score ||
+        second.kills - first.kills ||
+        second.level - first.level ||
+        second.wave - first.wave ||
+        first.name.localeCompare(second.name),
+    )
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+  const maxVisible = usesMobileTuning() ? 3 : 5;
+  const visibleEntries = rankedEntries.slice(0, maxVisible);
+  const localEntry = rankedEntries.find((entry) => entry.isLocal);
+
+  if (localEntry && !visibleEntries.some((entry) => entry.key === localEntry.key)) {
+    visibleEntries.splice(Math.max(0, maxVisible - 1), 1, localEntry);
+  }
+
+  const liveOnlyCount = [...liveKeys].filter((key) => !historicalKeys.has(key)).length;
+
+  return {
+    entries: visibleEntries,
+    liveCount: liveKeys.size,
+    totalPlayers: Math.max(multiplayer.leaderboard.totalPlayers, historicalKeys.size) + liveOnlyCount,
+  };
+}
+
+function createHistoricalLeaderboardEntry(leader) {
+  const name = sanitizePlayerName(leader.name || "Cacador");
+  const bestScore = Math.max(0, Math.floor(Number(leader.bestScore) || 0));
+  const totalScore = Math.max(0, Math.floor(Number(leader.totalScore) || 0));
+  const lastScore = Math.max(0, Math.floor(Number(leader.lastScore) || 0));
+
+  return {
+    key: getLeaderboardEntryKey(name),
+    name,
+    score: Math.max(bestScore, totalScore, lastScore),
+    kills: Math.max(
+      0,
+      Math.floor(Number(leader.totalKills) || 0),
+      Math.floor(Number(leader.bestKills) || 0),
+      Math.floor(Number(leader.lastKills) || 0),
+    ),
+    wave: Math.max(1, Math.floor(Number(leader.bestWave ?? leader.lastWave) || 1)),
+    level: Math.max(1, Math.floor(Number(leader.bestLevel ?? leader.lastLevel) || 1)),
+    build: Array.isArray(leader.bestBuild)
+      ? leader.bestBuild.slice(0, 6)
+      : Array.isArray(leader.lastBuild)
+        ? leader.lastBuild.slice(0, 6)
+        : [],
+    durationMs: Math.max(0, Math.floor(Number(leader.totalPlayMs) || 0)),
+    source: "histórico",
+    color: "#8ef151",
+    isLive: false,
+    isLocal: getLeaderboardEntryKey(name) === getLeaderboardEntryKey(player.name),
+    liveScore: 0,
+  };
+}
+
+function createLiveLeaderboardEntry(leader, options = {}) {
+  const name = sanitizePlayerName(leader.name || "Cacador");
+
+  return {
+    key: getLeaderboardEntryKey(name),
+    name,
+    score: Math.max(0, Math.floor(Number(leader.score) || 0)),
+    kills: Math.max(0, Math.floor(Number(leader.kills) || 0)),
+    wave: Math.max(1, Math.floor(Number(leader.wave) || 1)),
+    level: Math.max(1, Math.floor(Number(leader.level ?? leader.bestLevel) || 1)),
+    build: Array.isArray(leader.build) ? leader.build.slice(0, 6) : [],
+    durationMs: Math.max(0, Math.floor(Number(leader.durationMs) || 0)),
+    source: options.source || "ao vivo",
+    color: options.color || "#ffd36d",
+    isLive: true,
+    isLocal: Boolean(options.isLocal) || getLeaderboardEntryKey(name) === getLeaderboardEntryKey(player.name),
+    liveScore: Math.max(0, Math.floor(Number(leader.score) || 0)),
+  };
+}
+
+function mergeProjectedLeaderboardEntry(entries, entry) {
+  const existing = entries.get(entry.key);
+
+  if (!existing) {
+    entries.set(entry.key, entry);
+    return;
+  }
+
+  const mergedFlags = {
+    isLive: existing.isLive || entry.isLive,
+    isLocal: existing.isLocal || entry.isLocal,
+    liveScore: Math.max(existing.liveScore || 0, entry.liveScore || (entry.isLive ? entry.score : 0)),
+    color: entry.isLocal ? entry.color : existing.color || entry.color,
+  };
+
+  if (entry.score > existing.score || (entry.score === existing.score && entry.isLive && !existing.isLive)) {
+    entries.set(entry.key, {
+      ...entry,
+      ...mergedFlags,
+    });
+    return;
+  }
+
+  entries.set(entry.key, {
+    ...existing,
+    ...mergedFlags,
+  });
+}
+
+function getLeaderboardEntryKey(name) {
+  return sanitizePlayerName(name).toLowerCase();
 }
 
 function renderOnlineScoreboard(scoreboardPlayers) {
@@ -10207,30 +10785,33 @@ function renderOnlineScoreboard(scoreboardPlayers) {
       <li>
         <span class="leaderboard-list__rank">–</span>
         <span class="leaderboard-list__player">
-          <strong>Aguardando jogadores</strong>
-          <small>conectando sala</small>
+          <strong>Ranking vazio</strong>
+          <small>jogue para aparecer aqui</small>
         </span>
-        <span class="leaderboard-list__meta">online</span>
+        <span class="leaderboard-list__meta">ao vivo</span>
       </li>
     `;
     return;
   }
 
   leaderboardListElement.innerHTML = scoreboardPlayers
-    .slice(0, multiplayer.maxPlayers)
     .map((scoreboardPlayer) => {
       const displayName = truncateHudName(scoreboardPlayer.name, usesMobileTuning() ? 8 : 14);
-      const healthRatio = Math.max(0, Math.min(1, scoreboardPlayer.health / scoreboardPlayer.maxHealth));
-      const statusText = scoreboardPlayer.state === "dead" ? "abatido" : scoreboardPlayer.isLocal ? "você" : "online";
+      const statusText = [
+        scoreboardPlayer.isLocal ? "você" : scoreboardPlayer.isLive ? "ao vivo" : "histórico",
+        `O${scoreboardPlayer.wave}`,
+        `Nv${scoreboardPlayer.level}`,
+      ].join(" · ");
+      const liveScoreText =
+        scoreboardPlayer.liveScore > 0 && scoreboardPlayer.liveScore < scoreboardPlayer.score
+          ? ` · agora ${formatHudNumber(scoreboardPlayer.liveScore)}`
+          : "";
       return `
-        <li class="${scoreboardPlayer.isLocal ? "leaderboard-list__item--local" : ""}${scoreboardPlayer.state === "dead" ? " leaderboard-list__item--dead" : ""}" style="--party-color: ${scoreboardPlayer.color}">
+        <li class="${scoreboardPlayer.isLocal ? "leaderboard-list__item--local" : ""}${scoreboardPlayer.isLive ? " leaderboard-list__item--live" : ""}" style="--party-color: ${scoreboardPlayer.color}">
           <span class="leaderboard-list__rank">#${scoreboardPlayer.rank}</span>
           <span class="leaderboard-list__player">
             <strong>${escapeHtml(displayName)}</strong>
-            <small>${statusText} · ${Math.ceil(scoreboardPlayer.health)}/${Math.ceil(scoreboardPlayer.maxHealth)} vida</small>
-            <span class="leaderboard-list__health" aria-hidden="true">
-              <span style="transform: scaleX(${healthRatio})"></span>
-            </span>
+            <small>${statusText}${liveScoreText}</small>
           </span>
           <span class="leaderboard-list__meta">${formatHudNumber(scoreboardPlayer.score)} pts · ${formatHudNumber(scoreboardPlayer.kills)} K · O${scoreboardPlayer.wave} · Nv${scoreboardPlayer.level}</span>
         </li>
@@ -10393,7 +10974,7 @@ function getLeaderboardPerkIcon(perk) {
   if (text.includes("orbe")) return "🟣";
   if (text.includes("chuva")) return "☄";
   if (text.includes("dano")) return "◆";
-  if (text.includes("cadência") || text.includes("cadencia")) return "⚡";
+  if (text.includes("attack speed") || text.includes("cadência") || text.includes("cadencia")) return "⚡";
   if (text.includes("área") || text.includes("area")) return "◎";
   if (text.includes("velocidade")) return "➤";
   if (text.includes("coleta")) return "✦";

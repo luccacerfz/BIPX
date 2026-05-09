@@ -16,11 +16,14 @@ const websocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const leaderboardPath = process.env.LEADERBOARD_FILE || path.join(root, ".data", "leaderboard.json");
 const leaderboardLimit = 10;
 const historyLimit = 120;
+const liveLeaderboardLimit = 40;
+const liveLeaderboardTtlMs = 20_000;
 const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const leaderboardBackend = supabaseUrl && supabaseServiceRoleKey ? "supabase" : "file";
 const leaderboardBuildMetaPrefix = "__bipx:";
 const rooms = new Map();
+const liveLeaderboardRuns = new Map();
 const leaderboardStore = {
   players: {},
   sessions: [],
@@ -34,6 +37,55 @@ const mimeTypes = {
   ".json": "application/json; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
   ".png": "image/png",
+};
+
+const serverWorldTickMs = 50;
+const serverWorldBroadcastMs = 120;
+const serverWorldResetMs = 8_000;
+const serverWorldLimit = 65;
+const serverBaseDamageMultiplier = 2;
+const serverMonsterCap = 220;
+const serverMonsterProfiles = {
+  zombie: { health: 4.2, speed: 3.3, radius: 0.78, damage: 13, score: 10, xp: 3, minWave: 1 },
+  runner: { health: 3.2, speed: 6.1, radius: 0.58, damage: 11, score: 14, xp: 4, minWave: 2 },
+  brute: { health: 17, speed: 2.2, radius: 1.18, damage: 27, score: 26, xp: 8, minWave: 3 },
+  caster: { health: 8.5, speed: 2.8, radius: 0.82, damage: 16, score: 18, xp: 7, minWave: 4, ranged: true },
+  visor: { health: 42, speed: 2.7, radius: 1.14, damage: 18, score: 90, xp: 28, minWave: 6, boss: true, ranged: true },
+  himetrica: { health: 45, speed: 3.6, radius: 1.05, damage: 20, score: 95, xp: 30, minWave: 7, boss: true, ranged: true },
+  dinzo: { health: 52, speed: 1.55, radius: 1.42, damage: 17, score: 105, xp: 34, minWave: 6, boss: true, ranged: true },
+  gitcity: { health: 78, speed: 1.15, radius: 1.58, damage: 24, score: 140, xp: 42, minWave: 8, boss: true, ranged: true },
+  sofra: { health: 86, speed: 4.25, radius: 1.28, damage: 22, score: 180, xp: 48, minWave: 9, boss: true, ranged: true },
+  cowWalker: { health: 14, speed: 3.05, radius: 0.86, damage: 24, score: 20, xp: 6, minWave: 10 },
+  cowCharger: { health: 11, speed: 5.75, radius: 0.78, damage: 21, score: 24, xp: 7, minWave: 10 },
+  cowBrute: { health: 34, speed: 2.15, radius: 1.24, damage: 38, score: 38, xp: 12, minWave: 10 },
+  angelSheep: { health: 360, speed: 2.15, radius: 1.48, damage: 26, score: 360, xp: 90, minWave: 999, boss: true, milestoneBoss: true, ranged: true },
+  bloodCow: { health: 720, speed: 2.55, radius: 1.72, damage: 36, score: 620, xp: 130, minWave: 999, boss: true, milestoneBoss: true, ranged: true },
+  plumaFinance: { health: 920, speed: 2.85, radius: 1.36, damage: 32, score: 900, xp: 180, minWave: 999, boss: true, milestoneBoss: true, ranged: true },
+};
+const serverCowMonsterTypes = new Set(["cowWalker", "cowCharger", "cowBrute"]);
+const serverEliteProfiles = {
+  furious: { healthMultiplier: 1.75, speedMultiplier: 1.38, damageMultiplier: 1.85, scoreMultiplier: 1.35, xpMultiplier: 1.25, reachBonus: 0.12 },
+  armored: { healthMultiplier: 3.25, speedMultiplier: 0.82, damageMultiplier: 1.45, scoreMultiplier: 1.55, xpMultiplier: 1.5, reachBonus: 0.05 },
+  executioner: { healthMultiplier: 2.25, speedMultiplier: 0.95, damageMultiplier: 2.05, scoreMultiplier: 1.7, xpMultiplier: 1.65, reachBonus: 0.82 },
+};
+const serverWaveMilestones = new Map([
+  [5, "angelSheep"],
+  [10, "bloodCow"],
+  [20, "plumaFinance"],
+]);
+const serverAttackSpecs = {
+  pistol: { shape: "cone", range: 24, minDot: Math.cos(0.06), damage: 1, cooldown: 80 },
+  flamethrower: { shape: "cone", range: 10.5, minDot: Math.cos(0.58), damage: 1.1, cooldown: 55, effect: "flamethrower" },
+  axe: { shape: "radius", radius: 4.4, damage: 5, cooldown: 280, effect: "axe" },
+  katana: { shape: "cone", range: 5.8, minDot: Math.cos(0.92), damage: 5, cooldown: 180, effect: "katana" },
+  crossbow: { shape: "cone", range: 28, minDot: Math.cos(0.08), damage: 4, cooldown: 220, effect: "crossbow" },
+  talisman: { shape: "point", distance: 8.5, radius: 4.8, damage: 4, cooldown: 380, effect: "talisman" },
+  thunderstaff: { shape: "cone", range: 18.5, minDot: Math.cos(0.12), damage: 5.2, cooldown: 190, effect: "thunderstaff" },
+  boneCannon: { shape: "point", distance: 9.5, radius: 5.8, damage: 7.2, cooldown: 360, effect: "boneCannon" },
+  frostNova: { shape: "radius", radius: 7.2, damage: 6.2, cooldown: 520, effect: "frostNova" },
+  guardianBlade: { shape: "cone", range: 24, minDot: Math.cos(0.04), damage: 1.6, cooldown: 220, effect: "guardianBlade" },
+  orbitOrb: { shape: "radius", radius: 1.45, damage: 1.4, cooldown: 120, effect: "orbitOrb" },
+  sealRain: { shape: "radius", radius: 3.5, damage: 4.8, cooldown: 430, effect: "sealRain" },
 };
 
 await loadLeaderboard();
@@ -90,6 +142,36 @@ const server = http.createServer(async (request, response) => {
         "Cache-Control": "no-store",
       });
       response.end(JSON.stringify(leaderboard));
+    } catch (error) {
+      response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: error.message }));
+    }
+    return;
+  }
+
+  if (pathname === "/api/leaderboard/live") {
+    writeCorsHeaders(response);
+
+    if (request.method === "OPTIONS") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+
+    if (request.method !== "POST") {
+      response.writeHead(405, { Allow: "POST" });
+      response.end("Method not allowed");
+      return;
+    }
+
+    try {
+      const state = await readJsonBody(request);
+      recordLiveLeaderboardState(state);
+      response.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      response.end(JSON.stringify(getLeaderboardSnapshot()));
     } catch (error) {
       response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
       response.end(JSON.stringify({ error: error.message }));
@@ -182,6 +264,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
     sessionBestLevel: 1,
     sessionBestBuild: [],
     sessionStartedAt: null,
+    attackCooldowns: new Map(),
     state: {
       x: getSpawnPoint(slot).x,
       z: getSpawnPoint(slot).z,
@@ -212,6 +295,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
     spawn: getSpawnPoint(slot),
     players: [...room.clients.values()].map(createPlayerSnapshot),
     leaderboard: getLeaderboardSnapshot(),
+    world: getWorldSnapshot(room),
   });
 
   broadcast(room, {
@@ -226,10 +310,33 @@ function joinMultiplayerRoom(requestUrl, socket) {
 
 function getRoom(roomId) {
   if (!rooms.has(roomId)) {
-    rooms.set(roomId, { id: roomId, clients: new Map() });
+    rooms.set(roomId, { id: roomId, clients: new Map(), world: createRoomWorld() });
   }
 
   return rooms.get(roomId);
+}
+
+function createRoomWorld() {
+  return {
+    active: false,
+    seq: 0,
+    wave: 0,
+    survivalTime: 0,
+    spawnTimer: 0,
+    zombiesToSpawn: 0,
+    nextWaveDelay: 0.3,
+    nextMonsterId: 1,
+    nextProjectileId: 1,
+    monsters: new Map(),
+    projectiles: new Map(),
+    milestonesTriggered: new Set(),
+    lastBroadcastAt: 0,
+    idleStartedAt: 0,
+  };
+}
+
+function resetRoomWorld(room) {
+  room.world = createRoomWorld();
 }
 
 function getFreeSlot(room) {
@@ -361,6 +468,9 @@ function handleClientMessage(client, rawMessage) {
   if (message.type === "state") {
     const previousState = client.state.state;
     client.state = normalizePlayerState(message.state, client.state);
+    if (client.state.state === "playing" && previousState !== "playing") {
+      ensureRoomWorldActive(room);
+    }
     const leaderboardChanged = updatePlayerHistory(client, previousState);
     broadcast(room, {
       type: "playerState",
@@ -389,11 +499,13 @@ function handleClientMessage(client, rawMessage) {
   }
 
   if (message.type === "attack") {
+    const attack = normalizeAttack(message.attack, client.state);
     broadcast(room, {
       type: "playerAttack",
       id: client.id,
-      attack: normalizeAttack(message.attack, client.state),
+      attack,
     }, client.id);
+    applyServerAttackDamage(room, client, attack);
   }
 }
 
@@ -491,6 +603,9 @@ function normalizeAttack(attack, fallbackState) {
     z: clampNumber(attack?.z, -65, 65, fallbackState.z),
     aimX: clampNumber(attack?.aimX, -1, 1, fallbackState.aimX),
     aimZ: clampNumber(attack?.aimZ, -1, 1, fallbackState.aimZ),
+    damageMultiplier: clampNumber(attack?.damageMultiplier, 0.6, 8, 1),
+    areaMultiplier: clampNumber(attack?.areaMultiplier, 0.6, 5, 1),
+    projectileBonus: Math.max(0, Math.floor(clampNumber(attack?.projectileBonus, 0, 6, 0))),
   };
 }
 
@@ -527,6 +642,581 @@ function damagePlayer(room, sourceClient, message) {
   });
 
   broadcastLeaderboard(room);
+}
+
+function updateRoomWorlds() {
+  const dt = serverWorldTickMs / 1000;
+  for (const room of rooms.values()) {
+    updateRoomWorld(room, dt);
+  }
+}
+
+function ensureRoomWorldActive(room) {
+  const world = room.world;
+  world.active = true;
+  world.idleStartedAt = 0;
+  if (world.wave <= 0) {
+    startServerNextWave(room);
+  }
+}
+
+function updateRoomWorld(room, dt) {
+  const world = room.world;
+  const playingClients = getPlayingClients(room);
+
+  if (playingClients.length === 0) {
+    if (world.active && !world.idleStartedAt) {
+      world.idleStartedAt = Date.now();
+    }
+    if (world.active && Date.now() - world.idleStartedAt > serverWorldResetMs) {
+      resetRoomWorld(room);
+      broadcastWorldState(room);
+    }
+    return;
+  }
+
+  ensureRoomWorldActive(room);
+  world.survivalTime += dt;
+  updateServerSpawning(room, playingClients, dt);
+  updateServerMonsters(room, playingClients, dt);
+  updateServerProjectiles(room, playingClients, dt);
+
+  if (world.monsters.size === 0 && world.zombiesToSpawn <= 0) {
+    world.nextWaveDelay -= dt;
+    if (world.nextWaveDelay <= 0) {
+      startServerNextWave(room);
+    }
+  }
+
+  if (Date.now() - world.lastBroadcastAt >= serverWorldBroadcastMs) {
+    broadcastWorldState(room);
+  }
+}
+
+function getPlayingClients(room) {
+  return [...room.clients.values()].filter((client) => client.state.state === "playing" && client.state.health > 0);
+}
+
+function startServerNextWave(room) {
+  const world = room.world;
+  world.wave += 1;
+  world.nextWaveDelay = 1.2;
+  const wavePressure = Math.floor(Math.pow(Math.max(0, world.wave - 1), 1.32) * 7.8);
+  const survivalPressure = Math.floor(world.survivalTime / 6);
+  world.zombiesToSpawn = Math.min(24 + world.wave * 11 + wavePressure + survivalPressure, Math.max(120, serverMonsterCap - 8));
+  world.spawnTimer = 0.15;
+
+  const milestoneBoss = serverWaveMilestones.get(world.wave);
+  if (milestoneBoss && !world.milestonesTriggered.has(world.wave)) {
+    world.milestonesTriggered.add(world.wave);
+    spawnServerMonsterNearClient(room, getPlayingClients(room)[0], milestoneBoss, milestoneBoss === "plumaFinance" ? 20 : 17);
+  }
+
+  broadcast(room, { type: "roomWave", wave: world.wave, zombiesToSpawn: world.zombiesToSpawn });
+}
+
+function updateServerSpawning(room, playingClients, dt) {
+  const world = room.world;
+  if (world.zombiesToSpawn <= 0 || world.monsters.size >= serverMonsterCap) {
+    return;
+  }
+
+  world.spawnTimer -= dt;
+  if (world.spawnTimer > 0) {
+    return;
+  }
+
+  const target = playingClients[Math.floor(Math.random() * playingClients.length)];
+  spawnServerMonsterNearClient(room, target, pickServerMonsterType(world));
+  world.zombiesToSpawn -= 1;
+  world.spawnTimer = getServerSpawnInterval(world);
+}
+
+function spawnServerMonsterNearClient(room, client, type = pickServerMonsterType(room.world), distanceOverride = null) {
+  const base = client?.state ?? getSpawnPoint(0);
+  const angle = Math.random() * Math.PI * 2;
+  const distance = distanceOverride ?? 28 + Math.random() * 22;
+  const x = clampNumber(base.x + Math.cos(angle) * distance, -serverWorldLimit + 2, serverWorldLimit - 2, 0);
+  const z = clampNumber(base.z + Math.sin(angle) * distance, -serverWorldLimit + 2, serverWorldLimit - 2, 0);
+  return spawnServerMonster(room, x, z, type);
+}
+
+function spawnServerMonster(room, x, z, type = "zombie") {
+  const world = room.world;
+  const profile = serverMonsterProfiles[type] ?? serverMonsterProfiles.zombie;
+  const eliteType = profile.boss ? null : rollServerEliteType(world, type);
+  const eliteProfile = eliteType ? serverEliteProfiles[eliteType] : null;
+  const difficulty = getServerDifficultyScale(world);
+  const balance = getServerMonsterBalanceModifiers(type, profile, world);
+  const maxHealth = Math.max(1, (profile.health + Math.floor(world.survivalTime / 120)) * difficulty.health * balance.health * (eliteProfile?.healthMultiplier ?? 1));
+  const monster = {
+    id: world.nextMonsterId,
+    type,
+    eliteType,
+    x,
+    z,
+    rotation: 0,
+    health: maxHealth,
+    maxHealth,
+    speed: (profile.speed + Math.min(world.wave * 0.16 + world.survivalTime * 0.01, 5.8) * difficulty.speed + Math.random() * 0.7) * (eliteProfile?.speedMultiplier ?? 1) * balance.speed,
+    damage: profile.damage * difficulty.damage * (eliteProfile?.damageMultiplier ?? 1) * balance.damage,
+    radius: profile.radius,
+    score: Math.ceil(profile.score * (eliteProfile?.scoreMultiplier ?? 1)),
+    xp: Math.ceil(profile.xp * (eliteProfile?.xpMultiplier ?? 1)),
+    attackCooldown: 0.25 + Math.random() * 0.35,
+    reachBonus: eliteProfile?.reachBonus ?? 0,
+    freezeTimer: 0,
+    burnTimer: 0,
+    burnDps: 0,
+    burnSourceId: null,
+    bossTargetId: null,
+    bossRetargetTimer: 0,
+  };
+  world.monsters.set(monster.id, monster);
+  world.nextMonsterId += 1;
+  world.seq += 1;
+  return monster;
+}
+
+function updateServerMonsters(room, playingClients, dt) {
+  const world = room.world;
+  for (const monster of [...world.monsters.values()]) {
+    updateServerMonsterStatus(room, monster, dt);
+    if (!world.monsters.has(monster.id)) {
+      continue;
+    }
+
+    monster.attackCooldown = Math.max(0, monster.attackCooldown - dt);
+    if (monster.freezeTimer > 0) {
+      continue;
+    }
+
+    const target = getServerMonsterTarget(monster, playingClients);
+    if (!target) {
+      continue;
+    }
+
+    const dx = target.state.x - monster.x;
+    const dz = target.state.z - monster.z;
+    const distance = Math.hypot(dx, dz);
+    const directionX = distance > 0.001 ? dx / distance : 0;
+    const directionZ = distance > 0.001 ? dz / distance : 1;
+    monster.rotation = Math.atan2(directionX, directionZ);
+    const profile = serverMonsterProfiles[monster.type] ?? serverMonsterProfiles.zombie;
+    const meleeRange = monster.radius + 0.72 + (monster.reachBonus || 0);
+
+    if (profile.ranged && distance < 22 && distance > meleeRange + 1.2 && monster.attackCooldown <= 0) {
+      monster.attackCooldown = getServerRangedCooldown(monster.type);
+      spawnServerProjectile(room, monster, target, directionX, directionZ);
+      continue;
+    }
+
+    if (distance > meleeRange * 0.84) {
+      const speed = monster.speed * (profile.boss && monster.health / monster.maxHealth < 0.35 ? 1.08 : 1);
+      monster.x = clampNumber(monster.x + directionX * speed * dt, -serverWorldLimit + 1.4, serverWorldLimit - 1.4, monster.x);
+      monster.z = clampNumber(monster.z + directionZ * speed * dt, -serverWorldLimit + 1.4, serverWorldLimit - 1.4, monster.z);
+    } else if (monster.attackCooldown <= 0) {
+      monster.attackCooldown = profile.boss ? 0.86 : 0.62;
+      damageServerPlayer(room, target, monster.damage + Math.floor(world.wave * (profile.boss ? 0.65 : 0.55)));
+    }
+  }
+}
+
+function updateServerMonsterStatus(room, monster, dt) {
+  monster.freezeTimer = Math.max(0, (monster.freezeTimer || 0) - dt);
+  if (monster.burnTimer > 0) {
+    monster.burnTimer = Math.max(0, monster.burnTimer - dt);
+    damageServerMonster(room, monster, (monster.burnDps || 0) * dt, monster.burnSourceId, "burnTick");
+  }
+}
+
+function spawnServerProjectile(room, monster, target, directionX, directionZ) {
+  const world = room.world;
+  const spec = getServerProjectileSpec(monster.type);
+  const projectile = {
+    id: world.nextProjectileId,
+    sourceType: monster.type,
+    x: monster.x + directionX * (monster.radius + 0.4),
+    z: monster.z + directionZ * (monster.radius + 0.4),
+    y: spec.height,
+    rotation: Math.atan2(directionX, directionZ),
+    vx: directionX * spec.speed,
+    vz: directionZ * spec.speed,
+    damage: monster.damage + Math.floor(world.wave * 0.35),
+    radius: spec.radius,
+    impactRadius: spec.impactRadius,
+    lifespan: spec.lifespan,
+    age: 0,
+    targetId: target.id,
+    homing: spec.homing,
+  };
+  world.projectiles.set(projectile.id, projectile);
+  world.nextProjectileId += 1;
+}
+
+function updateServerProjectiles(room, playingClients, dt) {
+  const world = room.world;
+  for (const projectile of [...world.projectiles.values()]) {
+    projectile.age += dt;
+    if (projectile.homing) {
+      const target = playingClients.find((client) => client.id === projectile.targetId);
+      if (target) {
+        const dx = target.state.x - projectile.x;
+        const dz = target.state.z - projectile.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance > 0.01) {
+          const turn = Math.min(1, dt * 1.8);
+          projectile.vx = projectile.vx * (1 - turn) + (dx / distance) * getProjectileSpeed(projectile) * turn;
+          projectile.vz = projectile.vz * (1 - turn) + (dz / distance) * getProjectileSpeed(projectile) * turn;
+        }
+      }
+    }
+
+    projectile.x += projectile.vx * dt;
+    projectile.z += projectile.vz * dt;
+
+    for (const client of playingClients) {
+      const hitRadius = projectile.radius + 0.64;
+      if (distanceSq(projectile.x, projectile.z, client.state.x, client.state.z) <= hitRadius * hitRadius) {
+        damageServerPlayer(room, client, projectile.damage);
+        world.projectiles.delete(projectile.id);
+        break;
+      }
+    }
+
+    if (
+      projectile.age > projectile.lifespan ||
+      Math.abs(projectile.x) > serverWorldLimit + 5 ||
+      Math.abs(projectile.z) > serverWorldLimit + 5
+    ) {
+      world.projectiles.delete(projectile.id);
+    }
+  }
+}
+
+function applyServerAttackDamage(room, client, attack) {
+  if (client.state.state !== "playing") {
+    return;
+  }
+
+  const weapon = serverAttackSpecs[attack.kind] ? attack.kind : serverAttackSpecs[attack.weapon] ? attack.weapon : "pistol";
+  const spec = serverAttackSpecs[weapon] ?? serverAttackSpecs.pistol;
+  const now = Date.now();
+  const lastAttackAt = client.attackCooldowns.get(weapon) || 0;
+  if (now - lastAttackAt < spec.cooldown) {
+    return;
+  }
+  client.attackCooldowns.set(weapon, now);
+
+  const direction = normalize2(attack.aimX, attack.aimZ);
+  const origin = { x: attack.x, z: attack.z };
+  const hits = getServerAttackHits(room, origin, direction, spec, attack.areaMultiplier);
+  const baseDamage = spec.damage * serverBaseDamageMultiplier * attack.damageMultiplier;
+
+  for (const monster of hits) {
+    damageServerMonster(room, monster, baseDamage, client.id, spec.effect || weapon);
+  }
+}
+
+function getServerAttackHits(room, origin, direction, spec, areaMultiplier = 1) {
+  const hits = [];
+  const area = Math.sqrt(Math.max(0.4, areaMultiplier));
+
+  for (const monster of room.world.monsters.values()) {
+    if (spec.shape === "point") {
+      const centerX = origin.x + direction.x * spec.distance;
+      const centerZ = origin.z + direction.z * spec.distance;
+      const radius = spec.radius * area + monster.radius;
+      if (distanceSq(centerX, centerZ, monster.x, monster.z) <= radius * radius) {
+        hits.push(monster);
+      }
+      continue;
+    }
+
+    if (spec.shape === "radius") {
+      const radius = spec.radius * area + monster.radius;
+      if (distanceSq(origin.x, origin.z, monster.x, monster.z) <= radius * radius) {
+        hits.push(monster);
+      }
+      continue;
+    }
+
+    const dx = monster.x - origin.x;
+    const dz = monster.z - origin.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance <= 0.001 || distance > spec.range * area + monster.radius) {
+      continue;
+    }
+
+    const dot = (dx / distance) * direction.x + (dz / distance) * direction.z;
+    if (dot >= spec.minDot) {
+      hits.push(monster);
+    }
+  }
+
+  return hits;
+}
+
+function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = "pistol") {
+  if (!monster || amount <= 0 || !room.world.monsters.has(monster.id)) {
+    return false;
+  }
+
+  monster.health -= amount;
+  if (hitEffect === "frostNova") {
+    monster.freezeTimer = serverMonsterProfiles[monster.type]?.boss ? 0.85 : 2.2;
+  }
+  if (hitEffect === "flamethrower") {
+    monster.burnTimer = 3;
+    monster.burnDps = Math.max(monster.burnDps || 0, amount * 1.15);
+    monster.burnSourceId = sourceClientId;
+  }
+
+  broadcast(room, {
+    type: "monsterHit",
+    id: monster.id,
+    amount: Number(amount.toFixed(2)),
+    health: Math.max(0, Number(monster.health.toFixed(2))),
+    hitEffect,
+    sourceId: sourceClientId,
+  });
+
+  if (monster.health <= 0) {
+    killServerMonster(room, monster, sourceClientId);
+  }
+
+  room.world.seq += 1;
+  return true;
+}
+
+function killServerMonster(room, monster, sourceClientId) {
+  if (!room.world.monsters.delete(monster.id)) {
+    return;
+  }
+
+  const killer = room.clients.get(sourceClientId);
+  broadcast(room, {
+    type: "monsterKilled",
+    monster: serializeMonster(monster),
+    sourceId: sourceClientId,
+  });
+
+  if (killer) {
+    rewardServerKill(room, killer, monster);
+  }
+}
+
+function rewardServerKill(room, client, monster) {
+  const profile = serverMonsterProfiles[monster.type] ?? serverMonsterProfiles.zombie;
+  client.state.score = Math.max(0, Math.floor(client.state.score + monster.score));
+  client.state.kills = Math.max(0, Math.floor(client.state.kills + 1));
+  const leaderboardChanged = updatePlayerHistory(client, "playing");
+  sendJson(client, {
+    type: "playerReward",
+    monster: serializeMonster(monster),
+    scoreDelta: monster.score,
+    killsDelta: 1,
+    xp: monster.xp,
+    totalScore: client.state.score,
+    totalKills: client.state.kills,
+    boss: Boolean(profile.boss),
+  });
+  broadcast(room, { type: "playerState", id: client.id, state: client.state });
+  if (leaderboardChanged) {
+    broadcastLeaderboard(room);
+  }
+}
+
+function damageServerPlayer(room, client, amount) {
+  const previousState = client.state.state;
+  const damage = Math.ceil(clampNumber(amount, 0, 120, 0));
+  if (damage <= 0 || client.state.state !== "playing" || client.state.health <= 0) {
+    return;
+  }
+
+  client.state.health = Math.max(0, client.state.health - damage);
+  if (client.state.health <= 0) {
+    client.state.state = "dead";
+  }
+  const leaderboardChanged = updatePlayerHistory(client, previousState);
+
+  broadcast(room, {
+    type: "playerDamaged",
+    id: client.id,
+    amount: damage,
+    sourceId: "world",
+    state: client.state,
+  });
+
+  if (leaderboardChanged) {
+    broadcastLeaderboard(room);
+  }
+}
+
+function broadcastWorldState(room) {
+  room.world.lastBroadcastAt = Date.now();
+  broadcast(room, { type: "worldState", world: getWorldSnapshot(room) });
+}
+
+function getWorldSnapshot(room) {
+  const world = room.world;
+  return {
+    seq: world.seq,
+    serverTime: Date.now(),
+    wave: world.wave,
+    zombiesToSpawn: world.zombiesToSpawn,
+    monsters: [...world.monsters.values()].map(serializeMonster),
+    projectiles: [...world.projectiles.values()].map(serializeProjectile),
+  };
+}
+
+function serializeMonster(monster) {
+  return {
+    id: monster.id,
+    type: monster.type,
+    eliteType: monster.eliteType,
+    x: Number(monster.x.toFixed(3)),
+    z: Number(monster.z.toFixed(3)),
+    rotation: Number(monster.rotation.toFixed(4)),
+    health: Math.max(0, Number(monster.health.toFixed(2))),
+    maxHealth: Number(monster.maxHealth.toFixed(2)),
+  };
+}
+
+function serializeProjectile(projectile) {
+  return {
+    id: projectile.id,
+    sourceType: projectile.sourceType,
+    x: Number(projectile.x.toFixed(3)),
+    z: Number(projectile.z.toFixed(3)),
+    y: Number(projectile.y.toFixed(3)),
+    rotation: Number(projectile.rotation.toFixed(4)),
+  };
+}
+
+function getServerMonsterTarget(monster, clients) {
+  let bestClient = null;
+  let bestScore = Infinity;
+  for (const client of clients) {
+    const score = distanceSq(monster.x, monster.z, client.state.x, client.state.z) * (client.id === monster.bossTargetId ? 0.84 : 1);
+    if (score < bestScore) {
+      bestScore = score;
+      bestClient = client;
+    }
+  }
+  monster.bossTargetId = bestClient?.id ?? null;
+  return bestClient;
+}
+
+function getServerDifficultyScale(world) {
+  const wave = Math.max(1, world.wave);
+  const lateWave = Math.max(0, wave - 8);
+  const bossPressure = wave >= 20 ? 1.2 : wave >= 10 ? 0.55 : 0;
+  return {
+    health: 1.08 + wave * 0.12 + Math.pow(lateWave, 1.22) * 0.11 + Math.min(1.35, world.survivalTime / 210) + bossPressure,
+    damage: 0.98 + wave * 0.075 + Math.max(0, wave - 10) * 0.075 + Math.min(1, world.survivalTime / 285) + bossPressure * 0.42,
+    speed: 1 + Math.min(0.3, wave * 0.008),
+  };
+}
+
+function getServerMonsterBalanceModifiers(type, profile, world) {
+  if (!profile.boss) {
+    return { health: 1, damage: 1, speed: 1 };
+  }
+  if (profile.milestoneBoss) {
+    if (type === "angelSheep") return { health: 0.78, damage: 0.62, speed: 0.92 };
+    if (type === "bloodCow") return { health: 0.86, damage: 0.74, speed: 0.94 };
+    return { health: 0.9, damage: 0.78, speed: 0.96 };
+  }
+  if (world.wave <= 6) return { health: 0.68, damage: 0.58, speed: 0.9 };
+  if (world.wave <= 9) return { health: 0.78, damage: 0.68, speed: 0.94 };
+  if (world.wave <= 14) return { health: 0.88, damage: 0.78, speed: 0.97 };
+  return { health: 0.98, damage: 0.88, speed: 1 };
+}
+
+function rollServerEliteType(world, type) {
+  if (world.wave < 6 || serverCowMonsterTypes.has(type) && world.wave < 10) {
+    return null;
+  }
+  const chance = Math.min(0.42, 0.045 + (world.wave - 6) * 0.017 + world.survivalTime * 0.0005);
+  if (Math.random() > chance) {
+    return null;
+  }
+  const eliteTypes = Object.keys(serverEliteProfiles);
+  return eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
+}
+
+function pickServerMonsterType(world) {
+  if (world.wave >= 10 && world.wave <= 14) {
+    return pickWeighted({ cowWalker: 1.15, cowCharger: Math.min(0.65 + world.wave * 0.03, 1.15), cowBrute: Math.min(0.28 + world.wave * 0.025, 0.7) });
+  }
+
+  const weights = { zombie: 1 };
+  for (const [type, profile] of Object.entries(serverMonsterProfiles)) {
+    if (profile.milestoneBoss || serverCowMonsterTypes.has(type) || world.wave < profile.minWave) {
+      continue;
+    }
+    weights[type] = {
+      runner: Math.min(0.35 + world.wave * 0.08 + world.survivalTime * 0.004, 1.35),
+      brute: Math.min(0.2 + world.wave * 0.045 + world.survivalTime * 0.002, 0.85),
+      caster: Math.min(0.18 + world.wave * 0.04 + world.survivalTime * 0.002, 0.75),
+      visor: Math.min(0.018 + world.survivalTime * 0.00055 + world.wave * 0.0035, 0.085),
+      himetrica: Math.min(0.015 + world.survivalTime * 0.0005 + world.wave * 0.003, 0.075),
+      dinzo: Math.min(0.017 + world.survivalTime * 0.00055 + world.wave * 0.0032, 0.08),
+      gitcity: Math.min(0.011 + world.survivalTime * 0.00042 + world.wave * 0.0026, 0.06),
+      sofra: Math.min(0.008 + world.survivalTime * 0.00035 + world.wave * 0.0022, 0.045),
+    }[type] ?? 0.02;
+  }
+  return pickWeighted(weights);
+}
+
+function pickWeighted(weights) {
+  const entries = Object.entries(weights);
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = Math.random() * total;
+  for (const [type, weight] of entries) {
+    roll -= weight;
+    if (roll <= 0) return type;
+  }
+  return entries[0]?.[0] ?? "zombie";
+}
+
+function getServerSpawnInterval(world) {
+  const wavePressure = Math.min(0.66, world.wave * 0.043 + Math.max(0, world.wave - 10) * 0.017);
+  const timePressure = Math.min(0.22, world.survivalTime * 0.0045);
+  return Math.max(0.05, 0.7 - wavePressure - timePressure);
+}
+
+function getServerRangedCooldown(type) {
+  if (serverMonsterProfiles[type]?.boss) {
+    return type === "plumaFinance" ? 1.25 : type === "gitcity" ? 1.45 : 1.1;
+  }
+  return 1.65;
+}
+
+function getServerProjectileSpec(type) {
+  if (type === "plumaFinance") return { speed: 7.5, radius: 0.55, height: 1.05, impactRadius: 2.8, lifespan: 5.2, homing: true };
+  if (type === "gitcity") return { speed: 17, radius: 0.28, height: 1.45, impactRadius: 1.8, lifespan: 4, homing: false };
+  if (type === "angelSheep") return { speed: 14, radius: 0.3, height: 1.4, impactRadius: 1.5, lifespan: 3.8, homing: false };
+  return { speed: serverMonsterProfiles[type]?.boss ? 13 : 11, radius: 0.36, height: 1.05, impactRadius: 2.2, lifespan: 4.2, homing: type === "visor" || type === "plumaFinance" };
+}
+
+function getProjectileSpeed(projectile) {
+  return Math.max(1, Math.hypot(projectile.vx, projectile.vz));
+}
+
+function normalize2(x, z) {
+  const length = Math.hypot(Number(x) || 0, Number(z) || 0);
+  if (length <= 0.001) {
+    return { x: 0, z: -1 };
+  }
+  return { x: x / length, z: z / length };
+}
+
+function distanceSq(firstX, firstZ, secondX, secondZ) {
+  const dx = firstX - secondX;
+  const dz = firstZ - secondZ;
+  return dx * dx + dz * dz;
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -761,6 +1451,7 @@ function finishPlayerSession(client) {
   client.sessionBestWave = 1;
   client.sessionBestLevel = 1;
   client.sessionBestBuild = [];
+  liveLeaderboardRuns.delete(getPlayerRecordKey(client.name));
   markLeaderboardChanged();
   return true;
 }
@@ -808,8 +1499,51 @@ function recordSoloLeaderboardSession(data) {
     endedAt,
   });
   leaderboardStore.sessions = leaderboardStore.sessions.slice(-historyLimit);
+  liveLeaderboardRuns.delete(getPlayerRecordKey(name));
   markLeaderboardChanged();
   return getLeaderboardSnapshot();
+}
+
+function recordLiveLeaderboardState(data) {
+  const name = sanitizePlayerName(data?.name);
+  const key = getPlayerRecordKey(name);
+  const state = String(data?.state || "playing");
+  const score = Math.max(0, Math.floor(clampNumber(data?.score, 0, 999_999, 0)));
+
+  if (state !== "playing") {
+    liveLeaderboardRuns.delete(key);
+    return false;
+  }
+
+  const kills = Math.max(0, Math.floor(clampNumber(data?.kills, 0, 999_999, 0)));
+  const wave = Math.max(1, Math.floor(clampNumber(data?.wave, 1, 999, 1)));
+  const level = Math.max(1, Math.floor(clampNumber(data?.level ?? data?.bestLevel, 1, 999, 1)));
+  const bestLevel = Math.max(level, Math.floor(clampNumber(data?.bestLevel ?? level, level, 999, level)));
+  const durationMs = Math.max(0, Math.floor(clampNumber(data?.durationMs, 0, 86_400_000, 0)));
+  const build = normalizeBuildSummary(data?.build);
+
+  liveLeaderboardRuns.set(key, {
+    name,
+    score,
+    kills,
+    wave,
+    level,
+    bestLevel,
+    build,
+    durationMs,
+    updatedAt: Date.now(),
+  });
+  return true;
+}
+
+function pruneLiveLeaderboardRuns() {
+  const expiresBefore = Date.now() - liveLeaderboardTtlMs;
+
+  for (const [key, run] of liveLeaderboardRuns.entries()) {
+    if (!run.updatedAt || run.updatedAt < expiresBefore) {
+      liveLeaderboardRuns.delete(key);
+    }
+  }
 }
 
 function getOrCreatePlayerRecord(name) {
@@ -878,6 +1612,8 @@ function getPlayerRecordKey(name) {
 }
 
 function getLeaderboardSnapshot() {
+  pruneLiveLeaderboardRuns();
+
   const visibleRecords = Object.values(leaderboardStore.players).filter(isLeaderboardRecordVisible);
   const players = visibleRecords
     .sort(
@@ -923,12 +1659,35 @@ function getLeaderboardSnapshot() {
       durationMs: session.durationMs,
       endedAt: session.endedAt,
     }));
+  const livePlayers = [...liveLeaderboardRuns.values()]
+    .sort(
+      (first, second) =>
+        second.score - first.score ||
+        second.kills - first.kills ||
+        second.level - first.level ||
+        second.wave - first.wave ||
+        first.updatedAt - second.updatedAt,
+    )
+    .slice(0, liveLeaderboardLimit)
+    .map((run, index) => ({
+      rank: index + 1,
+      name: run.name,
+      score: run.score,
+      kills: Math.max(0, Math.floor(Number(run.kills) || 0)),
+      wave: run.wave,
+      level: Math.max(1, Math.floor(Number(run.level) || 1)),
+      bestLevel: Math.max(1, Math.floor(Number(run.bestLevel) || 1)),
+      build: normalizeBuildSummary(run.build),
+      durationMs: Math.max(0, Math.floor(Number(run.durationMs) || 0)),
+      updatedAt: new Date(run.updatedAt).toISOString(),
+    }));
 
   return {
     generatedAt: new Date().toISOString(),
     totalPlayers: visibleRecords.length,
     players,
     recentSessions,
+    livePlayers,
   };
 }
 
@@ -940,6 +1699,8 @@ function isLeaderboardRecordVisible(record) {
 }
 
 async function refreshLeaderboardForRead() {
+  pruneLiveLeaderboardRuns();
+
   if (leaderboardBackend !== "supabase") {
     return;
   }
@@ -1256,3 +2017,5 @@ setInterval(() => {
     }
   }
 }, 15_000).unref();
+
+setInterval(updateRoomWorlds, serverWorldTickMs).unref();

@@ -50,7 +50,7 @@ Sem essas variaveis, o jogo continua usando `.data/leaderboard.json` localmente.
 - A `Lâmina Guardiã` ataca sozinha o inimigo mais proximo.
 - Cristais de XP dropam dos monstros; colete para subir de nivel.
 - Ao subir de nivel, escolha upgrades com `1`, `2` ou `3` enquanto o jogo continua.
-- Upgrades melhoram dano, cadencia, area, velocidade, coleta, vida, projeteis extras e novas armas automaticas.
+- Upgrades melhoram dano, attack speed, area, velocidade, coleta, vida, projeteis extras e novas armas automaticas.
 - `Enter` inicia ou reinicia.
 - Pegue itens brilhantes no mapa para trocar de arma por alguns segundos.
 - O lanca-chamas queima em cone enquanto voce segura o tiro.

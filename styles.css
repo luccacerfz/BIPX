@@ -374,6 +374,10 @@ button {
   background: color-mix(in srgb, var(--party-color) 18%, rgba(255, 255, 255, 0.04));
 }
 
+.leaderboard-list li.leaderboard-list__item--live:not(.leaderboard-list__item--local) {
+  background: rgba(142, 241, 81, 0.07);
+}
+
 .leaderboard-list li.leaderboard-list__item--dead {
   opacity: 0.62;
 }
