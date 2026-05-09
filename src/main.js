@@ -9970,12 +9970,12 @@ function renderMenuLeaderboard(leaders) {
       const avatar = getLeaderboardAvatar(leader);
       const bestScore = Math.floor(Number(leader.bestScore) || 0);
       const totalScore = Math.max(bestScore, Math.floor(Number(leader.totalScore) || 0));
-      const kills = Math.max(
+      const recordedKills = Math.max(
         Math.floor(Number(leader.totalKills) || 0),
         Math.floor(Number(leader.bestKills) || 0),
         Math.floor(Number(leader.lastKills) || 0),
-        Math.floor(bestScore / 12),
       );
+      const kills = recordedKills > 0 ? recordedKills : Math.floor(bestScore / 12);
       const totalPlayMs = Math.max(0, Math.floor(Number(leader.totalPlayMs) || 0));
       const gamesPlayed = Math.max(0, Math.floor(Number(leader.gamesPlayed) || 0));
       const bestLevel = Math.floor(Number(leader.bestLevel) || 1);

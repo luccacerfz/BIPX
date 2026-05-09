@@ -19,6 +19,7 @@ const historyLimit = 120;
 const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const leaderboardBackend = supabaseUrl && supabaseServiceRoleKey ? "supabase" : "file";
+const leaderboardBuildMetaPrefix = "__bipx:";
 const rooms = new Map();
 const leaderboardStore = {
   players: {},
@@ -56,6 +57,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    await refreshLeaderboardForRead();
     response.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
@@ -82,6 +84,7 @@ const server = http.createServer(async (request, response) => {
     try {
       const session = await readJsonBody(request);
       const leaderboard = recordSoloLeaderboardSession(session);
+      await flushLeaderboardSave();
       response.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": "no-store",
@@ -436,6 +439,50 @@ function normalizeBuildSummary(build) {
     .slice(0, 8);
 }
 
+function encodeBuildForStorage(build, metadata = {}) {
+  const cleanBuild = normalizeBuildSummary(build).filter((item) => !item.startsWith(leaderboardBuildMetaPrefix));
+  const metadataParts = [];
+  const kills = Math.max(0, Math.floor(Number(metadata.kills) || 0));
+  const totalKills = Math.max(0, Math.floor(Number(metadata.totalKills) || 0));
+
+  if (kills > 0) {
+    metadataParts.push(`k=${kills}`);
+  }
+
+  if (totalKills > 0) {
+    metadataParts.push(`t=${totalKills}`);
+  }
+
+  const metadataItems = metadataParts.length > 0 ? [`${leaderboardBuildMetaPrefix}${metadataParts.join(",")}`] : [];
+  return [...cleanBuild.slice(0, 8 - metadataItems.length), ...metadataItems];
+}
+
+function decodeStoredBuild(build) {
+  const cleanBuild = [];
+  const metadata = {};
+
+  for (const item of normalizeBuildSummary(build)) {
+    if (!item.startsWith(leaderboardBuildMetaPrefix)) {
+      cleanBuild.push(item);
+      continue;
+    }
+
+    const payload = item.slice(leaderboardBuildMetaPrefix.length);
+    for (const pair of payload.split(",")) {
+      const [key, rawValue] = pair.split("=");
+      const value = Math.max(0, Math.floor(Number(rawValue) || 0));
+      if (key === "k") {
+        metadata.kills = Math.max(metadata.kills || 0, value);
+      }
+      if (key === "t") {
+        metadata.totalKills = Math.max(metadata.totalKills || 0, value);
+      }
+    }
+  }
+
+  return { build: cleanBuild.slice(0, 8), metadata };
+}
+
 function normalizeAttack(attack, fallbackState) {
   return {
     kind: typeof attack?.kind === "string" ? attack.kind.slice(0, 24) : "pistol",
@@ -532,8 +579,36 @@ async function loadLeaderboardFromSupabase() {
       players.map((row) => [row.player_key, mapLeaderboardPlayerFromRow(row)]),
     );
     leaderboardStore.sessions = sessions.reverse().map(mapLeaderboardSessionFromRow);
+    hydrateLeaderboardKillsFromSessions();
   } catch (error) {
     console.warn(`Could not load Supabase leaderboard: ${error.message}`);
+  }
+}
+
+function hydrateLeaderboardKillsFromSessions() {
+  const statsByPlayer = new Map();
+
+  for (const session of leaderboardStore.sessions) {
+    const key = getPlayerRecordKey(session.name);
+    const stats = statsByPlayer.get(key) || { totalKills: 0, bestKills: 0, lastKills: 0, lastEndedAt: "" };
+    stats.totalKills += Math.max(0, Math.floor(Number(session.kills) || 0));
+    stats.bestKills = Math.max(stats.bestKills, Math.max(0, Math.floor(Number(session.kills) || 0)));
+    if (!stats.lastEndedAt || String(session.endedAt || "") > stats.lastEndedAt) {
+      stats.lastEndedAt = String(session.endedAt || "");
+      stats.lastKills = Math.max(0, Math.floor(Number(session.kills) || 0));
+    }
+    statsByPlayer.set(key, stats);
+  }
+
+  for (const [key, stats] of statsByPlayer.entries()) {
+    const record = leaderboardStore.players[key];
+    if (!record) {
+      continue;
+    }
+
+    record.totalKills = Math.max(record.totalKills || 0, stats.totalKills);
+    record.bestKills = Math.max(record.bestKills || 0, stats.bestKills);
+    record.lastKills = Math.max(record.lastKills || 0, stats.lastKills);
   }
 }
 
@@ -857,6 +932,27 @@ function getLeaderboardSnapshot() {
   };
 }
 
+async function refreshLeaderboardForRead() {
+  if (leaderboardBackend !== "supabase") {
+    return;
+  }
+
+  if (saveLeaderboardTimer) {
+    await flushLeaderboardSave();
+  }
+
+  await loadLeaderboardFromSupabase();
+}
+
+async function flushLeaderboardSave() {
+  if (saveLeaderboardTimer) {
+    clearTimeout(saveLeaderboardTimer);
+    saveLeaderboardTimer = null;
+  }
+
+  await saveLeaderboard();
+}
+
 function broadcastLeaderboard(room) {
   broadcast(room, {
     type: "leaderboard",
@@ -988,22 +1084,42 @@ function unquoteEnvValue(value) {
 }
 
 function mapLeaderboardPlayerFromRow(row) {
+  const bestBuildData = decodeStoredBuild(row.best_build);
+  const lastBuildData = decodeStoredBuild(row.last_build);
+  const totalKills = Math.max(
+    0,
+    Math.floor(Number(row.total_kills) || 0),
+    Math.floor(Number(lastBuildData.metadata.totalKills) || 0),
+  );
+  const lastKills = Math.max(
+    0,
+    Math.floor(Number(row.last_kills) || 0),
+    Math.floor(Number(lastBuildData.metadata.kills) || 0),
+  );
+  const bestKills = Math.max(
+    0,
+    Math.floor(Number(row.best_kills) || 0),
+    Math.floor(Number(bestBuildData.metadata.kills) || 0),
+    totalKills,
+    lastKills,
+  );
+
   return {
     name: sanitizePlayerName(row.name),
     bestScore: Math.max(0, Math.floor(Number(row.best_score) || 0)),
-    bestKills: Math.max(0, Math.floor(Number(row.best_kills) || 0)),
+    bestKills,
     bestWave: Math.max(1, Math.floor(Number(row.best_wave) || 1)),
     bestLevel: Math.max(1, Math.floor(Number(row.best_level) || 1)),
-    bestBuild: normalizeBuildSummary(row.best_build),
+    bestBuild: bestBuildData.build,
     gamesPlayed: Math.max(0, Math.floor(Number(row.games_played) || 0)),
     totalScore: Math.max(0, Math.floor(Number(row.total_score) || 0)),
-    totalKills: Math.max(0, Math.floor(Number(row.total_kills) || 0)),
+    totalKills,
     totalPlayMs: Math.max(0, Math.floor(Number(row.total_play_ms) || 0)),
     lastScore: Math.max(0, Math.floor(Number(row.last_score) || 0)),
-    lastKills: Math.max(0, Math.floor(Number(row.last_kills) || 0)),
+    lastKills,
     lastWave: Math.max(1, Math.floor(Number(row.last_wave) || 1)),
     lastLevel: Math.max(1, Math.floor(Number(row.last_level) || 1)),
-    lastBuild: normalizeBuildSummary(row.last_build),
+    lastBuild: lastBuildData.build,
     firstSeenAt: row.first_seen_at || new Date().toISOString(),
     lastSeenAt: row.last_seen_at || new Date().toISOString(),
   };
@@ -1014,33 +1130,31 @@ function mapLeaderboardPlayerToRow(playerKey, record) {
     player_key: playerKey,
     name: sanitizePlayerName(record.name),
     best_score: Math.max(0, Math.floor(Number(record.bestScore) || 0)),
-    best_kills: Math.max(0, Math.floor(Number(record.bestKills) || 0)),
     best_wave: Math.max(1, Math.floor(Number(record.bestWave) || 1)),
     best_level: Math.max(1, Math.floor(Number(record.bestLevel) || 1)),
-    best_build: normalizeBuildSummary(record.bestBuild),
+    best_build: encodeBuildForStorage(record.bestBuild, { kills: record.bestKills }),
     games_played: Math.max(0, Math.floor(Number(record.gamesPlayed) || 0)),
     total_score: Math.max(0, Math.floor(Number(record.totalScore) || 0)),
-    total_kills: Math.max(0, Math.floor(Number(record.totalKills) || 0)),
     total_play_ms: Math.max(0, Math.floor(Number(record.totalPlayMs) || 0)),
     last_score: Math.max(0, Math.floor(Number(record.lastScore) || 0)),
-    last_kills: Math.max(0, Math.floor(Number(record.lastKills) || 0)),
     last_wave: Math.max(1, Math.floor(Number(record.lastWave) || 1)),
     last_level: Math.max(1, Math.floor(Number(record.lastLevel) || 1)),
-    last_build: normalizeBuildSummary(record.lastBuild),
+    last_build: encodeBuildForStorage(record.lastBuild, { kills: record.lastKills, totalKills: record.totalKills }),
     first_seen_at: record.firstSeenAt || new Date().toISOString(),
     last_seen_at: record.lastSeenAt || new Date().toISOString(),
   };
 }
 
 function mapLeaderboardSessionFromRow(row) {
+  const buildData = decodeStoredBuild(row.build);
   return {
     id: row.id,
     name: sanitizePlayerName(row.name),
     score: Math.max(0, Math.floor(Number(row.score) || 0)),
-    kills: Math.max(0, Math.floor(Number(row.kills) || 0)),
+    kills: Math.max(0, Math.floor(Number(row.kills) || 0), Math.floor(Number(buildData.metadata.kills) || 0)),
     wave: Math.max(1, Math.floor(Number(row.wave) || 1)),
     level: Math.max(1, Math.floor(Number(row.level) || 1)),
-    build: normalizeBuildSummary(row.build),
+    build: buildData.build,
     durationMs: Math.max(0, Math.floor(Number(row.duration_ms) || 0)),
     endedAt: row.ended_at || new Date().toISOString(),
   };
@@ -1054,10 +1168,9 @@ function mapLeaderboardSessionToRow(session) {
     player_key: getPlayerRecordKey(session.name),
     name: sanitizePlayerName(session.name),
     score: Math.max(0, Math.floor(Number(session.score) || 0)),
-    kills: Math.max(0, Math.floor(Number(session.kills) || 0)),
     wave: Math.max(1, Math.floor(Number(session.wave) || 1)),
     level: Math.max(1, Math.floor(Number(session.level) || 1)),
-    build: normalizeBuildSummary(session.build),
+    build: encodeBuildForStorage(session.build, { kills: session.kills }),
     duration_ms: Math.max(0, Math.floor(Number(session.durationMs) || 0)),
     ended_at: session.endedAt || new Date().toISOString(),
   };
