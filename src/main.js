@@ -1347,6 +1347,9 @@ const multiplayer = {
     totalPlayers: 0,
     players: [],
     recentSessions: [],
+    status: "idle",
+    generatedAt: null,
+    source: null,
   },
   id: null,
   maxPlayers: 4,
@@ -1431,7 +1434,7 @@ if (playerNameInput) {
 }
 updateMultiplayerHud();
 updateLeaderboardHud();
-void loadLeaderboardSnapshot();
+void loadLeaderboardSnapshot({ clearBeforeFetch: true });
 if (multiplayer.enabled) {
   connectMultiplayer();
 }
@@ -1464,8 +1467,7 @@ menuRankingButton?.addEventListener("click", () => {
   message.classList.remove("message--login");
   message.classList.remove("message--game-over");
   message.classList.add("message--ranking");
-  updateLeaderboardHud();
-  void loadLeaderboardSnapshot();
+  void loadLeaderboardSnapshot({ clearBeforeFetch: true });
 });
 
 rankingBackButton?.addEventListener("click", () => {
@@ -1689,11 +1691,16 @@ window.__zombieNightDebug = {
           health: partyPlayer.health,
           score: partyPlayer.score,
         })),
-        leaderboard: multiplayer.leaderboard.players.map((leader) => ({
-          rank: leader.rank,
-          name: leader.name,
-          bestScore: leader.bestScore,
-        })),
+        leaderboard: {
+          source: multiplayer.leaderboard.source || getLeaderboardApiUrl("/api/leaderboard"),
+          status: multiplayer.leaderboard.status || "ready",
+          totalPlayers: multiplayer.leaderboard.totalPlayers,
+          players: multiplayer.leaderboard.players.map((leader) => ({
+            rank: leader.rank,
+            name: leader.name,
+            bestScore: leader.bestScore,
+          })),
+        },
         room: multiplayer.room,
         remotePlayers: remotePlayers.size,
         status: multiplayer.status,
@@ -9802,28 +9809,38 @@ function getPartyPlayers() {
   return partyPlayers.sort((first, second) => second.score - first.score || second.level - first.level || second.health - first.health);
 }
 
-function updateLeaderboard(leaderboard) {
-  if (!leaderboard) {
-    return;
-  }
-
+function updateLeaderboard(leaderboard, status = "ready") {
+  const snapshot = leaderboard || {};
   multiplayer.leaderboard = {
-    totalPlayers: Number(leaderboard.totalPlayers) || 0,
-    players: Array.isArray(leaderboard.players) ? leaderboard.players.slice(0, 10) : [],
-    recentSessions: Array.isArray(leaderboard.recentSessions) ? leaderboard.recentSessions.slice(0, 10) : [],
+    totalPlayers: Number(snapshot.totalPlayers) || 0,
+    players: Array.isArray(snapshot.players) ? snapshot.players.slice(0, 10) : [],
+    recentSessions: Array.isArray(snapshot.recentSessions) ? snapshot.recentSessions.slice(0, 10) : [],
+    status,
+    generatedAt: snapshot.generatedAt || null,
+    source: getLeaderboardApiUrl("/api/leaderboard"),
   };
   updateLeaderboardHud();
 }
 
-async function loadLeaderboardSnapshot() {
+async function loadLeaderboardSnapshot({ clearBeforeFetch = false } = {}) {
+  if (clearBeforeFetch) {
+    updateLeaderboard(null, "loading");
+  }
+
   try {
     const response = await fetch(getLeaderboardApiUrl("/api/leaderboard"), { cache: "no-store" });
     if (!response.ok) {
+      if (clearBeforeFetch) {
+        updateLeaderboard(null, "error");
+      }
       return;
     }
 
     updateLeaderboard(await response.json());
   } catch {
+    if (clearBeforeFetch) {
+      updateLeaderboard(null, "error");
+    }
   }
 }
 
@@ -9891,31 +9908,38 @@ function getExplicitWebsocketOrigin() {
 function updateLeaderboardHud() {
   const leaders = multiplayer.leaderboard.players;
   const totalPlayers = multiplayer.leaderboard.totalPlayers;
+  const status = multiplayer.leaderboard.status || "ready";
 
   if (leaderboardCountElement) {
-    leaderboardCountElement.textContent = `${totalPlayers} players`;
+    leaderboardCountElement.textContent = status === "loading" ? "atualizando" : `${totalPlayers} players`;
   }
 
   if (leaderboardListElement) {
-    renderCompactLeaderboard(leaders);
+    renderCompactLeaderboard(leaders, status);
   }
 
   if (menuLeaderboardCountElement) {
-    menuLeaderboardCountElement.textContent = `${totalPlayers} jogadores`;
+    menuLeaderboardCountElement.textContent = status === "loading" ? "atualizando" : `${totalPlayers} jogadores`;
   }
 
   if (menuLeaderboardListElement) {
-    renderMenuLeaderboard(leaders);
+    renderMenuLeaderboard(leaders, status);
   }
 }
 
-function renderCompactLeaderboard(leaders) {
+function renderCompactLeaderboard(leaders, status = "ready") {
   if (leaders.length === 0) {
+    const copy =
+      status === "loading"
+        ? { title: "Atualizando ranking...", meta: "sync" }
+        : status === "error"
+          ? { title: "Ranking indisponível", meta: "offline" }
+          : { title: "Ranking zerado", meta: "jogue" };
     leaderboardListElement.innerHTML = `
       <li>
         <span class="leaderboard-list__rank">–</span>
-        <span>Nenhum historico ainda</span>
-        <span class="leaderboard-list__meta">jogue</span>
+        <span>${copy.title}</span>
+        <span class="leaderboard-list__meta">${copy.meta}</span>
       </li>
     `;
     return;
@@ -9939,10 +9963,28 @@ function renderCompactLeaderboard(leaders) {
     .join("");
 }
 
-function renderMenuLeaderboard(leaders) {
+function renderMenuLeaderboard(leaders, status = "ready") {
   if (leaders.length === 0) {
+    const copy =
+      status === "loading"
+        ? {
+            title: "Atualizando ranking",
+            subtitle: "buscando dados atuais no servidor",
+            perk: "sincronizando",
+          }
+        : status === "error"
+          ? {
+              title: "Ranking indisponível",
+              subtitle: "não consegui carregar agora",
+              perk: "offline",
+            }
+          : {
+              title: "Ranking zerado",
+              subtitle: "novas partidas desta versão aparecerão aqui",
+              perk: "sem registros",
+            };
     menuLeaderboardListElement.innerHTML = `
-      <li>
+      <li class="main-menu__ranking-empty">
         <span class="menu-rank">–</span>
         <span class="menu-player">
           <span class="menu-player__avatar" data-tier="bronze" title="Bronze">
@@ -9950,15 +9992,15 @@ function renderMenuLeaderboard(leaders) {
             <span class="menu-player__avatar-rank">BR</span>
           </span>
           <span class="menu-player__name">
-            <strong>Nenhum jogador ainda</strong>
-            <small>jogue uma partida para gravar</small>
+            <strong>${copy.title}</strong>
+            <small>${copy.subtitle}</small>
           </span>
         </span>
-        <span class="menu-stat">0<small>zumbis</small></span>
-        <span class="menu-stat">Nv 0<small>level</small></span>
-        <span class="menu-stat">0<small>pontuação</small></span>
-        <span class="menu-stat">0:00<small>tempo</small></span>
-        <span class="menu-perks"><span class="menu-perk menu-perk--empty">sem perks</span></span>
+        <span class="menu-stat">—<small>zumbis</small></span>
+        <span class="menu-stat">—<small>level</small></span>
+        <span class="menu-stat">—<small>pontuação</small></span>
+        <span class="menu-stat">—<small>tempo</small></span>
+        <span class="menu-perks"><span class="menu-perk menu-perk--empty">${copy.perk}</span></span>
       </li>
     `;
     return;

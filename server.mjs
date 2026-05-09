@@ -631,8 +631,7 @@ function recordPlayerSeen(client, force = false) {
 
 function updatePlayerHistory(client, previousState) {
   const state = client.state;
-  const shouldTrackPlayer =
-    state.state === "playing" || previousState === "playing" || state.score > 0 || state.wave > 1 || state.level > 1;
+  const shouldTrackPlayer = state.state === "playing" || previousState === "playing";
 
   if (!shouldTrackPlayer) {
     return false;
@@ -879,7 +878,8 @@ function getPlayerRecordKey(name) {
 }
 
 function getLeaderboardSnapshot() {
-  const players = Object.values(leaderboardStore.players)
+  const visibleRecords = Object.values(leaderboardStore.players).filter(isLeaderboardRecordVisible);
+  const players = visibleRecords
     .sort(
       (first, second) =>
         second.totalScore - first.totalScore ||
@@ -926,10 +926,17 @@ function getLeaderboardSnapshot() {
 
   return {
     generatedAt: new Date().toISOString(),
-    totalPlayers: Object.keys(leaderboardStore.players).length,
+    totalPlayers: visibleRecords.length,
     players,
     recentSessions,
   };
+}
+
+function isLeaderboardRecordVisible(record) {
+  return (
+    Math.max(0, Math.floor(Number(record.gamesPlayed) || 0)) > 0 ||
+    Math.max(0, Math.floor(Number(record.totalPlayMs) || 0)) > 0
+  );
 }
 
 async function refreshLeaderboardForRead() {

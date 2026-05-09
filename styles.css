@@ -835,6 +835,11 @@ body:has(.message:not(.is-hidden)) .touch-controls {
   background: rgba(23, 35, 52, 0.9);
 }
 
+.main-menu__ranking-empty .menu-stat,
+.main-menu__ranking-empty .menu-perks {
+  opacity: 0.62;
+}
+
 .menu-rank {
   color: var(--amber);
   font-size: 1.08rem;
