@@ -692,6 +692,7 @@ const spatialGrid = {
   pointCandidatesNested: [],
   radiusCandidates: [],
   separationCandidates: [],
+  crowdCandidates: [],
   pointQueryActive: false,
 };
 
@@ -7295,6 +7296,8 @@ function updateZombies(dt) {
   }
 
   spatialGrid.dirty = true;
+  resolveEnemyCrowding();
+  spatialGrid.dirty = true;
 }
 
 function getZombieCrowdAwareMoveDirection(zombie, targetDirection, targetDistance) {
@@ -7370,9 +7373,115 @@ function shouldQueryZombieSeparation(zombie, targetDistance) {
 }
 
 function addZombieLaneOffset(zombie, targetDirection, moveDirection, amount) {
-  const laneSide = zombie.id % 2 === 0 ? 1 : -1;
-  moveDirection.x += targetDirection.z * laneSide * amount;
-  moveDirection.z -= targetDirection.x * laneSide * amount;
+  const laneIndex = zombie.id % 7 - 3;
+  const laneSide = laneIndex === 0 ? (zombie.id % 2 === 0 ? 1 : -1) : Math.sign(laneIndex);
+  const laneStrength = amount * (0.35 + Math.abs(laneIndex) * 0.28);
+  moveDirection.x += targetDirection.z * laneSide * laneStrength;
+  moveDirection.z -= targetDirection.x * laneSide * laneStrength;
+}
+
+function resolveEnemyCrowding() {
+  if (zombies.length < 2) {
+    return;
+  }
+
+  spatialGrid.dirty = true;
+  ensureSpatialGrid();
+  const frame = monsterRenderer.frame || 0;
+
+  for (const zombie of zombies) {
+    if (!shouldResolveEnemyCrowding(zombie, frame)) {
+      continue;
+    }
+
+    const profile = monsterProfiles[zombie.type] ?? {};
+    const isBoss = Boolean(profile.boss);
+    const queryRadius = isBoss ? Math.max(5.2, zombie.radius + 3.2) : Math.max(2.4, zombie.radius + 1.8);
+    const candidates = queryZombiesNear(zombie.mesh.position, queryRadius, spatialGrid.crowdCandidates);
+    let pushX = 0;
+    let pushZ = 0;
+    let pushes = 0;
+
+    for (const neighbor of candidates) {
+      if (neighbor === zombie) {
+        continue;
+      }
+
+      const neighborProfile = monsterProfiles[neighbor.type] ?? {};
+      const neighborIsBoss = Boolean(neighborProfile.boss);
+      const offsetX = zombie.mesh.position.x - neighbor.mesh.position.x;
+      const offsetZ = zombie.mesh.position.z - neighbor.mesh.position.z;
+      let distanceSq = offsetX * offsetX + offsetZ * offsetZ;
+      let directionX = offsetX;
+      let directionZ = offsetZ;
+
+      if (distanceSq <= 0.0001) {
+        const angle = ((zombie.id * 37 + neighbor.id * 17) % 360) * THREE.MathUtils.DEG2RAD;
+        directionX = Math.cos(angle);
+        directionZ = Math.sin(angle);
+        distanceSq = 0.0001;
+      }
+
+      const distance = Math.sqrt(distanceSq);
+      const desiredDistance = getEnemyCrowdDistance(zombie, neighbor, isBoss, neighborIsBoss);
+      if (distance >= desiredDistance) {
+        continue;
+      }
+
+      const force = ((desiredDistance - distance) / desiredDistance) * (isBoss || neighborIsBoss ? 1.65 : 1.15);
+      pushX += (directionX / distance) * force;
+      pushZ += (directionZ / distance) * force;
+      pushes += 1;
+
+      if (pushes >= (isBoss ? 12 : 8)) {
+        break;
+      }
+    }
+
+    if (pushes === 0) {
+      continue;
+    }
+
+    const pushLength = Math.hypot(pushX, pushZ);
+    if (pushLength <= 0.0001) {
+      continue;
+    }
+
+    const maxPush = isBoss ? 0.42 : 0.26;
+    const pushAmount = Math.min(maxPush, pushLength * (isBoss ? 0.16 : 0.11));
+    zombie.mesh.position.x = clamp(zombie.mesh.position.x + (pushX / pushLength) * pushAmount, -worldLimit + 2.2, worldLimit - 2.2);
+    zombie.mesh.position.z = clamp(zombie.mesh.position.z + (pushZ / pushLength) * pushAmount, -worldLimit + 2.2, worldLimit - 2.2);
+  }
+}
+
+function shouldResolveEnemyCrowding(zombie, frame) {
+  const isBoss = Boolean(monsterProfiles[zombie.type]?.boss);
+  if (isBoss) {
+    return true;
+  }
+
+  if (zombies.length > 320) {
+    return zombie.id % 5 === frame % 5;
+  }
+
+  if (zombies.length > 180) {
+    return zombie.id % 3 === frame % 3;
+  }
+
+  return true;
+}
+
+function getEnemyCrowdDistance(zombie, neighbor, isBoss, neighborIsBoss) {
+  const baseDistance = zombie.radius + neighbor.radius + 0.55;
+  if (isBoss && neighborIsBoss) {
+    return baseDistance + 3.2;
+  }
+
+  if (isBoss || neighborIsBoss) {
+    return baseDistance + 1.9;
+  }
+
+  return baseDistance;
 }
 
 function getBossPlayerTarget(zombie, dt) {
