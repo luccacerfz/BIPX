@@ -18,6 +18,11 @@ try {
   const initialAudio = await page.evaluate(() => window.__zombieNightDebug.getAudioState());
   const toggledAudio = await page.evaluate(() => window.__zombieNightDebug.toggleMute());
   const restoredAudio = await page.evaluate(() => window.__zombieNightDebug.toggleMute());
+  const leaderboardHeaders = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(".main-menu__ranking-row--head span")).map((element) =>
+      element.textContent.trim(),
+    ),
+  );
 
   await page.keyboard.down("w");
   await page.waitForTimeout(450);
@@ -170,6 +175,8 @@ try {
   assert(typeof initialAudio.muted === "boolean", "audio debug state did not expose mute flag");
   assert(toggledAudio.muted !== initialAudio.muted, "audio mute toggle did not change state");
   assert(restoredAudio.muted === initialAudio.muted, "audio mute toggle did not restore state");
+  assert(leaderboardHeaders.includes("Level"), "leaderboard header did not include Level column");
+  assert(leaderboardHeaders.includes("Pontuação"), "leaderboard header did not include score column");
   assert(initial.wave >= 1, "wave did not start");
   assert(initial.zombies >= 1, "zombies did not spawn");
   assert(initial.powerups === 0, "weapon powerups spawned without kills");
@@ -240,6 +247,7 @@ try {
         initialAudio,
         toggledAudio,
         restoredAudio,
+        leaderboardHeaders,
         moved,
         fired,
         beforeAutoWeapon,

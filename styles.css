@@ -796,10 +796,10 @@ body:has(.message:not(.is-hidden)) .touch-controls {
 .main-menu__ranking-row,
 .main-menu__ranking-list li {
   display: grid;
-  grid-template-columns: 70px minmax(250px, 1.1fr) 150px 150px minmax(360px, 1.3fr);
+  grid-template-columns: 70px minmax(250px, 1.05fr) 130px 110px 140px 140px minmax(300px, 1.25fr);
   align-items: center;
   gap: 18px;
-  min-width: 1060px;
+  min-width: 1240px;
 }
 
 .main-menu__ranking-row--head {
@@ -1515,9 +1515,9 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel {
 
   .main-menu__ranking-row,
   .main-menu__ranking-list li {
-    grid-template-columns: 42px minmax(160px, 1fr) 82px 82px minmax(190px, 0.9fr);
+    grid-template-columns: 42px minmax(150px, 1fr) 76px 68px 88px 82px minmax(170px, 0.9fr);
     gap: 10px;
-    min-width: 640px;
+    min-width: 770px;
   }
 
   .main-menu__ranking-row--head {

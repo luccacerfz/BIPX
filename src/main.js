@@ -7861,6 +7861,8 @@ function renderMenuLeaderboard(leaders) {
           </span>
         </span>
         <span class="menu-stat">0<small>zumbis</small></span>
+        <span class="menu-stat">Nv 0<small>level</small></span>
+        <span class="menu-stat">0<small>pontuação</small></span>
         <span class="menu-stat">0:00<small>tempo</small></span>
         <span class="menu-perks"><span class="menu-perk menu-perk--empty">sem perks</span></span>
       </li>
@@ -7891,10 +7893,12 @@ function renderMenuLeaderboard(leaders) {
             <span class="menu-player__avatar" data-tier="${avatar.tier}" title="${gamesPlayed} partidas">${avatar.glyph}</span>
             <span class="menu-player__name">
               <strong>${escapeHtml(leader.name)}</strong>
-              <small>${gamesPlayed} ${gamesPlayed === 1 ? "partida" : "partidas"} · Nv${bestLevel} · O${bestWave}</small>
+              <small>${gamesPlayed} ${gamesPlayed === 1 ? "partida" : "partidas"} · O${bestWave}</small>
             </span>
           </span>
           <span class="menu-stat">${formatHudNumber(kills)}<small>zumbis</small></span>
+          <span class="menu-stat">Nv ${bestLevel}<small>level</small></span>
+          <span class="menu-stat">${formatHudNumber(bestScore)}<small>pontuação</small></span>
           <span class="menu-stat">${formatSurvivalTime(totalPlayMs / 1000)}<small>tempo jogado</small></span>
           <span class="menu-perks">${renderLeaderboardPerks(build)}</span>
         </li>
