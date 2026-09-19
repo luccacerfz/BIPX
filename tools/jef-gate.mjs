@@ -347,11 +347,14 @@ export async function runGate(options, deps = {}) {
   const previous = lastEvaluationWithRubric(ledger.entries, rubricSha256);
   report.delta = { against: previous ? { evaluatedAt: previous.at, entrySha256: previous.entrySha256, candidateManifestSha256: previous.candidateManifestSha256, sameCandidate: previous.candidateManifestSha256 === lint.candidate.manifestSha256, sameQuestions: previous.questionsSha256 === questionsSha256, status: previous.status } : null, dimensions: {} };
   if (previous) {
+    // `--dimension` runs leave partial entries, so each dimension is compared with the latest same-rubric entry that holds it.
+    const comparable = ledger.entries.filter((entry) => entry.type === 'evaluation' && entry.rubricSha256 === rubricSha256).reverse();
     for (const id of requested) {
-      const before = previous.results?.[id];
+      const source = comparable.find((entry) => entry.results?.[id]);
       const after = report.dimensions[id];
-      if (!before || !after.requestOk) continue;
-      report.delta.dimensions[id] = { scoreBefore: before.preliminaryScore0to10, scoreAfter: after.preliminaryScore0to10, scoreDelta: round(after.preliminaryScore0to10 - before.preliminaryScore0to10), coveredBefore: before.covered, coveredAfter: after.coverage.covered };
+      if (!source || !after.requestOk) continue;
+      const before = source.results[id];
+      report.delta.dimensions[id] = { against: source.at, scoreBefore: before.preliminaryScore0to10, scoreAfter: after.preliminaryScore0to10, scoreDelta: round(after.preliminaryScore0to10 - before.preliminaryScore0to10), coveredBefore: before.covered, coveredAfter: after.coverage.covered };
     }
     report.delta.openDefects = { added: report.openDefects.filter((id) => !(previous.openDefects ?? []).includes(id)), removed: (previous.openDefects ?? []).filter((id) => !report.openDefects.includes(id)) };
   }
