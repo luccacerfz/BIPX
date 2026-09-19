@@ -185,6 +185,10 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel { display: none; }
 .upgrade-card strong { display: block; color: var(--rarity); font-size: 13px; font-weight: 600; }
 .upgrade-card span { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .upgrade-card__rarity { float: right; color: var(--rarity); font-size: 9px; font-style: normal; }
+/* Class skill cards: the skill's own action-bar icon and the slot it changes. */
+.upgrade-card--skill { background: linear-gradient(155deg, color-mix(in srgb, var(--rarity) 16%, #0b1b24), #0b1b24 62%); }
+.upgrade-card .upgrade-card__skill { display: flex; align-items: center; gap: 7px; margin: 0 0 7px; color: color-mix(in srgb, var(--rarity) 78%, #fff); font-size: 10px; line-height: 1.25; letter-spacing: .02em; }
+.upgrade-card__icon { flex: none; width: 22px; height: 22px; color: var(--rarity); }
 
 /* Rankings reuse the game's generated rows and remain horizontally scrollable. */
 .main-menu__ranking { grid-area: ranking; display: none; width: 100%; min-width: 0; max-height: calc(var(--app-height, 100dvh) - 170px); overflow: hidden; border: 1px solid var(--line); background: #091923f2; }
@@ -519,6 +523,7 @@ body:has(.message:not(.is-hidden)) .arpg-hud { display: none; }
 .arpg-tooltip__description { color: #eee2cf; font-size: 12px; line-height: 1.4; }
 .arpg-tooltip__meta { color: #ddd4c2; font-size: 12px; line-height: 1.5; }
 .arpg-tooltip__state { color: #b9dcdb; font-size: 12px; }
+.arpg-tooltip__upgrades { color: #d9c39a; font-size: 11px; line-height: 1.45; }
 .arpg-tooltip__effect { padding-top: 7px; border-top: 1px solid #8b795955; color: #f3d89c; font-size: 12px; line-height: 1.4; }
 .arpg-statuses { position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%); display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; width: max-content; max-width: min(550px, calc(100vw - 20px)); }
 .arpg-status { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; background: #10171cf2; border: 1px solid #af9868; color: #f7e2ae; font-size: 11px; white-space: nowrap; }

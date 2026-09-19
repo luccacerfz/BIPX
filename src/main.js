@@ -27,6 +27,8 @@ import { createHazardVfx } from "./vfx/hazard-vfx.js";
 import { createElementalVfx } from "./vfx/elemental-vfx.js";
 import { emitProjectileCast, emitProjectileTrail, emitProjectileImpact } from "./vfx/elemental-projectiles.js";
 import { createLocalLeaderboard } from "./progression/local-leaderboard.mjs";
+import { SKILL_UPGRADES, SKILL_UPGRADE_WEIGHTS, EXHAUSTED_REWARD, isUpgradeForClass, getSkillMods, describeSkillUpgrade, getSkillUpgradeTag, getSkillUpgradeIcon, getOwnedSkillUpgrades } from "./progression/skill-upgrades.mjs";
+import { getSkillDamageTaken, creditSkillKill } from "./combat/class-skills.mjs";
 import { paintBossLabel } from "./ui/boss-label-painter.js";
 import { createSampleBank } from "./audio/sample-bank.js";
 import { RIFLE_COLLISION_HEIGHT, enemyProjectileCollisionHeight } from "./combat/collision-heights.mjs";
@@ -1247,7 +1249,7 @@ const upgradeDefinitions = [
   {
     id: "cadence",
     label: "+Cadência",
-    description: "Reduz o tempo entre ataques e deixa sua build mais agressiva.",
+    description: "Reduz o tempo entre ataques e encurta um pouco a recarga das habilidades.",
     rarity: "common",
     kind: "stat",
     weight: 72,
@@ -1398,6 +1400,8 @@ const upgradeDefinitions = [
     maxStacks: 1,
   },
 ];
+// Upgrades 2.0: class skill cards (kind "skill") come from the shared module the server also reads.
+upgradeDefinitions.push(...SKILL_UPGRADES);
 
 const upgradeById = new Map(upgradeDefinitions.map((upgrade) => [upgrade.id, upgrade]));
 
@@ -2509,6 +2513,7 @@ function resetProgressionState() {
   player.perkCooldowns = createDefaultPerkCooldowns();
   player.evolvedWeapons = {};
   player.rarityPity = 0;
+  player.exhaustedRewards = 0;
   player.damageReduction = 0;
   player.critChance = 0;
   player.critMultiplier = 1.8;
@@ -6143,7 +6148,7 @@ function updatePlayer(dt) {
     player.position.x += (onlineSkillMotion.x - player.position.x) * alpha;
     player.position.z += (onlineSkillMotion.z - player.position.z) * alpha;
     player.mesh.position.copy(player.position);
-    if (onlineSkillMotion.terminal && classSkillState.lock <= 0 && Math.hypot(player.position.x - onlineSkillMotion.x, player.position.z - onlineSkillMotion.z) < .03) onlineSkillMotion = null;
+    if (onlineSkillMotion.terminal && (classSkillState.lock <= 0 || onlineSkillMotion.free) && Math.hypot(player.position.x - onlineSkillMotion.x, player.position.z - onlineSkillMotion.z) < .03) onlineSkillMotion = null;
     return;
   }
   if (isSkillMoving(classSkillState)) return;
@@ -6414,6 +6419,7 @@ function openUpgradeChoices(source = "level") {
   if (multiplayer.enabled) return;
   const choices = rollUpgradeChoices(source);
   if (choices.length === 0) {
+    if (source === "level") grantExhaustedReward(player.pendingLevelUps);
     player.pendingLevelUps = 0;
     player.pendingUpgradeChoices = [];
     player.pendingUpgradeSource = "level";
@@ -6433,7 +6439,9 @@ function openBossRewardChoices(bossType = "boss") {
 
   const choices = rollUpgradeChoices("bossChest");
   if (choices.length === 0) {
-    return false;
+    // Mirrors authority.mjs collectDrop: an exhausted chest still pays instead of lying on the ground.
+    grantExhaustedReward(1);
+    return true;
   }
 
   player.pendingUpgradeChoices = choices;
@@ -6442,6 +6450,27 @@ function openBossRewardChoices(bossType = "boss") {
   audioManager.play("bossChest", { priority: 3 });
   renderUpgradeChoices();
   return true;
+}
+
+// Nothing left to offer (every stack owned): surplus level-ups and boss chests pay a heal plus score, with a toast.
+function grantExhaustedReward(count = 1) {
+  const total = Math.max(0, Math.floor(count));
+  if (total <= 0 || player.health <= 0) return;
+  player.health = Math.min(player.maxHealth, player.health + player.maxHealth * EXHAUSTED_REWARD.healFraction * total);
+  player.score += EXHAUSTED_REWARD.score * total;
+  announceExhaustedReward(total);
+}
+
+function announceExhaustedReward(count = 1) {
+  const heal = Math.round(EXHAUSTED_REWARD.healFraction * 100 * count), score = EXHAUSTED_REWARD.score * count;
+  spawnTemporaryDropLabel(`${EXHAUSTED_REWARD.label.toUpperCase()}: +${heal}% VIDA · +${formatHudNumber(score)} PONTOS`, "legendary", "✦", player.position, 2.4);
+  combatVfx?.emit('heal', player.position, { color: 0xf0bd6c, radius: 2.4 });
+  audioManager.play("upgradeChoice", { rarity: "legendary", priority: 3 });
+  pulseHealth();
+  // After the current task: renderUpgradeChoices() clears this live region whenever the hand closes.
+  queueMicrotask(() => { const announcement = document.querySelector('#upgrade-announcement');
+    if (announcement) announcement.textContent = `${EXHAUSTED_REWARD.label}: todas as evoluções já são suas. Recebeu ${heal}% de vida e ${formatHudNumber(score)} pontos.`; });
+  updateHud(true);
 }
 
 function rollUpgradeChoices(source = "level") {
@@ -6455,14 +6484,18 @@ function rollUpgradeChoices(source = "level") {
   const forceRare = source === "level" && player.rarityPity >= 8;
   while (choices.length < 3 && available.length > 0) {
     let pool = available;
-    if (forceRare && choices.length === 0) {
+    // Mirrors authority.mjs rollChoices: the first card always belongs to the class while any skill card is left.
+    const classPool = choices.length === 0 ? available.filter((upgrade) => upgrade.kind === "skill") : [];
+    if (classPool.length > 0) {
+      pool = classPool;
+    } else if (forceRare && choices.length === 0) {
       const rarePool = available.filter((upgrade) => getRarityRank(upgrade.rarity) >= getRarityRank("rare"));
       if (rarePool.length > 0) {
         pool = rarePool;
       }
     }
 
-    const selected = pickWeightedUpgrade(pool, source);
+    const selected = pickWeightedUpgrade(pool, source, pool === classPool);
     if (!selected) {
       break;
     }
@@ -6482,10 +6515,10 @@ function rollUpgradeChoices(source = "level") {
   return choices;
 }
 
-function pickWeightedUpgrade(upgrades, source = "level") {
+function pickWeightedUpgrade(upgrades, source = "level", classSlot = false) {
   const weighted = upgrades.map((upgrade) => ({
     upgrade,
-    weight: getUpgradeRollWeight(upgrade, source),
+    weight: getUpgradeRollWeight(upgrade, source, classSlot),
   }));
   const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
   if (totalWeight <= 0) {
@@ -6503,10 +6536,14 @@ function pickWeightedUpgrade(upgrades, source = "level") {
   return weighted[weighted.length - 1]?.upgrade ?? null;
 }
 
-function getUpgradeRollWeight(upgrade, source = "level") {
+function getUpgradeRollWeight(upgrade, source = "level", classSlot = false) {
   const rarity = normalizeRarity(upgrade.rarity);
   if (source === "bossChest") {
     return bossRewardRarityWeights[rarity] ?? 0;
+  }
+
+  if (classSlot) {
+    return SKILL_UPGRADE_WEIGHTS[rarity] ?? 0;
   }
 
   return upgrade.weight ?? getRarityStyle(rarity).weight;
@@ -6515,6 +6552,7 @@ function getUpgradeRollWeight(upgrade, source = "level") {
 function isUpgradeAvailable(upgrade, minimumRarity = "common", source = "level") {
   if (upgrade.id === 'autoWeapon' || upgrade.id === 'sealRitual') return false;
   if (player.character === 'warrior' && ['projectile', 'prismStorm'].includes(upgrade.id)) return false;
+  if (!isUpgradeForClass(upgrade, player.character)) return false;
   if (getRarityRank(upgrade.rarity) < getRarityRank(minimumRarity)) {
     return false;
   }
@@ -6577,6 +6615,10 @@ function applyUpgrade(upgrade) {
   }
 
   player.upgradeStacks[upgrade.id] = currentStacks + 1;
+  if (upgrade.kind === "skill") {
+    // Stacks are the whole state: getPlayerSkillMods() derives the trusted mods for every cast and for the HUD.
+    combatVfx?.emit('seal', player.position, { color: getRarityStyle(upgrade.rarity).color, radius: 1.6, intensity: .5 });
+  }
   if (upgrade.kind === "perk") {
     player.perks[upgrade.id] = player.upgradeStacks[upgrade.id];
     applyPerkEffect(upgrade);
@@ -6658,14 +6700,17 @@ function renderUpgradeChoices() {
   upgradeOptionsElement.innerHTML = player.pendingUpgradeChoices
     .map((upgrade, index) => {
       const stacks = player.upgradeStacks[upgrade.id] || 0;
-      const description = upgrade.id === "autoWeapon" ? getAutoWeaponUnlockDescription() : upgrade.description;
+      const skillCard = upgrade.kind === "skill";
+      const description = upgrade.id === "autoWeapon" ? getAutoWeaponUnlockDescription() : skillCard ? describeSkillUpgrade(upgrade, player.character) : upgrade.description;
       const rarity = normalizeRarity(upgrade.rarity);
       const rarityLabel = getRarityStyle(rarity).label;
+      // Skill cards name the skill they change and reuse its action-bar icon.
+      const skillTag = skillCard ? `<span class="upgrade-card__skill"><svg class="upgrade-card__icon" viewBox="0 0 64 64" aria-hidden="true"><use href="./assets/ui/arpg/icons.svg#${escapeHtml(getSkillUpgradeIcon(upgrade, player.character))}"/></svg>${escapeHtml(getSkillUpgradeTag(upgrade, player.character))}</span>` : '';
       return `
-        <button class="upgrade-card upgrade-card--${rarity}" type="button" data-upgrade-index="${index}" aria-keyshortcuts="${index + 1}" ${waitingForServer ? 'disabled' : ''}>
+        <button class="upgrade-card upgrade-card--${rarity}${skillCard ? ' upgrade-card--skill' : ''}" type="button" data-upgrade-index="${index}" data-upgrade-kind="${escapeHtml(upgrade.kind || 'stat')}" aria-keyshortcuts="${index + 1}" ${waitingForServer ? 'disabled' : ''}>
           <span class="upgrade-card__key">${index + 1}</span>
           <span class="upgrade-card__rarity">${escapeHtml(rarityLabel)}</span>
-          <strong>${escapeHtml(upgrade.label)}</strong>
+          ${skillTag}<strong>${escapeHtml(upgrade.label)}</strong>
           <span>${escapeHtml(description)}</span>
           <span>Nível ${stacks}/${upgrade.maxStacks}</span>
         </button>
@@ -6674,7 +6719,7 @@ function renderUpgradeChoices() {
     .join("");
   if (announcement) announcement.textContent = waitingForServer
     ? (multiplayer.connected ? 'Confirmando evolução.' : 'Reconectando. Suas escolhas serão preservadas.')
-    : `Escolha uma evolução: ${player.pendingUpgradeChoices.map((upgrade, index) => `${index + 1}, ${upgrade.label}`).join('; ')}.`;
+    : `Escolha uma evolução: ${player.pendingUpgradeChoices.map((upgrade, index) => `${index + 1}, ${upgrade.label}${upgrade.kind === 'skill' ? ` (${getSkillUpgradeTag(upgrade, player.character).replace(' · ', ', ')})` : ''}`).join('; ')}.`;
   if (restoreChoiceFocus && !waitingForServer) {
     upgradeOptionsElement.querySelector('.upgrade-card')?.focus({ preventScroll: true });
     restoreMultiplayerUpgradeFocus = false;
@@ -6784,15 +6829,21 @@ function spawnLevelPulse() {
   addTimedEffect(ring, 0.55, true, "pulse");
 }
 
+// Trusted in solo (own progression). Online it is only a display mirror: the server derives its own for every cast.
+function getPlayerSkillMods() {
+  return getSkillMods(player.upgradeStacks, player.character);
+}
 function buildArpgState() {
   if (pendingSkillRequest && performance.now() - pendingSkillRequest.at >= 2500) pendingSkillRequest = null;
   if (classSkillState.classId !== player.character) classSkillState = createSkillState(player.character);
-  return getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
+  const hud = getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
     weapon: player.character === 'warrior' ? 'Espada' : 'Rifle', dead: game.state === 'dead',
     // Open cards keep the run live: skills stay unavailable, but this is not a pause.
     paused, enabled: game.state === 'playing' && !isMultiplayerSuspended() && !pendingSkillRequest && player.pendingUpgradeChoices.length === 0,
     // Display mirror of trusted progression; the server recomputes its own value for every cast.
-    areaMultiplier: getAreaMultiplier() });
+    areaMultiplier: getAreaMultiplier(), skillMods: getPlayerSkillMods() });
+  for (const skill of hud.skills) skill.upgrades = getOwnedSkillUpgrades(player.upgradeStacks, player.character, skill.id);
+  return hud;
 }
 function publishArpgState() {
   arpgHudTimer = .1;
@@ -6822,7 +6873,7 @@ function requestClassSkill(slot) {
     sendMultiplayerMessage({ type: 'skill', requestId: id, runId: multiplayerAuthorityRunId, ...intent });
   } else {
     const result = beginSkill(classSkillState, intent, { x: player.position.x, z: player.position.z,
-      runId: game.soloRunId, damageMultiplier: getCombatDamageMultiplier() / getSkillModifiers(classSkillState).damage, areaMultiplier: getAreaMultiplier(), playing: true, dead: player.health <= 0 });
+      runId: game.soloRunId, damageMultiplier: getCombatDamageMultiplier() / getSkillModifiers(classSkillState).damage, areaMultiplier: getAreaMultiplier(), skillMods: getPlayerSkillMods(), playing: true, dead: player.health <= 0 });
     if (result.ok) presentClassSkill(result.event);
     else playSkillFeedback(slot, 'resourcefail');
   }
@@ -6961,8 +7012,38 @@ function syncDashTransforms() {
   }
 }
 
+// Events that exist only because of a class skill upgrade carry `mod`. classSkillVfx has a closed phase/status
+// contract (a war-cry stun status would move the buff aura), so the shared combat/elemental pools draw these.
+const skillUpgradeTint = { warCryShockwave: 0xffc467, chargeShockwave: 0xffd994, dashMultiKill: 0xb9e4ff, frostHop: 0x84e5ff, gravityCollapse: 0xc27bff, cannonNapalm: 0xff872e };
+function presentSkillUpgradeEvent(event, actorId) {
+  const local = !multiplayer.enabled || actorId === multiplayer.id;
+  if (multiplayer.enabled && event.actorPosition) {
+    // `free`: the hop ends before the cast lock does, and Lyra keeps walking while she fires.
+    if (local) onlineSkillMotion = { ...event.actorPosition, terminal: Boolean(event.terminal), free: true };
+    else remotePlayers.get(actorId)?.targetPosition?.set(event.actorPosition.x, 0, event.actorPosition.z);
+  }
+  const at = event.target ?? event.origin, color = skillUpgradeTint[event.mod];
+  if (!color || !at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) return;
+  const position = new THREE.Vector3(at.x, .1, at.z), radius = Number.isFinite(event.radius) ? event.radius : 2;
+  if (event.mod === 'frostHop') {
+    if (!skillSoundTravel.has(`${event.castId}:hop`)) { skillSoundTravel.add(`${event.castId}:hop`); combatVfx?.emit('dust', new THREE.Vector3(event.origin.x, .1, event.origin.z), { intensity: .7, color: 0xb8c7cc }); }
+    if (event.terminal) combatVfx?.emit('dust', position, { intensity: .45, color: 0xb8c7cc });
+    return;
+  }
+  if (event.phase !== 'impact') return; // stuns draw from the victims' timers; napalm draws from snapshots
+  if (event.mod === 'dashMultiKill') { combatVfx?.emit('seal', position, { color, radius: 1.4, intensity: .5 }); return; }
+  combatVfx?.emit('shockwave', position, { color, radius, intensity: presentationPreferences.reducedMotion ? .5 : 1 });
+  if (event.mod === 'gravityCollapse') elementalVfx?.emit('arcaneImpact', position, { radius: Math.min(radius, 3), color, groundY: .04, intensity: .9 });
+  else combatVfx?.emit('dust', position, { intensity: .8, color: 0xbab1a0 });
+  if (local && !presentationPreferences.reducedMotion) cameraTrauma = Math.min(.5, cameraTrauma + .16);
+  audioManager.play(event.mod === 'gravityCollapse' ? 'thunderstaff' : 'boneCannon', { priority: 2, ...getSpatialAudioOptions(position) });
+  skillPresentationHistory.push({ ...event, actorId, local, time: game.survivalTime });
+  if (skillPresentationHistory.length > 128) skillPresentationHistory.shift();
+}
+
 function presentClassSkill(event, actorId = multiplayer.id) {
   if (!getClassSkill(event?.skillId)) return;
+  if (event.mod) { presentSkillUpgradeEvent(event, actorId); return; }
   trackPreparingWarCry(event, actorId);
   trackDashTransform(event, actorId);
   const local = !multiplayer.enabled || actorId === multiplayer.id;
@@ -6999,6 +7080,25 @@ function presentClassSkill(event, actorId = multiplayer.id) {
   if (skillPresentationHistory.length > 128) skillPresentationHistory.shift();
 }
 
+// Napalm Rúnico (Canhão Infernal upgrade): burning ground drawn with the shared fire/ember pool on a fixed cadence.
+const napalmPresentation = new Map();
+function presentNapalmFields(fields) {
+  const now = performance.now();
+  for (const field of fields) {
+    const last = napalmPresentation.get(field.castId) || 0;
+    if (paused || now - last < (presentationPreferences.reducedMotion ? 520 : 170)) continue;
+    napalmPresentation.set(field.castId, now);
+    const radius = Math.max(.5, Number(field.radius) || 3.4), bursts = presentationPreferences.reducedMotion ? 1 : 3;
+    for (let index = 0; index < bursts; index++) {
+      const angle = Math.random() * Math.PI * 2, distance = Math.sqrt(Math.random()) * radius * .9;
+      tempVectorA.set(field.target.x + Math.cos(angle) * distance, .1, field.target.z + Math.sin(angle) * distance);
+      combatVfx?.emit(index ? 'ember' : 'fire', tempVectorA, { color: 0xff872e, radius: 1.1, intensity: .7 });
+    }
+    if (!last) combatVfx?.emit('target', tempVectorA.set(field.target.x, .06, field.target.z), { color: 0xff872e, radius, life: Math.min(4, field.remaining), intensity: .55 });
+  }
+  for (const id of napalmPresentation.keys()) if (!fields.some(field => field.castId === id)) napalmPresentation.delete(id);
+}
+
 // Reconstruct enduring visuals from authoritative snapshots, including late join.
 // No attack/impact sound or damage is replayed here.
 function syncPersistentSkillPresentation(syncAudio = false) {
@@ -7025,6 +7125,7 @@ function syncPersistentSkillPresentation(syncAudio = false) {
     next.set(`${value.castId}:${value.status}:${zombie.id}`, event);
   }
   const values = [...next.values()];
+  presentNapalmFields(values.filter(e => e.status === 'napalm'));
   classSkillVfx?.syncState?.({
     buffs: values.filter(e => e.status === 'buff').map(e => ({ id: e.castId, position: e.target, remaining: e.remaining, duration: e.statusDuration })),
     fields: values.filter(e => e.status === 'gravity').map(e => ({ id: e.castId, position: e.target, radius: e.radius, remaining: e.remaining, duration: e.statusDuration })),
@@ -7051,8 +7152,13 @@ function updateClassSkills(dt) {
   if (multiplayer.enabled) return; // HUD follows server snapshots; UI never grants regeneration.
   const previous = skillSnapshot(classSkillState);
   advanceSkills(classSkillState, dt, {
-    actor: player.position,
+    actor: player.position, skillMods: getPlayerSkillMods(),
     sweepStatic: (from, to, radius, kind) => sweepStatic(collisionWorld, from, to, radius, { kind }),
+    // Upgrade knockback (Brado Trovejante), collided like the caster.
+    moveTarget(target, delta) {
+      const moved = moveActor(collisionWorld, { id: target.id, x: target.x, z: target.z, radius: target.radius }, delta);
+      target.zombie.mesh.position.set(moved.x, 0, moved.z); return moved;
+    },
     moveCaster(delta) {
       const moved = moveActor(collisionWorld, { id: 'player', x: player.position.x, z: player.position.z, radius: .64 }, delta, { stopOnContact: true });
       player.position.set(moved.x, 0, moved.z); player.mesh.position.copy(player.position); return moved;
@@ -7064,7 +7170,7 @@ function updateClassSkills(dt) {
       const affected = new Set(result.affectedIds), byId = new Map(targets.map(t=>[t.id,t]));
       for (const body of result.bodies) { const target = byId.get(body.id); if (target) { target.x=body.x;target.z=body.z;target.zombie.mesh.position.set(body.x,0,body.z);if(affected.has(body.id))target.zombie.pullTimer=step+1e-4; } }
     },
-    targets: classSkillState.active.length || classSkillState.fields.length ? zombies.map(zombie => ({ id: zombie.id, x: zombie.mesh.position.x, z: zombie.mesh.position.z, radius: zombie.radius, health: zombie.health, dead: zombie.health <= 0, boss: Boolean(monsterProfiles[zombie.type]?.boss), zombie })) : [],
+    targets: classSkillState.active.length || classSkillState.fields.length ? zombies.map(zombie => ({ id: zombie.id, x: zombie.mesh.position.x, z: zombie.mesh.position.z, radius: zombie.radius, health: zombie.health, dead: zombie.health <= 0, boss: Boolean(monsterProfiles[zombie.type]?.boss), freezeTimer: zombie.freezeTimer || 0, zombie })) : [],
     hit(target, effect) {
       const zombie = target.zombie;
       if (zombie.health <= 0) return;
@@ -9325,6 +9431,7 @@ function damageLocalPlayer(amount) {
     return;
   }
 
+  amount *= getSkillDamageTaken(classSkillState); // Bastião (Investida de Escudo upgrade)
   const reducedAmount = amount * (1 - player.damageReduction);
   cinematicPipeline?.impact(Math.min(.5, reducedAmount / 60));
   if (!presentationPreferences.reducedMotion) cameraTrauma = Math.min(.55, cameraTrauma + .18);
@@ -9803,6 +9910,7 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
         player.bossKills += 1;
         spawnHealthPotionAt(xpPosition, bossHealthPotionAmount, zombie.type);
       }
+      creditSoloSkillKill(Boolean(profile.boss));
       maybeTriggerKillPerks(zombie.type, xpPosition);
       maybeDropPerkFromZombie(zombie.type, xpPosition);
       maybeDropWeaponFromZombie(zombie.type, xpPosition);
@@ -9815,6 +9923,15 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
   }
 
   return false;
+}
+
+// Sede de Sangue (Grito de Guerra upgrade). Online the server heals in rewardServerKill.
+function creditSoloSkillKill(boss) {
+  const heal = creditSkillKill(classSkillState, { boss }).heal;
+  if (!(heal > 0) || player.health <= 0 || player.health >= player.maxHealth) return;
+  player.health = Math.min(player.maxHealth, player.health + heal);
+  combatVfx?.emit('heal', player.position, { color: 0xffc467, radius: 1.6, intensity: .6 });
+  pulseHealth();
 }
 
 function applyWeaponHitEffect(zombie, hitEffectType, amount) {
@@ -10367,7 +10484,7 @@ function renderSkillHud() {
     .map(
       (skill) => `
         <span class="skill-chip" title="${escapeHtml(skill.title)}">
-          <span aria-hidden="true">${skill.symbol ? `<svg class="ui-icon"><use href="#icon-${skill.symbol}"/></svg>` : skill.icon}</span>
+          <span aria-hidden="true">${skill.sprite ? `<svg class="ui-icon" viewBox="0 0 64 64"><use href="./assets/ui/arpg/icons.svg#${escapeHtml(skill.sprite)}"/></svg>` : skill.symbol ? `<svg class="ui-icon"><use href="#icon-${skill.symbol}"/></svg>` : skill.icon}</span>
           <small>Nv. ${skill.level}</small>
         </span>
       `,
@@ -10401,7 +10518,8 @@ function getHudSkills() {
       const definition = upgradeDefinitions.find((upgrade) => upgrade.id === upgradeId);
       skills.push({
         icon: hudUpgradeIcons[upgradeId] || "◆",
-        title: definition?.label || upgradeId,
+        sprite: definition?.kind === "skill" ? getSkillUpgradeIcon(definition, player.character) : null,
+        title: definition?.kind === "skill" ? `${definition.label} · ${getSkillUpgradeTag(definition, player.character)}` : definition?.label || upgradeId,
         level: stacks,
       });
     }
@@ -11260,6 +11378,9 @@ function applyAuthoritativeProgression(progression, { newRun = false, newerVersi
   player.pendingUpgradeChoices = (progression.offer?.upgradeIds || []).map(id => upgradeById.get(id)).filter(Boolean);
   multiplayerUpgradeOfferId = progression.offer?.id || null;
   player.rarityPity = Math.max(0, Number(progression.rarityPity) || 0);
+  const exhaustedRewards = Math.max(0, Math.floor(Number(progression.exhaustedRewards) || 0));
+  if (!newRun && exhaustedRewards > (player.exhaustedRewards || 0)) announceExhaustedReward(exhaustedRewards - (player.exhaustedRewards || 0));
+  player.exhaustedRewards = exhaustedRewards;
   player.damageReduction = Math.max(0, Number(progression.damageReduction) || 0);
   player.critChance = Math.max(0, Number(progression.critChance) || 0);
   player.critMultiplier = Number(progression.critMultiplier) || 1.8;
@@ -11352,8 +11473,10 @@ function getPlayerBuildSummary() {
     .map(([weaponId]) => getAutoWeaponDisplayLabel(weaponId))
     .filter(Boolean);
 
+  // Rarest first (stable), like authority.syncProgression: the eight slots keep the cards that define the build.
   const upgrades = Object.entries(player.upgradeStacks)
     .filter(([, stacks]) => stacks > 0)
+    .sort(([first], [second]) => getRarityRank(upgradeById.get(second)?.rarity) - getRarityRank(upgradeById.get(first)?.rarity))
     .map(([upgradeId, stacks]) => {
       const definition = upgradeDefinitions.find((upgrade) => upgrade.id === upgradeId);
       return `${definition?.label || upgradeId} x${stacks}`;
