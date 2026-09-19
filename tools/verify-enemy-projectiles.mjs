@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
 import {segmentCircleContact} from '../src/combat/projectile-sweep.mjs';
 import { emitProjectileTrail, emitProjectileImpact } from '../src/vfx/elemental-projectiles.js';
+import { createCasterProjectilePresenter } from '../src/combat/caster-projectile-presentation.mjs';
 const productionServer = fs.readFileSync(new URL('../server.mjs', import.meta.url), 'utf8');
 const productionClient = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 function extract(source, name) {
@@ -17,7 +18,10 @@ function extract(source, name) {
   return source.slice(start, end + 2);
 }
 const serverSource = extract(productionServer, 'updateServerProjectiles');
-const soloSource = extract(productionClient, 'updateEnemyProjectiles') + '\n' + extract(productionClient, 'getProjectileHitTarget');
+// v5 routes every solo trail through the production wrapper emitEnemyProjectileTrail (Lich launch-bridge presentation).
+// The wrapper is extracted unmodified like the update itself and receives the real presenter module; these fixture
+// projectiles carry no launch bridge, so the wrapper must forward the authoritative segment to emitProjectileTrail.
+const soloSource = extract(productionClient, 'updateEnemyProjectiles') + '\n' + extract(productionClient, 'getProjectileHitTarget') + '\n' + extract(productionClient, 'emitEnemyProjectileTrail');
 const checks = [];
 const definitions = [
   { name: 'grazing crossing', from: [-.55, 1], speed: [22, 0], dt: .05, targets: [[0, 0]], expected: 0 },
@@ -50,11 +54,12 @@ for (const mode of ['server', 'solo']) {
         emit: (kind, position) => visualEvents.push({ kind, position: position.toArray() }),
         emitTrail: (kind, from, to) => visualEvents.push({ kind: `${kind}Trail`, from: from.toArray(), position: to.toArray() }),
       };
-      const update = new Function('THREE', 'segmentCircleContact', 'enemyProjectiles', 'livingPlayerTargets', 'updateProjectileHoming', 'animateEnemyProjectileVisual', 'damagePlayerTarget', 'spawnExplosion', 'removeEnemyProjectile', 'elementalVfx', 'emitProjectileTrail', 'emitProjectileImpact', 'sweepStatic', 'collisionWorld', 'enemyProjectileCollisionHeight', soloSource + ';return updateEnemyProjectiles;')(THREE, segmentCircleContact, projectiles, targets, () => {}, () => {}, target => { hits.push(target.id); positions.push({x:projectile.mesh.position.x,z:projectile.mesh.position.z}); }, () => {}, i => projectiles.splice(i, 1), visualSink, emitProjectileTrail, emitProjectileImpact, sweepStatic, collisionWorld, enemyProjectileCollisionHeight);
+      const update = new Function('THREE', 'segmentCircleContact', 'enemyProjectiles', 'livingPlayerTargets', 'updateProjectileHoming', 'animateEnemyProjectileVisual', 'damagePlayerTarget', 'spawnExplosion', 'removeEnemyProjectile', 'elementalVfx', 'emitProjectileTrail', 'emitProjectileImpact', 'sweepStatic', 'collisionWorld', 'enemyProjectileCollisionHeight', 'casterProjectilePresentation', soloSource + ';return updateEnemyProjectiles;')(THREE, segmentCircleContact, projectiles, targets, () => {}, () => {}, target => { hits.push(target.id); positions.push({x:projectile.mesh.position.x,z:projectile.mesh.position.z}); }, () => {}, i => projectiles.splice(i, 1), visualSink, emitProjectileTrail, emitProjectileImpact, sweepStatic, collisionWorld, enemyProjectileCollisionHeight, createCasterProjectilePresenter({ sweepVisual: () => null }));
       update(test.dt); update(0);
       retained = projectiles.includes(projectile);
       const impacts = visualEvents.filter(event => event.kind === 'voidImpact');
       assert.equal(impacts.length, test.expected === null ? 0 : 1, `${test.name}: impact must require real contact`);
+      assert.equal(projectile.casterTrailProxy, undefined, 'Unbridged fixture projectile must keep the authoritative trail');
       if (impacts.length) {
         near(impacts[0].position[0], positions[0].x);
         near(impacts[0].position[2], positions[0].z);

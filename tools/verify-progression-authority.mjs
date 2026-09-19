@@ -1,21 +1,18 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import os from 'node:os';
 import {evidenceDir} from './quality-browser.mjs';
-import {serverDependencyHashes,relocateServerImports} from './quality-server-source.mjs';
-const root=process.cwd();
-const stage=await fs.mkdtemp(path.join(os.tmpdir(),'bipx-progression-'));
+import {serverDependencyHashes} from './quality-server-source.mjs';
+import {launchProtocolServer} from './quality-protocol.mjs';
 const dependencyHashes=serverDependencyHashes();
 const sourcePath=path.resolve('server.mjs');
 const sourceRoot=path.dirname(sourcePath);
 const candidate=await fs.readFile(sourcePath,'utf8');
 const fixture=`
 import {grantXp as fixtureGrantXp,createDrop as fixtureCreateDrop} from ${JSON.stringify(pathToFileURL(sourceRoot+'/src/progression/authority.mjs').href)};
-process.on('message',q=>{try{
+process.on('message',q=>{if(q?.type!=='qa-progression')return;try{
  const room=rooms.get(q.room),client=room?.clients.get(q.clientId); if(!client)throw Error('Fixture client missing');
  let value;
  if(q.action==='quiet'){room.world.monsters.clear();room.world.projectiles.clear();room.world.zombiesToSpawn=0;room.world.nextWaveDelay=1e9;}
@@ -27,17 +24,16 @@ process.on('message',q=>{try{
  if(q.action==='kill'){const m=room.world.monsters.get(q.monsterId);killServerMonster(room,m,client.id);}
  if(q.action==='rng'){client.progression.random=()=>q.value;}
  syncProgression(client.state,client.progression);
- process.send({id:q.id,ok:true,value,state:client.state,monsters:[...room.world.monsters.values()].map(serializeMonster)});
+ process.send({id:q.id,result:{ok:true,value,state:client.state,monsters:[...room.world.monsters.values()].map(serializeMonster)}});
 }catch(e){process.send({id:q.id,error:e.message})}});
 `;
-// Relocate every relative ES module import; production itself remains untouched.
-const relocated=relocateServerImports(candidate);
-await fs.writeFile(`${stage}/server.fixture.mjs`,relocated+fixture);
+// launchProtocolServer relocates every relative ES module import into an isolated copy; production itself remains untouched.
+// Player placement goes through its private `qa-place-player` IPC: the v5 server treats client x/z as budgeted intent, never as a teleport.
 const report={passed:false,sourcePath,dependencyHashes,scope:'Production server functions, real Node WebSocket clients; private IPC fixtures grant trusted XP/targets/drops. No public test route and no natural gameplay claim.',checks:[],candidateSha256:crypto.createHash('sha256').update(candidate).digest('hex')};
-const delay=ms=>new Promise(r=>setTimeout(r,ms));const sockets=[];let child,stderr='';let serial=0;const requests=new Map();
+const delay=ms=>new Promise(r=>setTimeout(r,ms));const sockets=[];let server;let serial=0;
 const until=async(test,ms=5000)=>{const end=Date.now()+ms;while(Date.now()<end){const v=test();if(v)return v;await delay(8)}throw Error('Timed out')};
 const check=(name,details={})=>{report.checks.push({name,...details});console.log(name)};
-function ipc(c,action,data={}){return new Promise((resolve,reject)=>{const id=++serial;requests.set(id,{resolve,reject});child.send({id,room:c.room,clientId:c.id,action,...data})})}
+function ipc(c,action,data={}){return server.requestFixture('qa-progression',{room:c.room,clientId:c.id,action,...data})}
 function send(c,msg){c.socket.send(JSON.stringify(msg))}
 async function message(c,p,start=0){return until(()=>c.messages.slice(start).find(p))}
 let base;
@@ -45,8 +41,7 @@ async function connect(room,character='dwarf',token){const url=new URL(base);url
 async function start(c,id='start'){const from=c.messages.length;send(c,{type:'startRun',requestId:id,state:{character:c.state.character}});await message(c,m=>m.type==='runStarted',from);await ipc(c,'quiet');send(c,{type:'state',state:{x:0,z:0,aimX:0,aimZ:-1}});await delay(25)}
 async function command(c,type,args){const requestId=args.requestId??`req${++serial}`;const from=c.messages.length;send(c,{type,runId:c.state.runId,requestId,...args});return message(c,m=>m.type==='progressionResult'&&m.requestId===requestId,from)}
 try{
- child=spawn(process.execPath,[`${stage}/server.fixture.mjs`],{cwd:stage,env:{...process.env,HOST:'127.0.0.1',PORT:'0',LEADERBOARD_FILE:`${stage}/isolated-leaderboard-${Date.now()}.json`,SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:''},stdio:['ignore','pipe','pipe','ipc']});child.stderr.on('data',b=>stderr+=b);child.on('message',m=>{const q=requests.get(m.id);if(!q)return;requests.delete(m.id);m.error?q.reject(Error(m.error)):q.resolve(m)});
- const port=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error('Startup timeout')),8000);child.stdout.on('data',b=>{out+=b;const m=out.match(/http:\/\/127\.0\.0\.1:(\d+)/);if(m){clearTimeout(timer);resolve(m[1])}})});base=`ws://127.0.0.1:${port}/ws`;
+ server=await launchProtocolServer('progression',fixture);base=server.wsUrl;report.fixtureEvidence=server.evidence;
  let c=await connect('authority');await start(c);const damaged=await ipc(c,'damage',{amount:40});assert.equal(damaged.state.health,160);await until(()=>c.state.health===160);assert.equal(c.state.health,160);
  send(c,{type:'state',state:{...c.state,health:600,maxHealth:600,level:999,bestLevel:999,xpTotal:999999,score:999999,kills:999,build:['FAKE x999'],progression:{upgradeStacks:{damage:99},upgradeStats:{damageMultiplier:8}}}});await delay(40);let probe=await ipc(c,'read');
  assert.equal(probe.state.health,160);assert.equal(probe.state.maxHealth,200);assert.equal(probe.state.level,1);assert.equal(probe.state.bestLevel,1);assert.equal(probe.state.xpTotal,0);assert.equal(probe.state.score,0);assert.deepEqual(probe.state.build,[]);assert.deepEqual(probe.state.progression.upgradeStacks,{});
@@ -61,7 +56,7 @@ try{
  const sameChoiceNewId=await command(c,'chooseUpgrade',{...maxHealthChoice,requestId:'new-key-same-choice'});assert.equal(sameChoiceNewId.result.ok,false);
  const runId=c.state.runId,id=c.id,token=c.token,saved=structuredClone(c.state);c.socket.close();await until(()=>c.socket.readyState===3);c=await connect('authority','dwarf',token);assert.equal(c.id,id);assert.equal(c.state.runId,runId);assert.deepEqual(c.state.progression.upgradeStacks,saved.progression.upgradeStacks);assert.deepEqual(c.state.progression.offer,saved.progression.offer);ack=await command(c,'chooseUpgrade',maxHealthChoice);assert.equal(ack.result.duplicate,true);assert.equal(ack.state.health,hp);
  check('Lost choice ACK/reconnect preserves same offer/stacks/HP and receipt idempotency');
- let drop=(await ipc(c,'drop',{kind:'healthPotion',position:{x:10,z:0},data:{amount:10}})).value;let pickup={dropId:drop.id,requestId:'potion'};ack=await command(c,'pickup',pickup);assert.equal(ack.result.code,'out-of-range');send(c,{type:'state',state:{x:10,z:0}});await delay(20);const before=c.state.health;ack=await command(c,'pickup',pickup);assert.equal(ack.result.ok,true);assert.equal(ack.state.health,Math.min(ack.state.maxHealth,before+10));const healed=ack.state.health;ack=await command(c,'pickup',pickup);assert.equal(ack.result.duplicate,true);assert.equal(ack.state.health,healed);
+ const dropAt={x:12,z:0};/* free ground in the promoted 153-collider layout; lantern-0 now stands on the former x10 z0 */let drop=(await ipc(c,'drop',{kind:'healthPotion',position:dropAt,data:{amount:10}})).value;let pickup={dropId:drop.id,requestId:'potion'};ack=await command(c,'pickup',pickup);assert.equal(ack.result.code,'out-of-range');const placed=await server.placePlayer(c.room,c.id,dropAt);assert.ok(Math.hypot(placed.x-dropAt.x,placed.z-dropAt.z)<.001,'Fixture must place the player exactly on the drop');const before=c.state.health;ack=await command(c,'pickup',pickup);assert.equal(ack.result.ok,true);assert.equal(ack.state.health,Math.min(ack.state.maxHealth,before+10));const healed=ack.state.health;ack=await command(c,'pickup',pickup);assert.equal(ack.result.duplicate,true);assert.equal(ack.state.health,healed);
  const other=await connect('other-owner');await start(other);ack=await command(other,'pickup',{dropId:drop.id});assert.equal(ack.result.code,'missing-drop');
  check('Pickup protocol validates owner/distance and potion heal exactly once');
  const oldRun=c.state.runId;await start(c,'fresh-run');ack=await command(c,'chooseUpgrade',{...maxHealthChoice,runId:oldRun});assert.equal(ack.result.code,'wrong-run');assert.equal(c.state.level,1);assert.equal(c.state.maxHealth,200);assert.deepEqual(c.state.progression.upgradeStacks,{});assert.equal(c.state.progression.drops.length,0);
@@ -71,5 +66,5 @@ try{
  await ipc(warrior,'rng',{value:0});probe=await ipc(warrior,'xp',{amount:18});warrior.state=probe.state;const offer=warrior.state.progression.offer;assert.ok(offer.upgradeIds.includes('damage'));ack=await command(warrior,'chooseUpgrade',{offerId:offer.id,upgradeId:'damage'});assert.equal(ack.result.ok,true);await ipc(warrior,'freshCooldown');await ipc(warrior,'target',{x:0,z:-2.5,health:100});from=warrior.messages.length;send(warrior,{type:'attack',attack:{kind:'katana',weapon:'katana',aimX:0,aimZ:-1,damageMultiplier:1}});hit=await message(warrior,m=>m.type==='monsterHit',from);assert.equal(hit.amount,15.12);
  check('Legitimate damage choice raises sword hit14→15.12 even when packet claims1x damage');
 
- assert.deepEqual(serverDependencyHashes(),dependencyHashes);assert.equal(stderr,'');report.passed=true;
-}catch(e){report.failure=e.stack;process.exitCode=1}finally{for(const s of sockets)if(s.readyState<2)s.close();const stopped=new Promise(resolve=>child?.once('close',resolve));child?.kill('SIGTERM');await Promise.race([stopped,delay(1000)]);report.stderr=stderr;report.sourceUnchanged=candidate===await fs.readFile(sourcePath,'utf8');await fs.writeFile(path.join(evidenceDir,'progression-authority.json'),JSON.stringify(report,null,2));await fs.rm(stage,{recursive:true,force:true});console.log(JSON.stringify({passed:report.passed,checks:report.checks.length,evidenceDir,failure:report.failure}))}
+ assert.deepEqual(serverDependencyHashes(),dependencyHashes);server.assertClean();report.passed=true;
+}catch(e){report.failure=e.stack;process.exitCode=1}finally{for(const s of sockets)if(s.readyState<2)s.close();report.stderr=server?.stderr()??'';await server?.stop();report.sourceUnchanged=candidate===await fs.readFile(sourcePath,'utf8');await fs.writeFile(path.join(evidenceDir,'progression-authority.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({passed:report.passed,checks:report.checks.length,evidenceDir,failure:report.failure}))}
