@@ -16,7 +16,8 @@ import { locomotionSpeed, creditMoveBudget, consumeMoveBudget } from "./src/comb
 import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc } from "./src/combat/melee-timing.mjs";
 import { heroMaxHealth, basicAttackSpec, createHeroCombatState, beginBasicAttack, meleeShape, insideMeleeShape, rifleShot, assistRifleAim, basicPower, skillPower, monsterWeight, applyHeroKnockback, advanceHeroKnockback, resolveIncomingDamage, resolveLeech, waveSpawnBudget, spawnInterval, spawnDistance } from "./src/combat/hero-power.mjs";
 
-import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, skillMods, resolveDamage, rewardKill, receiveDamage, tickProgression } from "./src/progression/authority.mjs";
+import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, skillMods, resolveDamage, rewardKill, receiveDamage, tickProgression, activeRelic } from "./src/progression/authority.mjs";
+import { createArsenalState, relicAttack, advanceArsenal, cancelArsenal, getAutoWeaponLoadout } from "./src/combat/arsenal.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 await loadLocalEnv();
@@ -756,6 +757,7 @@ function updateRoomWorld(room, dt) {
     }
   }
   for (const client of skillClients) updateServerSkills(room, client, dt);
+  for (const client of playingClients) updateServerArsenal(room, client, dt);
   updateServerSpawning(room, playingClients, dt);
   updateServerMonsters(room, playingClients, dt);
   updateServerProjectiles(room, playingClients, dt);
@@ -1028,7 +1030,11 @@ function updateServerMonsterStatus(room, monster, dt) {
   monster.pullTimer = Math.max(0, (monster.pullTimer || 0) - dt);
   if (monster.burnTimer > 0) {
     monster.burnTimer = Math.max(0, monster.burnTimer - dt);
-    damageServerMonster(room, monster, (monster.burnDps || 0) * dt, monster.burnSourceId, "burnTick");
+    monster.burnDebt = (monster.burnDebt || 0) + dt;
+    if (monster.burnDebt >= .48 || !monster.burnTimer) {
+      const seconds = monster.burnDebt; monster.burnDebt = 0;
+      damageServerMonster(room, monster, (monster.burnDps || 0) * seconds, monster.burnSourceId, "burnTick");
+    }
   }
 }
 
@@ -1211,6 +1217,7 @@ function applyServerAttackDamage(room, client, attack) {
   }
   leechServerPlayer(room, client, { hits: landed });
   if (spec.classId === 'warrior') sendJson(client, { type: 'attackResult', runId: client.state.runId, combo: step.index, finisher: step.finisher });
+  applyServerRelicAttack(room, client, attack, direction);
   return true;
 }
 
@@ -1283,6 +1290,44 @@ function getServerAttackHits(room, origin, direction, spec, areaMultiplier = 1, 
   }
 
   return hits;
+}
+
+// Arsenal glue. Rules (relic shapes, projectiles, automatic weapons) live in src/combat/arsenal.mjs and are shared with
+// the solo client. Relic id, levels and every number come from server progression; the attack message only carried aim.
+const arsenalSweep = (from, to, radius, kind) => sweepStatic(collisionWorld, from, to, radius, { kind });
+function getServerArsenal(client) {
+  if (client.arsenal?.runId !== client.state.runId) client.arsenal = Object.assign(createArsenalState(client.state.character), { runId: client.state.runId });
+  return client.arsenal;
+}
+function serverArsenalContext(room, client, combatStats, aim = null) {
+  let targets = null;
+  return {
+    ownerId: client.id, actor: client.state, aim, stats: combatStats, relic: activeRelic(client.progression),
+    loadout: getAutoWeaponLoadout(client.progression.stacks), perks: client.progression.stacks,
+    dead: client.state.state !== 'playing' || client.state.health <= 0,
+    targets: () => targets ??= [...room.world.monsters.values()], sweepStatic: arsenalSweep,
+    hit(monster, effect) {
+      if (!room.world.monsters.has(monster.id)) return true;
+      const burning = monster.burnTimer > 0 ? monster.burnDps || 0 : 0;
+      damageServerMonster(room, monster, resolveDamage(client.progression, effect.damage).damage, client.id, effect.hitEffect);
+      const survived = room.world.monsters.has(monster.id);
+      // One shared burn rule for solo and server instead of the legacy amount-based guess.
+      if (survived && effect.burnDps) monster.burnDps = Math.max(burning, effect.burnDps);
+      return !survived;
+    },
+    emit(event) { broadcast(room, { type: 'arsenalEvent', id: client.id, runId: client.state.runId, serverTime: Date.now(), event }); },
+  };
+}
+function applyServerRelicAttack(room, client, attack, direction) {
+  if (activeRelic(client.progression)) relicAttack(getServerArsenal(client), serverArsenalContext(room, client, attack, direction));
+}
+function updateServerArsenal(room, client, dt) {
+  const combatStats = attackStats(client.progression);
+  combatStats.damageMultiplier *= getSkillModifiers(client.skills).damage;
+  advanceArsenal(getServerArsenal(client), dt, serverArsenalContext(room, client, combatStats));
+}
+function cancelServerArsenal(room, client) {
+  if (client.arsenal) cancelArsenal(client.arsenal, serverArsenalContext(room, client, null).emit, 'death');
 }
 
 function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = "pistol", skillEffect = null) {
@@ -1400,6 +1445,7 @@ function damageServerPlayer(room, client, amount, source = null) {
     room.world.actorIndex?.remove(`player:${client.id}`);
     cancelSkills(client.skills, event => broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event }), 'death');
     client.state.skills = skillSnapshot(client.skills);
+    cancelServerArsenal(room, client);
   }
   const leaderboardChanged = updatePlayerHistory(client, previousState);
 

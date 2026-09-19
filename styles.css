@@ -696,3 +696,14 @@ body:has(.message:not(.is-hidden)) .arpg-hud { display: none; }
 @media (pointer: coarse) {
   .name-field input { font-size: 16px; }
 }
+
+/* Arsenal relics: infused basic attack. The timer stays visible on every layout while a relic is active. */
+.hud__stat--weapon[data-relic]:not([data-relic=""]) strong { color: #ffd98a; text-shadow: 0 0 10px #ffb84a66; }
+.hud__stat--weapon[data-relic]:not([data-relic=""]) small { display: inline; color: #ffe7b8; }
+.hud__stat--weapon[data-relic]:not([data-relic=""]) .ui-icon { color: #ffd98a; }
+.arpg-basic[data-relic]:not([data-relic=""]) { color: #ffd98a; }
+.arpg-basic[data-relic]:not([data-relic=""]) .arpg-icon { filter: drop-shadow(0 0 6px #ffb84acc); }
+.arpg-basic[data-relic]:not([data-relic=""]) small { display: block; font-size: 9px; font-weight: 700; color: #ffe7b8; }
+.arpg-basic[data-relic]:not([data-relic=""]) small::after { content: none; }
+.arpg-basic[data-relic="frostNova"], .arpg-basic[data-relic="axe"], .arpg-basic[data-relic="katana"] { color: #a9ecff; }
+.arpg-basic[data-relic="talisman"] { color: #e3a6ff; }

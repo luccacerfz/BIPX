@@ -75,7 +75,7 @@ try {
     window.__zombieNightDebug.equipWeapon("flamethrower");
     return window.__zombieNightDebug.getState();
   });
-  // Former arsenal pickups now apply a temporary buff without switching class.
+  // Arsenal pickups are relics: a temporary infusion of the class basic attack, without switching class.
   const beforeKatana = await page.evaluate(() => {
     window.__zombieNightDebug.clearCombatEntities();
     window.__zombieNightDebug.spawnZombieAhead(3, "runner");
@@ -192,12 +192,14 @@ try {
   assert(moved.player.z < initial.player.z - 0.1, "keyboard movement did not change player position");
   assert(fired.character === "warrior" && fired.weapon === "katana" && fired.bullets === 0 && fired.swordSwingRemaining > 0, "Warrior input did not animate a sword strike without projectiles");
   assert(initial.autoWeapons.guardianBlade === 0, "guardian blade should not start unlocked");
-  assert(afterAutoWeapon.score === beforeAutoWeapon.score && afterAutoWeapon.bullets === 0, "Warrior auto-weapon diagnostic attempt created automatic damage/projectiles");
+  // Arsenal returned (loop/t3): Lâmina Guardiã is an autonomous companion again. It must strike the runner 14 m away
+  // without any attack input, and it never turns the sword class into a shooter (no bullets).
+  assert(afterAutoWeapon.score > beforeAutoWeapon.score && afterAutoWeapon.bullets === 0, "Guardian blade companion did not defeat the placed runner on its own, or created rifle projectiles");
   assert(afterXpPickup.xp > beforeXpPickup.xp || afterXpPickup.level > beforeXpPickup.level, "XP gem was not collected");
   assert(levelUpChoices.level > beforeLevelUp.level, "XP did not trigger level up");
   assert(levelUpChoices.pendingUpgradeChoices.length >= 1, "level up did not create upgrade choices");
   assert(JSON.stringify(afterUpgradeChoice.build) !== JSON.stringify(levelUpChoices.build), "upgrade choice did not alter build");
-  assert(beforeClassBuff.character === "warrior" && beforeClassBuff.weapon === "katana" && beforeClassBuff.weaponTimer > 0, "Legacy pickup did not become a temporary class buff");
+  assert(beforeClassBuff.character === "warrior" && beforeClassBuff.weapon === "katana" && beforeClassBuff.relic === "flamethrower" && beforeClassBuff.weaponTimer > 0, "Relic pickup did not infuse the sword while keeping the class weapon");
   assert(playerDamageState.damageNumberDetails.some(number => number.variant === "playerDamage"), "Player damage feedback missing");
   assert(afterKatana.weapon === "katana" && afterKatana.bullets === 0, "Sword attack created a projectile or switched weapon");
   assert(afterKatana.score > beforeKatana.score, "Actual sword input did not defeat the nearby runner");
