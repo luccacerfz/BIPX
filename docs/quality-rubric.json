@@ -1,11 +1,20 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "model": "jev-1.13.0",
   "threshold": {
-    "operator": ">=",
-    "value": 10,
+    "operator": ">",
+    "value": 9.5,
     "scope": "every_dimension",
-    "missingEvidence": "pending_never_pass"
+    "missingEvidence": "pending_never_pass",
+    "decision": {
+      "by": "owner",
+      "date": "2026-09-19",
+      "previous": {
+        "operator": ">=",
+        "value": 10
+      },
+      "note": "Owner decision: success is a JEF score strictly above 9.5 in every dimension. Only the numeric target changed; no other requirement was weakened or removed."
+    }
   },
   "levels": [
     "No usable evidence establishes this dimension; the experience is missing or fundamentally broken.",
@@ -19,54 +28,1469 @@
     "The experience is professionally polished across broad documented coverage, with only minor imperfections and no major defect.",
     "The dimension is exceptionally refined and consistently verified in every required scenario, including edge cases and sustained use, with no material defect or missing evidence."
   ],
+  "scenarioKinds": {
+    "automated": "Established by the machine-readable output of a tool run on the candidate. Counts only with at least one claim verified in code against a JSON artifact.",
+    "agent_observed": "A checkable fact that needs eyes on native captures or playback. Counts only with a named inspector and a verified artifact.",
+    "human": "How the game looks, sounds or feels to a person. Counts only when the observation has source \"owner\" with device and date; an agent attesting it would be grading its own work.",
+    "device": "Requires a physical phone or tablet in the owner's hands. Counts only when the observation has source \"owner\" with physical device, OS, browser and date."
+  },
+  "requiredScenariosNote": "requiredScenarios itemise the existing requirement text (the `requirements` string of this file and the matching row of the evidence table in docs/quality-gates.md). Each entry quotes its origin verbatim in `from`; tools/verify-jef-gate.mjs fails when a quote stops matching. Nothing was added and nothing was dropped; `notSufficientAlone` keeps the \"alone is incomplete\" guidance verbatim.",
   "dimensions": {
     "game_design": {
       "name": "Game design and class identity",
-      "requirements": "Document natural play showing Aldric sword basic attack plus three intentional warrior skills and Lyra rifle basic attack plus three intentional dwarf skills, exactly the six authorized IDs. Require meaningful costs, resource regeneration, cooldowns, range, crowd control, distinct class decisions, readable preparation/impact/recovery, enemy counterplay, wave pacing and compatible upgrades/rewards. Verify server ownership and rejection of forged casts, preserving XP/drops/party/late join/reconnect/wipe/local ranking. Feature counts and isolated demos do not establish design quality. The six canonical v2 functions are a real timed war-cry buff, swept cleaving dash, shield charge with area stun, explosive fire cannon, area-freezing shot and persistent stationary gravity field with collision-respecting pull. Prove modifiers/expiry, every valid area target, boss resistances, one death/reward per dash victim and authoritative status cleanup/reconstruction."
+      "requirements": "Document natural play showing Aldric sword basic attack plus three intentional warrior skills and Lyra rifle basic attack plus three intentional dwarf skills, exactly the six authorized IDs. Require meaningful costs, resource regeneration, cooldowns, range, crowd control, distinct class decisions, readable preparation/impact/recovery, enemy counterplay, wave pacing and compatible upgrades/rewards. Verify server ownership and rejection of forged casts, preserving XP/drops/party/late join/reconnect/wipe/local ranking. Feature counts and isolated demos do not establish design quality. The six canonical v2 functions are a real timed war-cry buff, swept cleaving dash, shield charge with area stun, explosive fire cannon, area-freezing shot and persistent stationary gravity field with collision-respecting pull. Prove modifiers/expiry, every valid area target, boss resistances, one death/reward per dash victim and authoritative status cleanup/reconstruction.",
+      "notSufficientAlone": [
+        "Feature counts and isolated demos do not establish design quality."
+      ],
+      "requiredScenarios": [
+        {
+          "id": "GD1",
+          "kind": "automated",
+          "text": "Natural play shows Aldric using the sword basic attack plus three intentional warrior skills.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document natural play showing Aldric sword basic attack plus three intentional warrior skills"
+            }
+          ]
+        },
+        {
+          "id": "GD2",
+          "kind": "automated",
+          "text": "Natural play shows Lyra using the rifle basic attack plus three intentional dwarf skills.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Lyra rifle basic attack plus three intentional dwarf skills"
+            }
+          ]
+        },
+        {
+          "id": "GD3",
+          "kind": "automated",
+          "text": "Exactly the six authorized skill IDs are present and no other active skill exists.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "exactly the six authorized IDs"
+            }
+          ]
+        },
+        {
+          "id": "GD4",
+          "kind": "automated",
+          "text": "Skill costs, resource regeneration and cooldowns are meaningful: they limit what the player can cast in natural play.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "meaningful costs, resource regeneration, cooldowns"
+            }
+          ]
+        },
+        {
+          "id": "GD5",
+          "kind": "automated",
+          "text": "Range and crowd control are meaningful in natural play.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "range, crowd control"
+            }
+          ]
+        },
+        {
+          "id": "GD6",
+          "kind": "agent_observed",
+          "text": "The two classes require distinct decisions.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "distinct class decisions"
+            }
+          ]
+        },
+        {
+          "id": "GD7",
+          "kind": "agent_observed",
+          "text": "Preparation, impact and recovery of attacks and skills are readable.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "readable preparation/impact/recovery"
+            }
+          ]
+        },
+        {
+          "id": "GD8",
+          "kind": "agent_observed",
+          "text": "Enemies give the player counterplay.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "enemy counterplay"
+            }
+          ]
+        },
+        {
+          "id": "GD9",
+          "kind": "human",
+          "text": "Wave pacing is meaningful in natural play.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "wave pacing"
+            }
+          ]
+        },
+        {
+          "id": "GD10",
+          "kind": "automated",
+          "text": "Upgrades and rewards are compatible with the class skills.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "compatible upgrades/rewards"
+            }
+          ]
+        },
+        {
+          "id": "GD11",
+          "kind": "automated",
+          "text": "The server owns skill casts and rejects forged casts.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Verify server ownership and rejection of forged casts"
+            }
+          ]
+        },
+        {
+          "id": "GD12",
+          "kind": "automated",
+          "text": "XP, drops, party, late join, reconnect, wipe and local ranking are preserved.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "preserving XP/drops/party/late join/reconnect/wipe/local ranking"
+            }
+          ]
+        },
+        {
+          "id": "GD13",
+          "kind": "automated",
+          "text": "The six canonical v2 functions behave as specified: real timed war-cry buff, swept cleaving dash, shield charge with area stun, explosive fire cannon, area-freezing shot, and persistent stationary gravity field with collision-respecting pull.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "The six canonical v2 functions are a real timed war-cry buff, swept cleaving dash, shield charge with area stun, explosive fire cannon, area-freezing shot and persistent stationary gravity field with collision-respecting pull"
+            }
+          ]
+        },
+        {
+          "id": "GD14",
+          "kind": "automated",
+          "text": "Skill modifiers and expiry, every valid area target and boss resistances are proven.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Prove modifiers/expiry, every valid area target, boss resistances"
+            }
+          ]
+        },
+        {
+          "id": "GD15",
+          "kind": "automated",
+          "text": "One death and one reward per dash victim, and authoritative status cleanup and reconstruction, are proven.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "one death/reward per dash victim and authoritative status cleanup/reconstruction"
+            }
+          ]
+        }
+      ]
     },
     "animation": {
       "name": "Animation, locomotion and contact",
-      "requirements": "Document inspected native playback and measured world-space foot contact/sliding for walk/run/start/stop/turn/strafe and attacks at multiple speeds, including local/remote actors. Require coherent stride versus actual travel, stable weapon grips, natural weight and transitions, ground contact, finite deformation and correct attack impact timing. Vertical ground bounds, nominal stride matching or CPU-only tests alone do not establish absence of visible sliding or artistic quality."
+      "requirements": "Document inspected native playback and measured world-space foot contact/sliding for walk/run/start/stop/turn/strafe and attacks at multiple speeds, including local/remote actors. Require coherent stride versus actual travel, stable weapon grips, natural weight and transitions, ground contact, finite deformation and correct attack impact timing. Vertical ground bounds, nominal stride matching or CPU-only tests alone do not establish absence of visible sliding or artistic quality.",
+      "notSufficientAlone": [
+        "Vertical ground bounds, nominal stride matching or CPU-only tests alone do not establish absence of visible sliding or artistic quality.",
+        "fixed ToeBase markers or vertical bounds do not prove no sliding"
+      ],
+      "requiredScenarios": [
+        {
+          "id": "AN1",
+          "kind": "agent_observed",
+          "text": "Native complete-cycle playback of the animations is inspected.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document inspected native playback"
+            },
+            {
+              "origin": "gates",
+              "quote": "Native complete-cycle playback"
+            }
+          ]
+        },
+        {
+          "id": "AN2",
+          "kind": "automated",
+          "text": "World-space foot contact and sliding are measured for walk, run, start, stop, turn and strafe at multiple speeds.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "measured world-space foot contact/sliding for walk/run/start/stop/turn/strafe and attacks at multiple speeds"
+            }
+          ]
+        },
+        {
+          "id": "AN3",
+          "kind": "automated",
+          "text": "World-space foot contact and sliding are measured during attacks and casts.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "measured world-space foot contact/sliding for walk/run/start/stop/turn/strafe and attacks at multiple speeds"
+            },
+            {
+              "origin": "gates",
+              "quote": "at multiple speeds, turns and casts"
+            }
+          ]
+        },
+        {
+          "id": "AN4",
+          "kind": "automated",
+          "text": "The foot contact measurements include both local and remote actors.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "including local/remote actors"
+            }
+          ]
+        },
+        {
+          "id": "AN5",
+          "kind": "automated",
+          "text": "Independent skinned sole contact metrics cover both heroes and enemies.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "independent skinned sole/world contact metrics for both heroes/enemies"
+            }
+          ]
+        },
+        {
+          "id": "AN6",
+          "kind": "automated",
+          "text": "Stride is coherent with the actual distance travelled.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "coherent stride versus actual travel"
+            }
+          ]
+        },
+        {
+          "id": "AN7",
+          "kind": "agent_observed",
+          "text": "Body and weapon grips stay stable.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "stable weapon grips"
+            },
+            {
+              "origin": "gates",
+              "quote": "Stable body/weapon grip"
+            }
+          ]
+        },
+        {
+          "id": "AN8",
+          "kind": "human",
+          "text": "Weight and transitions look natural.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "natural weight and transitions"
+            }
+          ]
+        },
+        {
+          "id": "AN9",
+          "kind": "automated",
+          "text": "Feet keep ground contact and mesh deformation stays finite.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "ground contact, finite deformation"
+            }
+          ]
+        },
+        {
+          "id": "AN10",
+          "kind": "automated",
+          "text": "Attack impact timing is correct.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "correct attack impact timing"
+            }
+          ]
+        },
+        {
+          "id": "AN11",
+          "kind": "agent_observed",
+          "text": "Legs continue moving while casting.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "legs continue while casting"
+            }
+          ]
+        },
+        {
+          "id": "AN12",
+          "kind": "human",
+          "text": "Inspected playback shows no visible foot sliding and acceptable artistic quality.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "absence of visible sliding or artistic quality"
+            }
+          ]
+        }
+      ]
     },
     "art_direction": {
       "name": "Art direction",
-      "requirements": "Document inspected real rendered scenes, lighting/material coherence, composition, character and enemy silhouettes, and absence of visible clipping across desktop/mobile and quiet/dense combat."
+      "requirements": "Document inspected real rendered scenes, lighting/material coherence, composition, character and enemy silhouettes, and absence of visible clipping across desktop/mobile and quiet/dense combat.",
+      "notSufficientAlone": [],
+      "requiredScenarios": [
+        {
+          "id": "AR1",
+          "kind": "agent_observed",
+          "text": "Real rendered scenes are inspected from native desktop and mobile captures, in quiet and dense combat.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document inspected real rendered scenes"
+            },
+            {
+              "origin": "rubric",
+              "quote": "across desktop/mobile and quiet/dense combat"
+            },
+            {
+              "origin": "gates",
+              "quote": "Native desktop and mobile captures"
+            }
+          ]
+        },
+        {
+          "id": "AR2",
+          "kind": "human",
+          "text": "Lighting and materials are coherent and balanced.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "lighting/material coherence"
+            },
+            {
+              "origin": "gates",
+              "quote": "material/light balance"
+            }
+          ]
+        },
+        {
+          "id": "AR3",
+          "kind": "human",
+          "text": "Composition is intentional.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "composition"
+            },
+            {
+              "origin": "gates",
+              "quote": "intentional composition"
+            }
+          ]
+        },
+        {
+          "id": "AR4",
+          "kind": "human",
+          "text": "Character and enemy silhouettes are clear.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "character and enemy silhouettes"
+            },
+            {
+              "origin": "gates",
+              "quote": "clear silhouettes"
+            }
+          ]
+        },
+        {
+          "id": "AR5",
+          "kind": "agent_observed",
+          "text": "No visible clipping appears on desktop or mobile, in quiet or dense combat.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "absence of visible clipping across desktop/mobile and quiet/dense combat"
+            }
+          ]
+        },
+        {
+          "id": "AR6",
+          "kind": "agent_observed",
+          "text": "Sustained play video and extreme combat moments are captured and inspected.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "sustained play video, inspected scenes and extreme combat moments"
+            }
+          ]
+        },
+        {
+          "id": "AR7",
+          "kind": "agent_observed",
+          "text": "Enemies and pickups are readable.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "readable enemies and pickups"
+            }
+          ]
+        },
+        {
+          "id": "AR8",
+          "kind": "human",
+          "text": "The environment is cohesive, with no obvious placeholder clash.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "Cohesive environment"
+            },
+            {
+              "origin": "gates",
+              "quote": "no obvious placeholder clash"
+            }
+          ]
+        }
+      ]
     },
     "vfx": {
       "name": "VFX integration and readability",
-      "requirements": "Document every applicable upstream effect family and actual triggers, shader/material correctness, temporal readability under dense combat, resource cleanup, and any exclusions. Require all six authorized skill IDs across preparation/release/travel/contact/status/end phases as applicable; war-cry aura, continuous dash slash, shield collision/stun, abundant cannon fire, persistent frost and purple gravitational flow synchronized with actual collision and animation, from the Samurai, HandCast and LinearAbility sources. Explicitly label fixture versus natural gameplay and distinguish contact from miss/expiration. Verify essential projectiles/areas/statuses in low/reduced motion and stylized corpse splitting only on confirmed dash kills."
+      "requirements": "Document every applicable upstream effect family and actual triggers, shader/material correctness, temporal readability under dense combat, resource cleanup, and any exclusions. Require all six authorized skill IDs across preparation/release/travel/contact/status/end phases as applicable; war-cry aura, continuous dash slash, shield collision/stun, abundant cannon fire, persistent frost and purple gravitational flow synchronized with actual collision and animation, from the Samurai, HandCast and LinearAbility sources. Explicitly label fixture versus natural gameplay and distinguish contact from miss/expiration. Verify essential projectiles/areas/statuses in low/reduced motion and stylized corpse splitting only on confirmed dash kills.",
+      "notSufficientAlone": [],
+      "requiredScenarios": [
+        {
+          "id": "VX1",
+          "kind": "agent_observed",
+          "text": "Every applicable upstream effect family from the Samurai, HandCast and LinearAbility sources is documented with its actual trigger, and any exclusion is justified.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document every applicable upstream effect family and actual triggers"
+            },
+            {
+              "origin": "rubric",
+              "quote": "and any exclusions"
+            },
+            {
+              "origin": "rubric",
+              "quote": "from the Samurai, HandCast and LinearAbility sources"
+            },
+            {
+              "origin": "gates",
+              "quote": "Source inventory mapped to integrations or reasoned exclusions"
+            }
+          ]
+        },
+        {
+          "id": "VX2",
+          "kind": "agent_observed",
+          "text": "Shaders and materials render correctly, with no missing textures.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "shader/material correctness"
+            },
+            {
+              "origin": "gates",
+              "quote": "no missing textures"
+            }
+          ]
+        },
+        {
+          "id": "VX3",
+          "kind": "human",
+          "text": "Effects stay readable over time under dense combat.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "temporal readability under dense combat"
+            }
+          ]
+        },
+        {
+          "id": "VX4",
+          "kind": "automated",
+          "text": "Effect resources are cleaned up, with no stuck particles or persistent allocations.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "resource cleanup"
+            },
+            {
+              "origin": "gates",
+              "quote": "stuck particles or persistent allocations"
+            }
+          ]
+        },
+        {
+          "id": "VX5",
+          "kind": "agent_observed",
+          "text": "All six authorized skill IDs are shown across their applicable preparation, release, travel, contact, status and end phases.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Require all six authorized skill IDs across preparation/release/travel/contact/status/end phases as applicable"
+            }
+          ]
+        },
+        {
+          "id": "VX6",
+          "kind": "agent_observed",
+          "text": "War-cry aura, continuous dash slash, shield collision and stun, abundant cannon fire, persistent frost and purple gravitational flow are synchronized with actual collision and animation.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "war-cry aura, continuous dash slash, shield collision/stun, abundant cannon fire, persistent frost and purple gravitational flow synchronized with actual collision and animation"
+            }
+          ]
+        },
+        {
+          "id": "VX7",
+          "kind": "agent_observed",
+          "text": "Evidence labels fixture versus natural gameplay and distinguishes contact from miss or expiration.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Explicitly label fixture versus natural gameplay and distinguish contact from miss/expiration"
+            }
+          ]
+        },
+        {
+          "id": "VX8",
+          "kind": "agent_observed",
+          "text": "Essential projectiles, areas and statuses remain visible in low quality and reduced motion.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Verify essential projectiles/areas/statuses in low/reduced motion"
+            }
+          ]
+        },
+        {
+          "id": "VX9",
+          "kind": "agent_observed",
+          "text": "Stylized corpse splitting appears only on confirmed dash kills.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "stylized corpse splitting only on confirmed dash kills"
+            }
+          ]
+        },
+        {
+          "id": "VX10",
+          "kind": "agent_observed",
+          "text": "Effect timing is restrained, telegraphs and hit feedback are clear, and threats are not obscured.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "restrained timing, clear telegraphs and hit feedback"
+            },
+            {
+              "origin": "gates",
+              "quote": "obscured threats"
+            }
+          ]
+        }
+      ]
     },
     "combat_feel": {
       "name": "Combat feel",
-      "requirements": "Document natural move/aim/fire/damage/recovery input and playback across weapon families, readable impacts and hazards, and responsive behavior. Cover both basic attacks plus all six skills, resource/cooldown rejection, grounded contacts, obstacle blocking, and local/remote synchronized cast/impact timing."
+      "requirements": "Document natural move/aim/fire/damage/recovery input and playback across weapon families, readable impacts and hazards, and responsive behavior. Cover both basic attacks plus all six skills, resource/cooldown rejection, grounded contacts, obstacle blocking, and local/remote synchronized cast/impact timing.",
+      "notSufficientAlone": [],
+      "requiredScenarios": [
+        {
+          "id": "CF1",
+          "kind": "agent_observed",
+          "text": "Natural move, aim, fire, damage and recovery input and playback are documented across the weapon families.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document natural move/aim/fire/damage/recovery input and playback across weapon families"
+            },
+            {
+              "origin": "gates",
+              "quote": "Natural input video"
+            }
+          ]
+        },
+        {
+          "id": "CF2",
+          "kind": "human",
+          "text": "Impacts and hazards are readable.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "readable impacts and hazards"
+            }
+          ]
+        },
+        {
+          "id": "CF3",
+          "kind": "human",
+          "text": "Motion, aim and fire respond to input without perceptible delay.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "responsive behavior"
+            },
+            {
+              "origin": "gates",
+              "quote": "Responsive motion/aim/fire"
+            }
+          ]
+        },
+        {
+          "id": "CF4",
+          "kind": "automated",
+          "text": "Both basic attacks and all six skills are covered.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Cover both basic attacks plus all six skills"
+            }
+          ]
+        },
+        {
+          "id": "CF5",
+          "kind": "automated",
+          "text": "Casts are rejected when resource or cooldown does not allow them.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "resource/cooldown rejection"
+            }
+          ]
+        },
+        {
+          "id": "CF6",
+          "kind": "automated",
+          "text": "Contacts are grounded and obstacles block.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "grounded contacts, obstacle blocking"
+            }
+          ]
+        },
+        {
+          "id": "CF7",
+          "kind": "automated",
+          "text": "Cast and impact timing are synchronized between local and remote clients.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "local/remote synchronized cast/impact timing"
+            }
+          ]
+        },
+        {
+          "id": "CF8",
+          "kind": "automated",
+          "text": "Player and projectile state are measured for all weapon and damage cases.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "measured player/projectile state; all weapon and damage cases"
+            }
+          ]
+        },
+        {
+          "id": "CF9",
+          "kind": "agent_observed",
+          "text": "Aiming is consistent, and damage direction and escalation are visible.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "consistent aiming, visible damage direction and escalation"
+            }
+          ]
+        },
+        {
+          "id": "CF10",
+          "kind": "human",
+          "text": "Impact and recovery feel coherent, and feedback stays useful under dense combat.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "coherent impact and recovery"
+            },
+            {
+              "origin": "gates",
+              "quote": "useful feedback under dense combat"
+            }
+          ]
+        }
+      ]
     },
     "ui_ux": {
       "name": "User interface and flow",
-      "requirements": "Document menu, login, ranking, gameplay HUD, upgrades, settings, pause, death and restart with consistent hierarchy, legibility, functional controls and keyboard/pointer navigation. Include the ARPG bottom HUD with left health orb, right class-resource orb, exactly three active skills and the basic weapon indicator; authoritative cost/readiness/cooldowns, touch and 1/2/3 keyboard input, upgrade-input precedence and no casts while typing/dialogs. Show real buff duration and new v2 icon identities; no old skill labels or simulated readiness."
+      "requirements": "Document menu, login, ranking, gameplay HUD, upgrades, settings, pause, death and restart with consistent hierarchy, legibility, functional controls and keyboard/pointer navigation. Include the ARPG bottom HUD with left health orb, right class-resource orb, exactly three active skills and the basic weapon indicator; authoritative cost/readiness/cooldowns, touch and 1/2/3 keyboard input, upgrade-input precedence and no casts while typing/dialogs. Show real buff duration and new v2 icon identities; no old skill labels or simulated readiness.",
+      "notSufficientAlone": [],
+      "requiredScenarios": [
+        {
+          "id": "UI1",
+          "kind": "agent_observed",
+          "text": "Menu, login, ranking, gameplay HUD, upgrades, settings, pause, death and restart are each documented.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document menu, login, ranking, gameplay HUD, upgrades, settings, pause, death and restart"
+            }
+          ]
+        },
+        {
+          "id": "UI2",
+          "kind": "agent_observed",
+          "text": "Those screens show consistent hierarchy, typography and legibility.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "consistent hierarchy, legibility"
+            },
+            {
+              "origin": "gates",
+              "quote": "Consistent hierarchy and typography"
+            }
+          ]
+        },
+        {
+          "id": "UI3",
+          "kind": "automated",
+          "text": "Controls are functional and every flow works with keyboard and with pointer.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "functional controls and keyboard/pointer navigation"
+            },
+            {
+              "origin": "gates",
+              "quote": "exercised with keyboard and pointer"
+            }
+          ]
+        },
+        {
+          "id": "UI4",
+          "kind": "automated",
+          "text": "The ARPG bottom HUD shows a left health orb, a right class-resource orb, exactly three active skills and the basic weapon indicator.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Include the ARPG bottom HUD with left health orb, right class-resource orb, exactly three active skills and the basic weapon indicator"
+            }
+          ]
+        },
+        {
+          "id": "UI5",
+          "kind": "automated",
+          "text": "Skill cost, readiness and cooldowns shown in the HUD are authoritative.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "authoritative cost/readiness/cooldowns"
+            }
+          ]
+        },
+        {
+          "id": "UI6",
+          "kind": "automated",
+          "text": "Skills work by touch and by the 1/2/3 keys, upgrade input takes precedence, and no cast happens while typing or in dialogs.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "touch and 1/2/3 keyboard input, upgrade-input precedence and no casts while typing/dialogs"
+            }
+          ]
+        },
+        {
+          "id": "UI7",
+          "kind": "automated",
+          "text": "The HUD shows real buff duration and the new v2 icon identities, with no old skill labels and no simulated readiness.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Show real buff duration and new v2 icon identities; no old skill labels or simulated readiness"
+            }
+          ]
+        },
+        {
+          "id": "UI8",
+          "kind": "agent_observed",
+          "text": "State transitions are clear, focus is reliable and no button is misleading.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "clear state transitions, reliable focus"
+            },
+            {
+              "origin": "gates",
+              "quote": "no misleading buttons"
+            }
+          ]
+        }
+      ]
     },
     "mobile": {
       "name": "Mobile play",
-      "requirements": "Document actual touch movement and simultaneous firing, compact/portrait/landscape safe areas and UI plus real physical iOS/Android gameplay. Desktop viewport emulation alone is incomplete."
+      "requirements": "Document actual touch movement and simultaneous firing, compact/portrait/landscape safe areas and UI plus real physical iOS/Android gameplay. Desktop viewport emulation alone is incomplete.",
+      "notSufficientAlone": [
+        "Desktop viewport emulation alone is incomplete."
+      ],
+      "requiredScenarios": [
+        {
+          "id": "MB1",
+          "kind": "automated",
+          "text": "Actual touch input moves the hero while firing at the same time.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document actual touch movement and simultaneous firing"
+            }
+          ]
+        },
+        {
+          "id": "MB2",
+          "kind": "automated",
+          "text": "Safe areas and UI are correct in compact, portrait and landscape layouts, with no overflow or overlap.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "compact/portrait/landscape safe areas and UI"
+            },
+            {
+              "origin": "gates",
+              "quote": "no overflow/overlap"
+            }
+          ]
+        },
+        {
+          "id": "MB3",
+          "kind": "device",
+          "text": "Gameplay is documented on a physical iOS device.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "real physical iOS/Android gameplay"
+            },
+            {
+              "origin": "gates",
+              "quote": "physical iOS and Android sessions"
+            }
+          ]
+        },
+        {
+          "id": "MB4",
+          "kind": "device",
+          "text": "Gameplay is documented on a physical Android device.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "real physical iOS/Android gameplay"
+            },
+            {
+              "origin": "gates",
+              "quote": "physical iOS and Android sessions"
+            }
+          ]
+        },
+        {
+          "id": "MB5",
+          "kind": "device",
+          "text": "Touch targets are comfortable on a physical device.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "Comfortable targets"
+            }
+          ]
+        },
+        {
+          "id": "MB6",
+          "kind": "automated",
+          "text": "Orientation changes are stable and cancelled touches release the controls.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "stable orientation and touch cancellation"
+            }
+          ]
+        },
+        {
+          "id": "MB7",
+          "kind": "device",
+          "text": "Thermal evidence from physical-device play is documented.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "physical-device play and thermal evidence"
+            }
+          ]
+        }
+      ]
     },
     "audio": {
       "name": "Audio experience",
-      "requirements": "Document captured output and listening observations of event distinction, volume/mix, spatial cues, clipping, sustained combat fatigue, unlock, mute and persistence. AudioContext running alone is incomplete."
+      "requirements": "Document captured output and listening observations of event distinction, volume/mix, spatial cues, clipping, sustained combat fatigue, unlock, mute and persistence. AudioContext running alone is incomplete.",
+      "notSufficientAlone": [
+        "AudioContext running alone is incomplete."
+      ],
+      "requiredScenarios": [
+        {
+          "id": "AU1",
+          "kind": "automated",
+          "text": "Audio output is captured from gameplay.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document captured output"
+            },
+            {
+              "origin": "gates",
+              "quote": "Recorded output"
+            }
+          ]
+        },
+        {
+          "id": "AU2",
+          "kind": "human",
+          "text": "Listening shows that gameplay events are audible and distinct from each other.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "listening observations of event distinction"
+            },
+            {
+              "origin": "gates",
+              "quote": "Audible and distinct events"
+            }
+          ]
+        },
+        {
+          "id": "AU3",
+          "kind": "human",
+          "text": "Listening shows a balanced volume and mix.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "volume/mix"
+            },
+            {
+              "origin": "gates",
+              "quote": "balanced mix"
+            }
+          ]
+        },
+        {
+          "id": "AU4",
+          "kind": "human",
+          "text": "Listening shows useful spatial or directional cues.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "spatial cues"
+            },
+            {
+              "origin": "gates",
+              "quote": "useful spatial/directional cues"
+            }
+          ]
+        },
+        {
+          "id": "AU5",
+          "kind": "human",
+          "text": "Listening shows no clipping.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "clipping"
+            },
+            {
+              "origin": "gates",
+              "quote": "no clipping"
+            }
+          ]
+        },
+        {
+          "id": "AU6",
+          "kind": "human",
+          "text": "Listening shows no fatigue during sustained combat.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "sustained combat fatigue"
+            }
+          ]
+        },
+        {
+          "id": "AU7",
+          "kind": "human",
+          "text": "Audio unlock, mute and persistence behave as expected when listened to.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "unlock, mute and persistence"
+            },
+            {
+              "origin": "gates",
+              "quote": "unexpected unlock/mute behavior"
+            }
+          ]
+        },
+        {
+          "id": "AU8",
+          "kind": "human",
+          "text": "Listening notes cover quiet play, heavy combat, damage and death, and mute, unmute and settings.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "listening notes across quiet play, heavy combat, damage/death, mute/unmute/settings"
+            }
+          ]
+        }
+      ]
     },
     "performance": {
       "name": "Performance",
-      "requirements": "Document declared hardware/browser, sustained frame-time percentiles and memory/resource budgets for natural play and dense stress, near-60fps target and physical mobile behavior. Legacy low-FPS regression thresholds alone are incomplete."
+      "requirements": "Document declared hardware/browser, sustained frame-time percentiles and memory/resource budgets for natural play and dense stress, near-60fps target and physical mobile behavior. Legacy low-FPS regression thresholds alone are incomplete.",
+      "notSufficientAlone": [
+        "Legacy low-FPS regression thresholds alone are incomplete."
+      ],
+      "requiredScenarios": [
+        {
+          "id": "PF1",
+          "kind": "automated",
+          "text": "Hardware and browser are declared.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document declared hardware/browser"
+            },
+            {
+              "origin": "gates",
+              "quote": "declared hardware and browser"
+            }
+          ]
+        },
+        {
+          "id": "PF2",
+          "kind": "automated",
+          "text": "Sustained frame-time percentiles are measured in natural play.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "sustained frame-time percentiles"
+            },
+            {
+              "origin": "rubric",
+              "quote": "for natural play and dense stress"
+            }
+          ]
+        },
+        {
+          "id": "PF3",
+          "kind": "automated",
+          "text": "Sustained frame-time percentiles are measured under dense stress at level 6 and level 16.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "for natural play and dense stress"
+            },
+            {
+              "origin": "gates",
+              "quote": "across normal, level 6 and level 16 play"
+            }
+          ]
+        },
+        {
+          "id": "PF4",
+          "kind": "automated",
+          "text": "Memory and resource budgets are measured for natural play and dense stress, and allocations stay bounded.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "memory/resource budgets for natural play and dense stress"
+            },
+            {
+              "origin": "gates",
+              "quote": "bounded allocations"
+            }
+          ]
+        },
+        {
+          "id": "PF5",
+          "kind": "automated",
+          "text": "Normal play runs near 60 fps with frame-time p95 at most 20 ms on the declared desktop target and no recurring long frames.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "near-60fps target"
+            },
+            {
+              "origin": "gates",
+              "quote": "p95 frame time at most 20 ms on declared desktop target"
+            },
+            {
+              "origin": "gates",
+              "quote": "no recurring long frames"
+            }
+          ],
+          "bounds": [
+            {
+              "metric": "frameTimeP95Ms",
+              "op": "<=",
+              "limit": 20
+            }
+          ]
+        },
+        {
+          "id": "PF6",
+          "kind": "device",
+          "text": "Behaviour on a physical mobile device is documented.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "physical mobile behavior"
+            },
+            {
+              "origin": "gates",
+              "quote": "physical device required for mobile claim"
+            }
+          ]
+        },
+        {
+          "id": "PF7",
+          "kind": "device",
+          "text": "Frame-time p95 is at most 25 ms on the declared mobile target, measured on a physical device.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "at most 25 ms on declared mobile target"
+            },
+            {
+              "origin": "gates",
+              "quote": "physical device required for mobile claim"
+            }
+          ],
+          "bounds": [
+            {
+              "metric": "frameTimeP95Ms",
+              "op": "<=",
+              "limit": 25
+            }
+          ]
+        }
+      ]
     },
     "multiplayer": {
       "name": "Multiplayer behavior",
-      "requirements": "Document at least two actual browser clients sharing authoritative enemies, projectiles and rewards; late join, reconnect, death/wipe and concurrent play. WebSocket script alone is incomplete."
+      "requirements": "Document at least two actual browser clients sharing authoritative enemies, projectiles and rewards; late join, reconnect, death/wipe and concurrent play. WebSocket script alone is incomplete.",
+      "notSufficientAlone": [
+        "WebSocket script alone is incomplete.",
+        "a WebSocket protocol probe alone is incomplete"
+      ],
+      "requiredScenarios": [
+        {
+          "id": "MP1",
+          "kind": "automated",
+          "text": "At least two actual browser clients share authoritative enemies, projectiles and rewards.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document at least two actual browser clients sharing authoritative enemies, projectiles and rewards"
+            }
+          ]
+        },
+        {
+          "id": "MP2",
+          "kind": "automated",
+          "text": "Late join is verified with actual browser clients.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "late join"
+            }
+          ]
+        },
+        {
+          "id": "MP3",
+          "kind": "automated",
+          "text": "Reconnect and disconnect are verified.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "reconnect"
+            },
+            {
+              "origin": "gates",
+              "quote": "disconnect"
+            }
+          ]
+        },
+        {
+          "id": "MP4",
+          "kind": "automated",
+          "text": "Death and wipe, including simultaneous death, are verified.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "death/wipe"
+            },
+            {
+              "origin": "gates",
+              "quote": "simultaneous death/wipe"
+            }
+          ]
+        },
+        {
+          "id": "MP5",
+          "kind": "automated",
+          "text": "Concurrent play is verified.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "concurrent play"
+            }
+          ]
+        },
+        {
+          "id": "MP6",
+          "kind": "automated",
+          "text": "The authoritative world stays consistent, damage and rewards are fair, and recovery and state reconciliation are verified.",
+          "from": [
+            {
+              "origin": "gates",
+              "quote": "Consistent authoritative world and fair damage/rewards; recovery and state reconciliation verified"
+            }
+          ]
+        }
+      ]
     },
     "accessibility": {
       "name": "Accessibility",
-      "requirements": "Document keyboard-only controls/settings, focus, labels, contrast, zoom/readability, reduced-motion behavior and redundant non-color/non-audio cues in gameplay."
+      "requirements": "Document keyboard-only controls/settings, focus, labels, contrast, zoom/readability, reduced-motion behavior and redundant non-color/non-audio cues in gameplay.",
+      "notSufficientAlone": [],
+      "requiredScenarios": [
+        {
+          "id": "AC1",
+          "kind": "automated",
+          "text": "Controls and settings are usable with the keyboard only.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document keyboard-only controls/settings"
+            },
+            {
+              "origin": "gates",
+              "quote": "Settings usable without pointer"
+            }
+          ]
+        },
+        {
+          "id": "AC2",
+          "kind": "automated",
+          "text": "Focus remains visible and is restored.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "focus"
+            },
+            {
+              "origin": "gates",
+              "quote": "focus remains visible and restored"
+            }
+          ]
+        },
+        {
+          "id": "AC3",
+          "kind": "automated",
+          "text": "Labels are meaningful.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "labels"
+            },
+            {
+              "origin": "gates",
+              "quote": "meaningful labels"
+            }
+          ]
+        },
+        {
+          "id": "AC4",
+          "kind": "automated",
+          "text": "Contrast is inspected and measured.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "contrast"
+            },
+            {
+              "origin": "gates",
+              "quote": "focus/labels/contrast inspection"
+            }
+          ]
+        },
+        {
+          "id": "AC5",
+          "kind": "agent_observed",
+          "text": "The interface stays readable under zoom.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "zoom/readability"
+            }
+          ]
+        },
+        {
+          "id": "AC6",
+          "kind": "agent_observed",
+          "text": "Reduced motion actually suppresses motion.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "reduced-motion behavior"
+            },
+            {
+              "origin": "gates",
+              "quote": "motion reduction actually suppresses motion"
+            }
+          ]
+        },
+        {
+          "id": "AC7",
+          "kind": "agent_observed",
+          "text": "Gameplay gives redundant cues, so no essential information depends on color or sound alone.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "redundant non-color/non-audio cues in gameplay"
+            },
+            {
+              "origin": "gates",
+              "quote": "no essential information conveyed by color or sound alone"
+            }
+          ]
+        }
+      ]
     },
     "reliability": {
       "name": "Reliability",
-      "requirements": "Document all test suites for the same source candidate, clean runtime/resource logs, repeated restart and settings persistence, long play and lifecycle recovery without state corruption."
+      "requirements": "Document all test suites for the same source candidate, clean runtime/resource logs, repeated restart and settings persistence, long play and lifecycle recovery without state corruption.",
+      "notSufficientAlone": [],
+      "requiredScenarios": [
+        {
+          "id": "RL1",
+          "kind": "automated",
+          "text": "All current automated test suites ran and passed on the same source candidate.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "Document all test suites for the same source candidate"
+            },
+            {
+              "origin": "gates",
+              "quote": "All current automated suites"
+            }
+          ]
+        },
+        {
+          "id": "RL2",
+          "kind": "automated",
+          "text": "Runtime and resource logs are clean: no runtime, page or resource errors, unhandled exceptions or missing assets.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "clean runtime/resource logs"
+            },
+            {
+              "origin": "gates",
+              "quote": "zero runtime/page/resource errors"
+            },
+            {
+              "origin": "gates",
+              "quote": "no silent failures, unhandled exceptions, missing assets or state corruption"
+            }
+          ]
+        },
+        {
+          "id": "RL3",
+          "kind": "automated",
+          "text": "Boot and repeated restart work.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "repeated restart"
+            },
+            {
+              "origin": "gates",
+              "quote": "Reliable startup and repeated sessions"
+            }
+          ]
+        },
+        {
+          "id": "RL4",
+          "kind": "automated",
+          "text": "Settings persist.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "settings persistence"
+            }
+          ]
+        },
+        {
+          "id": "RL5",
+          "kind": "automated",
+          "text": "Long play completes without state corruption.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "long play"
+            }
+          ]
+        },
+        {
+          "id": "RL6",
+          "kind": "automated",
+          "text": "Lifecycle recovery works without state corruption.",
+          "from": [
+            {
+              "origin": "rubric",
+              "quote": "lifecycle recovery without state corruption"
+            }
+          ]
+        }
+      ]
     }
   }
 }
