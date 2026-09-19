@@ -6,6 +6,7 @@ import { loadHeroVisual } from '../src/assets/character-library.js';
 import { loadDwarfVisual } from '../src/assets/dwarf-library.js';
 import { HERO_SKILL_MOTIONS } from '../src/assets/hero-skill-motion.js';
 import { getClassSkill } from '../src/combat/class-skills.mjs';
+import { missingStagingArtefacts, NEEDS_STAGING_STATUS } from './quality-staging.mjs';
 
 const legacyIds = ['warrior_flame_cleave','warrior_frost_nova','warrior_thunder_judgment',
   'dwarf_incendiary_burst','dwarf_cryo_grenade','dwarf_arcane_shot'];
@@ -61,12 +62,17 @@ for (const d of Object.values(HERO_SKILL_MOTIONS)) for (const speed of [0, 6.5, 
 for (const characterId of ['warrior','dwarf']) {
   const data=JSON.parse(await fs.readFile(`src/assets/${characterId}-skill-clips.json`,'utf8'));
   assert.deepEqual(data.clips.map(c=>c.skillId).sort(),canonicalIds.filter(id=>id.startsWith(characterId+'_')).sort());
-  assert.equal(createHash('sha256').update(await fs.readFile(data.source)).digest('hex'),data.sourceSha256,'Sidecar must refer to the preserved evaluated Mixamo export');
-  report.provenance.push({characterId,source:data.source,sourceSha256:data.sourceSha256,clips:data.clips.map(c=>({skillId:c.skillId,sourceClip:c.sourceClip,sourceKnots:c.sourceKnots,tracks:c.clip.tracks.length}))});
+  // The evaluated Mixamo export is a staging artefact under the untracked output/ tree. When it is absent only this byte check is
+  // skipped, explicitly; clips, phases, torso coherence and protocol above and below still run against the versioned runtime.
+  const exportMissing=missingStagingArtefacts([data.source]).length>0;
+  if(exportMissing)(report.needsStagingArtefact??=[]).push(data.source);
+  else assert.equal(createHash('sha256').update(await fs.readFile(data.source)).digest('hex'),data.sourceSha256,'Sidecar must refer to the preserved evaluated Mixamo export');
+  report.provenance.push({characterId,sourceVerified:!exportMissing,source:data.source,sourceSha256:data.sourceSha256,clips:data.clips.map(c=>({skillId:c.skillId,sourceClip:c.sourceClip,sourceKnots:c.sourceKnots,tracks:c.clip.tracks.length}))});
 }
 assert.equal(new Set(report.provenance.find(p=>p.characterId==='warrior').clips.map(c=>c.sourceClip)).size,3,'Warrior uses three distinct evaluated takes');
-report.checks = { canonicalIdsOnly:true,legacyIdsRejected:true,preservedMixamoProvenance:true,sixSkills: new Set(report.cases.map(c=>c.skillId)).size===6, allFinite: report.cases.every(c=>c.finite), coherentTorso:report.cases.every(c=>c.upperError<1e-5), runtimeAndRemoteProtocol:true };
+report.checks = { canonicalIdsOnly:true,legacyIdsRejected:true,preservedMixamoProvenance:report.needsStagingArtefact?NEEDS_STAGING_STATUS:true,sixSkills: new Set(report.cases.map(c=>c.skillId)).size===6, allFinite: report.cases.every(c=>c.finite), coherentTorso:report.cases.every(c=>c.upperError<1e-5), runtimeAndRemoteProtocol:true };
 for(const file of ['src/assets/hero-skill-motion.js','src/assets/character-library.js','src/assets/dwarf-library.js','src/assets/hero-locomotion.js','src/assets/warrior-skill-clips.json','src/assets/dwarf-skill-clips.json']) report.hashes[file] = createHash('sha256').update(await fs.readFile(file)).digest('hex');
-await fs.writeFile(process.env.ANIMATION_SKILL_CPU_OUTPUT || 'output/arpg-animation/skill-v2-cpu.json',JSON.stringify(report,null,2));
+const reportFile=process.env.ANIMATION_SKILL_CPU_OUTPUT || (process.env.BIPX_EVIDENCE_DIR ? `${process.env.BIPX_EVIDENCE_DIR}/skill-v2-cpu.json` : 'output/arpg-animation/skill-v2-cpu.json');
+await fs.mkdir(reportFile.replace(/\/[^/]*$/,''),{recursive:true});await fs.writeFile(reportFile,JSON.stringify(report,null,2));
 console.table(report.cases.map(({skillId,speed,maximumReachError,legsMoved})=>({skillId,speed,maximumReachError,legsMoved})));
 console.log(report.checks);

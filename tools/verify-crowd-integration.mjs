@@ -7,8 +7,11 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { requireStagingArtefacts } from './quality-staging.mjs';
 const root = process.cwd();
 const imp = p => import(pathToFileURL(path.join(root, p)));
+// Baseline comparison inputs are staging snapshots under the untracked output/ tree (the pre-optimisation solver and server).
+requireStagingArtefacts(['output/physics/crowd-optimized-20260919/snapshots/production-contacts.mjs', 'output/qa/arpg-crowd-integrated-20260919/before/server.mjs']);
 const original = await imp('output/physics/crowd-optimized-20260919/snapshots/production-contacts.mjs');
 const physics = await imp('src/physics/contacts.mjs');
 const { separateControlledActors } = await imp('src/combat/crowd-control.mjs');
@@ -16,6 +19,8 @@ const navigation = await imp('src/physics/navigation.mjs');
 const skills = await imp('src/combat/class-skills.mjs');
 const melee = await imp('src/combat/melee-timing.mjs');
 const heights = await imp('src/combat/collision-heights.mjs');
+const { skillMods } = await imp('src/progression/authority.mjs'); // T2: trusted skill mods read by updateServerSkills
+const heroPower = await imp('src/combat/hero-power.mjs'); // T1: knockback, swarm grace and pacing are read by the extracted monster hooks
 const environment = await imp('src/render/environment-layout.js');
 const files = ['src/main.js', 'server.mjs', 'output/qa/arpg-crowd-integrated-20260919/before/server.mjs', 'output/physics/crowd-optimized-20260919/snapshots/production-contacts.mjs', 'src/physics/navigation.mjs',
   'src/combat/class-skills.mjs', 'src/combat/melee-timing.mjs', 'src/combat/collision-heights.mjs',
@@ -73,7 +78,7 @@ function setup(enemies, mode, dt, world = openWorld, playerPosition = { x: 0, z:
   const room = { clients: new Map([[player.id, player]]), world: { monsters: new Map(enemies.map(e => [e.id, e])), wave: 1 } };
   const stats = { maximumTransientPenetration:0, segments:0, maxPlansPerTick:0, plansThisTick:0, ticks:0, costsMs:[] };
   const peers = () => [...room.world.monsters.values()].map(b=>({...b,id:`monster:${b.id}`})).concat({id:'player:player',...player.state,radius:.64});
-  const ctx = vm.createContext({ ...physics, ...navigation, ...skills, ...melee, ...heights,
+  const ctx = vm.createContext({ ...physics, ...navigation, ...skills, ...melee, ...heights, ...heroPower, skillMods,
     collisionWorld: world, serverMonsterProfiles: profiles,
     getPursuitDirection(...args) { const result=navigation.getPursuitDirection(...args); if(result.state.planned)stats.plansThisTick++;return result; },
     stepActor(w, body, velocity, elapsed, options) {
@@ -200,7 +205,7 @@ test('bounded recovery sweeps the real rail and circular arena rather than eject
 });
 function clientContext(zombies,playerPosition,world) {
   const player={position:playerPosition,health:200};
-  const ctx=vm.createContext({...physics,...navigation,separateControlledActors,zombies,player,collisionWorld:world,zombieNavigationBudget:4,zombieActorIndex:null,
+  const ctx=vm.createContext({...physics,...navigation,...heroPower,separateControlledActors,zombies,player,collisionWorld:world,zombieNavigationBudget:4,zombieActorIndex:null,
     getLivingPlayerTargets:()=>[{id:'player',position:player.position,radius:.64}]});
   const main=fs.readFileSync('src/main.js','utf8');
   vm.runInContext(['getZombieCollisionBody','getEnemyCrowdBodies','moveZombieWithPhysics','resolveEnemyCrowding'].map(n=>extract(n,main)).join('\n'),ctx);
@@ -396,7 +401,7 @@ report.acceptedForProduction = false;
 report.gates = { runtimePolicyIntegrated: true, nativePolicyValidation: false };
 report.limitations = ['Actual runtime hooks in CPU fixtures; native cost and multiplayer gameplay remain separate gates'];
 
-const directory=`output/qa/arpg-crowd-integrated-20260919/${report.createdAt.replace(/[:.]/g,'-')}`;fs.mkdirSync(directory,{recursive:true});const destination=`${directory}/crowd-integration.json`;
+const directory=process.env.BIPX_EVIDENCE_DIR||`output/qa/arpg-crowd-integrated-20260919/${report.createdAt.replace(/[:.]/g,'-')}`;fs.mkdirSync(directory,{recursive:true});const destination=`${directory}/crowd-integration.json`;
 fs.writeFileSync(destination, JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify({ destination, passed: report.passed, failed: report.failed, sourceStable: report.sourceStable, tests: report.tests.filter(t=>!t.passed) }, null, 2));
 if (report.failed || !report.sourceStable) process.exitCode = 1;
