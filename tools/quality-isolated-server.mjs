@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+import {sanitizedChildEnv} from './lib/child-env.mjs';
 export async function localServer() {
   const directory=fs.mkdtempSync(path.join(os.tmpdir(),'bipx-entry-ledger-'));
-  const child=spawn(process.execPath,['server.mjs'],{cwd:process.cwd(),env:{...process.env,HOST:'127.0.0.1',PORT:'0',LEADERBOARD_FILE:path.join(directory,'leaderboard.json'),SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:''},stdio:['ignore','pipe','pipe']});
+  // Never forward secrets (TYPESAFE_API_KEY, any *_KEY/*_SECRET/*_TOKEN, Supabase) to the child server.
+  const child=spawn(process.execPath,['server.mjs'],{cwd:process.cwd(),env:sanitizedChildEnv({HOST:'127.0.0.1',PORT:'0',LEADERBOARD_FILE:path.join(directory,'leaderboard.json')}),stdio:['ignore','pipe','pipe']});
   let stderr='';child.stderr.on('data',data=>stderr+=data);
   const closed=new Promise(resolve=>child.once('close',resolve));
   const stop=async()=>{child.kill('SIGTERM');await Promise.race([closed,new Promise(resolve=>setTimeout(resolve,1000))]);if(child.exitCode===null&&!child.signalCode)child.kill('SIGKILL');fs.rmSync(directory,{recursive:true,force:true});};
