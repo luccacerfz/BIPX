@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ try {
     const telemetry = attachQualityTelemetry(page, `character-${character}`);
     const details = { character, phases: [] };
     try {
-      await page.goto(process.argv[2] || 'http://127.0.0.1:5173/?offline=1', { waitUntil: 'networkidle' });
+      await page.goto(await suiteUrl('/?offline=1'), { waitUntil: 'networkidle' });
       await waitForRuntimeAssets(page, telemetry);
       await page.locator('#open-login-button').click();
       await page.locator(`label[for="character-${character}"]`).click();

@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
@@ -63,7 +64,7 @@ try {
     assert.equal(telemetry.report.servedMainSha256, expectedMain);
     await route.fulfill({ status: response.status(), contentType: 'text/javascript', body: source + '\n' + instrumentation });
   });
-  await page.goto('http://127.0.0.1:5173/?offline=1&autoplay=1', { waitUntil: 'networkidle' });
+  await page.goto(await suiteUrl('/?offline=1&autoplay=1'), { waitUntil: 'networkidle' });
   await waitForRuntimeAssets(page, telemetry);
   await page.waitForFunction(() => window.__zombieNightDebug.getState().state === 'playing');
   for (const type of ['zombie', 'runner']) {

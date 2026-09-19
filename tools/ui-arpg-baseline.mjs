@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium, browserLaunchOptions, attachQualityTelemetry, waitForRuntimeAssets, evidenceDir } from './quality-browser.mjs';
@@ -11,7 +12,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const telemetry = attachQualityTelemetry(page, 'gui-before');
   try {
-    await page.goto('http://127.0.0.1:5173/?offline=1');
+    await page.goto(await suiteUrl('/?offline=1'));
     await waitForRuntimeAssets(page, telemetry);
     await telemetry.capture('menu');
     await page.locator('#open-login-button').click();

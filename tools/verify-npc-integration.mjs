@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ try {
     telemetry.report.scope = 'Explicit spawned-target and horde fixture in the real game renderer. Keyboard/pointer damage uses production combat; emulated viewport does not prove physical mobile performance.';
     const details = { mobile, physicalDevice: false };
     try {
-      await page.goto(process.argv[2] || 'http://127.0.0.1:5173/?offline=1&autoplay=1', { waitUntil: 'networkidle' });
+      await page.goto(await suiteUrl('/?offline=1&autoplay=1'), { waitUntil: 'networkidle' });
       await waitForRuntimeAssets(page, telemetry);
       await page.waitForFunction(() => window.__zombieNightDebug.getState().state === 'playing');
       await page.waitForFunction(() => ['orc','monsters'].every(id => window.__zombieNightDebug.getPresentationStats().assets.enemies.libraries.includes(id)));

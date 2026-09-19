@@ -1,10 +1,11 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { chromium, browserLaunchOptions, evidenceDir, attachQualityTelemetry, waitForRuntimeAssets } from './quality-browser.mjs';
 
-const baseUrl = process.argv[2] || 'http://127.0.0.1:5173/?offline=1';
+const baseUrl = await suiteUrl('/?offline=1');
 const browser = await chromium.launch(browserLaunchOptions);
 const expected = {
   warrior: ['warrior_war_cry', 'warrior_cleaving_dash', 'warrior_shield_charge'],

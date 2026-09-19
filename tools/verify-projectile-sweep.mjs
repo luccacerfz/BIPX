@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -78,7 +79,7 @@ try {
     await route.fulfill({ status: response.status(), contentType: 'text/javascript', body: source + '\n' + instrumentation });
   });
   telemetry.reportExpectedMainSha256 = crypto.createHash('sha256').update(fs.readFileSync('src/main.js')).digest('hex');
-  await page.goto(process.argv[2] || 'http://127.0.0.1:5173/?offline=1&autoplay=1', { waitUntil: 'networkidle' });
+  await page.goto(await suiteUrl('/?offline=1&autoplay=1'), { waitUntil: 'networkidle' });
   await waitForRuntimeAssets(page, telemetry);
   await page.waitForFunction(() => window.__zombieNightDebug.getState().state === 'playing');
   await page.evaluate(() => window.__bipxPresentation.setPaused(true));

@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -29,7 +30,7 @@ try {
     const telemetry = attachQualityTelemetry(page, `keyboard-${character}`);
     const details = { character, input: 'Native keyboard events; no programmatic focus or start. A later target-placement phase is explicitly a fixture.' };
     try {
-      await page.goto('http://127.0.0.1:5173/?offline=1', { waitUntil: 'networkidle' });
+      await page.goto(await suiteUrl('/?offline=1'), { waitUntil: 'networkidle' });
       await waitForRuntimeAssets(page, telemetry);
       await tabTo(page, 'open-login-button');
       await page.keyboard.press('Enter');

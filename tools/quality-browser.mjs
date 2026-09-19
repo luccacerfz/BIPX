@@ -1,9 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { chromium } from "playwright";
+import { chromium as playwrightChromium, webkit as playwrightWebkit } from "playwright";
+import { gpuLockedBrowserType } from "./quality-gpu-lock.mjs";
 
-export { chromium };
+// Every browser a suite launches through this module first takes the shared GPU reservation (tools/quality-gpu-lock.mjs):
+// atomic mkdir of /tmp/bipx-arpg-gpu.lock, 2 s retries for up to 25 min, released when the suite process ends. Importing this
+// module for `evidenceDir`/`sourceFingerprint` alone (CPU suites) never touches the lock.
+const lockOwner = `quality:${path.basename(process.argv[1] || "node", ".mjs")}`;
+export const chromium = gpuLockedBrowserType(playwrightChromium, lockOwner);
+export const webkit = gpuLockedBrowserType(playwrightWebkit, lockOwner);
 export const browserLaunchOptions = {
   headless: process.env.BIPX_HEADLESS !== "0",
   ...(process.env.BIPX_BROWSER_CHANNEL ? { channel: process.env.BIPX_BROWSER_CHANNEL } : {}),

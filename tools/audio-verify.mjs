@@ -1,9 +1,10 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { chromium, browserLaunchOptions, attachQualityTelemetry, evidenceDir, waitForRuntimeAssets } from './quality-browser.mjs';
 
-const baseUrl = process.argv[2] || 'http://127.0.0.1:5173/?offline=1';
+const baseUrl = await suiteUrl('/?offline=1');
 const browser = await chromium.launch(browserLaunchOptions);
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const page = await context.newPage();

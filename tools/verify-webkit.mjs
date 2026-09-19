@@ -1,8 +1,8 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { webkit } from 'playwright';
-import { attachQualityTelemetry, waitForRuntimeAssets, sampleAnimationFrames, evidenceDir } from './quality-browser.mjs';
+import { webkit, attachQualityTelemetry, waitForRuntimeAssets, sampleAnimationFrames, evidenceDir } from './quality-browser.mjs';
 
 const launchOptions = { headless: process.env.BIPX_HEADLESS !== '0' };
 const browser = await webkit.launch(launchOptions);
@@ -22,7 +22,7 @@ try {
     const measurements = { scenario, physicalDevice: false };
     const activate = async selector => scenario.touch ? page.locator(selector).tap() : page.locator(selector).click();
     try {
-      await page.goto(process.argv[2] || 'http://127.0.0.1:5173/?offline=1', { waitUntil: 'networkidle' });
+      await page.goto(await suiteUrl('/?offline=1'), { waitUntil: 'networkidle' });
       await waitForRuntimeAssets(page, telemetry);
       await activate('#open-login-button');
       await activate(`label[for="character-${scenario.character}"]`);

@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +20,7 @@ try {
     const gate = new Promise(resolve => { releaseLod = resolve; });
     if (!mobile) await page.route('**/enemy-lods/lich.glb', async route => { await gate; await route.continue(); });
     try {
-      await page.goto('http://127.0.0.1:5173/?offline=1&autoplay=1&quality=auto', { waitUntil: 'domcontentloaded' });
+      await page.goto(await suiteUrl('/?offline=1&autoplay=1&quality=auto'), { waitUntil: 'domcontentloaded' });
       await waitForRuntimeAssets(page, telemetry);
       if (!mobile) await page.evaluate(() => window.__zombieNightDebug.start());
       await page.waitForFunction(() => window.__zombieNightDebug.getState().state === 'playing');

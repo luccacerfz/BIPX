@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import { chromium, browserLaunchOptions, attachQualityTelemetry, evidenceDir } from './quality-browser.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -13,7 +14,7 @@ telemetry.markFixture();
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 try {
-await page.goto('http://127.0.0.1:5173/src/assets/asset-preview.html?manual=1');
+await page.goto(await suiteUrl('/src/assets/asset-preview.html?manual=1'));
 await page.waitForFunction(()=>window.assetReview?.ready,{timeout:30000});
 await page.evaluate(()=>window.assetReview.pause());
 const sample=async()=>page.evaluate(()=>{

@@ -1,6 +1,7 @@
+import { suiteUrl } from './quality-target.mjs';
 import { chromium, browserLaunchOptions, waitForRuntimeAssets, attachQualityTelemetry } from "./quality-browser.mjs";
 
-const url = process.argv[2] ?? "http://127.0.0.1:5173/?autoplay=1&offline=1";
+const url = await suiteUrl("/?autoplay=1&offline=1");
 
 const browser = await chromium.launch(browserLaunchOptions);
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

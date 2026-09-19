@@ -1,8 +1,9 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import { chromium, browserLaunchOptions, waitForRuntimeAssets, attachQualityTelemetry, evidenceDir } from "./quality-browser.mjs";
 
-const url = process.argv[2] || "http://127.0.0.1:5173/?offline=1&quality=high";
+const url = await suiteUrl("/?offline=1&quality=high");
 const browser = await chromium.launch(browserLaunchOptions);
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const telemetry = attachQualityTelemetry(page, "vfx-integration");
