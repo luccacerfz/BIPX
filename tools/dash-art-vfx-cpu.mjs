@@ -1,8 +1,11 @@
+import {requireStagingArtefacts} from './quality-staging.mjs';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
 import {createSkillState,beginSkill,advanceSkills,skillSnapshot} from '../src/combat/class-skills.mjs';
 const root='output/vfx-dash-art-v1';
+// Gate of the rejected dash art1 candidate: candidate, baseline and the recorded native input all live in the untracked output/ tree.
+requireStagingArtefacts([root+'/candidate/class-skill-vfx.js',root+'/baseline/class-skill-vfx.js',root+'/candidate/dash-vfx.js','output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-warrior-high.json']);
 const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
 const {createClassSkillVfx}=await import(await moduleUrl(root+'/candidate/class-skill-vfx.js'));
 const baseline=await import(await moduleUrl(root+'/baseline/class-skill-vfx.js'));

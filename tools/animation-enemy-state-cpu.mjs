@@ -55,4 +55,4 @@ for(let i=0;i<18;i++)tick([reused],.1);assert.equal(pool.getStats().cutCorpses,0
 const fallback=entity();pool.remove(fallback,{death:true,deathStyle:'bisect',killedBySkillId:'warrior_cleaving_dash'});assert.equal(pool.getStats().cutCorpses,1);pool.clear();assert.equal(pool.getStats().cutCorpses,0);
 result.pool={onlyDashDeaths:true,reuseUncut:true,pauseLifetime:true,expiry:true,fallback:true,clear:true};
 for(const file of ['src/assets/enemy-control-state.js','src/assets/enemy-death-cut.js','src/assets/enemy-library.js','src/assets/monster-library.js','src/render/animated-enemies.js'])result.hashes[file]=createHash('sha256').update(await fs.readFile(file)).digest('hex');
-await fs.writeFile(process.env.ANIMATION_ENEMY_CPU_OUTPUT || 'output/arpg-animation/enemy-state-v2-cpu.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+const reportFile=process.env.ANIMATION_ENEMY_CPU_OUTPUT || `${process.env.BIPX_EVIDENCE_DIR||'output/arpg-animation'}/enemy-state-v2-cpu.json`;await fs.mkdir(reportFile.replace(/\/[^/]*$/,''),{recursive:true});await fs.writeFile(reportFile,JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));

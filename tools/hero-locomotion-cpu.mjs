@@ -1,8 +1,11 @@
+import {requireStagingArtefacts} from './quality-staging.mjs';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { THREE, bonesOf, quantile } from './hero-locomotion-cpu-support.mjs';
 import { loadHeroVisual } from '../src/assets/character-library.js';
 import { loadDwarfVisual } from '../src/assets/dwarf-library.js';
+// Before/after comparison against the pre-retarget libraries kept in the untracked output/ tree (the copies under tools/ are a different revision).
+requireStagingArtefacts(['output/hero-locomotion/baseline/character-library.js','output/hero-locomotion/baseline/dwarf-library.js']);
 const rootUrl = new URL('../src/assets/', import.meta.url);
 async function baseline(file, symbol) {
   let code = await fs.readFile(new URL(`../output/hero-locomotion/baseline/${file}`, import.meta.url), 'utf8');

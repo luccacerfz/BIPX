@@ -1,3 +1,4 @@
+import {requireStagingArtefacts} from './quality-staging.mjs';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -20,6 +21,8 @@ check('Uniform identity and per-frame updates are shared',()=>{for(const k of Ob
 check('Depth packing, alpha, side and clipping stay owned by prepass',()=>{assert.equal(depth.depthPacking,THREE.RGBADepthPacking);assert.equal(depth.side,THREE.DoubleSide);assert.equal(depth.alphaTest,.37);assert.equal(depth.clippingPlanes[0],plane);assert.equal(depth.clipIntersection,true)});
 check('Binding is idempotent and opaque actors remain unmarked',()=>{const key=depth.customProgramCacheKey(),prior=depth.onBeforeCompile;assert(shareEnvironmentCutawayDepth(color,depth));assert.equal(depth.customProgramCacheKey(),key);assert.equal(depth.onBeforeCompile,prior);const actor=new THREE.MeshStandardMaterial(),opaque=new THREE.MeshDepthMaterial(),hook=opaque.onBeforeCompile;assert.equal(shareEnvironmentCutawayDepth(actor,opaque),false);assert.equal(opaque.onBeforeCompile,hook)});
 check('Program keys distinguish color/depth and unsupported shaders fail explicitly',()=>{assert.notEqual(color.customProgramCacheKey(),depth.customProgramCacheKey());assert.throws(()=>patchEnvironmentCutawayShader({vertexShader:'#include <common>',fragmentShader:'',uniforms:{}},uniforms),/project_vertex/)});
+// Post-promotion receipt check against the preservation manifest recorded in the untracked output/ tree.
+requireStagingArtefacts(['output/qa/environment-depth-cutaway-v1/source-preservation.json']);
 const hash=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');const preserved=JSON.parse(fs.readFileSync('output/qa/environment-depth-cutaway-v1/source-preservation.json'));
 check('Promoted files match native-tested candidates; other Environment files and collider layout remain unchanged',()=>{for(const[p,h]of Object.entries(preserved.runtimeBefore))assert.equal(hash(p),preserved.candidate['output/qa/environment-depth-cutaway-v1/candidate/'+p]??h,p);for(const[p,h]of Object.entries(preserved.candidate))assert.equal(hash(p.replace('output/qa/environment-depth-cutaway-v1/candidate/','')),h,p)});
 const result={passed:true,checks,sourceHashes:Object.fromEntries(['src/render/environment-cutaway.js','src/render/asset-dressing.js','vendor/three/three.module.js'].map(p=>[p,hash(p)])),scope:'Post-promotion CPU shader construction, binding ownership and exact native-tested candidate preservation. Native shader compilation and controlled fixture are separate evidence; not gameplay evidence.'};fs.writeFileSync('output/qa/environment-depth-cutaway-v1/cpu.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({passed:true,checks:checks.length}));

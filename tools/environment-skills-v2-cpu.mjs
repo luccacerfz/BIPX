@@ -1,3 +1,4 @@
+import {requireStagingArtefacts} from './quality-staging.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -73,6 +74,8 @@ check('Bounded selection uses nearest area edge and retains large overlapping fi
 check('No retained focus after empty update/reset',()=>{
  const output=selectEnvironmentSkillAreas([area('live')],{x:0,z:0});selectEnvironmentSkillAreas([],{x:0,z:0},output);assert.equal(output.length,0);
 });
+// Compares against the pre-change hash manifest recorded in the untracked output/ tree.
+requireStagingArtefacts(['output/qa/environment-skills-v2/before/hashes.json']);
 const prior=JSON.parse(fs.readFileSync('output/qa/environment-skills-v2/before/hashes.json'));
 check('Layout and all good exports are unchanged',()=>{for(const [p,h]of Object.entries(prior))if(p.includes('environment-layout')||p.startsWith('assets/'))assert.equal(hash(p),h,p)});
 const report={passed:true,checks,routes,integratedMovements,directions,full14mDirections:directions.filter(d=>!d.collider).length,sourceHashes,sourceChangedDuringRun:files.some(p=>sourceHashes[p]!==hash(p)),scope:'CPU real-map corridors, authoritative dash/charge movement callbacks against this layout, and presentation selection. Not browser input, damage/status, network or crowd pathfinding proof.'};

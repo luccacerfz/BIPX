@@ -1,8 +1,11 @@
+import {requireStagingArtefacts} from './quality-staging.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
 
 const base='output/vfx-warcry-art-v1',stage=process.argv.includes('--art2')?`${base}/art2`:base;
+// Promotion gate of the warcry art candidates against their frozen baseline (untracked output/ tree). The shipped warcry pool is covered by class-skill-vfx-cpu.
+requireStagingArtefacts([`${stage}/candidate/class-skill-vfx.js`,`${base}/baseline/source/src/combat/class-skills.mjs`]);
 const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
 const {createClassSkillVfx}=await import(await moduleUrl(`${stage}/candidate/class-skill-vfx.js`));
 const {createSkillState,beginSkill,advanceSkills}=await import(await moduleUrl(`${base}/baseline/source/src/combat/class-skills.mjs`));
