@@ -19,7 +19,7 @@ import { findBannedPraise, isOwnerOnly } from './jef-questions.mjs';
 
 export const EVIDENCE_SCHEMA_VERSION = 2;
 export const OWNER_SESSIONS_DIR = 'docs/arpg/aaa-loop/owner-sessions';
-const OWNER_SESSION_PATH = /(^|\/)docs\/arpg\/aaa-loop\/owner-sessions\/[^/]+$/;
+const OWNER_SESSION_PATH = /^docs\/arpg\/aaa-loop\/owner-sessions\/[^/]+$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const SOURCES = ['automation', 'agent', 'owner'];
 const INPUT_KINDS = ['natural', 'fixture', 'not_applicable'];
@@ -110,7 +110,8 @@ export function lintEvidence({ evidence, rubric, root = process.cwd(), previousL
     if (!isObject(record) || !isText(record.path) || !SHA256.test(String(record.sha256))) { error('artifact_record_invalid', where, 'Artifact needs {path, sha256}.'); continue; }
     flagSelfDeclared(record, where);
     const file = absolute(record.path);
-    info.ownerSession = OWNER_SESSION_PATH.test(file.split(path.sep).join('/'));
+    // Owner sessions live in ONE place of the repository root; a look-alike folder elsewhere does not count.
+    info.ownerSession = OWNER_SESSION_PATH.test(path.relative(root, file).split(path.sep).join('/'));
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) { error('artifact_missing', where, `Cited artifact does not exist: ${record.path}`); continue; }
     info.exists = true;
     const bytes = fs.readFileSync(file);

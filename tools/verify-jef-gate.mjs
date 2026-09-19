@@ -171,6 +171,7 @@ try {
       'agent field': ({ evidence }) => { firstObservation({ evidence }, 'audio', 'human').inspector = 'vision-agent'; },
       'words not in the owner file': ({ evidence }) => { firstObservation({ evidence }, 'audio', 'human').verbatim = 'The owner loved everything.'; },
       'artifact outside owner-sessions': ({ evidence }) => { firstObservation({ evidence }, 'audio', 'human').artifacts = ['review']; },
+      'look-alike owner-sessions folder elsewhere': ({ evidence, put, root }) => { evidence.artifacts.lookalike = put('out/docs/arpg/aaa-loop/owner-sessions/s1.md', fs.readFileSync(path.join(root, evidence.artifacts.ownerSession.path))); firstObservation({ evidence }, 'audio', 'human').artifacts = ['lookalike']; },
       'no device or date': ({ evidence }) => { delete firstObservation({ evidence }, 'audio', 'human').environment; },
       'future date': ({ evidence }) => { firstObservation({ evidence }, 'audio', 'human').environment.date = '2027-01-01'; },
     };
@@ -247,9 +248,10 @@ try {
     assert.equal(readLedger(path.join(fixture.root, 'ledger.jsonl')).entries.at(-1).type, 'lint_failed');
   });
   await check('gate: --dry-run writes the exact requests, calls nothing and leaves the ledger alone', async () => {
-    const fixture = makeFixture();
+    const fixture = makeFixture(({ evidence, root }) => { evidence.artifacts.review.path = path.join(root, 'out/review.md'); });
     const judge = mockJudge();
     const dry = await gate(fixture, { dryRun: true, outName: 'dry' }, { fetch: judge.fetch, env: {} });
+    assert.ok(!fs.readFileSync(path.join(dry.outDir, 'requests.json'), 'utf8').includes(fixture.root), 'absolute local paths must not be sent to the provider');
     assert.deepEqual([dry.status, dry.exitCode, judge.calls.length, fs.existsSync(path.join(fixture.root, 'ledger.jsonl'))], ['dry_run_not_evaluated', 0, 0, false]);
     const planned = JSON.parse(fs.readFileSync(path.join(dry.outDir, 'requests.json'), 'utf8'));
     assert.equal(planned.length, dimensionIds.length * 4);

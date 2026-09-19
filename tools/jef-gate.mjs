@@ -49,8 +49,10 @@ async function pool(items, size, worker) {
   return results;
 }
 
-function stateInputs({ evidence, lint, rubric, dimensionId }) {
+function stateInputs({ evidence, lint, rubric, dimensionId, root }) {
   const block = evidence.dimensions[dimensionId];
+  // Paths are only identifiers for the judge: never send the local home directory to the provider.
+  const displayPath = (file) => { if (!path.isAbsolute(file)) return file; const relative = path.relative(root, file); return relative.startsWith('..') ? path.basename(file) : relative; };
   const observations = block.observations.map((observation) => ({
     id: observation.id,
     source: observation.source,
@@ -61,9 +63,9 @@ function stateInputs({ evidence, lint, rubric, dimensionId }) {
     result: observation.result,
     limits: observation.limits,
     ...(observation.source === 'owner' ? { owner_verbatim: observation.verbatim } : {}),
-    artifacts: observation.artifacts.map((id) => evidence.artifacts[id].path),
+    artifacts: observation.artifacts.map((id) => displayPath(evidence.artifacts[id].path)),
   }));
-  const verifiedMeasurements = lint.observations[dimensionId].flatMap((observation) => observation.verifiedClaims.map((claim) => `${claim.claim}: ${JSON.stringify(claim.value)} (observation ${observation.id}; checked by code against ${claim.artifactPath})`));
+  const verifiedMeasurements = lint.observations[dimensionId].flatMap((observation) => observation.verifiedClaims.map((claim) => `${claim.claim}: ${JSON.stringify(claim.value)} (observation ${observation.id}; checked by code against ${displayPath(claim.artifactPath)})`));
   for (const row of lint.coverage[dimensionId].scenarios) for (const bound of row.bounds ?? []) verifiedMeasurements.push(`Required bound ${bound.metric} ${bound.op} ${bound.limit}: ${bound.ok ? 'met' : bound.values.length ? 'not met' : 'no verified measurement'} (compared by code)`);
   const tests = lint.tests.entries.filter((test) => test.dimensions.includes(dimensionId)).map((test) => ({ name: test.name, status: test.status }));
   const testSummary = lint.tests.total === 0 ? 'No test suite is recorded.' : lint.tests.failed.length ? `Some recorded test suites failed: ${lint.tests.failed.join(', ')}.` : 'All recorded test suites passed.';
@@ -175,6 +177,15 @@ function renderDelta(report) {
       if (dimension.marginWarnings.length) { push(); push(`Margem: ${dimension.marginWarnings.join('; ')}.`); }
     }
     push();
+  } else if (report.lint.coverage) {
+    push('## Cobertura calculada em código (sem resposta do JEF nesta execução)');
+    push();
+    push('| Dimensão | Cobertura | Requisitos sem evidência válida |');
+    push('| --- | --- | --- |');
+    for (const [id, coverage] of Object.entries(report.lint.coverage)) push(`| ${id} | ${coverage.covered}/${coverage.total} (${coverage.status}) | ${coverage.missing.map((row) => `${row.id}${row.ownerOnly ? ' (dono)' : ''}`).join(', ') || '—'} |`);
+    push();
+    push('Motivo de cada falta e texto de cada requisito: `lint.json` → `coverage.<dimensão>.missing`.');
+    push();
   }
   push('## Lacunas que só o dono fecha');
   push();
@@ -258,7 +269,7 @@ export async function runGate(options, deps = {}) {
   const root = path.resolve(options.root ?? process.cwd());
   const lint = lintEvidence({ evidence, rubric, root, previousLedgerEntry: lastEvaluation(ledger.entries), now: now() });
   write('lint.json', { ...lint, evidenceSha256, rubricSha256 });
-  const lintSummary = { status: lint.status, ok: lint.ok, clean: lint.clean, errors: lint.errors.length, warnings: lint.warnings.length, gaps: lint.gaps, errorList: lint.errors, warningList: lint.warnings, coverage: Object.fromEntries(allDimensions.map((id) => [id, { status: lint.coverage[id].status, covered: lint.coverage[id].covered, total: lint.coverage[id].total }])) };
+  const lintSummary = { status: lint.status, ok: lint.ok, clean: lint.clean, errors: lint.errors.length, warnings: lint.warnings.length, gaps: lint.gaps, errorList: lint.errors, warningList: lint.warnings, coverage: Object.fromEntries(allDimensions.map((id) => [id, { status: lint.coverage[id].status, covered: lint.coverage[id].covered, total: lint.coverage[id].total, missing: lint.coverage[id].missing }])) };
   const report = { ...base, mode: options.dryRun ? 'dry_run' : 'real', candidate: lint.candidate, evidenceSha256, artifactSetSha256: lint.artifactSetSha256, dimensionsRequested: requested, lint: lintSummary, ownerOnlyGaps: lint.ownerOnlyGaps, openDefects: lint.defects.open.map((defect) => defect.id), tests: { total: lint.tests.total, failed: lint.tests.failed, allPassed: lint.tests.allPassed }, ledger: { file: ledgerFile, entries: ledger.entries.length } };
   const record = (entry) => (options.dryRun || options.lintOnly ? null : appendLedgerEntry(ledgerFile, redactSecrets({ at: report.evaluatedAt, candidateManifestSha256: lint.candidate.manifestSha256, candidateId: lint.candidate.id, rubricSha256, questionsSha256, evidenceSha256, artifactSetSha256: lint.artifactSetSha256, dimensionsRequested: requested, ...entry }, [apiKey])));
   const save = () => { write('report.json', report); write('delta.md', renderDelta(report)); };
@@ -271,7 +282,7 @@ export async function runGate(options, deps = {}) {
   const forced = options.force ? { reason: String(options.force) } : null;
   if (forced) report.forced = forced;
   const plan = requested.map((dimensionId) => {
-    const body = buildDimensionRequest(stateInputs({ evidence, lint, rubric, dimensionId }));
+    const body = buildDimensionRequest(stateInputs({ evidence, lint, rubric, dimensionId, root }));
     const stateSha256 = sha256(stable(body.state));
     const prior = lastDimensionQuery(ledger.entries, { candidateManifestSha256: lint.candidate.manifestSha256, rubricSha256, dimensionId });
     const gained = prior ? lint.dimensionArtifactHashes[dimensionId].filter((hash) => !prior.record.artifactHashes.includes(hash)) : [];
