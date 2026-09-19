@@ -43,6 +43,9 @@ export function normalizeSnapshot(value) {
     resource: Math.min(value.resource, value.maxResource), maxResource: value.maxResource,
     resourceLabel: label(value.resourceLabel, 'Recurso'),
     weapon: label(value.weapon, 'Arma básica'),
+    // Temporary relic infusing the basic attack (trusted combat state; presentation only).
+    relic: value.relic && typeof value.relic.id === 'string' && nonnegative(value.relic.remaining) && value.relic.remaining > 0
+      ? { id: value.relic.id.slice(0, 24), label: label(value.relic.label, 'Relíquia'), name: label(value.relic.name, 'Relíquia'), remaining: value.relic.remaining } : null,
     dead: value.dead, paused: value.paused,
     statuses: !value.dead && Array.isArray(value.statuses) ? value.statuses
       .filter(status => status && expected.includes(status.skillId ?? status.id) && typeof status.id === 'string'
@@ -173,10 +176,13 @@ function render() {
   updateOrb('resource', snapshot?.resource, snapshot?.maxResource, snapshot?.resourceLabel ?? 'Recurso');
   root.querySelector('.arpg-class').textContent = snapshot ? snapshot.classId === 'warrior' ? 'Aldric' : 'Lyra' : 'Sobrevivente';
   root.querySelector('.arpg-run-status').textContent = !snapshot ? 'Aguardando estado' : snapshot.dead ? 'Derrotado' : snapshot.paused || dialog?.open ? 'Em pausa' : choosingUpgrade() ? 'Evolução' : '';
-  root.querySelector('.arpg-basic__name').textContent = snapshot?.weapon ?? 'Arma';
+  const relic = snapshot && !snapshot.dead ? snapshot.relic : null;
+  root.querySelector('.arpg-basic__name').textContent = relic ? relic.label : snapshot?.weapon ?? 'Arma';
+  root.querySelector('.arpg-basic').dataset.relic = relic ? relic.id : '';
+  root.querySelector('.arpg-basic small').textContent = relic ? `${Math.ceil(relic.remaining)}s` : 'Mouse / Espaço';
   const weaponId = snapshot?.classId === 'dwarf' ? 'rifle' : 'blade';
   setIconHref(root.querySelector('.arpg-basic use'), `./assets/ui/arpg/icons.svg#${weaponId}`);
-  root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
+  root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}${relic ? `, relíquia ${relic.name}, ${Math.ceil(relic.remaining)} segundos` : ''}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
   // Keep the upper weapon/buff status accurate for both classes.
   setIconHref(document.querySelector('.hud__stat--weapon use'), `#icon-${weaponId}`);
   for (const button of root.querySelectorAll('[data-arpg-slot]')) {

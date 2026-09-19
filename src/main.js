@@ -25,6 +25,8 @@ import { createClassSkillVfx } from "./vfx/class-skill-vfx.js";
 import { createCombatVfx } from "./vfx/combat-vfx.js";
 import { createHazardVfx } from "./vfx/hazard-vfx.js";
 import { createElementalVfx } from "./vfx/elemental-vfx.js";
+import { createArsenalVfx } from "./vfx/arsenal-vfx.js";
+import { RELICS, RELIC_IDS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, AUTO_WEAPONS, AUTO_WEAPON_IDS, nextRelicDrop, isAutoWeaponEvolved, getRelicName, createArsenalState, relicAttack, advanceArsenal, cancelArsenal } from "./combat/arsenal.mjs";
 import { emitProjectileCast, emitProjectileTrail, emitProjectileImpact } from "./vfx/elemental-projectiles.js";
 import { createLocalLeaderboard } from "./progression/local-leaderboard.mjs";
 import { paintBossLabel } from "./ui/boss-label-painter.js";
@@ -110,6 +112,7 @@ const skillPresentationHistory = [];
 const skillSoundTravel = new Set();
 let hazardVfx = null;
 let elementalVfx = null;
+let arsenalVfx = null;
 let cemetery = null;
 let worldAtmosphere = null;
 let heroVisual = null;
@@ -142,6 +145,10 @@ let cameraTrauma = 0;
 let footstepVisual = null;
 let footstepSerial = 0;
 let weaponFireEmitter = null;
+// Solo authority for relics and automatic weapons (multiplayer: the server owns the equivalent state).
+let arsenalState = createArsenalState(), arsenalContext = null, arsenalTargetStamp = -1;
+const arsenalBodies = [], arsenalTargets = [], arsenalSweepOptions = { kind: 'projectile' };
+const arsenalLoadout = Object.fromEntries(AUTO_WEAPON_IDS.map((weaponId) => [weaponId, { level: 0, evolved: false }]));
 let playerMoveBlend = 0;
 let playerSwingTime = 0;
 const perfOverlayEnabled = queryParams.get("perf") === "1";
@@ -816,29 +823,10 @@ const spatialGrid = {
   pointQueryActive: false,
 };
 
-const weapons = {
-  pistol: { label: "Pistola", duration: 0 },
-  flamethrower: { label: "Lança-chamas", duration: 20, color: 0xff7a28 },
-  axe: { label: "Machado", duration: 16, color: 0x7fd7ff },
-  katana: { label: "Katana", duration: 20, color: 0x8ffcff },
-  crossbow: { label: "Besta", duration: 22, color: 0xffd36d },
-  talisman: { label: "Selo", duration: 18, color: 0xd978ff },
-  thunderstaff: { label: "Cajado de Raio", duration: 20, color: 0xfff45c },
-  boneCannon: { label: "Canhão de Ossos", duration: 22, color: 0xe7e0c7 },
-  frostNova: { label: "Orbe de Gelo", duration: 20, color: 0x7edcff },
-};
-
-const weaponDropTypes = ["flamethrower", "axe", "katana", "crossbow", "talisman", "thunderstaff", "boneCannon", "frostNova"];
-const bossWeaponDrops = {
-  visor: "talisman",
-  himetrica: "thunderstaff",
-  dinzo: "boneCannon",
-  gitcity: "crossbow",
-  sofra: "flamethrower",
-  angelSheep: "frostNova",
-  bloodCow: "axe",
-  plumaFinance: "crossbow",
-};
+// Relic labels, durations, colours and boss drops are the shared arsenal rules (src/combat/arsenal.mjs).
+const weapons = { pistol: { label: "Pistola", duration: 0 }, ...RELICS };
+const weaponDropTypes = RELIC_IDS;
+const bossWeaponDrops = BOSS_RELIC_DROPS;
 
 const rarityStyles = {
   common: {
@@ -1187,52 +1175,8 @@ const waveMilestones = {
   },
 };
 
-const autoWeaponProfiles = {
-  guardianBlade: {
-    label: "Lâmina Guardiã",
-    color: 0x8ffcff,
-    cooldown: 0.95,
-    damage: 1.8,
-    range: 24,
-  },
-  orbitOrb: {
-    label: "Orbe Giratório",
-    color: 0xd978ff,
-    cooldown: 0.34,
-    damage: 1.65,
-    orbitRadius: 3.4,
-    radius: 1.25,
-  },
-  sealRain: {
-    label: "Chuva de Selos",
-    color: 0xffd36d,
-    cooldown: 1.45,
-    damage: 5.6,
-    radius: 3.5,
-    range: 31,
-  },
-};
-
-const evolvedWeaponProfiles = {
-  guardianBlade: {
-    id: "eclipseBlade",
-    label: "Lâmina Eclipse",
-    color: 0x5dc7ff,
-    requirement: { perk: "bladeEcho", stacks: 2 },
-  },
-  orbitOrb: {
-    id: "profaneOrb",
-    label: "Orbe Profano",
-    color: 0xff8a2a,
-    requirement: { perk: "sealRitual", stacks: 1 },
-  },
-  sealRain: {
-    id: "arcaneDeluge",
-    label: "Dilúvio Arcano",
-    color: 0xffd76a,
-    requirement: { perk: "prismStorm", stacks: 1 },
-  },
-};
+const autoWeaponProfiles = AUTO_WEAPONS;
+const evolvedWeaponProfiles = Object.fromEntries(AUTO_WEAPON_IDS.map((weaponId) => [weaponId, AUTO_WEAPONS[weaponId].evolution]));
 
 const upgradeDefinitions = [
   {
@@ -1305,7 +1249,7 @@ const upgradeDefinitions = [
     rarity: "common",
     kind: "stat",
     weight: 72,
-    maxStacks: 2,
+    maxStacks: 3,
   },
   {
     id: "soulMagnet",
@@ -1510,6 +1454,7 @@ const player = {
   shotCooldown: 0,
   weapon: playableCharacters[selectedCharacter].weaponId,
   weaponTimer: 0,
+  relic: null,
   axeSpinTimer: 0,
   upgradeStats: createDefaultUpgradeStats(),
   upgradeStacks: {},
@@ -1574,6 +1519,7 @@ hazardVfx = createHazardVfx({ THREE, scene, vfx: combatVfx, capacity: 8,
 elementalVfx = createElementalVfx({ THREE, scene,
   quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
 classSkillVfx = createClassSkillVfx({ THREE, scene, combatVfx, elementalVfx, sweepVisual: sweepClassSkillVisual, quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
+arsenalVfx = createArsenalVfx({ THREE, scene, combatVfx, elementalVfx, quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
 window.addEventListener('bipx:skill-request', event => requestClassSkill(event.detail?.slot));
 window.addEventListener('bipx:arpg-ready', () => publishArpgState());
 
@@ -1596,6 +1542,7 @@ window.__bipxPresentation = {
     combatVfx.setReducedMotion(presentationPreferences.reducedMotion);
     hazardVfx?.setReducedMotion(presentationPreferences.reducedMotion);
     elementalVfx?.setReducedMotion(presentationPreferences.reducedMotion);
+    arsenalVfx?.setReducedMotion(presentationPreferences.reducedMotion);
     classSkillVfx?.setReducedMotion(presentationPreferences.reducedMotion);
     cinematicPipeline.setReducedMotion(presentationPreferences.reducedMotion);
     cameraTrauma = 0;
@@ -1827,6 +1774,10 @@ window.__zombieNightDebug = {
     visual: p.casterPresentation || null, bridge: p.casterLaunchBridge?.getStats() || null })),
   getSkillTargets: () => zombies.map(z => ({ id: z.id, x: z.mesh.position.x, z: z.mesh.position.z, health: z.health, freeze: z.freezeTimer || 0, stun: z.stunTimer || 0, pull: z.pullTimer || 0 })),
   getHazardVfxStats: () => hazardVfx?.getStats(),
+  getArsenalVfxStats: () => arsenalVfx?.getStats(),
+  getArsenalState: () => ({ relic: player.weaponTimer > 0 ? player.relic : null, relicName: player.weaponTimer > 0 ? getRelicName(player.relic, player.character) : null,
+    remaining: player.weaponTimer, swing: arsenalState.swing, pending: arsenalState.pending.length, projectiles: arsenalState.projectiles.length,
+    loadout: structuredClone(getArsenalLoadout()), authority: multiplayer.enabled ? 'server' : 'solo' }),
   getElementalVfxStats: () => elementalVfx?.getStats(),
   getActorMotionState: () => {
     const snapshot = (id, mesh, motion, visual) => ({ id, position: mesh.position.toArray(),
@@ -1917,6 +1868,7 @@ window.__zombieNightDebug = {
       pendingZombies: game.zombiesToSpawn,
       spawnInterval: Number(getZombieSpawnInterval().toFixed(3)),
       weapon: player.weapon,
+      relic: player.weaponTimer > 0 ? player.relic : null,
       weaponTimer: Number(player.weaponTimer.toFixed(2)),
       build: getPlayerBuildSummary(),
       autoWeapons: Object.fromEntries(
@@ -2384,6 +2336,8 @@ function startGame() {
   player.shotCooldown = 0;
   player.weapon = playableCharacters[player.character].weaponId;
   player.weaponTimer = 0;
+  player.relic = null;
+  arsenalState = createArsenalState(player.character);
   player.axeSpinTimer = 0;
   const requestedSpawn = getMultiplayerStartPosition();
   const freeSpawn = findFreePosition(collisionWorld, { x: requestedSpawn.x, z: requestedSpawn.z, radius: .64 }, { maxDistance: 16 });
@@ -2678,6 +2632,7 @@ function applyQualitySettings(force = false) {
   classSkillVfx?.setQuality(qualityManager.level);
   hazardVfx?.setQuality(qualityManager.level);
   elementalVfx?.setQuality(qualityManager.level);
+  arsenalVfx?.setQuality(qualityManager.level);
   cinematicPipeline?.setQuality(qualityManager.level);
 }
 
@@ -5103,7 +5058,9 @@ function updateDamageNumbers(dt) {
   }
 }
 
-function getPowerupDropLabel(_type) {
+function getPowerupDropLabel(type) {
+  const relicName = getRelicName(type, player.character);
+  if (relicName) return `Relíquia · ${relicName}`;
   return player.character === 'warrior' ? 'Lâmina encantada · +40% dano' : 'Munição reforçada · +40% dano';
 }
 
@@ -6065,6 +6022,7 @@ function animate() {
   combatVfx?.update(dt, { camera, playerPosition: player.position, time: game.survivalTime });
   elementalVfx?.update(dt);
   classSkillVfx?.update(dt);
+  syncArsenalPresentation(dt);
   syncMonsterRenderer();
   animatedEnemies?.update(zombies, { dt, playerPosition: player.position, mobile: usesMobileTuning(), quality: qualityManager.level });
   syncXpGemRenderer();
@@ -6513,7 +6471,6 @@ function getUpgradeRollWeight(upgrade, source = "level") {
 }
 
 function isUpgradeAvailable(upgrade, minimumRarity = "common", source = "level") {
-  if (upgrade.id === 'autoWeapon' || upgrade.id === 'sealRitual') return false;
   if (player.character === 'warrior' && ['projectile', 'prismStorm'].includes(upgrade.id)) return false;
   if (getRarityRank(upgrade.rarity) < getRarityRank(minimumRarity)) {
     return false;
@@ -6724,8 +6681,7 @@ function tryEvolveWeapons() {
       continue;
     }
 
-    const requirement = evolution.requirement;
-    if (!hasPerk(requirement.perk, requirement.stacks)) {
+    if (!isAutoWeaponEvolved(weaponId, player.upgradeStacks)) {
       continue;
     }
 
@@ -6787,12 +6743,13 @@ function spawnLevelPulse() {
 function buildArpgState() {
   if (pendingSkillRequest && performance.now() - pendingSkillRequest.at >= 2500) pendingSkillRequest = null;
   if (classSkillState.classId !== player.character) classSkillState = createSkillState(player.character);
-  return getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
+  const relic = player.weaponTimer > 0 && RELICS[player.relic] ? { id: player.relic, label: RELICS[player.relic].label, name: getRelicName(player.relic, player.character), remaining: player.weaponTimer, duration: RELICS[player.relic].duration } : null;
+  return { relic, ...getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
     weapon: player.character === 'warrior' ? 'Espada' : 'Rifle', dead: game.state === 'dead',
     // Open cards keep the run live: skills stay unavailable, but this is not a pause.
     paused, enabled: game.state === 'playing' && !isMultiplayerSuspended() && !pendingSkillRequest && player.pendingUpgradeChoices.length === 0,
     // Display mirror of trusted progression; the server recomputes its own value for every cast.
-    areaMultiplier: getAreaMultiplier() });
+    areaMultiplier: getAreaMultiplier() }) };
 }
 function publishArpgState() {
   arpgHudTimer = .1;
@@ -7096,6 +7053,7 @@ function updateShooting(dt) {
       damageZombiesInConeFrom(player.position, direction, 4.2 * getAreaMultiplier(), Math.cos(.92), 7 * getCombatDamageMultiplier(), true, true, 'katana');
       audioManager.play('katana', { priority: 2 });
       sendMultiplayerAttack('katana', player.position, direction);
+      fireArsenalRelic(direction);
     }
   }
   if (!game.shooting || player.shotCooldown > 0 || classSkillState.lock > 0 || !heroVisual) return;
@@ -7113,134 +7071,12 @@ function updateShooting(dt) {
     spawnBullet();
     audioManager.play('pistol', { priority: 1 });
     sendMultiplayerAttack('pistol');
+    fireArsenalRelic(player.aimDirection);
   }
 }
 
 function getCombatDamageMultiplier() {
   return player.upgradeStats.damageMultiplier * (player.weaponTimer > 0 ? 1.4 : 1) * getSkillModifiers(classSkillState).damage;
-}
-
-function updateFlamethrower(dt) {
-  if (!game.shooting) {
-    return;
-  }
-
-  damageZombiesInCone(10.5, Math.cos(0.58), 12 * dt, false, "flamethrower");
-
-  if (player.shotCooldown <= 0) {
-    player.shotCooldown = getPlayerCooldown(0.065);
-    spawnFlameBurst();
-    audioManager.play("flamethrower", { priority: 1 });
-    sendMultiplayerAttack("flamethrower");
-  }
-}
-
-function updateAxeAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.48);
-  startAxeSpin();
-  audioManager.play("axe", { priority: 2 });
-  sendMultiplayerAttack("axe");
-}
-
-function updateKatanaAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.28);
-  damageZombiesInCone(5.8, Math.cos(0.92), 7, true, "katana");
-  spawnKatanaSlash();
-  audioManager.play("katana", { priority: 2 });
-  sendMultiplayerAttack("katana");
-}
-
-function updateCrossbowAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.36);
-  spawnPlayerProjectiles({
-    color: weapons.crossbow.color,
-    damage: 5,
-    lifespan: 1.7,
-    pierceHits: 3,
-    radius: 0.24,
-    speed: 42,
-    hitEffect: "crossbow",
-  });
-  audioManager.play("crossbow", { priority: 2 });
-  sendMultiplayerAttack("crossbow");
-}
-
-function updateTalismanAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.72);
-  spawnPlayerProjectiles({
-    color: weapons.talisman.color,
-    damage: 3,
-    explodeDamage: 5,
-    explodeRadius: 4.8,
-    lifespan: 1.35,
-    radius: 0.32,
-    speed: 25,
-    hitEffect: "talisman",
-  });
-  audioManager.play("talisman", { priority: 2 });
-  sendMultiplayerAttack("talisman");
-}
-
-function updateThunderstaffAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.34);
-  damageZombiesInCone(18.5, Math.cos(0.12), 5.6, true, "thunderstaff");
-  spawnRemoteBeam(player.position, player.aimDirection, weapons.thunderstaff.color, 14);
-  audioManager.play("thunderstaff", { priority: 2 });
-  sendMultiplayerAttack("thunderstaff");
-}
-
-function updateBoneCannonAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.58);
-  spawnPlayerProjectiles({
-    color: weapons.boneCannon.color,
-    damage: 3,
-    explodeDamage: 8,
-    explodeRadius: 5.8,
-    explodeColor: weapons.boneCannon.color,
-    lifespan: 1.65,
-    pierceHits: 0,
-    radius: 0.34,
-    speed: 27,
-    hitEffect: "boneCannon",
-  });
-  audioManager.play("boneCannon", { priority: 2 });
-  sendMultiplayerAttack("boneCannon");
-}
-
-function updateFrostNovaAttack() {
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(0.82);
-  damageZombiesInRadius(7.2, 6.8, true, "frostNova");
-  spawnWeaponPulse(weapons.frostNova.color);
-  audioManager.play("frostNova", { priority: 2 });
-  sendMultiplayerAttack("frostNova");
 }
 
 function spawnBullet() {
@@ -7320,140 +7156,126 @@ function spawnProjectile({
   });
 }
 
-function updateAutoWeapons(_dt) {
-  // Playable classes keep their equipped sword/rifle. Effects do not grant a
-  // second autonomous ranged weapon to the sword character.
+// Arsenal glue. Rules live in src/combat/arsenal.mjs (shared with the server); drawing lives in src/vfx/arsenal-vfx.js.
+// Relics infuse the class basic attack and automatic weapons are companions: neither replaces the sword or the rifle.
+function updateAutoWeapons(dt) {
+  if (multiplayer.enabled) return; // The server owns relics and automatic weapons; this client only presents its events.
+  const context = getArsenalContext(null);
+  context.dead = player.health <= 0;
+  advanceArsenal(arsenalState, dt, context);
 }
 
-function updateGuardianBlade(dt) {
-  const weapon = player.autoWeapons.guardianBlade;
-  if (!weapon?.level) {
-    return;
-  }
-
-  const profile = autoWeaponProfiles.guardianBlade;
-  weapon.cooldown -= dt;
-
-  if (weapon.cooldown > 0) {
-    return;
-  }
-
-  const target = getClosestZombie(player.position, profile.range);
-  if (!target) {
-    weapon.cooldown = Math.min(weapon.cooldown + 0.1, 0.18);
-    return;
-  }
-
-  weapon.cooldown = getPlayerCooldown(profile.cooldown);
-  const origin = tempVectorB.copy(player.position);
-  const direction = tempVectorC.subVectors(target.zombie.mesh.position, origin);
-  direction.y = 0;
-
-  if (direction.lengthSq() < 0.01) {
-    direction.copy(player.aimDirection);
-  } else {
-    direction.normalize();
-  }
-
-  const evolved = player.evolvedWeapons.guardianBlade === evolvedWeaponProfiles.guardianBlade.id;
-  const color = getAutoWeaponDisplayColor("guardianBlade");
-  const damage = profile.damage * player.upgradeStats.damageMultiplier * (evolved ? 1.45 : 1);
-  damageZombie(target.zombie, damage, true, true, "guardianBlade");
-  if (evolved) {
-    damageZombiesInConeFrom(origin, direction, 9.2, Math.cos(0.2), damage * 0.62, false, true, "guardianBlade");
-  }
-  spawnGuardianBladeEffect(origin, direction, color);
-  recordAutoWeaponAttack(origin);
-  audioManager.play("autoBlade", { priority: evolved ? 2 : 1 });
-  sendMultiplayerAttack("guardianBlade", origin, direction);
+function fireArsenalRelic(direction) {
+  if (multiplayer.enabled || !(player.weaponTimer > 0) || !player.relic) return;
+  relicAttack(arsenalState, getArsenalContext(direction));
 }
 
-function updateOrbitOrb(dt) {
-  const weapon = player.autoWeapons.orbitOrb;
-  if (!weapon?.level) {
-    return;
+function getArsenalLoadout() {
+  for (let index = 0; index < AUTO_WEAPON_IDS.length; index += 1) {
+    const weaponId = AUTO_WEAPON_IDS[index], slot = arsenalLoadout[weaponId];
+    slot.level = player.autoWeapons[weaponId]?.level > 0 ? 1 : 0;
+    slot.evolved = slot.level > 0 && player.evolvedWeapons[weaponId] === evolvedWeaponProfiles[weaponId].id;
   }
-
-  const profile = autoWeaponProfiles.orbitOrb;
-  weapon.angle += dt * 3.4;
-  weapon.cooldown -= dt;
-
-  if (weapon.cooldown > 0) {
-    return;
-  }
-
-  weapon.cooldown = getPlayerCooldown(profile.cooldown);
-  const evolved = player.evolvedWeapons.orbitOrb === evolvedWeaponProfiles.orbitOrb.id;
-  const color = getAutoWeaponDisplayColor("orbitOrb");
-  const orbitRadius = profile.orbitRadius * Math.sqrt(getAreaMultiplier()) * (evolved ? 1.12 : 1);
-  const origin = tempVectorB.set(
-    player.position.x + Math.cos(weapon.angle) * orbitRadius,
-    0,
-    player.position.z + Math.sin(weapon.angle) * orbitRadius,
-  );
-  const direction = tempVectorC.subVectors(origin, player.position).normalize();
-  const radius = profile.radius * getAreaMultiplier() * (evolved ? 1.18 : 1);
-  const damage = profile.damage * player.upgradeStats.damageMultiplier * (evolved ? 1.22 : 1);
-  damageZombiesAtPoint(origin, radius, damage, false, true, "orbitOrb");
-  if (evolved) {
-    spawnExplosion(origin, color, radius * 0.82);
-  }
-  spawnOrbitOrbEffect(origin, color, radius);
-  recordAutoWeaponAttack(origin);
-  audioManager.play("orbitOrb", { priority: evolved ? 2 : 1 });
-  sendMultiplayerAttack("orbitOrb", origin, direction);
+  return arsenalLoadout;
 }
 
-function updateSealRain(dt) {
-  const weapon = player.autoWeapons.sealRain;
-  if (!weapon?.level) {
-    return;
+function getArsenalContext(aim) {
+  arsenalContext ??= {
+    ownerId: 'solo', actor: player.position, aim: null, relic: null, dead: false, loadout: arsenalLoadout, perks: null,
+    stats: { damageMultiplier: 2, areaMultiplier: 1, cooldownMultiplier: 1, projectileBonus: 0 },
+    targets: getArsenalTargets, hit: applyArsenalHit, emit: presentArsenalEvent,
+    sweepStatic: (from, to, radius) => sweepStatic(collisionWorld, from, to, radius, arsenalSweepOptions),
+  };
+  const context = arsenalContext, stats = context.stats;
+  context.aim = aim; context.dead = false; context.perks = player.perks;
+  context.relic = player.weaponTimer > 0 ? player.relic : null;
+  stats.damageMultiplier = getCombatDamageMultiplier(); stats.areaMultiplier = getAreaMultiplier();
+  stats.cooldownMultiplier = player.upgradeStats.cooldownMultiplier; stats.projectileBonus = getProjectileBonus();
+  getArsenalLoadout();
+  return context;
+}
+
+// Reused bodies: the shared rules read { id, x, z, radius, health }; nothing is allocated per frame.
+function getArsenalTargets() {
+  if (arsenalTargetStamp === game.survivalTime) return arsenalTargets;
+  arsenalTargetStamp = game.survivalTime;
+  let count = 0;
+  for (let index = 0; index < zombies.length; index += 1) {
+    const zombie = zombies[index];
+    if (zombie.health <= 0 || zombie.serverControlled) continue;
+    const body = arsenalBodies[count] ??= { id: 0, x: 0, z: 0, radius: 0, health: 0, dead: false, ref: null };
+    body.id = zombie.id; body.x = zombie.mesh.position.x; body.z = zombie.mesh.position.z;
+    body.radius = zombie.radius; body.health = zombie.health; body.dead = false; body.ref = zombie;
+    arsenalTargets[count] = body; count += 1;
   }
+  arsenalTargets.length = count;
+  return arsenalTargets;
+}
 
-  const profile = autoWeaponProfiles.sealRain;
-  weapon.cooldown -= dt;
+function applyArsenalHit(body, effect) {
+  const zombie = body.ref;
+  if (!zombie || zombie.health <= 0) return true;
+  const burning = zombie.burnTimer > 0 ? zombie.burnDps || 0 : 0;
+  const killed = damageZombie(zombie, effect.damage, true, true, effect.hitEffect);
+  // One burn rule for solo and server (the legacy client/server guesses disagreed).
+  if (!killed && effect.burnDps) zombie.burnDps = Math.max(burning, effect.burnDps);
+  body.health = zombie.health; body.dead = killed;
+  return killed;
+}
 
-  if (weapon.cooldown > 0) {
-    return;
-  }
+function presentArsenalEvent(event, ownerId = null) {
+  const local = ownerId === null || ownerId === multiplayer.id;
+  arsenalVfx?.emit(event, { ownerId: local ? 'local' : ownerId, local });
+  const audible = event.kind === 'auto' || (event.kind === 'relic' && !['charge', 'windup', 'mark'].includes(event.phase || event.shape))
+    || (event.kind === 'projectile' && (event.phase === 'spawn' || (event.phase === 'impact' && event.radius > 0)));
+  if (!audible) return;
+  const sound = event.kind === 'auto' ? ({ guardianBlade: 'autoBlade', orbitOrb: 'orbitOrb', sealRain: 'sealRain', sealRitual: 'talisman' })[event.weapon] : event.relic;
+  const at = Number.isFinite(event.x) ? event : event.points?.[0];
+  if (sound) audioManager.play(sound, { priority: local ? 2 : 1, ...(local || !at ? null : getSpatialAudioOptions(tempVectorC.set(at.x, 0, at.z))) });
+  const heavy = event.kind === 'relic' ? (event.shape === 'point' && event.phase === 'impact') || (event.shape === 'radius' && !event.echo) : event.kind === 'projectile' && event.radius > 0;
+  if (heavy && local && !presentationPreferences.reducedMotion) cameraTrauma = Math.max(cameraTrauma, event.nova ? .14 : .09);
+}
 
-  const target = getClosestZombie(player.position, profile.range);
-  if (!target) {
-    weapon.cooldown = Math.min(weapon.cooldown + 0.16, 0.24);
-    return;
-  }
-
-  weapon.cooldown = getPlayerCooldown(profile.cooldown);
-  const origin = tempVectorB.copy(target.zombie.mesh.position);
-  const direction = tempVectorC.subVectors(origin, player.position);
-  direction.y = 0;
-
-  if (direction.lengthSq() < 0.01) {
-    direction.copy(player.aimDirection);
-  } else {
-    direction.normalize();
-  }
-
-  const evolved = player.evolvedWeapons.sealRain === evolvedWeaponProfiles.sealRain.id;
-  const color = getAutoWeaponDisplayColor("sealRain");
-  const radius = profile.radius * getAreaMultiplier() * (evolved ? 1.08 : 1);
-  const damage = profile.damage * player.upgradeStats.damageMultiplier * (evolved ? 1.18 : 1);
-  if (evolved) {
-    const perpendicular = tempVectorA.set(-direction.z, 0, direction.x).normalize();
-    const baseX = origin.x;
-    const baseZ = origin.z;
-    for (const offset of [-1.35, 0, 1.35]) {
-      const impact = tempVectorB.set(baseX + perpendicular.x * offset, origin.y, baseZ + perpendicular.z * offset);
-      damageZombiesAtPoint(impact, radius * 0.86, damage * 0.72, false, true, "sealRain");
-      spawnSealRainEffect(impact, color, radius * 0.86);
+function syncArsenalPresentation(dt) {
+  if (!arsenalVfx) return;
+  if (game.state === 'playing') {
+    arsenalVfx.syncActor('local', player.position, player.weaponTimer > 0 ? player.relic : null, getArsenalLoadout(), getAreaMultiplier());
+    for (const remote of remotePlayers.values()) {
+      if (remote.state === 'playing' && remote.health > 0) arsenalVfx.syncActor(remote.id, remote.mesh.position, remote.relic, remote.autoWeapons, remote.areaMultiplier);
     }
-  } else {
-    damageZombiesAtPoint(origin, radius, damage, false, true, "sealRain");
-    spawnSealRainEffect(origin, color, radius);
   }
-  recordAutoWeaponAttack(origin);
-  audioManager.play("sealRain", { priority: evolved ? 2 : 1 });
-  sendMultiplayerAttack("sealRain", origin, direction);
+  arsenalVfx.update(dt);
+}
+
+function setPlayerRelic(relic, seconds, announce) {
+  player.relic = relic; player.weaponTimer = seconds;
+  weaponFireEmitter?.dispose();
+  weaponFireEmitter = relic === 'flamethrower' && player.character === 'warrior' && heroVisual?.weapon
+    ? combatVfx?.attachWeapon(heroVisual.weapon, { intensity: .6, rate: 12 }) || null : null;
+  if (!announce) return;
+  audioManager.play('weaponPickup', { priority: 2 });
+  if (!relic) { combatVfx?.emit('seal', player.position, { color: 0xe4bf78, radius: 1.3, intensity: .45 }); return; }
+  presentArsenalEvent({ kind: 'state', phase: 'gain', relic, x: player.position.x, z: player.position.z });
+  spawnTemporaryDropLabel(`RELÍQUIA: ${getRelicName(relic, player.character)}`, 'epic', RELICS[relic].icon, player.position, 1.3);
+}
+
+// Multiplayer mirror of server-owned relic and automatic-weapon state; nothing here is sent back.
+function applyAuthoritativeArsenal(progression, newRun, previousWeaponTimer) {
+  const relic = player.weaponTimer > 0 && Object.hasOwn(RELICS, progression.relic) ? progression.relic : null;
+  const gained = !newRun && player.weaponTimer > previousWeaponTimer + .5;
+  if (player.relic && !relic && player.weaponTimer <= 0) resetWeapon();
+  else if (relic !== player.relic || gained) setPlayerRelic(relic, player.weaponTimer, gained);
+  for (const weaponId of AUTO_WEAPON_IDS) {
+    const granted = progression.autoWeapons?.[weaponId], slot = player.autoWeapons[weaponId], evolution = evolvedWeaponProfiles[weaponId];
+    const level = granted?.level > 0 ? 1 : 0;
+    if (level && !slot.level && !newRun) spawnWeaponPulse(autoWeaponProfiles[weaponId].color);
+    slot.level = level;
+    if (!granted?.evolved) delete player.evolvedWeapons[weaponId];
+    else if (player.evolvedWeapons[weaponId] !== evolution.id) {
+      player.evolvedWeapons[weaponId] = evolution.id;
+      if (!newRun) spawnEvolutionBurst(evolution.label, evolution.color);
+    }
+  }
 }
 
 function getClosestZombie(origin, maxRange = Infinity) {
@@ -7504,7 +7326,6 @@ function getPlayerCooldown(seconds) {
 }
 
 function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
-  type = playableCharacters[player.character].weaponId;
   if (!weapons[type]) {
     return;
   }
@@ -7512,9 +7333,10 @@ function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
   const position =
     Number.isFinite(x) && Number.isFinite(z) ? new THREE.Vector3(x, 0, z) : getRandomPowerupPosition();
   const mesh = createPowerupMesh(type);
+  const rarity = !RELICS[type] ? "common" : monsterProfiles[options.source]?.boss ? "epic" : "rare";
   const labelSprite = createDropLabelSprite({
     label: getPowerupDropLabel(type),
-    rarity: "common",
+    rarity,
     icon: hudWeaponIcons[type] || "⚔",
   });
   mesh.position.set(position.x, 0.36, position.z);
@@ -7526,7 +7348,7 @@ function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
     kind: "weapon",
     type,
     label: getPowerupDropLabel(type),
-    rarity: "common",
+    rarity,
     mesh,
     labelSprite,
     source: options.source || "kill",
@@ -7667,9 +7489,13 @@ function maybeDropWeaponFromZombie(type, position) {
   const profile = monsterProfiles[type] || {};
 
   if (profile.boss) {
+    // Signature relic of the boss, next to its chest (same rule as the server).
+    spawnPowerup(bossWeaponDrops[type] || getNextWeaponDropType(), position.x - 1.6, position.z + 0.8, { source: type });
     return spawnBossRewardChestAt(position, type);
   }
 
+  // Kills charge the next relic only while no relic is infused: spikes alternate with plain combat.
+  if (player.weaponTimer > 0) return false;
   game.weaponDropCounter += type === "brute" || type === "caster" ? 2 : 1;
   if (game.weaponDropCounter < getWeaponDropThreshold()) {
     return false;
@@ -7747,7 +7573,9 @@ function countActivePowerupsByKind(kind) {
 }
 
 function getNextWeaponDropType() {
-  return playableCharacters[player.character].weaponId;
+  const next = nextRelicDrop(game.weaponDropIndex, player.weaponTimer > 0 ? player.relic : null);
+  game.weaponDropIndex = next.index;
+  return next.type;
 }
 
 function getWeaponDropThreshold() {
@@ -7843,24 +7671,26 @@ function collectPowerup(powerup) {
   return true;
 }
 
+// A relic pickup infuses the class basic attack for the relic's duration; the sword/rifle itself never changes.
 function activateWeapon(type) {
-  if (!weapons[type]) return false;
+  if (!weapons[type] || multiplayer.enabled) return false; // Online, only the server grants a relic.
   player.weapon = playableCharacters[player.character].weaponId;
-  weaponFireEmitter?.dispose();
-  weaponFireEmitter = player.character === 'warrior' && heroVisual?.weapon
-    ? combatVfx?.attachWeapon(heroVisual.weapon, { intensity: .5, rate: 10 }) : null;
-  player.weaponTimer = 15;
-  audioManager.play('weaponPickup', { priority: 2 });
-  combatVfx?.emit('seal', player.position, { color: 0xe4bf78, radius: 1.3, intensity: .45 });
+  setPlayerRelic(RELICS[type] ? type : null, RELICS[type]?.duration ?? FALLBACK_INFUSION_SECONDS, true);
   updateHud(true);
   return true;
 }
 
 function resetWeapon() {
+  const expired = player.relic;
   weaponFireEmitter?.dispose(); weaponFireEmitter = null;
   player.weapon = playableCharacters[player.character].weaponId;
   player.weaponTimer = 0;
+  player.relic = null;
   player.axeSpinTimer = 0;
+  if (!expired || game.state !== 'playing') return;
+  presentArsenalEvent({ kind: 'state', phase: 'expire', relic: expired, x: player.position.x, z: player.position.z });
+  audioManager.play('uiSelect', { priority: 1 });
+  updateHud(true);
 }
 
 function getRandomPowerupPosition() {
@@ -7875,32 +7705,6 @@ function getRandomPowerupPosition() {
   }
 
   return new THREE.Vector3(12, 0, -10);
-}
-
-function spawnFlameBurst() {
-  const direction = tempVectorA.copy(player.aimDirection).normalize();
-  const flame = acquireEffectMesh("cone", createPooledConeEffect);
-  flame.position.copy(player.position).addScaledVector(direction, 3.05);
-  flame.position.y = 1.02;
-  flame.quaternion.setFromUnitVectors(upVector, direction);
-  flame.scale.set(1.25, 4.6, 1.25);
-  tintEffect(flame, 0xff7a28);
-  addTimedEffect(flame, 0.16, false, "cone");
-}
-
-function startAxeSpin() {
-  player.axeSpinTimer = 0.36;
-  spawnWeaponPulse(0x7fd7ff);
-}
-
-function spawnKatanaSlash() {
-  const slash = acquireEffectMesh("slash", createPooledSlashEffect);
-  slash.position.copy(player.position);
-  slash.position.y = 0.28;
-  slash.rotation.y = getForwardRotation(player.aimDirection) - Math.PI * 0.5;
-  slash.scale.setScalar(2.75);
-  tintEffect(slash, weapons.katana.color, 1.1);
-  addTimedEffect(slash, 0.2, true, "slash");
 }
 
 function spawnExplosion(position, color, radius) {
@@ -9685,22 +9489,6 @@ function damageZombiesInRadiusAt(origin, radius, amount, shouldFlash, awardRewar
   }
 }
 
-function recordAutoWeaponAttack(origin) {
-  if (!hasPerk("sealRitual")) {
-    return;
-  }
-
-  player.autoAttackCounter += 1;
-  if (player.autoAttackCounter % 5 !== 0) {
-    return;
-  }
-
-  const radius = 3.2 + player.perks.sealRitual * 0.65;
-  const damage = (4.2 + player.perks.sealRitual * 1.5) * player.upgradeStats.damageMultiplier;
-  damageZombiesAtPoint(origin, radius, damage, false, true, "sealRain");
-  triggerPerkAnimation("sealRitual", origin, "epic");
-}
-
 function applyDamagePerks(zombie, amount) {
   let finalDamage = amount * getSlayerPactMultiplier();
   let crit = false;
@@ -10181,6 +9969,8 @@ function clearEntities() {
   classSkillVfx?.reset();
   hazardVfx?.reset();
   elementalVfx?.reset();
+  cancelArsenal(arsenalState);
+  arsenalVfx?.reset();
   while (zombies.length > 0) {
     removeZombie(zombies.length - 1);
   }
@@ -10277,6 +10067,7 @@ function endGame() {
   pendingSkillRequest = null;
   cancelSkills(classSkillState, event => classSkillVfx?.emit(event), 'end');
   classSkillVfx?.reset();
+  cancelArsenal(arsenalState, presentArsenalEvent, 'death');
   onlineSkillMotion = null; remoteSkillSnapshots = []; persistentSkillPresentation.clear();
   audioManager.samples?.reset();
   characterPreview = false;
@@ -10333,8 +10124,10 @@ function updateHud(force = false) {
   levelValueElement.textContent = player.level.toString();
   xpFillElement.style.transform = `scaleX(${xpRatio})`;
   xpValueElement.textContent = `${Math.floor(player.xp)}/${Math.floor(player.xpToNext)}`;
-  weaponNameElement.textContent = playableCharacters[player.character].weapon;
-  weaponTimerElement.textContent = player.weaponTimer > 0 ? `+40% · ${Math.ceil(player.weaponTimer)}s` : 'PRONTA';
+  const relicName = player.weaponTimer > 0 ? getRelicName(player.relic, player.character) : null;
+  weaponNameElement.textContent = relicName || playableCharacters[player.character].weapon;
+  weaponTimerElement.textContent = player.weaponTimer > 0 ? `${relicName ? 'Relíquia' : '+40%'} · ${Math.ceil(player.weaponTimer)}s` : 'PRONTA';
+  weaponNameElement.parentElement.dataset.relic = relicName ? player.relic : '';
   renderSkillHud();
   renderPerfOverlay();
   updateOnlineScoreboardHud();
@@ -10595,6 +10388,10 @@ function handleMultiplayerMessage(rawMessage) {
       const ageMs = Number.isFinite(messageData.serverTime) && multiplayerClockOffset !== null ? Math.max(0, Date.now() - messageData.serverTime - multiplayerClockOffset) : 0;
       presentClassSkill({ ...messageData.event, ageMs }, messageData.id);
     }
+    return;
+  }
+  if (messageData.type === 'arsenalEvent') {
+    if (messageData.id !== multiplayer.id || messageData.runId === multiplayerAuthorityRunId) presentArsenalEvent(messageData.event, messageData.id);
     return;
   }
   if (messageData.type === 'skillState' || messageData.type === 'skillResult') {
@@ -11269,15 +11066,7 @@ function applyAuthoritativeProgression(progression, { newRun = false, newerVersi
   const prismTimer = Math.max(0, Number(progression.prismStormRemaining) || 0);
   player.weaponTimer = newerVersion ? weaponTimer : Math.min(player.weaponTimer, weaponTimer);
   player.perkCooldowns.prismStorm = newerVersion ? prismTimer : Math.min(player.perkCooldowns.prismStorm, prismTimer);
-  if (player.weaponTimer > 0 && !weaponFireEmitter && player.character === 'warrior' && heroVisual?.weapon) {
-    weaponFireEmitter = combatVfx?.attachWeapon(heroVisual.weapon, { intensity: .5, rate: 10 }) || null;
-  } else if (player.weaponTimer <= 0 && weaponFireEmitter) {
-    weaponFireEmitter.dispose(); weaponFireEmitter = null;
-  }
-  if (!newRun && player.weaponTimer > previousWeaponTimer + .5) {
-    audioManager.play('weaponPickup', { priority: 2 });
-    combatVfx?.emit('seal', player.position, { color: 0xe4bf78, radius: 1.3, intensity: .45 });
-  }
+  applyAuthoritativeArsenal(progression, newRun, previousWeaponTimer);
   if (!newRun && player.revives < previousRevives) triggerPerkAnimation('lastBreath', player.position, 'legendary');
   if (pendingMultiplayerUpgrade && pendingMultiplayerUpgrade.offerId !== multiplayerUpgradeOfferId) pendingMultiplayerUpgrade = null;
   let stacksChanged = false;
@@ -11593,6 +11382,9 @@ function updateRemotePlayerState(remotePlayer, state) {
     void loadRemoteCharacter(remotePlayer);
   }
   remotePlayer.weapon = playableCharacters[character].weaponId;
+  remotePlayer.relic = state.progression?.relic || null;
+  remotePlayer.autoWeapons = state.progression?.autoWeapons || null;
+  remotePlayer.areaMultiplier = Number(state.progression?.upgradeStats?.areaMultiplier) || 1;
   remotePlayer.shooting = Boolean(state.shooting);
   remotePlayer.state = state.state || "menu";
   updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health, remotePlayer.maxHealth);

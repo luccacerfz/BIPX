@@ -1,5 +1,6 @@
 // Server-owned per-run progression. Pure CPU module: callers supply only trusted
 // kill/tick/damage events; network clients can choose offered IDs or collect drops.
+import { RELICS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, nextRelicDrop, getAutoWeaponLoadout } from '../combat/arsenal.mjs';
 export const DEFINITIONS = [
   ['damage', '+Dano', 'common', 'stat', 1, 6],
   ['cadence', '+Cadência', 'common', 'stat', 1, 5],
@@ -8,7 +9,7 @@ export const DEFINITIONS = [
   ['pickup', '+Raio de coleta', 'common', 'stat', 1, 5],
   ['maxHealth', '+Vida máxima', 'common', 'stat', 1, 4],
   ['projectile', '+Projétil extra', 'common', 'stat', 1, 3],
-  ['autoWeapon', 'Desbloquear arma automática', 'common', 'stat', 1, 2],
+  ['autoWeapon', 'Desbloquear arma automática', 'common', 'stat', 1, 3],
   ['soulMagnet', 'Ímã de Almas', 'rare', 'perk', 2, 2],
   ['ironBlood', 'Sangue de Ferro', 'rare', 'perk', 2, 3],
   ['bladeEcho', 'Eco da Lâmina', 'rare', 'perk', 2, 2],
@@ -43,7 +44,7 @@ export function createProgression(state, {random = Math.random} = {}) {
   return p;
 }
 export function available(p, definition, source = 'level') {
-  if (!definition || ['autoWeapon', 'sealRitual'].includes(definition.id)) return false;
+  if (!definition) return false;
   if (p.character === 'warrior' && ['projectile', 'prismStorm'].includes(definition.id)) return false;
   if (source === 'bossChest' && rarityRank[definition.rarity] < 1) return false;
   if (!(source === 'bossChest' && definition.rarity !== 'legendary') && p.level < definition.minLevel) return false;
@@ -100,8 +101,16 @@ export function snapshot(p) {
     critChance: Math.min(.42, (p.stacks.hunterEye || 0) * .08), critMultiplier: 1.8,
     bossKills: p.bossKills, revives: p.revives, rarityPity: p.rarityPity,
     weaponTimer: p.weaponTimer, prismStormRemaining: p.prismStormRemaining,
+    ...arsenalSnapshot(p),
     drops: [...p.drops.values()].map(d => ({...d, ttl: Math.max(0, d.expiresAt - p.clock)}))};
 }
+// Relic (temporary infusion of the basic attack) and automatic weapons are server-owned like every other stack.
+export const activeRelic = p => p.weaponTimer > 0 && Object.hasOwn(RELICS, p.relic) ? p.relic : null;
+export function arsenalSnapshot(p) {
+  const relic = activeRelic(p);
+  return {relic, relicDuration: relic ? RELICS[relic].duration : p.weaponTimer > 0 ? FALLBACK_INFUSION_SECONDS : 0, autoWeapons: getAutoWeaponLoadout(p.stacks)};
+}
+function rollRelic(p) { const next = nextRelicDrop(p.relicDropIndex, activeRelic(p)); p.relicDropIndex = next.index; return next.type; }
 export function syncProgression(state, p) {
   state.xpTotal = p.xpTotal; state.level = p.level;
   state.bestLevel = Math.max(state.bestLevel || 1, p.level);
@@ -206,17 +215,19 @@ export function rewardKill(state, p, monster, {boss = false} = {}) {
   if (boss) {
     createDrop(p, 'healthPotion', {x: monster.x + (p.random()-.5)*1.4, z: monster.z + (p.random()-.5)*1.4}, {amount:10,source:monster.type});
     createDrop(p, 'bossChest', {x: monster.x+1.2,z:monster.z+.8}, {bossType:monster.type,source:monster.type});
+    createDrop(p, 'weapon', {x: monster.x-1.2,z:monster.z+.8}, {type:BOSS_RELIC_DROPS[monster.type]||rollRelic(p),source:monster.type});
   } else {
     const chances = {zombie:.004,runner:.007,brute:.028,caster:.033,cowWalker:.009,cowCharger:.012,cowBrute:.038};
     if ([...p.drops.values()].filter(d=>d.kind==='perk').length < 4 && p.random() <= (chances[monster.type]??.015) + Math.min(.014,Math.max(0,p.level-5)*.0012)) {
       const perk = rollPerk(p,monster.type);
       if (perk) createDrop(p,'perk',monster,{perkId:perk.id,rarity:perk.rarity,source:monster.type});
     }
-    p.dropCounter += ['brute','caster'].includes(monster.type) ? 2 : 1;
+    // Kills charge the next relic only while no relic is infused: spikes alternate with plain combat.
+    if (!(p.weaponTimer > 0)) p.dropCounter += ['brute','caster'].includes(monster.type) ? 2 : 1;
     const threshold = Math.max(3,6-Math.floor(state.wave/5)-Math.floor(p.level/8));
     if (p.dropCounter >= threshold) {
       p.dropCounter = 0;
-      if (p.drops.size < 5) createDrop(p,'weapon',monster,{type:p.character==='warrior'?'katana':'pistol',source:monster.type});
+      if (p.drops.size < 5) createDrop(p,'weapon',monster,{type:rollRelic(p),source:monster.type});
     }
   }
   syncProgression(state,p);
@@ -233,7 +244,7 @@ export function collectDrop(state, p, message) {
   if (drop.kind === 'bossChest') {
     if (!openOffer(p,'bossChest')) return {ok:false,code:'choice-pending-or-exhausted'};
   } else if (drop.kind === 'healthPotion') state.health = Math.min(state.maxHealth,state.health+drop.amount);
-  else if (drop.kind === 'weapon') p.weaponTimer = 15;
+  else if (drop.kind === 'weapon') { p.relic = Object.hasOwn(RELICS, drop.type) ? drop.type : null; p.weaponTimer = p.relic ? RELICS[p.relic].duration : FALLBACK_INFUSION_SECONDS; }
   else if (drop.kind === 'perk') {
     if (available(p,byId.get(drop.perkId),'perkDrop')) { upgradeId = drop.perkId; grant(state,p,drop.perkId); }
     // Original rule: capped perk drops still disappear, without adding a stack.
@@ -253,6 +264,7 @@ export function tickProgression(state,p,dt) {
   const previousWeaponActive = p.weaponTimer > 0;
   const previousPrismActive = p.prismStormRemaining > 0;
   p.weaponTimer = Math.max(0,p.weaponTimer-dt);
+  if (!p.weaponTimer) p.relic = null;
   p.prismStormRemaining = Math.max(0,p.prismStormRemaining-dt);
   let expired = (previousWeaponActive && p.weaponTimer === 0) || (previousPrismActive && p.prismStormRemaining === 0);
   for (const [id,drop] of p.drops) if (drop.expiresAt<=p.clock) {p.drops.delete(id);expired=true;}

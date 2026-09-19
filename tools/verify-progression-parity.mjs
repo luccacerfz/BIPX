@@ -5,14 +5,16 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {evidenceDir} from './quality-browser.mjs';
 const A = await import('../src/progression/authority.mjs');
+const { AUTO_WEAPONS, AUTO_WEAPON_IDS } = await import('../src/combat/arsenal.mjs');
 const checks=[];const check=(name,details={})=>{checks.push({name,...details});console.log(name)};
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
 const source=await fs.readFile('src/main.js','utf8');
 const definitionText=source.slice(source.indexOf('const upgradeDefinitions = ['),source.indexOf('\nconst upgradeById'));
 const fn=name=>{const start=source.indexOf(`function ${name}(`);return source.slice(start,source.indexOf('\nfunction ',start+1));};
-const basePlayer=()=>({character:'dwarf',health:100,maxHealth:200,upgradeStacks:{},perks:{},upgradeStats:{damageMultiplier:2,cooldownMultiplier:1,areaMultiplier:1,speedMultiplier:1,pickupRadius:2.35,projectileBonus:0},damageReduction:0,critChance:0,critMultiplier:1.8,revives:0,bossKills:0,position:{},perkCooldowns:{prismStorm:0}});
-const context=vm.createContext({player:basePlayer(),multiplayer:{enabled:false},triggerPerkAnimation(){},tryEvolveWeapons(){},Math});
-vm.runInContext(definitionText+'\n'+fn('applyUpgrade')+'\n'+fn('applyPerkEffect')+'\n'+fn('getXpToNext')+'\n'+fn('getSlayerPactMultiplier')+'\n'+fn('hasPerk')+'\n'+fn('applyDamagePerks')+'\nglobalThis.defs=upgradeDefinitions;',context);
+const basePlayer=()=>({character:'dwarf',health:100,maxHealth:200,autoWeapons:Object.fromEntries(AUTO_WEAPON_IDS.map(id=>[id,{level:0,cooldown:0}])),upgradeStacks:{},perks:{},upgradeStats:{damageMultiplier:2,cooldownMultiplier:1,areaMultiplier:1,speedMultiplier:1,pickupRadius:2.35,projectileBonus:0},damageReduction:0,critChance:0,critMultiplier:1.8,revives:0,bossKills:0,position:{},perkCooldowns:{prismStorm:0}});
+// The arsenal returned: automatic weapons are unlocked by the real client function; only its VFX pulse is stubbed.
+const context=vm.createContext({player:basePlayer(),multiplayer:{enabled:false},triggerPerkAnimation(){},tryEvolveWeapons(){},spawnWeaponPulse(){},autoWeaponProfiles:AUTO_WEAPONS,Math});
+vm.runInContext(definitionText+'\n'+fn('getNextUnlockableAutoWeapon')+'\n'+fn('applyUpgrade')+'\n'+fn('applyPerkEffect')+'\n'+fn('getXpToNext')+'\n'+fn('getSlayerPactMultiplier')+'\n'+fn('hasPerk')+'\n'+fn('applyDamagePerks')+'\nglobalThis.defs=upgradeDefinitions;',context);
 for(const d of A.DEFINITIONS){const live=context.defs.find(x=>x.id===d.id);for(const key of ['label','rarity','kind','maxStacks'])assert.equal(d[key],live[key]);assert.equal(d.minLevel,live.minLevel??1)}
 check('All18 definitions match live client labels, rarities, kinds, level gates and stack caps');
 const fresh=(character='dwarf')=>{const s={runId:`test-${character}`,character,health:100,maxHealth:200,bestLevel:1,stateVersion:0,state:'playing',x:0,z:0,wave:1};return [s,A.createProgression(s,{random:()=>0})]};
@@ -23,10 +25,11 @@ check('XP thresholds and edge remainders match client formula through level99');
 A.grantXp(s,p,Array.from({length:99},(_,i)=>A.xpToNext(i+1)).reduce((a,b)=>a+b,0));
 let grants=0;const seen=new Set();
 while(p.offer){const offer=p.offer;const id=offer.upgradeIds[0];const def=context.defs.find(x=>x.id===id);const msg={runId:p.runId,offerId:offer.id,upgradeId:id,requestId:`grant-${++grants}`};assert.equal(A.chooseUpgrade(s,p,msg).ok,true);context.applyUpgrade(def);seen.add(id);const snapshot=A.snapshot(p);for(const [k,v]of Object.entries(context.player.upgradeStats))near(snapshot.upgradeStats[k],v);for(const key of ['damageReduction','critChance','critMultiplier','revives'])near(snapshot[key],context.player[key]);near(s.maxHealth,context.player.maxHealth);near(s.health,context.player.health);assert.equal(A.chooseUpgrade(s,p,msg).duplicate,true);}
-assert.equal(seen.size,16);assert.equal(s.maxHealth,272);assert.equal(s.health,172);assert.equal(p.pendingLevelUps,0);
-check('All16 currently eligible Lyra upgrades granted via offers through caps; formulas match actual client functions',{grants,maxHealth:s.maxHealth,health:s.health});
-let [warrior,wp]=fresh('warrior');A.grantXp(warrior,wp,200000);const seenWarrior=new Set();while(wp.offer){const id=wp.offer.upgradeIds[0];seenWarrior.add(id);assert.equal(A.chooseUpgrade(warrior,wp,{runId:wp.runId,offerId:wp.offer.id,upgradeId:id,requestId:`w${wp.offerSerial}`}).ok,true)}assert.equal(seenWarrior.size,14);for(const id of ['projectile','prismStorm','autoWeapon','sealRitual'])assert.ok(!seenWarrior.has(id));assert.equal(A.attackStats(wp).projectileBonus,0);
-check('Aldric keeps sword-only14 eligible upgrades; Lyra retains projectile/Prism availability');
+assert.equal(seen.size,18);assert.equal(s.maxHealth,272);assert.equal(s.health,172);assert.equal(p.pendingLevelUps,0);
+for(const id of AUTO_WEAPON_IDS)assert.equal(A.snapshot(p).autoWeapons[id].level,context.player.autoWeapons[id].level);assert.deepEqual(AUTO_WEAPON_IDS.map(id=>context.player.autoWeapons[id].level),[1,1,1]);
+check('All18 Lyra upgrades (arsenal included) granted via offers through caps; formulas and automatic-weapon unlocks match actual client functions',{grants,maxHealth:s.maxHealth,health:s.health});
+let [warrior,wp]=fresh('warrior');A.grantXp(warrior,wp,200000);const seenWarrior=new Set();while(wp.offer){const id=wp.offer.upgradeIds[0];seenWarrior.add(id);assert.equal(A.chooseUpgrade(warrior,wp,{runId:wp.runId,offerId:wp.offer.id,upgradeId:id,requestId:`w${wp.offerSerial}`}).ok,true)}assert.equal(seenWarrior.size,16);for(const id of ['projectile','prismStorm'])assert.ok(!seenWarrior.has(id));for(const id of ['autoWeapon','sealRitual'])assert.ok(seenWarrior.has(id));assert.equal(A.attackStats(wp).projectileBonus,0);
+check('Aldric keeps a sword (no projectile/Prism) and gains the automatic-weapon companions: 16 eligible upgrades');
 let [b,bp]=fresh();A.createDrop(bp,'bossChest',{x:0,z:0});let drop=[...bp.drops.values()][0];const collect={runId:bp.runId,dropId:drop.id,requestId:'chest'};assert.equal(A.collectDrop(b,bp,collect).ok,true);assert.equal(bp.offer.source,'bossChest');assert.ok(bp.offer.upgradeIds.every(id=>A.DEFINITIONS.find(d=>d.id===id).rarity!=='common'));assert.ok(bp.offer.upgradeIds.every(id=>A.DEFINITIONS.find(d=>d.id===id).rarity!=='legendary'));assert.equal(bp.pendingLevelUps,0);assert.equal(A.collectDrop(b,bp,collect).duplicate,true);assert.equal(A.chooseUpgrade(b,bp,{runId:bp.runId,offerId:bp.offer.id,upgradeId:bp.offer.upgradeIds[0],requestId:'b1'}).ok,true);assert.equal(bp.pendingLevelUps,0);
 check('Boss chest offers rare+ below usual level gates, excludes legendary before10 and spends no level credit');
 const bad=(patch)=>A.chooseUpgrade(b,bp,{runId:bp.runId,offerId:'invented',upgradeId:'damage',requestId:'bad',...patch});assert.equal(bad({}).ok,false);assert.equal(bad({runId:'stale'}).code,'wrong-run');assert.equal(A.chooseUpgrade(b,bp,{runId:bp.runId,offerId:'invented',upgradeId:'damage',requestId:'b1'}).code,'request-conflict');

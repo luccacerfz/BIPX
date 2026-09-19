@@ -96,7 +96,9 @@ try {
       await page.evaluate(() => window.__zombieNightDebug.equipWeapon('boneCannon'));
       const buff = await snapshot(page);
       assert.equal(buff.game.weapon, character === 'warrior' ? 'katana' : 'pistol');
-      assert.ok(buff.game.weaponTimer > 0 && buff.game.weaponTimer <= 15);
+      // Arsenal returned (loop/t3): the pickup is a relic infusing the class attack for the relic's own duration (22 s).
+      assert.equal(buff.game.relic, 'boneCannon');
+      assert.ok(buff.game.weaponTimer > 0 && buff.game.weaponTimer <= 22);
       await page.evaluate(() => {
         window.__zombieNightDebug.unlockAutoWeapon('guardianBlade');
         window.__zombieNightDebug.unlockAutoWeapon('orbitOrb');
@@ -105,17 +107,18 @@ try {
       });
       await page.waitForTimeout(2500);
       const idle = await snapshot(page);
-      assert.equal(idle.game.bullets, 0, 'Automatic legacy weapon created projectiles without input');
+      assert.equal(idle.game.bullets, 0, 'Automatic weapon companions must never create rifle projectiles');
       await page.evaluate(() => {
         const state = window.__zombieNightDebug.getState();
         window.__zombieNightDebug.grantXp(state.xpToNext);
       });
       const choices = await snapshot(page);
-      const forbidden = ['autoWeapon', 'sealRitual', ...(character === 'warrior' ? ['projectile', 'prismStorm'] : [])];
+      // autoWeapon/sealRitual are offered to both classes again; only the rifle-only upgrades stay forbidden for the sword.
+      const forbidden = character === 'warrior' ? ['projectile', 'prismStorm'] : [];
       assert.ok(choices.game.pendingUpgradeChoices.length > 0);
-      assert.ok(choices.game.pendingUpgradeChoices.every(id => !forbidden.includes(id)), 'Upgrade offered a forbidden autonomous/role-incompatible weapon');
+      assert.ok(choices.game.pendingUpgradeChoices.every(id => !forbidden.includes(id)), 'Upgrade offered a role-incompatible upgrade');
       await page.keyboard.press('Digit1');
-      details.phases.push({ name: 'class buff and upgrades preserve role; automatic weapons remain inactive', buff, idle, choices });
+      details.phases.push({ name: 'relic infusion and upgrades preserve role; automatic weapons are companions, not projectiles', buff, idle, choices });
 
       await page.evaluate(() => window.__zombieNightDebug.damagePlayer(999999));
       await page.waitForFunction(() => window.__zombieNightDebug.getState().state === 'dead');
