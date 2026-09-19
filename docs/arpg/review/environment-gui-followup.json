@@ -1,0 +1,67 @@
+{
+  "reviewedAt": "2026-09-19T02:45:44.966181+00:00",
+  "reviewer": "root",
+  "media": [
+    {
+      "group": "gui",
+      "path": "output/gui-spawn-rejection/evidence/2026-09-19T02-36-24-199Z/desktop-proposal-focus.png",
+      "sha256": "61faca3fcedf8c1ffd3ca743fac773afcf4c1793b14d61e8f900db12f42e69bd",
+      "viewedOriginal": true
+    },
+    {
+      "group": "gui",
+      "path": "output/gui-spawn-rejection/evidence/2026-09-19T02-36-24-199Z/portrait-proposal-focus.png",
+      "sha256": "01377e1c5f1d37acb1d3d49443d185325405639afc5603727e3570189533eb6f",
+      "viewedOriginal": true
+    },
+    {
+      "group": "gui",
+      "path": "output/gui-spawn-rejection/evidence/2026-09-19T02-36-24-199Z/landscape-proposal-focus.png",
+      "sha256": "e231041ca41c85bf45cca9bc957770178cca4ae17bca5c4238e5b341eeb17811",
+      "viewedOriginal": true
+    },
+    {
+      "group": "gui",
+      "path": "output/gui-spawn-rejection/evidence/2026-09-19T02-36-24-199Z/small-proposal-focus.png",
+      "sha256": "1542940d286f891953affe0f02535eb782ba7f3792ef60867b170a737edbdd62",
+      "viewedOriginal": true
+    },
+    {
+      "group": "environment",
+      "path": "output/playwright/environment-composition-integrated-v1/environment-integrated-depth-cost-crypt.png",
+      "sha256": "1b18e17f56cea22f60dc178bbf44a617e6016c9754a3ad5ba4b7828ab240de95",
+      "viewedOriginal": true
+    },
+    {
+      "group": "environment",
+      "path": "output/playwright/environment-composition-integrated-v1/environment-integrated-depth-cost-garden.png",
+      "sha256": "8e35061402c8e186c0e4b3b16de75acc788918f9cdef026316edeb47d8a44e19",
+      "viewedOriginal": true
+    },
+    {
+      "group": "environment",
+      "path": "output/playwright/environment-composition-integrated-v1/environment-integrated-depth-cost-maintenance.png",
+      "sha256": "14a4f1ed0d897ccafa61bd9111b58067adab7c72f77780942dedfdac33c47be0",
+      "viewedOriginal": true
+    },
+    {
+      "group": "environment",
+      "path": "output/playwright/environment-composition-integrated-v1/environment-integrated-depth-cost-actor.png",
+      "sha256": "e404f8841f7d2c66f404ac16821762eead1debde7b792045da5fec914e85f48a",
+      "viewedOriginal": true
+    }
+  ],
+  "gui": {
+    "selectedForNextCoordinatedIntegration": true,
+    "runtimeRecoveryProven": false,
+    "cssSha256": "6d88a4d2ef337830da67c3af7af4770c75ed482430d99919b66d904984a97cfd",
+    "scope": "Native baseline diagnostic; candidate images are DOM fixtures."
+  },
+  "environment": {
+    "fixtureChecks": 8,
+    "gameplayApproval": false,
+    "navigationSourceSha256": "911e0ea2e29bf4b937e8a9174b897d9bc8b197bab0de681e4c9a4f50af6d65d0"
+  },
+  "AAAApproved": false,
+  "physicalDeviceTested": false
+}

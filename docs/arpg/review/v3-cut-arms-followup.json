@@ -1,0 +1,27 @@
+{
+  "observedAt": "2026-09-19T00:59:51.760011+00:00",
+  "scope": "Independent inspection of three original native fixture PNGs plus one natural gameplay PNG; not full video, no AAA/no-slide approval.",
+  "runtime": "src/assets/enemy-death-cut.js",
+  "runtimeSha256": "e37398db9fa3d02294cd5abb4929a52afc6caa84678f465fa099f62c61b63371",
+  "candidateSha256": "e37398db9fa3d02294cd5abb4929a52afc6caa84678f465fa099f62c61b63371",
+  "floatingHandDefect": "No disconnected hovering hand visible in inspected corrected Walker frames at .38/.90s.",
+  "artApproval": false,
+  "images": [
+    {
+      "path": "output/playwright/arpg-animation-cut-v3-arms-final/zombie-candidate-0.38.png",
+      "sha256": "269ffb9e359da8e042c27dab02bd904acdfde27817e9d85fc24c66886d8961e9"
+    },
+    {
+      "path": "output/playwright/arpg-animation-cut-v3-arms-final/zombie-candidate-0.9.png",
+      "sha256": "b27e7e680b812451d7b8eeb39f3b66ffa4c828f1a14d8ae12e9ce7a02b95cd17"
+    },
+    {
+      "path": "output/playwright/arpg-animation-cut-v3-arms-final/orcPeon-candidate-0.9.png",
+      "sha256": "6a7620136c9546e20d30c35be84914a7c41a2e25140e36c21739fe4ee84402cf"
+    },
+    {
+      "path": "output/playwright/arpg-animation-death-only-v3/death-cut-warrior-high-settled.png",
+      "sha256": "bd5b0f34258ff983da1ebb78830840051697a361897e86ca50efe15c374d721a"
+    }
+  ]
+}

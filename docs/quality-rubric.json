@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 5,
+  "model": "jev-1.13.0",
+  "threshold": {
+    "operator": ">=",
+    "value": 10,
+    "scope": "every_dimension",
+    "missingEvidence": "pending_never_pass"
+  },
+  "levels": [
+    "No usable evidence establishes this dimension; the experience is missing or fundamentally broken.",
+    "Only an isolated prototype fragment is demonstrated; severe failures prevent normal use.",
+    "Basic fragments function but major defects dominate the documented experience.",
+    "A playable or usable skeleton exists with several substantial defects and extensive missing coverage.",
+    "Core behavior works in limited scenarios, but inconsistent quality and important gaps remain.",
+    "The basic experience is serviceable, with visible or measurable compromises that disrupt regular use.",
+    "The experience is coherent and broadly usable; notable rough edges or incomplete coverage still remain.",
+    "The experience is polished in most demonstrated cases, but material quality gaps or edge-case defects remain.",
+    "The experience is professionally polished across broad documented coverage, with only minor imperfections and no major defect.",
+    "The dimension is exceptionally refined and consistently verified in every required scenario, including edge cases and sustained use, with no material defect or missing evidence."
+  ],
+  "dimensions": {
+    "game_design": {
+      "name": "Game design and class identity",
+      "requirements": "Document natural play showing Aldric sword basic attack plus three intentional warrior skills and Lyra rifle basic attack plus three intentional dwarf skills, exactly the six authorized IDs. Require meaningful costs, resource regeneration, cooldowns, range, crowd control, distinct class decisions, readable preparation/impact/recovery, enemy counterplay, wave pacing and compatible upgrades/rewards. Verify server ownership and rejection of forged casts, preserving XP/drops/party/late join/reconnect/wipe/local ranking. Feature counts and isolated demos do not establish design quality. The six canonical v2 functions are a real timed war-cry buff, swept cleaving dash, shield charge with area stun, explosive fire cannon, area-freezing shot and persistent stationary gravity field with collision-respecting pull. Prove modifiers/expiry, every valid area target, boss resistances, one death/reward per dash victim and authoritative status cleanup/reconstruction."
+    },
+    "animation": {
+      "name": "Animation, locomotion and contact",
+      "requirements": "Document inspected native playback and measured world-space foot contact/sliding for walk/run/start/stop/turn/strafe and attacks at multiple speeds, including local/remote actors. Require coherent stride versus actual travel, stable weapon grips, natural weight and transitions, ground contact, finite deformation and correct attack impact timing. Vertical ground bounds, nominal stride matching or CPU-only tests alone do not establish absence of visible sliding or artistic quality."
+    },
+    "art_direction": {
+      "name": "Art direction",
+      "requirements": "Document inspected real rendered scenes, lighting/material coherence, composition, character and enemy silhouettes, and absence of visible clipping across desktop/mobile and quiet/dense combat."
+    },
+    "vfx": {
+      "name": "VFX integration and readability",
+      "requirements": "Document every applicable upstream effect family and actual triggers, shader/material correctness, temporal readability under dense combat, resource cleanup, and any exclusions. Require all six authorized skill IDs across preparation/release/travel/contact/status/end phases as applicable; war-cry aura, continuous dash slash, shield collision/stun, abundant cannon fire, persistent frost and purple gravitational flow synchronized with actual collision and animation, from the Samurai, HandCast and LinearAbility sources. Explicitly label fixture versus natural gameplay and distinguish contact from miss/expiration. Verify essential projectiles/areas/statuses in low/reduced motion and stylized corpse splitting only on confirmed dash kills."
+    },
+    "combat_feel": {
+      "name": "Combat feel",
+      "requirements": "Document natural move/aim/fire/damage/recovery input and playback across weapon families, readable impacts and hazards, and responsive behavior. Cover both basic attacks plus all six skills, resource/cooldown rejection, grounded contacts, obstacle blocking, and local/remote synchronized cast/impact timing."
+    },
+    "ui_ux": {
+      "name": "User interface and flow",
+      "requirements": "Document menu, login, ranking, gameplay HUD, upgrades, settings, pause, death and restart with consistent hierarchy, legibility, functional controls and keyboard/pointer navigation. Include the ARPG bottom HUD with left health orb, right class-resource orb, exactly three active skills and the basic weapon indicator; authoritative cost/readiness/cooldowns, touch and 1/2/3 keyboard input, upgrade-input precedence and no casts while typing/dialogs. Show real buff duration and new v2 icon identities; no old skill labels or simulated readiness."
+    },
+    "mobile": {
+      "name": "Mobile play",
+      "requirements": "Document actual touch movement and simultaneous firing, compact/portrait/landscape safe areas and UI plus real physical iOS/Android gameplay. Desktop viewport emulation alone is incomplete."
+    },
+    "audio": {
+      "name": "Audio experience",
+      "requirements": "Document captured output and listening observations of event distinction, volume/mix, spatial cues, clipping, sustained combat fatigue, unlock, mute and persistence. AudioContext running alone is incomplete."
+    },
+    "performance": {
+      "name": "Performance",
+      "requirements": "Document declared hardware/browser, sustained frame-time percentiles and memory/resource budgets for natural play and dense stress, near-60fps target and physical mobile behavior. Legacy low-FPS regression thresholds alone are incomplete."
+    },
+    "multiplayer": {
+      "name": "Multiplayer behavior",
+      "requirements": "Document at least two actual browser clients sharing authoritative enemies, projectiles and rewards; late join, reconnect, death/wipe and concurrent play. WebSocket script alone is incomplete."
+    },
+    "accessibility": {
+      "name": "Accessibility",
+      "requirements": "Document keyboard-only controls/settings, focus, labels, contrast, zoom/readability, reduced-motion behavior and redundant non-color/non-audio cues in gameplay."
+    },
+    "reliability": {
+      "name": "Reliability",
+      "requirements": "Document all test suites for the same source candidate, clean runtime/resource logs, repeated restart and settings persistence, long play and lifecycle recovery without state corruption."
+    }
+  }
+}

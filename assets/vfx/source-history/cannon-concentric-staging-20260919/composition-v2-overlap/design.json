@@ -1,0 +1,10 @@
+{
+  "at": "2026-09-19T05:59:19.517502+00:00",
+  "promoted": false,
+  "causeEvidence": "05:55 corrected native ablation Horizon alone fails55/67 afterbloom, gas/particles121.",
+  "scope": "Only Horizon projected overlap coverage, no gas/particles/fire/pipeline edits.",
+  "formula": "aNew=1-(1-a)^(1/layers), premultiplied RGB scales aNew/a; same source chromaticity, alpha1 black core retained. Single field exact early return.",
+  "locality": "Up to8 prepared/camera eligible apertures; per-pixel count of other projected disks with softedge .7..1 and actualfade. Does not lower global emission/bloom.",
+  "limit": "Aperture overlap approximates emission overlap; partially overlapping/disparate depths need visual review. No exact joint-volume compositor.",
+  "next": "CPU lifecycle, then bounded1/8 native after GUI boss slot, original65 unchanged."
+}

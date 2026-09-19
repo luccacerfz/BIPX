@@ -1,0 +1,95 @@
+{
+  "at": "2026-09-19T04:53:22.982158+00:00",
+  "originalPath": "assets/models/dwarf-rifleman.glb",
+  "originalSha256": "e11eadb8b428ad46332b0f70bc2db3459628775b65cbb101886cd46fdcd643b0",
+  "nodes": [
+    {
+      "node": "DwarfRifle",
+      "meshIndex": 0,
+      "skin": null,
+      "meshName": "tripo_01932b64_84dd_4f30_9312_879995f80f71.002",
+      "primitives": [
+        {
+          "materialIndex": 0,
+          "material": {
+            "doubleSided": true,
+            "extensions": {
+              "KHR_materials_specular": {
+                "specularColorFactor": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "name": "tripo_01932b64_84dd_4f30_9312_879995f80f71",
+            "pbrMetallicRoughness": {
+              "baseColorTexture": {
+                "index": 0
+              },
+              "metallicFactor": 0.07999999821186066,
+              "roughnessFactor": 0.6899999976158142
+            }
+          },
+          "positionAccessor": {
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": 4331,
+            "max": [
+              0.44624876976013184,
+              0.04979982227087021,
+              0.0868000015616417
+            ],
+            "min": [
+              -0.17344868183135986,
+              -0.04979982227087021,
+              -0.13147148489952087
+            ],
+            "type": "VEC3"
+          }
+        }
+      ]
+    },
+    {
+      "node": "DwarfBody",
+      "meshIndex": 1,
+      "skin": 0,
+      "meshName": "tripo_node_2a1e3867.001",
+      "primitives": [
+        {
+          "materialIndex": 1,
+          "material": {
+            "alphaMode": "BLEND",
+            "doubleSided": true,
+            "name": "tripo_mat_2a1e3867",
+            "pbrMetallicRoughness": {
+              "baseColorTexture": {
+                "index": 1
+              },
+              "metallicFactor": 0.07999999821186066,
+              "roughnessFactor": 0.6899999976158142
+            }
+          },
+          "positionAccessor": {
+            "bufferView": 5,
+            "componentType": 5126,
+            "count": 28468,
+            "max": [
+              0.446044921875,
+              0.17065443098545074,
+              0.99951171875
+            ],
+            "min": [
+              -0.446044921875,
+              -0.170654296875,
+              -1.1464770466318441e-08
+            ],
+            "type": "VEC3"
+          }
+        }
+      ]
+    }
+  ],
+  "nativeDiagnostic": "output/playwright/2026-09-19T04-51-24-622Z-cannon-depth-composition-vfx/report.json",
+  "conclusion": "Previous root inventory body/rifle attribution is reversed by actual node mesh links. Body material1 BLEND, rifle material0 opaque. No runtime modification."
+}

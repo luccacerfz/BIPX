@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><link rel="icon" href="data:,"><title>BIPX — monster asset review</title>
+<style>body{margin:0;background:#152127;color:#e5ddd1;font:14px system-ui}canvas{display:block}#label{position:absolute;left:24px;top:20px}#labels{position:absolute;bottom:25px;display:flex;width:100%;justify-content:space-around;font-size:20px;letter-spacing:2px}</style>
+<div id="label">Fixture de assets · não é gameplay · <span id="state">Idle</span></div>
+<div id="labels"><span>GRAVE WALKER</span><span>CRYPT BRUTE</span><span>CROWNED LICH</span></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {loadMonsterLibrary} from '../src/assets/monster-library.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#152127');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(34,innerWidth/innerHeight,.1,100);camera.position.set(2.2,4.7,-13.5);camera.lookAt(0,1.25,0);
+scene.add(new THREE.HemisphereLight(0xc4deed,0x403723,2));
+for(const [color,intensity,x,y,z]of[[0xffd8a8,3,-5,7,-5],[0x66c2ec,3,6,6,4]]){const light=new THREE.DirectionalLight(color,intensity);light.position.set(x,y,z);scene.add(light);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,30),new THREE.MeshStandardMaterial({color:0x263339,roughness:.95}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+const grid=new THREE.GridHelper(30,30,0x64717a,0x37464e);grid.position.y=.001;scene.add(grid);
+const library=await loadMonsterLibrary({THREE});
+const actors=library.ids.map((id,i)=>{const a=library.create(id,{parent:scene});a.root.position.x=(1-i)*3.6;return a;});
+let state={speed:0,dead:false};
+const render=()=>renderer.render(scene,camera);
+window.monsterReview={ready:true,THREE,scene,renderer,camera,library,actors,
+ setState(next){state={speed:0,dead:false,...next};for(const a of actors){if(next.reset)a.reset();if(next.attack)a.attack({duration:next.duration||2.15});if(next.hit)a.hit();}document.querySelector('#state').textContent=next.label||'Idle';},
+ step(dt){for(const a of actors)a.update(dt,state);render();},render};
+render();
+if(!new URLSearchParams(location.search).has('manual')){const clock=new THREE.Clock();function frame(){window.monsterReview.step(clock.getDelta());requestAnimationFrame(frame);}frame();}
+</script></html>

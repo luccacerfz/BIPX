@@ -1,0 +1,11 @@
+import fs from 'node:fs';import crypto from 'node:crypto';import assert from 'node:assert/strict';
+import {chromium} from './quality-browser.mjs';
+import {getEnvironmentColliders} from '../output/physics/combined-native-20260919/game/src/render/environment-layout.js';
+const lock='/tmp/bipx-arpg-gpu.lock',token=crypto.randomUUID(),out='output/physics/combined-native-20260919/layout-engine-diagnostic.json';let browser,owned=false;
+const source=fs.readFileSync('output/physics/combined-native-20260919/game/src/render/environment-layout.js','utf8'),sha=s=>crypto.createHash('sha256').update(s).digest('hex');
+try{fs.mkdirSync(lock);owned=true;fs.writeFileSync(lock+'/owner.json',JSON.stringify({owner:'physics-layout-diagnostic',token,pid:process.pid,created:new Date().toISOString()}));
+ browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage();const node=getEnvironmentColliders();const chrome=await page.evaluate(async source=>(await import('data:text/javascript;base64,'+btoa(source))).getEnvironmentColliders(),source);
+ const differences=[];assert.equal(node.length,chrome.length);const ulp=(a,b)=>{const data=new DataView(new ArrayBuffer(16));data.setFloat64(0,a);data.setFloat64(8,b);const delta=data.getBigInt64(0)-data.getBigInt64(8);return Number(delta<0n?-delta:delta);};
+ for(let i=0;i<node.length;i++){const a=node[i],b=chrome[i];assert.deepEqual(Object.keys(a),Object.keys(b));for(const key of Object.keys(a)){if(a[key]!==b[key])differences.push({index:i,id:a.id,key,node:a[key],chrome:b[key],numeric:typeof a[key]==='number'&&typeof b[key]==='number',abs:Math.abs(a[key]-b[key]),ulp:typeof a[key]==='number'?ulp(a[key],b[key]):null});}}
+ const report={at:new Date().toISOString(),sourceSha256:sha(source),nodeSha256:sha(JSON.stringify(node)),chromeSha256:sha(JSON.stringify(chrome)),count:node.length,differences,node,chrome,scope:'Descriptor-only Chrome evaluation, no WebGL/gameplay; exact source bytes imported in both engines.'};fs.writeFileSync(out,JSON.stringify(report,null,2));console.log(JSON.stringify({source:report.sourceSha256,nodeHash:report.nodeSha256,chromeHash:report.chromeSha256,differences},null,2));
+}finally{await browser?.close();if(owned&&JSON.parse(fs.readFileSync(lock+'/owner.json')).token===token)fs.rmSync(lock,{recursive:true});}

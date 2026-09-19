@@ -1,0 +1,335 @@
+{
+  "candidate": {
+    "description": "Physics dynamic actor sweep/index and controlled crowd policy integrated into current client/server, actor-aware atomic player/monster spawn and actual client assigned-position handling. Six-skill v2/Horizon/painted HUD preserved; next fire/layout staged; AAA incomplete.",
+    "capturedAt": "2026-09-19T02:26:08.990436+00:00",
+    "sourceManifest": "output/qa/arpg-crowd-integrated-20260919/source-manifest.json",
+    "sourceManifestSha256": "dbebeb7037caf9ab0325e3994b38b30b6781fe03b4b8a82868dfa5b70e45f5c1",
+    "sourceFiles": 214,
+    "sourceInMotionDuringCapture": false,
+    "sourceBoundReports": 15,
+    "provenance": "output/qa/arpg-crowd-integrated-20260919/evidence-provenance.json",
+    "previousRealJef": "output/qa/arpg-horizon-integrated-20260919/jef.json",
+    "changedRuntimeFiles": [
+      "server.mjs",
+      "src/main.js",
+      "src/combat/crowd-control.mjs",
+      "src/physics/contacts.mjs"
+    ]
+  },
+  "dimensions": {
+    "game_design": {
+      "coverage": "partial",
+      "observations": [
+        "Six canonical v2 skills remain: timed damage/speed buff, sword cutting dash, shield charge area stun; explosive cannon, area freeze, fixed persistent gravity pull. Three active skills per class plus sword/rifle basics. No gameplay balances changed in this increment.",
+        "New shared dynamic index in actual client/server pursuit prevents movement through controlled actors. Controlled actors anchor during ordinary crowd separation, with bounded recovery for already-invalid overlaps; skill pull remains explicitly mobile, boss scale.35. Dash/charge still sweep static cover and hit multiple victims.",
+        "Current natural-input combo results: [{\"character\": \"warrior\", \"quality\": \"high\", \"maxLivingStun\": 1, \"maxLivingFreeze\": 0, \"maxLivingPull\": 0, \"cutEvents\": 1, \"kills\": 1, \"visibleGravityFrames\": 0, \"allVisibleHaveValidDepthAndSinglePass\": true}, {\"character\": \"dwarf\", \"quality\": \"high\", \"maxLivingStun\": 0, \"maxLivingFreeze\": 5, \"maxLivingPull\": 5, \"cutEvents\": 0, \"kills\": 3, \"visibleGravityFrames\": 178, \"allVisibleHaveValidDepthAndSinglePass\": true}, {\"character\": \"dwarf\", \"quality\": \"low\", \"maxLivingStun\": 0, \"maxLivingFreeze\": 1, \"maxLivingPull\": 3, \"cutEvents\": 0, \"kills\": 2, \"visibleGravityFrames\": 189, \"allVisibleHaveValidDepthAndSinglePass\": true}]. Timelines sample real actors and effects; no spawned targets/HP/resource grants.",
+        "Spawn resolves one position against living room occupants and cover, excludes self and rejects before changing run/skills when no position exists. Reconnect does not relocate.",
+        "Automated gameplay and fixtures do not establish human balance/feel or complete late-wave encounter coverage."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-16-08-868Z-quality-suite/suite.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-17-56-484Z/crowd-integration.json",
+        "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/arpg-combos.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-05-06-899Z/player-spawn.json",
+        "docs/arpg/combat-v2-contract.md"
+      ]
+    },
+    "animation": {
+      "coverage": "partial",
+      "observations": [
+        "Animation modules unchanged since Horizon checkpoint; source difference is limited to server.mjs,src/main.js,src/combat/crowd-control.mjs,src/physics/contacts.mjs. Historical release-continuity and two-piece corpse improvements remain limited evidence, not fresh sole/corpse art approval.",
+        "Current actual browser remote strafe/stop: [{\"samples\": 189, \"maxSpeed\": 7.6356687744049925, \"finalSpeed\": 0.19842201072960008}, {\"samples\": 189, \"maxSpeed\": 7.588608736984318, \"finalSpeed\": 0.19758357307459548}]. Post-collision natural wall/slide and blocked warrior dash/shield passed for both classes. These validate sampler integration, not material-sole no-slide.",
+        "acceptedNoSliding remains false: support/transition drift, fast backward mismatch1.722m/s, reach.093m/small penetration and earlier cast reach.15391m remain open. New backward and Lich work stays staged. Corpse halves are rigid and difficult to read in a horde."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-22-00-382Z-verify-arpg-network/arpg-network.json",
+        "output/playwright/2026-09-19T02-22-36-322Z-physics-gameplay/physics-gameplay.json",
+        "docs/arpg/review/locomotion-v3-local-followup.md",
+        "docs/arpg/animation-backward-v4-staging.md"
+      ]
+    },
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "Horizon, painted six-skill HUD and cemetery modules/assets remain unchanged; prior Root observations are explicitly historical component evidence: dark core/nebula and icons improved; cry thin/geometric, cannon too small/periodic, cut halves hard to distinguish, freeze needs continuous playback.",
+        "Current native horde still directly inspected by Combat shows many visible enemy silhouettes and real persistent freeze markers. Numeric allocation audit reports zero invisible threats, which is not a guarantee of perfect visual readability.",
+        "Current rejected-spawn screenshot exposes oversized title clipping and low button contrast; functional retry passed but this UI is not artistically accepted.",
+        "Cannon-v2 and environment composition-v3 selected for future integration remain staging. Cannon coexistence silhouette gate is still unresolved; no premature promotion or AAA claim.",
+        "Combat inspected five current original native PNGs: live stun marker/buff, high gravity/fire/ice combo and low freeze are recognizable, but flashes overlap body detail/hero and canopy dither remains visible. These are stills, not continuous art/audio review."
+      ],
+      "evidence": [
+        "docs/arpg/review/integrated-art-followup.md",
+        "docs/arpg/combat-spawn-ui-followup.md",
+        "output/playwright/2026-09-19T02-13-41-998Z-verify-crowd-gameplay/crowd-gameplay.json",
+        "docs/arpg/vfx-cannon-integration.md",
+        "output/qa/arpg-crowd-integrated-20260919/native-observations.json"
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "Horizon/depth/cutaway sources unchanged; earlier9native depth checks and pool gate are historical component evidence, not repeated/current global proof.",
+        "Current natural-input high and low/reduced combos verify visible gravity frames use same-frame depth and exactly one prepass; real living freeze/stun/pull remain presented after Physics changes.",
+        "Cannon organic fire stays staging because high coexistence silhouette preservation failed65percent gate. Existing cry/cannon/cut readability and dense overlap remain open.",
+        "New independent literal-core CPU audit at30/60/120Hz finds first cannon travel starts at actor height1.05 rather than the captured muzzle1.7641; example separation1.587465m. Staged visual fixture starts at muzzle and hides the difference. This is an integration gap, not a claimed perceptual defect seen in gameplay. Promotion requires actual core+adapter standing/moving and near target/wall continuity, without shifting authority/contact/damage or crossing muzzle-side cover."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/arpg-combos.json",
+        "docs/arpg/vfx-gravity-integration.md",
+        "docs/arpg/vfx-cannon-integration.md",
+        "docs/arpg/review/cannon-origin-followup.md"
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Dynamic sweep and bounded control recovery are integrated, with wall/boss/pull/expiry/100ms CPU cases and native combos/contacts. No added timer tick or increased four-plan navigation budget.",
+        "Two60second natural runs use actual keyboard/pointer input, natural enemies, damage, XP and upgrades: [{\"character\": \"warrior\", \"coverage\": {\"actualKillsObserved\": true, \"maxKillsInOneLife\": 25, \"maxWave\": 1, \"maxLevel\": 3, \"actualXpObserved\": true, \"upgrades\": \"observed\", \"death\": \"observed naturally\", \"restart\": \"observed after natural death\", \"humanFeelReview\": \"pending\", \"physicalMobile\": false, \"skillIds\": [\"warrior_war_cry\", \"warrior_cleaving_dash\", \"warrior_shield_charge\"]}}, {\"character\": \"dwarf\", \"coverage\": {\"actualKillsObserved\": true, \"maxKillsInOneLife\": 71, \"maxWave\": 2, \"maxLevel\": 6, \"actualXpObserved\": true, \"upgrades\": \"observed\", \"death\": \"not observed\", \"restart\": \"not observed\", \"humanFeelReview\": \"pending\", \"physicalMobile\": false, \"skillIds\": [\"dwarf_explosive_cannon\", \"dwarf_frost_shot\", \"dwarf_gravity_shot\"]}}].",
+        "Human judgment of weight, responsiveness, long-session fatigue and impaired-link contact timing remains pending."
+      ],
+      "evidence": [
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-17-56-484Z/crowd-integration.json",
+        "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T02-22-36-322Z-physics-gameplay/physics-gameplay.json",
+        "output/playwright/2026-09-19T02-23-44-065Z-verify-natural-runs/natural-runs.json"
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "Actual-state two-orb/three-skill painted HUD remains unchanged. New runStarted applies server-assigned position before client sends state; rejection restores authoritative state and offers retry.",
+        "Browser2/2 checks: live-room occupied spawn applied correctly, inactive-room impossible synthetic body rejection/retry. Separate living-room WebSocket fixture proves atomic rejection and retry.",
+        "Direct still review found rejected-spawn title clipping and low button contrast. Recorded for next coordinated GUI/Combat window; functional tests are not UI visual approval."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-13-10-153Z-verify-player-spawn-browser/player-spawn-browser.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-05-06-899Z/player-spawn.json",
+        "docs/arpg/combat-spawn-ui-followup.md"
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "Low/reduced desktop combos preserve essential projectiles, area and controls. Prior emulated touch/portrait checks are historical component evidence.",
+        "Current physical iOS/Android gameplay, touch latency, thermal and long-session tests absent. Desktop measurements do not substitute."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/arpg-combos.json",
+        "docs/arpg/gui-handoff.md"
+      ]
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "Sample bank/assets/disconnect audio hooks unchanged. Horizon checkpoint23/23 two-client lifecycle tests remain historical component evidence; this Physics window did not repeat unchanged SFX checks.",
+        "No perceptual listening acceptance: tool audio input unavailable. PCM/loop lifecycle cannot establish mix/spatial feel/fatigue."
+      ],
+      "evidence": [
+        "docs/arpg/sfx-handoff.md",
+        "docs/jef-arpg-horizon.md"
+      ]
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "New native actual-AI synthetic horde fixture, Chrome1280x720 Metal AppleM5Pro,10seconds after1.5s warmup. All120/400 actors remain simulated, no perfStressImmortal; initial freeze/stun expires. CPU timer wraps actual updateZombies and excludes warmup/screenshots. Results: [{\"count\": 120, \"passed\": true, \"averageFps\": 142.37864320351946, \"frameMs\": {\"samples\": 1424, \"median\": 6.900000000000546, \"p95\": 8.299999999999272, \"max\": 20.799999999999272}, \"crowdCpuMs\": {\"samples\": 1424, \"median\": 2.5999999046325684, \"p95\": 3.4000000953674316, \"max\": 7.6000001430511475}, \"performanceBudgetPassed\": true, \"maxFinalOverlap\": 0, \"counts\": {\"min\": 120, \"max\": 120}, \"integrity\": {\"activeZombies\": 120, \"renderedAsMesh\": 120, \"renderedAsInstance\": 0, \"invisibleZombies\": 0, \"invisibleThreats\": 0, \"closeInstancedThreats\": 0, \"objectAllocWarnings\": 0}}, {\"count\": 400, \"passed\": true, \"averageFps\": 61.748748538712874, \"frameMs\": {\"samples\": 618, \"median\": 14.099999999999909, \"p95\": 21.600000000000364, \"max\": 28.5}, \"crowdCpuMs\": {\"samples\": 618, \"median\": 10.100000143051147, \"p95\": 18, \"max\": 21.09999990463257}, \"performanceBudgetPassed\": false, \"maxFinalOverlap\": 0, \"counts\": {\"min\": 400, \"max\": 400}, \"integrity\": {\"activeZombies\": 400, \"renderedAsMesh\": 140, \"renderedAsInstance\": 260, \"invisibleZombies\": 0, \"invisibleThreats\": 0, \"closeInstancedThreats\": 0, \"objectAllocWarnings\": 0}}]",
+        "400actor functional gate passed but frame P9521.6ms fails unchanged20ms budget, despite61.75averageFPS meeting57minimum.120actors pass142.38FPS/P958.3ms. Zero final overlap is endpoint evidence, CPU segment auditing supplies bounded transient coverage separately.",
+        "Corrected Node VM actual server tick P95400/60Hz6.448708ms,400/10Hz20.08875ms; includes index/update/IA/nav/crowd, no render/network. Historical28.940ms included O(N²) extra peer copies by the auditor; correction is measurement repair, not runtime optimization. Original no-dynamic-sweep baseline3.144208/3.489708ms is cheaper but fails control preservation.",
+        "Current natural60seconds/class frame observations: [{\"character\": \"warrior\", \"frameSample\": {\"frames\": 8571, \"firstFramePerformanceMs\": 1287.1, \"durationMs\": 60126.3, \"averageFps\": 142.53330073528556, \"p95Ms\": 8.299999999999272, \"p99Ms\": 8.69999999999709, \"worstMs\": 41.79999999999927, \"framesOver50Ms\": 0, \"slowFrames\": [], \"mainThreadLongTasks\": [], \"scope\": \"Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark.\"}}, {\"character\": \"dwarf\", \"frameSample\": {\"frames\": 8479, \"firstFramePerformanceMs\": 1137.5, \"durationMs\": 60027.6, \"averageFps\": 141.23503188533275, \"p95Ms\": 8.399999999997817, \"p99Ms\": 13.900000000001455, \"worstMs\": 27.300000000000182, \"framesOver50Ms\": 0, \"slowFrames\": [], \"mainThreadLongTasks\": [], \"scope\": \"Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark.\"}}].",
+        "Long dense gameplay, thermal/mobile and extreme corpses remain pending. No performance AAA claim."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-13-41-998Z-verify-crowd-gameplay/crowd-gameplay.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-17-56-484Z/crowd-integration.json",
+        "output/playwright/2026-09-19T02-23-44-065Z-verify-natural-runs/natural-runs.json",
+        "docs/arpg/review/crowd-measurement-followup.md"
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Current real-browser two-client six distinct accepted skill casts, identical peer events and authoritative shared tick. Remote movement/stop finite and sampled; reconnect {\"sameId\": true, \"sequence\": 3, \"resource\": 37.55000000000016}; late join {\"players\": 3, \"monsters\": 23}.",
+        "Additional private-IPC occupant arrangements plus real WebSockets prove latejoin/restart free spawn, living disconnected occupants, boss body, self exclusion, welcome position consistency, unchanged identity/run/position/resource/CD/sequence on reconnect, no-space rejection atomic and same-request retry after clearance.",
+        "Server CPU/protocol13groups pass, including progression anti-forgery/rewards, reconnect and ranking. Full browser wipe/impaired-link and prolonged four-client soak remain pending."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-22-00-382Z-verify-arpg-network/arpg-network.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-05-06-899Z/player-spawn.json",
+        "output/playwright/2026-09-19T02-16-08-868Z-quality-suite/suite.json"
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "Real keyboard/menu/skill/retry flows and low/reduced controls remain usable in bounded tests.",
+        "Rejected-spawn title clipping/button contrast are open; full contrast/zoom/screen-reader, assistive devices and physical touch review absent."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T02-13-10-153Z-verify-player-spawn-browser/player-spawn-browser.json",
+        "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/arpg-combos.json",
+        "docs/arpg/combat-spawn-ui-followup.md"
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "214runtime/assets hashes match15full-source-bearing current reports. CPU17/17 sourceStable, selected backend13/13 runtime/tools stable during suite. Native fixture2/2 functional; performance failure explicitly retained.",
+        "Player start commits new run only after one actor-aware valid position; failure preserves previous state/session/skills/receipt. Self excluded, live disconnected players included. Root independently confirmed20CPU cases with stubbed transport; actual transport/UI proof is separate here.",
+        "5173 backend updated only after isolated tests; local Supabase remains disabled and ranking bytes preserved. Receipt: output/qa/arpg-crowd-integrated-20260919/local-server-restart.json.",
+        "Failures preserved: invalid giant fixture radius100 then corrected30; browserwrongassets URL; UIblocked fixture accidentally recovered by normal live physics; old CPUtiming overhead. No assertions/thresholds weakened or runtime patched to satisfy those fixtures.",
+        "No full soak/device recovery, no-slide, performance400budget and UI visual defects still open."
+      ],
+      "evidence": [
+        "output/qa/arpg-crowd-integrated-20260919/evidence-provenance.json",
+        "output/playwright/2026-09-19T02-16-08-868Z-quality-suite/suite.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-17-56-484Z/crowd-integration.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-05-06-899Z/player-spawn.json",
+        "output/qa/arpg-crowd-integrated-20260919/local-server-restart.json",
+        "docs/arpg/review/player-spawn-followup.md"
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "suite",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-16-08-868Z-quality-suite/suite.json"
+    },
+    {
+      "name": "cpu",
+      "status": "passed",
+      "evidence": "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-17-56-484Z/crowd-integration.json"
+    },
+    {
+      "name": "spawn",
+      "status": "passed",
+      "evidence": "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-05-06-899Z/player-spawn.json"
+    },
+    {
+      "name": "spawnBrowser",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-13-10-153Z-verify-player-spawn-browser/player-spawn-browser.json"
+    },
+    {
+      "name": "crowdNative",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-13-41-998Z-verify-crowd-gameplay/crowd-gameplay.json"
+    },
+    {
+      "name": "combos",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/arpg-combos.json"
+    },
+    {
+      "name": "network",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-22-00-382Z-verify-arpg-network/arpg-network.json"
+    },
+    {
+      "name": "physics",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-22-36-322Z-physics-gameplay/physics-gameplay.json"
+    },
+    {
+      "name": "natural",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T02-23-44-065Z-verify-natural-runs/natural-runs.json"
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "evidence": "output/qa/arpg-crowd-integrated-20260919/local-server-restart.json"
+    },
+    {
+      "name": "Native400frameBudget",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T02-13-41-998Z-verify-crowd-gameplay/crowd-gameplay.json"
+    },
+    {
+      "name": "Full material-sole no-slide acceptance",
+      "status": "failed",
+      "evidence": "docs/arpg/review/locomotion-v3-local-followup.md"
+    },
+    {
+      "name": "Spawn rejection visual polish",
+      "status": "failed",
+      "evidence": "docs/arpg/combat-spawn-ui-followup.md"
+    }
+  ],
+  "openDefects": [
+    "400actor native frameP95=21.6ms fails20ms budget; meanFPS61.75 does not override tail.",
+    "Spawn rejection title clipping and low retry-button contrast in current native1280x800 capture.",
+    "No-slide/material-sole support and transition drift, fast backward mismatch/reach, minor penetration remain.",
+    "Cry thin/geometric, cannon old small/periodic, cut halves difficult in horde, freeze transition needs continuous playback; eightfields crowd hierarchy. New cannon coexistence gate still staging.",
+    "Corpse two rigid pieces, Lich explicit profile and Brute motion/weight need further work.",
+    "Physical mobile, perceptual audio listening, human feel, accessibility, impaired links/browserwipe and longsoak incomplete.",
+    "Cannon staged fixture does not prove real muzzle-to-core-travel continuity; literal core audit1.587465m example gap requires bounded integration proof before promotion."
+  ],
+  "historicalFailures": [
+    {
+      "name": "Source-stable CPU/protocol suite00:39:46",
+      "status": "failed",
+      "passedGroups": 12,
+      "totalGroups": 13,
+      "evidence": "output/playwright/2026-09-19T00-39-46-885Z-quality-suite/suite.json",
+      "followup": "output/playwright/2026-09-19T00-41-20-708Z-verify-progression-authority/progression-authority.json",
+      "cause": "Harness read client state immediately after private IPC instead of awaiting the real WebSocket health update. Server/client health requirements remain160.",
+      "fullSuiteFollowup": "output/playwright/2026-09-19T00-46-57-235Z-quality-suite/suite.json",
+      "postCorpseFullSuiteFollowup": "output/playwright/2026-09-19T00-54-45-126Z-quality-suite/suite.json"
+    },
+    {
+      "name": "First low/reduced natural combo attempt",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T00-29-31-433Z-verify-arpg-combos/arpg-combos.json",
+      "followup": "output/playwright/2026-09-19T00-33-10-376Z-verify-arpg-combos/arpg-combos.json",
+      "cause": "Harness retargeted nearest enemy between skills; cannon legitimately missed the moving target. Repeated with same natural target tracked, no gameplay mutation."
+    },
+    {
+      "name": "First v3 floating detached hand",
+      "status": "artistic_rejection",
+      "evidence": "docs/arpg/review/v3-cut-followup.md",
+      "followup": "docs/arpg/animation-cut-v3-handoff.md",
+      "finalNative": "output/playwright/arpg-animation-cut-v3-arms-final/report.json",
+      "scope": "Specific hand-region issue repaired and checked; not AAA blanket acceptance."
+    },
+    {
+      "name": "Horizon first multicampo torso gate",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T01-21-21-154Z-gravity-vfx-integration/integration-report.json",
+      "cause": "Torso3preservation28.10%below unchanged65%gate",
+      "followup": "output/playwright/2026-09-19T01-26-48-130Z-gravity-vfx-integration/integration-report.json"
+    },
+    {
+      "name": "Depth initial restoration harness",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T01-18-22-299Z-verify-scene-depth/scene-depth-report.json",
+      "cause": "Harness incorrectly required VFX root visibility unchanged after invalidated depth; corrected only explicit excluded-VFX root comparison, occluder/renderer comparisons retained."
+    },
+    {
+      "name": "Disconnect persistent audio reproduced14.2seconds",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T01-23-35-639Z-audio-disconnect-lifecycle/disconnect-lifecycle.json",
+      "followup": "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json"
+    },
+    {
+      "name": "Crowd initial Node VM measurement",
+      "status": "measurement_overhead_identified",
+      "evidence": "output/qa/arpg-crowd-integrated-20260919/2026-09-19T01-58-32-434Z/crowd-integration.json",
+      "followup": "output/qa/arpg-crowd-integrated-20260919/2026-09-19T02-17-56-484Z/crowd-integration.json",
+      "cause": "peers materialized O(N) per actor even when audit disabled; now only auditor materializes before step."
+    },
+    {
+      "name": "Spawn UI harness URL",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T02-05-25-184Z-verify-player-spawn-browser/player-spawn-browser.json",
+      "followup": "output/playwright/2026-09-19T02-13-10-153Z-verify-player-spawn-browser/player-spawn-browser.json"
+    },
+    {
+      "name": "Spawn UI giant in living physics",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T02-11-15-286Z-verify-player-spawn-browser/player-spawn-browser.json",
+      "followup": "output/playwright/2026-09-19T02-13-10-153Z-verify-player-spawn-browser/player-spawn-browser.json",
+      "cause": "normal physics recovered synthetic giant during form input; inactive room used only to isolate no-space UI; live WebSocket proof separately retained."
+    }
+  ]
+}

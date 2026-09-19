@@ -1,0 +1,27 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
+const base='assets/vfx/source-history/cannon-concentric-staging-20260919/composition-v1';
+const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
+const {createClassSkillVfx}=await import(await moduleUrl(`${base}/candidate/class-skill-vfx.js`));
+const scene=new THREE.Scene(),vfx=createClassSkillVfx({THREE,scene}),camera=new THREE.PerspectiveCamera(48,1.6,.1,220);camera.position.set(0,17,20);camera.lookAt(0,0,0);
+const fields=n=>Array.from({length:n},(_,i)=>({id:'field'+i,position:{x:(i%3)*.035,y:.08,z:Math.floor(i/3)*.02},radius:5,remaining:4,duration:5}));
+const count=()=>vfx.getStats().cannon.compositionFields,checks=[];
+function select(state){vfx.syncState(state);vfx.update(0);return vfx.prepareSceneDepth(camera);}
+vfx.prepareSceneDepth(camera);assert.equal(count(),0);checks.push('empty');
+select({fields:fields(1)});assert.equal(count(),1);checks.push('one actual field');
+const texture=new THREE.Texture();let textureDisposed=false;texture.addEventListener('dispose',()=>textureDisposed=true);
+const frame={texture,encoding:'rgba-packed',width:64,height:64,near:.1,far:220,viewport:{x:0,y:0,width:64,height:64}};assert.ok(vfx.setSceneDepth(frame));assert.equal(vfx.setSceneDepth(null),false);checks.push('borrowed depth invalidate');
+select({fields:fields(10)});assert.equal(count(),8);checks.push('bounded eight descriptors');
+const pool=scene.getObjectByName('CannonVolumetricPool'),shader=[];pool.traverse(o=>{if(o.material?.uniforms?.uGravityCount)shader.push(o.material.uniforms);});
+const descriptorBytes=()=>shader.map(u=>[u.uGravityCount.value,u.uGravityCenterRadius.value.map(v=>v.toArray()),u.uGravityShape.value.map(v=>v.toArray()),u.uGravityLife.value.map(v=>v.toArray())]);
+const paused=JSON.stringify(descriptorBytes());for(let i=0;i<60;i++){vfx.update(0);vfx.prepareSceneDepth(camera);}assert.equal(JSON.stringify(descriptorBytes()),paused);checks.push('paused descriptors unchanged for60updates');
+vfx.setQuality('low');vfx.setReducedMotion(true);vfx.update(0);vfx.prepareSceneDepth(camera);assert.equal(count(),8);assert.ok(shader.every(u=>u.uGravityPrefixSteps.value===16));checks.push('low reduced capacity');
+camera.lookAt(0,30,70);vfx.prepareSceneDepth(camera);assert.equal(count(),0);assert.ok(shader.every(u=>u.uGravityCount.value===0));checks.push('off camera culling');camera.lookAt(0,0,0);
+select({fields:fields(1)});assert.equal(count(),1);assert.ok(shader.every(u=>u.uGravityCount.value===1));checks.push('return to one no stale eight');
+select({fields:fields(1).map(f=>({...f,remaining:.05}))});assert.equal(count(),1);vfx.update(.1);vfx.prepareSceneDepth(camera);assert.equal(count(),0);checks.push('natural remaining expiry');
+select({fields:fields(8)});select({fields:[]});assert.equal(count(),0);checks.push('empty snapshot removes descriptors');
+select({fields:fields(8)});vfx.reset();assert.equal(count(),0);assert.ok(shader.every(u=>u.uGravityCount.value===0));checks.push('reset');vfx.dispose();assert.equal(scene.children.length,0);assert.equal(textureDisposed,false);texture.dispose();checks.push('dispose detaches owned nodes without freeing borrowed texture');
+const at=new Date().toISOString(),hashes=Object.fromEntries(await Promise.all((await fs.readdir(`${base}/candidate`)).filter(f=>f.endsWith('.js')).sort().map(async f=>[f,sha256(await fs.readFile(`${base}/candidate/${f}`))])));
+const file=`${base}/cpu-lifecycle-${at.replaceAll(':','-').replaceAll('.','-')}.json`;
+await fs.writeFile(file,JSON.stringify({at,checks,passed:true,hashes,scope:'CPU lifecycle/descriptor contract, no shader compile or artistic acceptance'},null,2)+'\n');console.log(JSON.stringify({file,passed:true,checks:checks.length}));

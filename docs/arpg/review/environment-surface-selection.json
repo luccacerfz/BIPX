@@ -1,0 +1,24 @@
+{
+  "reviewedAt": "2026-09-19T03:29:15.746214+00:00",
+  "manifest": "output/environment/surface-life-v1/selection-manifest.json",
+  "manifestSha256": "6a3745bf94c4ee761264b577f04184ce0a7c9a8e4f4cfd193d5c2446fbf0eabb",
+  "inspectedOriginals": {
+    "output/playwright/environment-surface-life-v2/surface-baseline-garden.png": "b06a11fb20dc0ef2a0dcea2483c244f701578f3fbd1da951dff96b39c6e7d563",
+    "output/playwright/environment-surface-life-v2/surface-baseline-maintenance.png": "5aab206de2c56b575dfc62a191788a0a7c4e4c3b2339102c28e46c8365a41483",
+    "output/playwright/environment-surface-life-v2/surface-candidate-garden.png": "4e3c154886898c78c99347ea72c569c58becf2f9f3e79a6b5acd6a1c8c2bc60d",
+    "output/playwright/environment-surface-life-v2/surface-candidate-maintenance.png": "23a3ad2718c419e2f213c6d2ad2a884c51951c9973a4a3070ede907e96ebd5ca"
+  },
+  "candidateHashes": {
+    "src/render/asset-dressing.js": "947c7cd94475663fadd456c628e44945b65d1057340525a8125b99ef699d7b91",
+    "src/render/cemetery.js": "ef17cfbe3eda058ac88250a063a60346b2d1b449ee1d9e847fd774b1a9f27ae5",
+    "src/render/environment-composition-ground.js": "3a8ca80fbd3a96f1e98101cbd2c5e6ca4fec9b15276bfeef1775fbc729f06f15"
+  },
+  "decision": "Select surface-life second iteration for later coordinated Environment integration; do not join active cannon/contacts freeze. Preserve maintenance proposal separately.",
+  "runtimePromotedByRoot": false,
+  "visualFinding": "Small local improvement in soil warmth and ground contact around garden and maintenance props; low decorations less uniform. Legacy repetition and canopy cutaway remain.",
+  "limits": [
+    "Two synthetic fixed native camera pairs, not gameplay.",
+    "Equal geometry/material counts are not GPU-time equivalence.",
+    "AAA/global lighting quality not approved."
+  ]
+}

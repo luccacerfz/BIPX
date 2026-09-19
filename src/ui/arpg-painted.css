@@ -1,0 +1,45 @@
+/* Original BIPX painted skills. State, input, tooltips and orb geometry remain in the HUD. */
+.arpg-art-v3 .arpg-skill__art {
+  inset: 2px;
+  border-radius: 2px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 1px 0 #fff6, inset 0 0 4px #0008;
+  opacity: 1;
+  filter: none;
+}
+.arpg-art-v3 .arpg-skill__art .arpg-icon { visibility: hidden; }
+.arpg-art-v3 .arpg-skill[data-element="fervor"] .arpg-skill__art { background-image: url('../../assets/ui/arpg/painted-v3/war-cry.webp'); }
+.arpg-art-v3 .arpg-skill[data-element="steel"] .arpg-skill__art { background-image: url('../../assets/ui/arpg/painted-v3/cleaving-dash.webp'); }
+.arpg-art-v3 .arpg-skill[data-element="shield"] .arpg-skill__art { background-image: url('../../assets/ui/arpg/painted-v3/shield-charge.webp'); }
+.arpg-art-v3 .arpg-skill[data-element="fire"] .arpg-skill__art { background-image: url('../../assets/ui/arpg/painted-v3/explosive-cannon.webp'); }
+.arpg-art-v3 .arpg-skill[data-element="frost"] .arpg-skill__art { background-image: url('../../assets/ui/arpg/painted-v3/frost-shot.webp'); }
+.arpg-art-v3 .arpg-skill[data-element="arcane"] .arpg-skill__art { background-image: url('../../assets/ui/arpg/painted-v3/gravity-shot.webp'); }
+.arpg-art-v3 .arpg-skill[aria-disabled="true"] .arpg-skill__art { opacity: 1; filter: saturate(.82) brightness(.92); }
+.arpg-art-v3 .arpg-skill__mask { border-radius: 2px; background: conic-gradient(#050b154d 0deg var(--cooldown-angle, 0deg), transparent var(--cooldown-angle, 0deg) 360deg); }
+.arpg-art-v3 .arpg-skill__timer {
+  inset: auto auto 3px 3px;
+  min-width: 19px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #04080deb;
+  color: #fff8e9;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px #000;
+}
+.arpg-art-v3 .arpg-skill__timer:empty { display: none; }
+.arpg-art-v3 .arpg-skill__cost { bottom: 3px; right: 3px; min-width: 0; padding: 1px 3px; border-radius: 2px; background: #04080deb; font-size: 10px; line-height: 15px; }
+.arpg-art-v3 .arpg-skill[data-state="resource"] { border-color: #d58a72; }
+.arpg-art-v3 .arpg-skill[data-state="resource"] .arpg-skill__art { filter: saturate(.62) brightness(.72); }
+.arpg-art-v3 .arpg-skill[data-state="resource"] .arpg-skill__timer { color: #ffc6b7; }
+.arpg-art-v3 .arpg-skill[data-state="paused"] .arpg-skill__art,
+.arpg-art-v3 .arpg-skill[data-state="dead"] .arpg-skill__art,
+.arpg-art-v3 .arpg-skill[data-state="unavailable"] .arpg-skill__art { filter: saturate(.65) brightness(.72); }
+.arpg-art-v3 .arpg-skill:focus-visible { outline: 2px solid #fff0d3; outline-offset: 3px; }
+@media (max-width: 680px), (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .arpg-art-v3 .arpg-skill__timer { min-width: 16px; font-size: 11px; padding: 0 2px; left: 2px; bottom: 2px; height: 16px; }
+  .arpg-art-v3 .arpg-skill__cost { right: 2px; bottom: 2px; padding: 0 2px; font-size: 11px; line-height: 16px; }
+}

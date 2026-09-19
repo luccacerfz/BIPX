@@ -1,0 +1,13 @@
+# JEF — Lich integrado, avaliação parcial
+
+**07:13 UTC, TypeSafe Jev real: HTTP200, `requires_further_work`.** [Resposta bruta](../output/qa/arpg-lich-checkpoint-20260919/jef.json), [evidência submetida](../output/qa/arpg-lich-checkpoint-20260919/evidence.json) e [manifesto239](../output/qa/arpg-lich-checkpoint-20260919/source-manifest.json). Doze dimensões parciais, notas aceitasnull; alvo10 intacto e fullGoalCompletefalse. Avaliador recebeu texto, não imagens/vídeo/áudio. JEF canopy06:58 de Root e os anteriores permanecem históricos.
+
+Aplicados onze deltas Lich selecionados (sete arquivosnovos); main d9e6fed4/server eb80b8a6, GLB original+sidecar, gesto/cast autoritativo, inbox e ponte somente de apresentação. Canopy977/1edbc6, noveVFX, GUI, GLBs heróis, contacts912c e layout153 preservados. [Recibo](../output/lich-cast-launch-bridge-v3/promotion.json). Restart controlado5973→22588, localhost5173HTTP200, Supabaseoff e ledger7f580798 intacto. Doze módulosHTTP exatos/Node12dependências e doisclientesWSmenu prontidãoPASS, semGPU ou partida de ranking.
+
+CPU10 e único nativeoffline causal07:05:43, ambos fonte239, exercitam blocked-offset em ruined-wall-2, trajeto lógico livre mesmo raio.42, resetTrail/chave nova, autoridade intacta, HP200→183.1151158/dano exato e cleanup. Frame do reset parcialmente oculto pela copa. Clearcast2clientes anterior e parede06:43 conservam suas fontes e escopos; não representam matriznova239. [Detalhes e histórico](arpg/combat-lich-launch-bridge.md).
+
+Limitações materiais: salto visual~.303m no abandono conservador, orb primitiva, encaixe/playback fino, pausa remota148ms e desaparecimento antes do contato ainda não resolvidos. CPUsemponte confirma hold com target inalterado, mas timingdepacket não foi capturado. No-slidefalse, Brute/dash/contornos/composição arbitrária, manutenção0XP/P9520.9, outlier180.4ms, escuta/VoiceOver/aparelho físico/soak e rede sustentada permanecem pendentes. Não éAAA/global10 nem conclusão do goal.
+
+Auditoria atual de skills: CPU48 confirma release na posição corrente, endpoint terminal e corpos low/reduced. Report antigo usa IDs aposentados. Nativecanhão07:07 globalFAILED porassert do ring128; raw audit separado confirma129frames de corpo, cast/release únicos, sem reclassificar report. Doiscasts restantes são complemento posterior e serão adendo, não alteração do payloadJEF.
+
+Adendo07:17: gelo/gravidade lowreduced concluídos porinputreal,2PASS/sourceStable;235hashesruntime exatos ao239manifesto completo.117/128framesbody, recurso/CD/sequence exatos. [Adendo com revisão e limites](../output/qa/arpg-lich-checkpoint-20260919/post-checkpoint-reduced-addendum.json). Não altera a avaliação já enviada nem reclassifica o canhãoFAILED.

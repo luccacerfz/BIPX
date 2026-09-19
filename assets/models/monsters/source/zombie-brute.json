@@ -1,0 +1,27 @@
+{
+  "id": "zombie-brute",
+  "mode": "character",
+  "theme": "mega-300",
+  "prompt": "Low-poly stylized hulking brute zombie thick arms, FULL BODY standing feet visible, A-pose, isolated symmetric game character Quake Diablo hybrid",
+  "anims": [
+    "IDLE",
+    "WALK",
+    "RUN",
+    "SLASH",
+    "FALL"
+  ],
+  "animate_in_place": true,
+  "tasks": {
+    "model": "cb020753-b94b-45ac-98e9-184c3251d24d",
+    "rig": "6bf3344d-a7ba-4ba0-aea0-b90208c04fd4",
+    "retarget": "6c4a06cc-1fd7-47ab-91cd-5a82ae947b25"
+  },
+  "inspect": {
+    "mb": 1.48,
+    "bones": 41,
+    "clips": 5,
+    "ready": true,
+    "aspect_h_w": 2.1658780930218557
+  },
+  "created": "2026-07-11T14:28:59.885250+00:00"
+}

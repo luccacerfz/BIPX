@@ -1,0 +1,10 @@
+{
+  "at": "2026-09-19T04:49:20.455491+00:00",
+  "authorized": true,
+  "scope": "User-authorized bounded composition IN COPY after Aldric A/B; Environment crypt released04:45:03; Animation capture released04:33; acquire lock atomically. No live source freeze required.",
+  "evidence": {
+    "docs/arpg/combat-handoff.md": "c51fadf571966a2c3cb54830b753ab22482379dcac92d83278c094be08e97057",
+    "docs/arpg/environment-handoff.md": "8bb2cad60bcdd392800b191b6967210b3b2734711eeaa9bb030a0de19c362919",
+    "docs/arpg/animation-handoff.md": "c0093a7655d375d8b4526d4d4fa9367c90aa50081f03996d632e5af3ebb2c699"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "reviewedAt": "2026-09-19T04:17:03.264293+00:00",
+  "reviewer": "Root",
+  "decision": "art1 not selected as final warcry presentation; preserve and iterate art2",
+  "evidenceActuallyViewed": [
+    {
+      "file": "output/vfx-warcry-art-v1/native-2026-09-19T04-07-53-675Z/high-0.22.png",
+      "sha256": "3b7102c6c54ebe93c2125fe76ee0a4a31ecef9cc7a3944a2231acbbd9f869940"
+    },
+    {
+      "file": "output/vfx-warcry-art-v1/native-2026-09-19T04-07-53-675Z/high-0.48.png",
+      "sha256": "6f6693d190b678d7489a513b2aab74801acae1ce1b0094c465bb336eedffb976"
+    },
+    {
+      "file": "output/vfx-warcry-art-v1/native-2026-09-19T04-07-53-675Z/high-1.8.png",
+      "sha256": "3cb4fd4bbe456339bb2579230aaac69c5b108e56d760875d2601c8b7d6f18357"
+    }
+  ],
+  "findings": [
+    "Preparation barely distinguishable at gameplay camera.",
+    "Release has visible golden strands but does not read as forceful warcry expansion.",
+    "Buff at1.8 remains nearly unchanged in sampled pair.",
+    "Blue ground portal is environment and must not be attributed to the buff."
+  ],
+  "sourceInspection": "Candidate warcry-vfx.js read. Release pressure is a .32-wide ribbon; eight dust motes use .35+.45*phase size and fade*.23 opacity with normal transparent blending. This is a plausible artistic contributor, not isolated proof of compositing cause. Check scene depth/order if declared layers are invisible before increasing count.",
+  "next": "Bounded staged pressure/dust release and stronger preparation, constrained sustained aura, same literal timing and status. No authority/rig changes.",
+  "limits": [
+    "Three static comparison PNGs viewed, not continuous playback.",
+    "No perceptual score or AAA approval.",
+    "Owner may have later art2 changes; this review binds art1 captured at04:07:53."
+  ]
+}

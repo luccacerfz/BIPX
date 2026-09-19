@@ -1,0 +1,86 @@
+<!doctype html><html><meta charset="utf-8"><base href="/"><link rel="icon" href="data:,"><style>body{margin:0;background:#172c34}canvas{display:block}</style><script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {createCemetery} from '../src/render/cemetery.js';
+import {getEnvironmentLayout} from '../src/render/environment-layout.js';
+import {loadAssetDressing} from '../src/render/asset-dressing.js';
+import {loadPlayableCharacter} from '../src/assets/playable-characters.js';
+import {loadMonsterLibrary} from '../src/assets/monster-library.js';
+import {createClassSkillVfx} from '../src/vfx/class-skill-vfx.js';
+import {createSceneDepthPass} from '../src/render/scene-depth.js';
+import {shareEnvironmentCutawayDepth,installEnvironmentCutaway} from '../src/render/environment-cutaway.js';
+import {createCinematicPipeline} from '../src/render/cinematic-pipeline.js';
+let width=innerWidth,height=innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(width,height);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;renderer.localClippingEnabled=true;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.append(renderer.domElement);
+const pipeline=createCinematicPipeline({THREE,renderer,adaptDepthMaterial:shareEnvironmentCutawayDepth});
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x172c34);scene.fog=new THREE.FogExp2(0x172c34,.012);scene.add(new THREE.HemisphereLight(0xa4cddc,0x233d3a,2.2));const moon=new THREE.DirectionalLight(0xb6dcf2,3.8);moon.position.set(-20,36,18);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{near:1,far:95,left:-55,right:55,top:55,bottom:-55});moon.shadow.bias=-.0005;scene.add(moon);
+const cemetery=createCemetery({THREE,scene}),ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),cemetery.groundMaterial);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const trees=getEnvironmentLayout().legacy.filter(c=>c.id.startsWith('tree')).map(c=>new THREE.Vector3(c.x,0,c.z));const world=await loadAssetDressing({THREE,scene,trees,lanterns:cemetery.lanternPositions});for(const p of cemetery.lanternPlaceholders)p.visible=false;
+const heroGroup=new THREE.Group();heroGroup.position.set(-2,0,2);scene.add(heroGroup);const hero=await loadPlayableCharacter('dwarf',{THREE,parent:heroGroup});
+const playerLight=new THREE.PointLight(0xffe2ab,5.2,24);playerLight.position.set(-2,4.5,2);scene.add(playerLight);
+const library=await loadMonsterLibrary({THREE});const actors=[];
+for(const [x,z]of [[0,-4],[-2.5,-5.6],[2.5,-2.6],[.8,-7.1]]){const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);actors.push({group,visual:library.create('zombie',{parent:group,height:2.55})});}
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,220);camera.position.set(-2,17,22);camera.lookAt(-2,1.2,-.6);
+const vfx=createClassSkillVfx({THREE,scene,quality:'high'});
+let quality='high',reduced=false,fieldCount=0,fieldPosition=new THREE.Vector3(0,0,-4),elapsed=1.8;
+let frameDepth=null;
+const consumer={prepareSceneDepth:c=>vfx.prepareSceneDepth(c),setSceneDepth:d=>{frameDepth=d;return vfx.setSceneDepth(d);}};
+function draw(dt=0){pipeline.render(scene,camera,dt,consumer);return stats();}
+function stats(){return {quality,reduced,fieldCount,elapsed,vfx:vfx.getStats(),pipeline:pipeline.getStats(),world:world.stats,memory:{...renderer.info.memory},render:{...renderer.info.render},glError:renderer.getContext().getError()};}
+function sample(count=1,q='high',rm=false,position=[0,0,-4],age=1.8){
+ quality=q;reduced=rm;fieldCount=count;elapsed=age;fieldPosition.fromArray(position);pipeline.setQuality(q);pipeline.setReducedMotion(rm);vfx.reset();vfx.setQuality(q);vfx.setReducedMotion(rm);
+ const fields=Array.from({length:count},(_,i)=>({id:`field-${i}`,position:{x:position[0]+(count===1?0:(i%4-1.5)*3.4),y:position[1],z:position[2]+Math.floor(i/4)*3.8},radius:5,duration:5,remaining:5-age}));
+ vfx.syncState({fields});vfx.update(0);hero.update(0,{speed:0,grounded:true});for(const a of actors)a.visual.update(0,{speed:0});
+ world.update(heroGroup.position,true,actors.map(a=>({health:1,mesh:a.group,radius:.6})),[],fields.map(f=>({...f,skillId:'dwarf_gravity_shot',castId:f.id})));return draw();
+}
+function state(scene){const gl=renderer.getContext();const meshes=[];scene.traverse(o=>{let ancestor=o;while(ancestor){if(ancestor.userData.excludeFromSceneDepth)return;ancestor=ancestor.parent;}if(o.isMesh)meshes.push([o.uuid,o.visible,Array.isArray(o.material)?o.material.map(m=>m.uuid):o.material.uuid]);});return {meshes,target:renderer.getRenderTarget()?.uuid??null,face:renderer.getActiveCubeFace(),mip:renderer.getActiveMipmapLevel(),viewport:renderer.getViewport(new THREE.Vector4()).toArray(),currentViewport:renderer.getCurrentViewport(new THREE.Vector4()).toArray(),rawViewport:[...gl.getParameter(gl.VIEWPORT)],scissor:renderer.getScissor(new THREE.Vector4()).toArray(),rawScissor:[...gl.getParameter(gl.SCISSOR_BOX)],scissorTest:renderer.getScissorTest(),rawScissorTest:gl.isEnabled(gl.SCISSOR_TEST),clear:renderer.getClearColor(new THREE.Color()).toArray(),alpha:renderer.getClearAlpha(),auto:[renderer.autoClear,renderer.autoClearColor,renderer.autoClearDepth,renderer.autoClearStencil],infoReset:renderer.info.autoReset,shadow:[renderer.shadowMap.enabled,renderer.shadowMap.autoUpdate,renderer.shadowMap.needsUpdate],tone:renderer.toneMapping,colorSpace:renderer.outputColorSpace,clipping:renderer.localClippingEnabled,background:scene.background?.uuid??scene.background?.getHex?.(),override:scene.overrideMaterial?.uuid??null};}
+function auditState(){
+ const out=new THREE.WebGLRenderTarget(320,240);out.viewport.set(12,15,280,200);out.scissor.set(20,22,200,180);out.scissorTest=true;renderer.setRenderTarget(out);renderer.setClearColor(0x123456,.4);renderer.autoClear=false;renderer.autoClearColor=false;renderer.autoClearStencil=false;
+ sample(1);const before=state(scene);draw();const after=state(scene);
+ const oldRender=renderer.render;let failure;
+ renderer.render=function(s,c){if(s===scene)throw Error('injected render failure');return oldRender.call(this,s,c);};
+ try{draw();}catch(e){failure=e.message;}finally{renderer.render=oldRender;}
+ const afterFailure=state(scene),depthAfterFailure=vfx.getStats().states.gravity.depthValid;
+ renderer.setRenderTarget(null);out.dispose();renderer.setClearColor(0x172c34,1);renderer.autoClear=renderer.autoClearColor=renderer.autoClearDepth=renderer.autoClearStencil=true;sample(1);
+ return {before,after,afterFailure,failure,depthAfterFailure};
+}
+function auditParity(){
+ const pass=createSceneDepthPass({THREE,renderer,adaptDepthMaterial:shareEnvironmentCutawayDepth});
+ const test=new THREE.Scene(),cam=new THREE.PerspectiveCamera(48,1,.1,60);cam.position.set(0,7,14);cam.lookAt(0,1,0);cam.updateMatrixWorld();
+ test.background=new THREE.Color(0x000000);const geo=new THREE.BoxGeometry(7,8,.4),mat=new THREE.MeshBasicMaterial({color:0xffffff});
+ const uniforms={uCanopyFocus:{value:new THREE.Vector3(0,0,-2)},uCanopyCutaway:{value:1},uCanopyThreats:{value:Array.from({length:10},()=>new THREE.Vector4())},uCanopyThreatCount:{value:0},uCanopySkillAreas:{value:Array.from({length:4},()=>new THREE.Vector4())},uCanopySkillAreaCount:{value:0}};
+ installEnvironmentCutaway(mat,uniforms);const wall=new THREE.InstancedMesh(geo,mat,1);wall.setMatrixAt(0,new THREE.Matrix4().makeTranslation(0,4,2));test.add(wall);
+ const out=new THREE.WebGLRenderTarget(256,256),screen=new THREE.Scene(),quadMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,toneMapped:false,uniforms:{source:{value:null}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:'#include <packing>\nvarying vec2 vUv;uniform sampler2D source;void main(){float d=unpackRGBAToDepth(texture2D(source,vUv));gl_FragColor=vec4(vec3(d<.999999?1.:0.),1.);}'}),quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),quadMat);screen.add(quad);
+ const cases=[];
+ for(const cutaway of [0,1])for(const clipping of [false,true]){
+  uniforms.uCanopyCutaway.value=cutaway;mat.clippingPlanes=clipping?[new THREE.Plane(new THREE.Vector3(1,0,0),0)]:null;
+  renderer.setRenderTarget(out);renderer.render(test,cam);const color=new Uint8Array(256*256*4);renderer.readRenderTargetPixels(out,0,0,256,256,color);
+  const depth=pass.render(test,cam,{required:true,visibleFields:1},256,256);quadMat.uniforms.source.value=depth.texture;renderer.setRenderTarget(out);renderer.render(screen,cam);const packed=new Uint8Array(color.length);renderer.readRenderTargetPixels(out,0,0,256,256,packed);
+  let mismatch=0,visible=0;for(let i=0;i<color.length;i+=4){const a=color[i]>128,b=packed[i]>128;if(a!==b)mismatch++;if(a)visible++;}
+  cases.push({cutaway,clipping,mismatch,visible,pixels:256*256,depthStats:pass.getStats()});
+ }
+ renderer.setRenderTarget(null);pass.dispose();out.dispose();geo.dispose();mat.dispose();quad.geometry.dispose();quadMat.dispose();return cases;
+}
+async function measureCost(){const gl=renderer.getContext(),ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'),cases=[];if(!ext)return {available:false,cases};
+ for(const [q,rm]of [['high',false],['low',true]])for(const count of [0,1,4,8])for(const kind of count?['total','depth-only']:['total']){
+  sample(count,q,rm);const gpu=[],cpu=[];let disjoint=0;const isolated=createSceneDepthPass({THREE,renderer,adaptDepthMaterial:shareEnvironmentCutawayDepth});
+  for(let i=0;i<30;i++){await new Promise(requestAnimationFrame);const query=gl.createQuery();gl.beginQuery(ext.TIME_ELAPSED_EXT,query);const start=performance.now();
+   if(kind==='total')draw();else {const request=vfx.prepareSceneDepth(camera);isolated.render(scene,camera,request,width,height);}
+   cpu.push(performance.now()-start);gl.endQuery(ext.TIME_ELAPSED_EXT);while(!gl.getQueryParameter(query,gl.QUERY_RESULT_AVAILABLE))await new Promise(requestAnimationFrame);
+   if(gl.getParameter(ext.GPU_DISJOINT_EXT))disjoint++;else gpu.push(gl.getQueryParameter(query,gl.QUERY_RESULT)/1e6);gl.deleteQuery(query);
+  }
+  const summary=a=>{a=a.slice(6).sort((a,b)=>a-b);return {samples:a.length,p50:a[Math.floor(a.length*.5)],p95:a[Math.floor(a.length*.95)],max:a.at(-1)}};
+  cases.push({quality:q,reduced:rm,fields:count,kind,gpuMs:summary(gpu),cpuMs:summary(cpu),disjoint,stats:stats(),depthStats:isolated.getStats()});isolated.dispose();
+ }
+ sample(1);return {available:true,resolution:[width,height],method:'30 GPU queries/case; discard six warmups; rAF query waiting is not a gameplay FPS benchmark',cases};
+}
+function lifecycle(){
+ const result={initial:stats(),empty:sample(0),offscreen:sample(1,'high',false,[400,0,400]),one:sample(1),four:sample(4),eight:sample(8),overflow:sample(10)};
+ sample(1);draw();const memoryBefore={...renderer.info.memory},materialCount=pipeline.getStats().depth.materials;for(let i=0;i<32;i++)draw();result.allocations={before:memoryBefore,after:{...renderer.info.memory},materialsBefore:materialCount,materialsAfter:pipeline.getStats().depth.materials};const before=stats();for(let i=0;i<12;i++){vfx.update(0);draw(0);}result.pause={before,after:stats()};
+ vfx.reset();draw();result.reset=stats();sample(1,'high',false,[0,0,-4],4.95);vfx.update(.1);draw();result.expired=stats();
+ renderer.setSize(640,360);width=640;height=360;camera.aspect=width/height;camera.near=.3;camera.far=170;camera.updateProjectionMatrix();result.resize=sample(1,'low',true);result.depthContract={encoding:frameDepth.encoding,width:frameDepth.width,height:frameDepth.height,near:frameDepth.near,far:frameDepth.far,viewport:frameDepth.viewport};
+ renderer.setSize(1280,720);width=1280;height=720;camera.aspect=width/height;camera.near=.1;camera.far=220;camera.updateProjectionMatrix();sample(1);return result;
+}
+window.sceneDepthFixture={ready:true,sample,draw,stats,lifecycle,auditState,auditParity,measureCost,dispose(){vfx.dispose();vfx.dispose();pipeline.dispose();pipeline.dispose();return {vfx:vfx.getStats(),pipeline:pipeline.getStats(),memory:{...renderer.info.memory}};}};
+sample(0);
+</script></html>

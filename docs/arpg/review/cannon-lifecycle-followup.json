@@ -1,0 +1,111 @@
+{
+  "reviewedAt": "2026-09-19T03:51:36.581315+00:00",
+  "report": "output/playwright/2026-09-19T03-47-25-037Z-verify-lifecycle/lifecycle-keyboard.json",
+  "sha256": "678a3fcd6b96202f4cce035dbf29f075e18e7e650dd5091cb73b498250731ed3",
+  "rows": [
+    {
+      "phase": "cast",
+      "resources": {
+        "geometries": 89,
+        "textures": 43
+      },
+      "castsAfterDeath": 0,
+      "castsAfterRestart": 0
+    },
+    {
+      "phase": "travel",
+      "resources": {
+        "geometries": 91,
+        "textures": 43
+      },
+      "castsAfterDeath": 0,
+      "castsAfterRestart": 0
+    },
+    {
+      "phase": "impact",
+      "resources": {
+        "geometries": 93,
+        "textures": 44
+      },
+      "castsAfterDeath": 0,
+      "castsAfterRestart": 0
+    }
+  ],
+  "sourceReview": "endGame now cancels active core skills before wrapper.reset; reset is needed also for presentation surviving a finished authority cast.",
+  "failurePreserved": "Error: GPU geometry/texture counts grow across repeated restart\n    at assert (file:///Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/tools/verify-lifecycle.mjs:140:61)\n    at file:///Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/tools/verify-lifecycle.mjs:126:5",
+  "resourceHypothesis": "Different cast/travel/impact phases first render different preallocated volumes; lazy registration may explain increases, not verified.",
+  "next": "Identify newly registered resource UUIDs and compare repeated identical phase sequences after complete warmup; retain strict stability gate, do not increase tolerance.",
+  "noLeakAccepted": false,
+  "followup": {
+    "reviewedAt": "2026-09-19T03:58:12.224713+00:00",
+    "report": "output/playwright/2026-09-19T03-53-59-014Z-verify-lifecycle/lifecycle-keyboard.json",
+    "sha256": "6606e3fb25038e6de22479f3c7bd5eb371a38b9f41f8df9044e721e14fcf65e7",
+    "mainSha256": "afc7d5acd1a5fbe33b03367acf93aec5e404d7aa720e7869bf9c9c6a0f76d7b1",
+    "passed": true,
+    "sourceChanged": false,
+    "counts": [
+      {
+        "geometries": 89,
+        "textures": 43
+      },
+      {
+        "geometries": 91,
+        "textures": 43
+      },
+      {
+        "geometries": 93,
+        "textures": 44
+      },
+      {
+        "geometries": 93,
+        "textures": 44
+      },
+      {
+        "geometries": 93,
+        "textures": 44
+      },
+      {
+        "geometries": 93,
+        "textures": 44
+      }
+    ],
+    "phases": [
+      "cast",
+      "travel",
+      "impact",
+      "cast",
+      "travel",
+      "impact"
+    ],
+    "allocationTrace": {
+      "scope": "Read-only instrumentation at all Three GPU geometry/texture memory increments/decrements. Same renderer allocation/disposal statements; no product files changed.",
+      "sourceSha256": "a97ec6852978949b7941c070b81292b842473a37549222353fa0a70c18d7285a",
+      "servedSha256": "5d8fe341ac52f9537345f9162ee6969c8d1020bfc0ff80ca32a8beeead8f69b9",
+      "anchors": {
+        "geometryAdd": 1,
+        "geometryRemove": 1,
+        "textureAdd": 3,
+        "textureRemove": 2
+      }
+    },
+    "postWarmDeltas": [
+      {
+        "phase": "cycle-4-cast",
+        "geometries": [],
+        "textures": []
+      },
+      {
+        "phase": "cycle-5-travel",
+        "geometries": [],
+        "textures": []
+      },
+      {
+        "phase": "cycle-6-impact",
+        "geometries": [],
+        "textures": []
+      }
+    ],
+    "decision": "Accept bounded six-cycle cleanup and allocation-stability proof. Cold phase-specific first allocations distinguish the prior count increase from a repeat-cycle leak. No long-session/global claim."
+  },
+  "noLeakAcceptanceScope": "No new geometry/texture identities or counts in three repeated phase cycles after full phase warmup; not global absence of leaks."
+}

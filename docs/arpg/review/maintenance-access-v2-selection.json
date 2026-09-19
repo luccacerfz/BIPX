@@ -1,0 +1,27 @@
+{
+  "reviewedAt": "2026-09-19T04:16:12.265904+00:00",
+  "reviewer": "Root",
+  "candidateSHA256": "a5f46359e489f154618230bc66620a9c0598d0c4dc26a41386b87e700957a010",
+  "decision": "select one-placement art and physical opening; no runtime promotion until residual pursuit semantics resolved",
+  "imagesActuallyViewed": [
+    {
+      "file": "output/playwright/environment-maintenance-access-v2/boss-access-baseline-pocket.png",
+      "sha256": "839097cbfb0caf76001ecbf14062f30ffb77fc9aa59cae0f97ec2f8dfe765f2e"
+    },
+    {
+      "file": "output/playwright/environment-maintenance-access-v2/boss-access-candidate-pocket.png",
+      "sha256": "12badacafa897e92e2f659dd9a8b9508bf8db7fc24c2d2d39d6d3cbe46dbf405"
+    }
+  ],
+  "observations": [
+    "Barrel remains in stock cluster; west access visibly opens without removing the prop.",
+    "Both originals have same surface-life candidate and same camera/actors/light.",
+    "New placement has collision sweep witnesses from the two real starts to a valid melee pose, but literal offline caller still fails to approach.",
+    "Physics commissioned bounded staging fix for terminal pursuit region; no further scene displacement needed for this diagnosed issue."
+  ],
+  "scopeLimits": [
+    "Native pair is static fixture, not gameplay or performance.",
+    "Five caller preservation cases are owner report evidence, not rerun by Root.",
+    "No blanket navigation or boss threat approval."
+  ]
+}

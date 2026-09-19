@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-19T04:29:41.404655+00:00",
+  "reviewer": "Root",
+  "decision": "accept three selected surface modules integrated; no broad art/performance/navigation approval",
+  "manifest": "output/qa/arpg-visual-polish-checkpoint-20260919/source-manifest.json",
+  "sourceFiles": 222,
+  "sourceDriftAtReview": [],
+  "httpSelectedModulesExact": true,
+  "sourceMain": "afc7d5acd1a5fbe33b03367acf93aec5e404d7aa720e7869bf9c9c6a0f76d7b1",
+  "sourceStyles": "385f8f9a101fdb55b2fffd0cc3b77b2613782789b9237bd39beacadbda9d3ab3",
+  "serverPidUnchanged": 75665,
+  "nativeScope": "Actual short offline Dwarf movement+one gravity cast+expiry, no state injection. Owner report evidence; Root viewed two original stills.",
+  "imagesActuallyViewed": [
+    {
+      "file": "output/playwright/environment-surface-life-integrated-20260919/surface-life-integrated-garden-active-depth.png",
+      "sha256": "6f0b6d221790e8555581a7d6083c550015c667351b97428e283bcbe60c04d0b1"
+    },
+    {
+      "file": "output/playwright/environment-surface-life-integrated-20260919/surface-life-integrated-garden-expired-surface.png",
+      "sha256": "46babbd23fd27211cd13c838e97ce2385bd6fc96ab3c6b984574edc09864a99d"
+    }
+  ],
+  "observations": [
+    "Warm contact soil and low decorative plants remain subtle at gameplay camera.",
+    "Two-orb HUD and character remain readable in selected frames.",
+    "One shared depth pass while field active; no field after expiry as reported.",
+    "Canopy stipple and repetitive cross/pavement composition remain."
+  ],
+  "JEF": "Real04:26:51 HTTP200 requires_further_work; submitted observations predate owner04:26 native images. Do not imply JEF saw these images or heard media.",
+  "limits": [
+    "Not benchmark, whole arena occlusion/navigation, mobile or AAA.",
+    "Maintenance a5f4 remains staging pending pursuit terminal fix.",
+    "Aldric opaque-material candidate is separate and unpromoted."
+  ]
+}

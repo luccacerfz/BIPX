@@ -1,0 +1,10 @@
+{
+  "upstream": "https://github.com/achrefelouafi/LinearAbiltyCastingExtendedThreeJS",
+  "commit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+  "files": {
+    "src/materials/SingularityMaterial.js": "34297e0b7bf4f242c92f05778f6b6f9e9eaef1a08e4121165f031bbc53988da9",
+    "src/materials/AstralNebulaMaterial.js": "5df529ba4491280dcef5867f7789b3049d1670b431e2a18979fe262b0ff341d2",
+    "src/shaders/lib/noise.glsl.js": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+    "src/shaders/lib/common.glsl.js": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b"
+  }
+}

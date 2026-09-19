@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>BIPX · Six skills VFX fixture</title>
+<style>html,body{margin:0;background:#0c1420;color:#dfe6ed;font:14px system-ui}canvas{display:block}header{position:fixed;top:25px;left:32px;pointer-events:none}h1{font-size:24px;margin:6px 0}small{color:#9baabd}footer{position:fixed;bottom:24px;left:32px;color:#acbbca}#tag{letter-spacing:3px;color:#b8c9d2;font-size:11px}</style>
+<header><div id="tag">BIPX / ARSENAL STUDY</div><h1 id="name"></h1><small id="mode"></small></header>
+<footer>ISOLATED SYNTHETIC FIXTURE · Actual Three r164 shaders · Not gameplay<br>Samurai thermal sparks · HandCast fractured ice · Linear woven ribbons</footer>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import { createClassSkillVfx, CLASS_SKILL_VFX } from '../src/vfx/class-skill-vfx.js';
+const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0c1420);
+const camera=new THREE.PerspectiveCamera(39,innerWidth/innerHeight,.1,100);camera.position.set(9,12,17);camera.lookAt(0,.3,0);
+scene.add(new THREE.HemisphereLight(0x99c9e4,0x17201a,2));const light=new THREE.DirectionalLight(0xffdbbb,2.5);light.position.set(-4,12,5);scene.add(light);
+function mesh(geometry,color,x,y,z){const m=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color,roughness:.83}));m.position.set(x,y,z);scene.add(m);return m;}
+mesh(new THREE.BoxGeometry(26,.16,19),0x26352f,0,-.09,0);
+const grid=new THREE.GridHelper(24,24,0x3e5048,0x34423c);grid.position.y=.005;scene.add(grid);
+const actors=[];
+function actor(x,color){
+ const root=new THREE.Group();root.position.x=x;scene.add(root);
+ const material=new THREE.MeshStandardMaterial({color,roughness:.9});
+ for(const [geo,p] of [[new THREE.BoxGeometry(.66,.85,.4),[0,1.08,0]],[new THREE.SphereGeometry(.23,12,8),[0,1.78,0]],[new THREE.BoxGeometry(.22,.7,.25),[-.21,.37,0]],[new THREE.BoxGeometry(.22,.7,.25),[.21,.37,0]]]){const m=new THREE.Mesh(geo,material);m.position.set(...p);root.add(m);}
+ actors.push(root);return root;
+}
+actor(-4,0x617789);actor(3,0x9e5247);
+mesh(new THREE.BoxGeometry(.12,.12,1.6),0xbfcbd0,-3.1,1.35,0).rotation.y=Math.PI/2;
+for(const [x,z] of [[-7,-4],[5,-4],[7,3],[-6,4]]) {mesh(new THREE.BoxGeometry(.8,1.6,.45),0x4b5557,x,.8,z);mesh(new THREE.BoxGeometry(.95,.2,.55),0x65716b,x,1.65,z);}
+const vfx=createClassSkillVfx({THREE,scene,quality:'high'});
+const projectile=mesh(new THREE.OctahedronGeometry(.16),0xd58aee,-2.4,1.35,0);projectile.visible=false;
+let selected='warrior_flame_cleave',quality='high',reduced=false,playing=false,elapsed=0,last=performance.now(),cast=false,hit=false,previous=null;
+const labels={warrior_flame_cleave:'Flame Cleave',warrior_frost_nova:'Frost Nova',warrior_thunder_judgment:'Thunder Judgment',dwarf_incendiary_burst:'Incendiary Burst',dwarf_cryo_grenade:'Cryo Grenade',dwarf_arcane_shot:'Arcane Shot'};
+const origin={x:-2.4,y:1.35,z:0},direction={x:1,y:0,z:0};
+function target(){return selected==='warrior_frost_nova'?{x:-4,y:.25,z:0}:{x:3,y:.8,z:0};}
+function payload(phase,extra={}){return {skillId:selected,phase,castId:'fixture',origin,direction,target:target(),...extra};}
+function reset(){vfx.reset();elapsed=0;cast=false;hit=false;previous=null;projectile.visible=false;}
+function step(dt){
+ elapsed+=dt;
+ if(!cast){vfx.emit(payload('cast'));cast=true;}
+ if(selected.startsWith('dwarf')&&elapsed>.3&&elapsed<.95){
+  const t=(elapsed-.3)/.65;const at={x:origin.x+(3-origin.x)*t,y:origin.y+(.8-origin.y)*t+(selected==='dwarf_cryo_grenade'?Math.sin(t*Math.PI)*2.4:0),z:0};
+  vfx.emit(payload('travel',{origin:previous||origin,target:at}));previous=at;
+  projectile.visible=true;projectile.position.set(at.x,at.y,at.z);projectile.material.color.set(CLASS_SKILL_VFX[selected].color);
+ }
+ if(elapsed>=.95&&!hit){vfx.emit(payload('impact'));hit=true;projectile.visible=false;}
+ vfx.update(dt);renderer.render(scene,camera);
+}
+function sample(id,phase='impact',q='high',rm=false){
+ playing=false;selected=id;quality=q;reduced=rm;vfx.setQuality(q);vfx.setReducedMotion(rm);reset();
+ document.querySelector('#name').textContent=labels[id];document.querySelector('#mode').textContent=`${phase.toUpperCase()} · ${q} · reduced motion ${rm?'on':'off'}`;
+ const until={before:0,cast:.12,travel:.76,impact:1.07,decay:1.43}[phase];
+ for(let t=0;t<until-1e-7;t+=1/120)step(Math.min(1/120,until-t));
+ renderer.render(scene,camera);return vfx.getStats();
+}
+function pixels(){const gl=renderer.getContext(),data=new Uint8Array(innerWidth*innerHeight*4);gl.readPixels(0,0,innerWidth,innerHeight,gl.RGBA,gl.UNSIGNED_BYTE,data);return data;}
+function pixelAudit(){
+ const groups=scene.children.filter(g=>g.name==='SamuraiCombatVFX'||g.name==='ElementalVfx');
+ for(const g of groups)g.visible=false;renderer.render(scene,camera);const before=pixels();
+ for(const g of groups)g.visible=true;renderer.render(scene,camera);const after=pixels();
+ let changed=0,delta=0;for(let i=0;i<before.length;i+=4){const d=Math.abs(before[i]-after[i])+Math.abs(before[i+1]-after[i+1])+Math.abs(before[i+2]-after[i+2]);if(d>16)changed++;delta+=d;}
+ // Actual rendered torso pixels: unchanged baseline red pixels remain identifiable.
+ let torso=0,preserved=0;const p=new THREE.Vector3(3,1.15,.23).project(camera),cx=Math.round((p.x*.5+.5)*innerWidth),cy=Math.round((p.y*.5+.5)*innerHeight);
+ for(let y=cy-6;y<=cy+6;y++)for(let x=cx-6;x<=cx+6;x++){const i=(y*innerWidth+x)*4;
+  if(before[i]>before[i+1]*1.15){torso++;if(after[i]>after[i+1]*1.1&&Math.abs(before[i]-after[i])+Math.abs(before[i+1]-after[i+1])+Math.abs(before[i+2]-after[i+2])<65)preserved++;}}
+ return {changedPixels:changed,totalColorDelta:delta,torsoPixels:torso,preservedTorsoPixels:preserved,preservedTorsoFraction:torso?preserved/torso:null};
+}
+window.classSkillFixture={renderer,scene,camera,vfx,sample,pixelAudit,reset,step,play(id){selected=id;reset();playing=true;},stop(){playing=false;},stats:()=>vfx.getStats()};
+sample(selected,'before');
+function animate(now){const dt=Math.min(.04,(now-last)/1000);last=now;if(playing){step(dt);if(elapsed>2.6)reset();}requestAnimationFrame(animate);}requestAnimationFrame(animate);
+</script></html>

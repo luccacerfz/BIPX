@@ -1,0 +1,131 @@
+--- a/src/vfx/cannon-source-glsl.js
++++ b/src/vfx/cannon-source-glsl.js
+@@ -1,3 +1,4 @@
++import {gravityCompositionGLSL} from './gravity-composition-glsl.js';
+ // HandCast/Linear pinned VolumetricFireMaterial GLSL, MIT originals in ./originals.
+ import {noiseGLSL} from './fire-noise.glsl.js';
+ import {commonGLSL} from './fire-common.glsl.js';
+@@ -41,3 +42,12 @@
+    float height=world.y/world.w-uGroundY;
+    float keep=packed<.99999?1.-.999*smoothstep(.75,1.25,height):1.;
+    gl_FragColor=vec4(color*keep,alpha*keep);`);
++
++// Only the staged shader inserts fire at its extinction-weighted representative depth.
++export const COMPOSED_CANNON_FRAGMENT=CANNON_FRAGMENT
++ .replace('if (i >= 3) ridge','if (float(i) >= max(1.,uOctaves-2.)) ridge')
++ .replace('void main() {',gravityCompositionGLSL+'\nvoid main() {')
++ .replace('t1 = min(t1, tScene);','t1 = min(t1, tScene); t1=gravityCoreLimit(ro,rd,t1);')
++ .replace('float transmittance = 1.0;','float transmittance = 1.0; float fireMoment=0.,fireWeight=0.;')
++ .replace('transmittance *= exp(-d * uSoot * mix(1.0, uCoreClarity, heat * heat) * stepSize);',`float absorb=1.-exp(-d*uSoot*mix(1.,uCoreClarity,heat*heat)*stepSize);fireMoment+=t*absorb*transmittance;fireWeight+=absorb*transmittance;transmittance*=1.-absorb;`)
++ .replace('gl_FragColor=vec4(color*keep,alpha*keep);',`vec3 gasFront;float gasT;gravityPrefix(ro,rd,fireWeight>.00001?fireMoment/fireWeight:t0,packed<.99999?world.y/world.w:-1e5,gasFront,gasT);color=color*gasT+gasFront*alpha;gl_FragColor=vec4(color*keep,alpha*keep);`);
+--- a/src/vfx/cannon-vfx.js
++++ b/src/vfx/cannon-vfx.js
+@@ -1,7 +1,7 @@
+ // Isolated ARPG adaptation of pinned HandCast/Linear FireAbility and VolumetricFireMaterial.
+ // Originals/MIT: assets/vfx/source-history/cannon-volumetric-staging-20260919/originals. No gameplay authority.
+ import {createCannonOriginBridge} from './cannon-origin-bridge.js';
+-import {FIRE_VERTEX,CANNON_FRAGMENT} from './cannon-source-glsl.js';
++import {FIRE_VERTEX,COMPOSED_CANNON_FRAGMENT} from './cannon-source-glsl.js';
+ import {FIRE_DEFAULTS} from './cannon-defaults.js';
+ import {blackbodyGLSL} from './fire-blackbody.glsl.js';
+ 
+@@ -16,8 +16,8 @@
+   for(const [name,size]of [['position',3],['aCenter',3],['aTangent',3],['aDist',1],['aRandom',1]])geometry.setAttribute(name,new THREE.BufferAttribute(new Float32Array(vertices*size),size).setUsage(THREE.DynamicDrawUsage));
+   const indices=[];for(let i=0;i<sections-1;i++){const a=i*2;indices.push(a,a+1,a+2,a+2,a+1,a+3);}geometry.setIndex(indices);
+   const uniforms=Object.fromEntries(Object.entries(FIRE_DEFAULTS).map(([k,v])=>[k,{value:Array.isArray(v)?new THREE.Color(...v):v}]));
+-  Object.assign(uniforms,{uTime:{value:0},uSceneDepth:{value:null},uResolution:{value:new THREE.Vector2(1,1)},uCameraNear:{value:.1},uCameraFar:{value:220},uShaderIntensity:{value:1},uGlobalGlow:{value:1},uInverseViewProjection:{value:new THREE.Matrix4()},uGroundY:{value:0},uBlastCenter:{value:new THREE.Vector3()},uBlastRadius:{value:3.4},uBlastMode:{value:0},uBlastAge:{value:0},uBlastMotion:{value:0}});
+-  const material=new THREE.ShaderMaterial({name:'CannonReferenceRaymarch',uniforms,vertexShader:FIRE_VERTEX,fragmentShader:CANNON_FRAGMENT,transparent:true,depthWrite:false,depthTest:false,side:THREE.DoubleSide,toneMapped:false,blending:THREE.CustomBlending,blendEquation:THREE.AddEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneMinusSrcAlphaFactor,blendSrcAlpha:THREE.OneFactor,blendDstAlpha:THREE.OneMinusSrcAlphaFactor});
++  Object.assign(uniforms,{uGravityCount:{value:0},uGravityCenterRadius:{value:Array.from({length:8},()=>new THREE.Vector4())},uGravityShape:{value:Array.from({length:8},()=>new THREE.Vector4())},uGravityLife:{value:Array.from({length:8},()=>new THREE.Vector4())},uGravityPrefixSteps:{value:24},uTime:{value:0},uSceneDepth:{value:null},uResolution:{value:new THREE.Vector2(1,1)},uCameraNear:{value:.1},uCameraFar:{value:220},uShaderIntensity:{value:1},uGlobalGlow:{value:1},uInverseViewProjection:{value:new THREE.Matrix4()},uGroundY:{value:0},uBlastCenter:{value:new THREE.Vector3()},uBlastRadius:{value:3.4},uBlastMode:{value:0},uBlastAge:{value:0},uBlastMotion:{value:0}});
++  const material=new THREE.ShaderMaterial({name:'CannonReferenceRaymarch',uniforms,vertexShader:FIRE_VERTEX,fragmentShader:COMPOSED_CANNON_FRAGMENT,transparent:true,depthWrite:false,depthTest:false,side:THREE.DoubleSide,toneMapped:false,blending:THREE.CustomBlending,blendEquation:THREE.AddEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneMinusSrcAlphaFactor,blendSrcAlpha:THREE.OneFactor,blendDstAlpha:THREE.OneMinusSrcAlphaFactor});
+   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.visible=false;mesh.renderOrder=12;parent.add(mesh);
+   const points=Array.from({length:36},()=>new THREE.Vector3()),cumulative=new Float32Array(36),center=new THREE.Vector3(),tangent=new THREE.Vector3(),view=new THREE.Vector3(),side=new THREE.Vector3(),at=new THREE.Vector3(),up=new THREE.Vector3(),middle=new THREE.Vector3();
+   let count=0,wanted=false;
+@@ -153,8 +153,10 @@
+     emberMaterial.uniforms.uDepthReady.value=depthValid?1:0;emberMaterial.uniforms.uSceneDepth.value=depthValid?frame.texture:null;if(depthValid)emberMaterial.uniforms.uResolution.value.set(frame.width,frame.height);
+     for(const r of records)for(const volume of [r.flight,r.muzzle,r.blast])volume.depth(depthValid&&selected.has(volume)?frame:null);return depthValid;
+   }
+-  function reset(){clock=0;for(const r of records)clear(r);selected.clear();visible=0;prepared=false;setSceneDepth(null);}
++  let compositionFields=0;
++  function setGravityComposition(items=[]){compositionFields=Math.min(8,items.length);for(const r of records)for(const volume of [r.flight,r.muzzle,r.blast]){const u=volume.uniforms;u.uGravityCount.value=compositionFields;u.uGravityPrefixSteps.value=quality==='low'?16:24;volume.mesh.renderOrder=compositionFields?60:12;for(let i=0;i<compositionFields;i++){const d=items[i];u.uGravityCenterRadius.value[i].set(...d.center,d.radius);u.uGravityShape.value[i].set(d.hole,d.time,d.fade,d.groundY);u.uGravityLife.value[i].set(d.drain,d.opacity,0,0);}}}
++  function reset(){setGravityComposition([]);clock=0;for(const r of records)clear(r);selected.clear();visible=0;prepared=false;setSceneDepth(null);}
+   function dispose(){if(disposed)return;reset();for(const r of records){for(const v of [r.flight,r.muzzle,r.blast])v.dispose();r.embers.geometry.dispose();r.embers.dispose();}sphere.dispose();emberGeometry.dispose();thermalMaterial.dispose();emberMaterial.dispose();group.removeFromParent();disposed=true;}
+-  function getStats(){return {source:'HandCast/Linear fire + Samurai thermal',time:clock,quality,reducedMotion,capacity,depthValid,visibleCasts:visible,disposed,rejected,duplicates,overwritten,drawCalls:records.reduce((n,r)=>n+(r.root.visible?(r.core.visible?1:0)+(r.embers.visible&&r.embers.count?1:0)+[r.flight,r.muzzle,r.blast].filter(v=>v.mesh.visible).length:0),0),casts:records.filter(r=>r.id!==null).map(r=>({id:r.id,phase:r.impactAt>=0?'impact':r.lastTravel>=0?'travel':r.releaseAt>=0?'release':'cast',radius:r.radius,position:r.position.toArray(),authorityPosition:r.authorityPosition.toArray(),originBridge:r.bridge.getStats(),trailReset:r.trailReset,bodyResumeIn:Math.max(0,r.bodyResumeAt-clock),hit:r.hit.toArray(),age:clock-r.castAt,impactAge:r.impactAt>=0?clock-r.impactAt:null,body:r.core.visible,flight:r.flight.stats(),muzzle:r.muzzle.stats(),blast:r.blast.stats(),embers:r.embers.count}))};}
+-  return {group,emit,update,prepareSceneDepth,setSceneDepth,reset,dispose,getStats,cancel(id){const r=records.find(r=>r.id===id);if(r)clear(r);},setQuality(q){quality=['high','medium','low'].includes(q)?q:'medium';refresh();},setReducedMotion(r){reducedMotion=!!r;refresh();}};
++  function getStats(){return {source:'HandCast/Linear fire + Samurai thermal',time:clock,quality,reducedMotion,capacity,depthValid,compositionFields,visibleCasts:visible,disposed,rejected,duplicates,overwritten,drawCalls:records.reduce((n,r)=>n+(r.root.visible?(r.core.visible?1:0)+(r.embers.visible&&r.embers.count?1:0)+[r.flight,r.muzzle,r.blast].filter(v=>v.mesh.visible).length:0),0),casts:records.filter(r=>r.id!==null).map(r=>({id:r.id,phase:r.impactAt>=0?'impact':r.lastTravel>=0?'travel':r.releaseAt>=0?'release':'cast',radius:r.radius,position:r.position.toArray(),authorityPosition:r.authorityPosition.toArray(),originBridge:r.bridge.getStats(),trailReset:r.trailReset,bodyResumeIn:Math.max(0,r.bodyResumeAt-clock),hit:r.hit.toArray(),age:clock-r.castAt,impactAge:r.impactAt>=0?clock-r.impactAt:null,body:r.core.visible,flight:r.flight.stats(),muzzle:r.muzzle.stats(),blast:r.blast.stats(),embers:r.embers.count}))};}
++  return {group,emit,update,setGravityComposition,prepareSceneDepth,setSceneDepth,reset,dispose,getStats,cancel(id){const r=records.find(r=>r.id===id);if(r)clear(r);},setQuality(q){quality=['high','medium','low'].includes(q)?q:'medium';refresh();},setReducedMotion(r){reducedMotion=!!r;refresh();}};
+ }
+--- a/src/vfx/class-skill-fields.js
++++ b/src/vfx/class-skill-fields.js
+@@ -161,5 +161,5 @@
+   function reset() { for (const record of records) retire(record,false);for(const m of motions)m.until=0;time=0;arrays.aState.fill(0);geometry.instanceCount=0;mesh.visible=false;ice.reset();volumes.reset();gravity.reset();frozenCrystals=0;gravityDebris=0; }
+   function dispose(){if(disposed)return;reset();ice.dispose();volumes.dispose();gravity.dispose();group.removeFromParent();geometry.dispose();material.dispose();disposed=true;}
+   function getStats(){const counts=[0,0,0,0];for(const r of records)if(r.id!==null)counts[r.kind]++;return {buffs:counts[0],frozen:counts[1],stunned:counts[2],fields:counts[3],capacity,rejected,dropped,drawCalls:(mesh.visible?1:0)+ice.getStats().drawCalls+volumes.getStats().drawCalls+gravity.getStats().drawCalls,freezeCrystals:frozenCrystals,gravityDebris,volumes:volumes.getStats(),gravity:gravity.getStats(),disposed};}
+-  return { syncState, event, update, reset, dispose, getStats, setMotion, endMotion, prepareSceneDepth, setSceneDepth:gravity.setSceneDepth };
++  return { getCompositionDescriptors:gravity.getCompositionDescriptors, syncState, event, update, reset, dispose, getStats, setMotion, endMotion, prepareSceneDepth, setSceneDepth:gravity.setSceneDepth };
+ }
+--- a/src/vfx/class-skill-vfx.js
++++ b/src/vfx/class-skill-vfx.js
+@@ -206,7 +206,7 @@
+   function setQuality(value){if(disposed)return;cannon.setQuality(value);level=Object.hasOwn(QUALITY,value)?value:'medium';for(let i=QUALITY[level].casts;i<records.length;i++)clear(records[i]);if(ownCombat)combat.setQuality(level);if(ownElemental)elemental.setQuality(level);}
+   function setReducedMotion(value){if(disposed)return;reduced=Boolean(value);cannon.setReducedMotion(reduced);if(ownCombat)combat.setReducedMotion(reduced);if(ownElemental)elemental.setReducedMotion(reduced);}
+   function prepareSceneDepth(camera){
+-    const gravity=fields.prepareSceneDepth(camera),fire=cannon.prepareSceneDepth(camera);
++    const gravity=fields.prepareSceneDepth(camera);cannon.setGravityComposition(fields.getCompositionDescriptors());const fire=cannon.prepareSceneDepth(camera);
+     Object.assign(depthState,{required:gravity.required||fire.required,gravityFields:gravity.visibleFields,fireCasts:fire.visibleFields});
+     return {required:depthState.required,visibleFields:gravity.visibleFields+fire.visibleFields,gravityFields:gravity.visibleFields,fireCasts:fire.visibleFields,excludeRoots:[...new Set([...gravity.excludeRoots,...fire.excludeRoots])]};
+   }
+--- /dev/null
++++ b/src/vfx/gravity-composition-glsl.js
+@@ -0,0 +1,34 @@
++// Staged front-prefix insertion. Density functions remain the pinned GH nebula.
++import {NEBULA_FRAGMENT} from './gravity-horizon-source.js';
++let gas=NEBULA_FRAGMENT.slice(NEBULA_FRAGMENT.indexOf('  float shellProfile('),NEBULA_FRAGMENT.indexOf('  void main()'));
++gas=gas.replace(/\bu[A-Z]\w*/g,name=>'gc_'+name).replace(/\b(shellProfile|sampleGas|sphereSpan)\b/g,name=>'gc_'+name).replace(/\bTAU\b/g,'6.28318530718');
++export const gravityCompositionGLSL=/*glsl*/`
++uniform int uGravityCount;
++uniform vec4 uGravityCenterRadius[8];
++uniform vec4 uGravityShape[8];
++uniform vec4 uGravityLife[8];
++uniform float uGravityPrefixSteps;
++vec3 gc_uCentre;float gc_uRadius,gc_uHole,gc_uTime,gc_uDrain;
++const float gc_uFlatten=.22,gc_uCavity=.32,gc_uEdge=.7,gc_uWind=2.4,gc_uTwist=1.6,gc_uSpin=.2,gc_uScale=.58,gc_uRise=.35,gc_uSeed=7.,gc_uDetail=2.3,gc_uFilament=.62,gc_uThreshold=.5,gc_uArms=3.,gc_uArmSharp=1.5,gc_uArmWeight=.68,gc_uSpikes=9.,gc_uSpikeSharp=9.,gc_uSpikeReach=.95,gc_uSpikeGlow=.7,gc_uDensity=2.4,gc_uChurn=0.,gc_uHeatFalloff=2.1;
++${gas}
++void gravitySelect(int i){gc_uCentre=uGravityCenterRadius[i].xyz;gc_uRadius=uGravityCenterRadius[i].w;gc_uHole=uGravityShape[i].x;gc_uTime=uGravityShape[i].y;gc_uDrain=uGravityLife[i].x;}
++float gravityCoreLimit(vec3 ro,vec3 rd,float limit){for(int i=0;i<8;i++){if(i>=uGravityCount)break;float a,b;if(gc_sphereSpan(ro,rd,uGravityCenterRadius[i].xyz,uGravityShape[i].x,a,b)){if(a<=0.)return 0.;limit=min(limit,a);}}return limit;}
++void gravityPrefix(vec3 ro,vec3 rd,float fireT,float opaqueHeight,out vec3 prefix,out float transmission){
++ prefix=vec3(0.);transmission=1.;
++ // Descriptor order is near-to-far; alpha compositing follows the pool far-to-near.
++ for(int n=0;n<8;n++){int i=uGravityCount-1-n;if(i<0)break;gravitySelect(i);float a,b;
++  if(!gc_sphereSpan(ro,rd,gc_uCentre,gc_uRadius*1.14,a,b))continue;
++  float t0=max(a,0.),t1=min(b,fireT),h0,h1;
++  if(gc_sphereSpan(ro,rd,gc_uCentre,gc_uHole,h0,h1))t1=min(t1,max(0.,h0));
++  if(t1<=t0)continue;
++  float steps=uGravityPrefixSteps,dt=(t1-t0)/steps,t=t0+dt*hash13(vec3(gl_FragCoord.xy,gc_uTime*60.));
++  vec3 acc=vec3(0.);float tr=1.;
++  for(int j=0;j<24;j++){if(float(j)>=steps||tr<.012)break;float d,heat;vec3 orbit;gc_sampleGas(ro+rd*t,d,heat,orbit);
++   if(d>.002){float beam=1.+.3*dot(orbit,-rd);vec3 col=mix(vec3(.12,.018,.42),vec3(.48,.08,1.2),smoothstep(0.,.30,heat));col=mix(col,vec3(1.,.58,.18),smoothstep(.38,.88,heat));col=mix(col,vec3(1.,.96,.82),smoothstep(1.,1.75,heat));float emit=1.8*(.32+heat*heat*2.4)*max(beam,.05),coverage=1.-exp(-d*.5*dt);acc+=col*emit*coverage*tr;tr*=1.-coverage;}t+=dt;
++  }
++  float protect=1.-.96*smoothstep(.95,1.6,opaqueHeight-uGravityShape[i].w);
++  float fade=uGravityShape[i].z,alpha=(1.-tr)*fade*uGravityLife[i].y*protect;
++  acc*=fade*protect;prefix=acc+(1.-alpha)*prefix;transmission*=1.-alpha;
++ }
++}
++`;
+--- a/src/vfx/gravity-field-pool.js
++++ b/src/vfx/gravity-field-pool.js
+@@ -50,5 +50,5 @@
+   function reset(){states.length=0;eligible.length=0;selectedIds.clear();visibleFields=0;overflow=0;group.visible=false;invalidate();for(const s of slots){s.id=null;s.visual.reset();}}
+   function dispose(){if(disposed)return;reset();for(const s of slots)s.visual.dispose();for(const geometry of Object.values(resources))geometry.dispose();group.removeFromParent();disposed=true;}
+   function getStats(){const active=slots.filter(s=>s.id!==null);return {capacity,allocatedSlots:slots.length,allocatedGeometries:4,trackedFields:states.length,visibleFields,activeSlots:active.length,overflow,prepared,depthValid,quality,reduced,drawCalls:active.reduce((n,s)=>n+s.visual.getStats().drawCalls,0),debris:active.reduce((n,s)=>n+s.visual.getStats().debris.length,0),disposed,fields:active.map(s=>({id:s.id,...s.visual.getStats()}))};}
+-  return {group,sync,prepareSceneDepth,setSceneDepth,has,reset,dispose,getStats};
++  return {getCompositionDescriptors:()=>prepared?eligible.slice(0,capacity).map(item=>slots.find(s=>s.id===item.id).visual.getCompositionDescriptor()):[],group,sync,prepareSceneDepth,setSceneDepth,has,reset,dispose,getStats};
+ }
+--- a/src/vfx/gravity-field-visual.js
++++ b/src/vfx/gravity-field-visual.js
+@@ -53,5 +53,5 @@
+   }
+   function reset(){remaining=0;group.visible=false;}
+   function dispose(){if(disposed)return;reset();group.removeFromParent();group.traverse(m=>{if(m.isMesh){m.material.dispose();if(m.isInstancedMesh)m.dispose();}});disposed=true;}
+-  return {group,set,setSceneDepth,setViewProjectionInverse,update,reset,dispose,setRenderOrder(order){horizon.renderOrder=order;nebula.renderOrder=order+1;debris.renderOrder=order+2;sparks.renderOrder=order+3;},getStats:()=>({reference:'Horizon + AstralNebula original GLSL',radius,duration,remaining,time,reduced,quality,center:group.position.toArray(),growth,collapse,coreRadius:horizonUniforms.uHorizon.value,nebulaRadius:nebulaUniforms.uRadius.value,nebulaSteps:nebulaUniforms.uSteps.value,depthReady,depthEncoding:'RGBADepthPacking',drawCalls:group.visible?(depthReady?4:3):0,debris:positions.map(p=>({...p})),disposed})};
++  return {getCompositionDescriptor:()=>({center:nebulaUniforms.uCentre.value.toArray(),radius:nebulaUniforms.uRadius.value,hole:nebulaUniforms.uHole.value,time:nebulaUniforms.uTime.value,fade:nebulaUniforms.uFade.value,drain:nebulaUniforms.uDrain.value,opacity:nebulaUniforms.uOpacity.value,groundY:nebulaUniforms.uGroundY.value}),group,set,setSceneDepth,setViewProjectionInverse,update,reset,dispose,setRenderOrder(order){horizon.renderOrder=order;nebula.renderOrder=order+1;debris.renderOrder=order+2;sparks.renderOrder=order+3;},getStats:()=>({reference:'Horizon + AstralNebula original GLSL',radius,duration,remaining,time,reduced,quality,center:group.position.toArray(),growth,collapse,coreRadius:horizonUniforms.uHorizon.value,nebulaRadius:nebulaUniforms.uRadius.value,nebulaSteps:nebulaUniforms.uSteps.value,depthReady,depthEncoding:'RGBADepthPacking',drawCalls:group.visible?(depthReady?4:3):0,debris:positions.map(p=>({...p})),disposed})};
+ }

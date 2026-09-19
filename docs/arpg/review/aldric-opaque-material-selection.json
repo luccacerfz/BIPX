@@ -1,0 +1,30 @@
+{
+  "at": "2026-09-19T04:42:14.877243+00:00",
+  "reviewer": "Root",
+  "decision": "select metadata-only candidate for coordinated owner promotion",
+  "candidateSHA256": "5c1903a064decbcee1d018df4f6ee595e826640a0ccb9b40538efe5aef70f996",
+  "baselineSHA256": "0e5da9d8a667fa44dbccf6c5ae9141f6f3183df555c2ed6781bc87d632327a32",
+  "evidence": "Static full texture-alpha audit and real GLTFLoader/scene-depth A/B",
+  "nativeOutcome": {
+    "bodyDepthDraws": [
+      0,
+      1
+    ],
+    "sharedDepthPasses": 1,
+    "boneMatricesEqual": true,
+    "torsoPreservationBoth": 1,
+    "smallestOtherActorTorsoBoth": 0.7603305785123967
+  },
+  "imagesActuallyViewed": [
+    {
+      "file": "output/vfx-warcry-art-v1/art2/diagnosis-2026-09-19T04-34-38-848Z/probe-0.22--1-aldric-opaque.png",
+      "sha256": "8fba211eb0d484f696d5af060d4cc3c3f80325037c5c61b94be7727fd4c4b9bc"
+    },
+    {
+      "file": "output/vfx-warcry-art-v1/art2/diagnosis-2026-09-19T04-34-38-848Z/probe-0.48--1-aldric-opaque.png",
+      "sha256": "9747592bc3c0359b8ac362eedc96e9c375d2a4dbff20c28f90a49608ef579aca"
+    }
+  ],
+  "observations": "Subtle overlap difference, no gross visual degradation in the two pairs; correct depth participation, not major art gain.",
+  "limits": "No AAA or whole-game animation/performance acceptance. Preserve original GLB and provenance; coordinate source freeze before applying exact candidate. Do not alter dwarf or other materials in this batch."
+}

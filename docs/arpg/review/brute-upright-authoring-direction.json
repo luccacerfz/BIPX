@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-19T04:32:29.039863+00:00",
+  "decision": "authorize one new staged authored upright strike based on source-triage diagnosis",
+  "reference": "output/brute-motion-v4/source-triage-v1/README.md",
+  "durationProposal": 1.2,
+  "contactTimeProposal": 0.65,
+  "reason": "Old retarget adds source bend to already bent Brute bind; target Idle is much more upright. Existing .55s visual/immediate damage cannot express the intended preparation.",
+  "preservation": "rig/binds/mesh/materials/four other clips and every original remain intact; runtime unchanged",
+  "physicalContact": "Articulated support and intentional foot plant/heel pivot are allowed; rigid whole-leg freezing or IK used to hide a broken pose is not acceptable",
+  "gates": "Calibrated initial posture and CPU structural preservation, then bounded native real-time ARPG/3-4 and contact fixture. Timing proposal requires coherent Combat implementation later."
+}

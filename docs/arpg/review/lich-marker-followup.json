@@ -1,0 +1,25 @@
+{
+  "at": "2026-09-19T02:38:31.609960+00:00",
+  "scope": "Root inspected one original release pose and one contact sheet of real fixture playback; no continuous video/audio perception.",
+  "images": [
+    {
+      "path": "output/lich-cast-v1/native-2026-09-19T02-28-07-583Z/close-0.597143.png",
+      "sha256": "04a430e666a8889e61a402cc065029fcd909e09a51c2f55cebb95630970b766e"
+    },
+    {
+      "path": "output/lich-cast-v1/native-2026-09-19T02-28-07-583Z/playback-close-contact-sheet.png",
+      "sha256": "2a2e7d5794d98445f7538658cc85724983dff1634945ddca936ce5c12e0f2134"
+    }
+  ],
+  "releaseMarkerCoherent": true,
+  "releaseAt": 0.5971428571428572,
+  "socket": "L_Hand",
+  "notes": [
+    "Marker lies on the extended left hand in the inspected pose.",
+    "Preparation opens the stance, hand extends, recovery returns toward idle in sampled sequence.",
+    "This does not prove foot support or skin stability between sampled frames; feet/base still require gameplay contact review.",
+    "No projectile/authority exists in this visual fixture."
+  ],
+  "runtimePromoted": false,
+  "aaaAccepted": false
+}

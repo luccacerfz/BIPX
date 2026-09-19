@@ -1,0 +1,9 @@
+--- a/src/vfx/gravity-field-pool.js
++++ b/src/vfx/gravity-field-pool.js
+@@ -50,5 +50,5 @@
+   function reset(){states.length=0;eligible.length=0;selectedIds.clear();visibleFields=0;overflow=0;group.visible=false;invalidate();for(const s of slots){s.id=null;s.visual.reset();}}
+   function dispose(){if(disposed)return;reset();for(const s of slots)s.visual.dispose();for(const geometry of Object.values(resources))geometry.dispose();group.removeFromParent();disposed=true;}
+   function getStats(){const active=slots.filter(s=>s.id!==null);return {capacity,allocatedSlots:slots.length,allocatedGeometries:4,trackedFields:states.length,visibleFields,activeSlots:active.length,overflow,prepared,depthValid,quality,reduced,drawCalls:active.reduce((n,s)=>n+s.visual.getStats().drawCalls,0),debris:active.reduce((n,s)=>n+s.visual.getStats().debris.length,0),disposed,fields:active.map(s=>({id:s.id,...s.visual.getStats()}))};}
+-  return {group,sync,prepareSceneDepth,setSceneDepth,has,reset,dispose,getStats};
++  return {getCompositionDescriptors:()=>prepared?eligible.slice(0,capacity).map(item=>slots.find(s=>s.id===item.id).visual.getCompositionDescriptor()):[],group,sync,prepareSceneDepth,setSceneDepth,has,reset,dispose,getStats};
+ }

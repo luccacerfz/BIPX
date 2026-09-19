@@ -1,0 +1,67 @@
+{
+  "candidate": {
+    "description": "Replace with exact candidate and source hashes",
+    "sourceHashes": {}
+  },
+  "dimensions": {
+    "art_direction": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "vfx": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "combat_feel": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "ui_ux": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "mobile": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "audio": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "performance": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "multiplayer": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "accessibility": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    },
+    "reliability": {
+      "coverage": "pending",
+      "observations": [],
+      "evidence": []
+    }
+  },
+  "tests": [],
+  "openDefects": [
+    "Replace with currently known defects; do not delete without verification"
+  ],
+  "directReviews": {
+    "visual": "pending",
+    "audio": "pending",
+    "physicalMobile": "pending"
+  }
+}

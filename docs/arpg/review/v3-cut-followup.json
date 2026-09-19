@@ -1,0 +1,48 @@
+{
+  "at": "2026-09-19T00:42:11.507207+00:00",
+  "acceptedVisual": false,
+  "scope": "Individual native fixture PNG inspection, no playback/gameplay approval.",
+  "sourceSha256": "252fab0a0e34c796a75f24168f42bf6aa815fb4224a034fd5b52d00e9026cdd0",
+  "artifacts": [
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/orcPeon-before-0.9.png",
+      "sha256": "72da49ee267cf61df178a4c5c728e7157e470289b8e073942ac6830169b429d0"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/orcPeon-candidate-0.9.png",
+      "sha256": "20d626b905580d35fb93892f5d9223350d4faaf09cd79d3333ac283d393bf375"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/zombie-candidate-0.9.png",
+      "sha256": "bb878420869f254a8fb6ac74818284a043beb84583d5d5f372ea80ab4e3b42be"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/lich-candidate-0.9.png",
+      "sha256": "f40c1ce36848fe0b2f5d743bbbdec2a4ffa7cfe3842a59e81236e6175e44609d"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/brute-candidate-0.9.png",
+      "sha256": "79f8bfd0641e4268452ae632e00eb999ef5191b9ecd7521846419aec1a86b783"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/zombie-before-0.9.png",
+      "sha256": "d670103b8bea906175fe1b98f19f88ebcf318686a12a1773dad84deb3334e480"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/zombie-candidate-0.12.png",
+      "sha256": "822b03f8e311eca39d14ad6c8f21710ba57a6f92fba6ec7159bd5de1e3184235"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/zombie-candidate-0.38.png",
+      "sha256": "0fe638066881163e36eb98698f261b78306423ec9446bc83f8a867f1e3c7b495"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/orcPeon-candidate-0.38.png",
+      "sha256": "eb70b15422f3d7eec72a04ee664788acf3bcfa457a7c2daa450aad4ee13c657c"
+    },
+    {
+      "file": "output/playwright/arpg-animation-cut-v3/lich-candidate-0.38.png",
+      "sha256": "da7cb3031204d0430ca74ef6c8550f6f1842bf2819c9bd99f9c1c245ed00bf5a"
+    }
+  ]
+}

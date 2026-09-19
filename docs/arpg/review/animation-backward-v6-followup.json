@@ -1,0 +1,49 @@
+{
+  "at": "2026-09-19T03:00:20.513170+00:00",
+  "sourceReport": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/report.json",
+  "sourceReportSha256": "6496fa2045749a09ec6a22456e539ad498959663cde16ff0724c1b197fdeaa33",
+  "media": [
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/backward-9.1-close-frame359.png",
+      "sha256": "2471cdf4bb89feee5f61f94352635245c3c1920efff866cf34c9fd7f00338f8d",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/backward-9.1-close-frame360.png",
+      "sha256": "c1d15efb9fee0b56c09774a188579a65a074c834084b2731393936715bc21c6c",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/backward-6.5-close-frame433.png",
+      "sha256": "c3e5da14418545d33f658c79e960407201895218f5b944c7e1e359bb276f43dc",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/turn-9.1-close-frame204.png",
+      "sha256": "bcaee264f35099a3c2cf88f1ee7007c52495d4a70ded99d845c12e8fbbdb2ae6",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/turn-9.1-close-frame205.png",
+      "sha256": "dbe6ba8a6bd6427bbb239d6dc2f59b7b8a79f73e9932564c68b4dbbfd8c95aa1",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/turn-9.1-close-frame206.png",
+      "sha256": "eade9b5e17a3078d678bdf61de5510e730d0256f58e0dc02ca18e84e7ddb923e",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/arpg-animation-backward-v6-ab-1789786338180/backward-9.1-game-frame360.png",
+      "sha256": "5a54a384df3f3923392067cfdfe736f260e6b987699c4ff034c9ea5f22699935",
+      "viewedOriginal": true
+    }
+  ],
+  "scope": "Seven native split-view stills, controlled fixture; no continuous video review by root.",
+  "candidate": "66ed1484f070212c92792b886de89008da16cc4702148825ca03fdd9d5a65d67",
+  "baseline": "07952bfc2e36dfed257a9f6f27dd582981c89a8dd2c791a92c1c1724be65f2b5",
+  "observed": "Candidate landing poses show grounded support in selected straight backward frames; turn204-205 has raised base/feet, then foot returns near floor at206.",
+  "acceptedNoSliding": false,
+  "promote": false,
+  "next": "Animation v7 staging focused on support during crossfade and forefoot roll; preserve landing gain, rig and weapon."
+}

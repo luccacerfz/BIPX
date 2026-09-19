@@ -1,0 +1,12 @@
+{
+  "reviewedAt": "2026-09-19T04:13:50.383616+00:00",
+  "reviewer": "Root",
+  "decision": "reject frontal71db for promotion",
+  "evidenceActuallyViewed": {
+    "file": "output/brute-motion-v4/native-2026-09-19T03-58-17-886Z/playback-close-caller-sheet.png",
+    "sha256": "8b6280b4526ca7c736a93d0d37ca3ed744fa8f30f5b525041ead06dff2c30514"
+  },
+  "observation": "At actual .55 s profile, sampled playback shows deep squat from upright Idle, torso folded/twisted near .263 s, and abrupt restoration of height. Does not meet standing heavy attack direction.",
+  "limits": "One contact sheet of native recorded playback independently viewed by Root; not continuous playback or gameplay/contact review. Owner reviewed wider native evidence.",
+  "next": "Inspect local upright unarmed attack sources before another retarget. Preserve v4/runtime; no blind third zombie take."
+}

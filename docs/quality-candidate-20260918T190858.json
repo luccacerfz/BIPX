@@ -1,0 +1,1094 @@
+{
+  "candidate": {
+    "description": "BIPX Aldric/Lyra, textured enemy LODs, Walker attack phases, swept player rifle, keyboard aim/upgrades and reconnect; frozen19:08candidate before authority/enemy-sweep/entry fixes.",
+    "suite": {
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/suite.json",
+      "sha256": "dc12c449312343f68d082a9e4f5f888fa6fece2409e83af92ba724df6fecfaad"
+    },
+    "startedAt": "2026-09-18T19:08:58.555Z",
+    "finishedAt": "2026-09-18T19:18:12.847Z",
+    "sourceHashes": {
+      "assets/audio/bossSpawn.mp3": "168fc2c04ed61a492495e7d101b4d358ab74af08a887b8a6df97e5d9392a2a54",
+      "assets/audio/explosion.mp3": "5a94f7d9d092009249cfd07c3876701e0d6a0fcaf6771bee0beda5d21df307c2",
+      "assets/audio/flamethrower.mp3": "7e4cc78ce898469ef7e66b50e38781a2c8721dfa22b7b3d4ec29cafd0f044a1b",
+      "assets/audio/frostNova.mp3": "2b8a50417c17392457b65318535411254072efa8e431d7eb0bdb31c1091bba50",
+      "assets/audio/hit.mp3": "21a7ce790825c5a3d2b84ffbc851cc91fc3598cffa700b4da157f780e0ad0d6c",
+      "assets/audio/katana.mp3": "983f97e441b8fe6aaabc1951a3501d5bc4c47c1ba64b3727169d6ca4d4bd57b1",
+      "assets/audio/kill.mp3": "fce4534dac00dae23a477e21f47e7cae82c843d2429a9c7b0a17861d3179eb59",
+      "assets/audio/levelUp.mp3": "7cdd35a5f99aca31ded54c2a074a016dec3f7c0bfe9f35a7d0b53aeeb1db033b",
+      "assets/audio/manifest.json": "f49da76278f3d0823e8a2f7c0a1f51a2198f1f150087f85e152a10267def3927",
+      "assets/audio/nightAmbience.mp3": "d671e452540304331db997f0fdfb15b6126914a36fbf3ebd04c334c5d99e24da",
+      "assets/audio/pistol.mp3": "ee7e6b674db0e28d0c7126441917c0b7a3b2e2b572941592c299cc9de1680549",
+      "assets/audio/processed/bossSpawn.mp3": "d4452b69cff7e4b211725e459bc78a7073450a50e2062aae689a39e0582a8387",
+      "assets/audio/processed/explosion.mp3": "977a36b41771bbf1da2e3b63d6f75a1b4e715c8e259eaa890d034e70bc11078f",
+      "assets/audio/processed/flamethrower.mp3": "09fefac8b37d87cba80f915726bf4d82eb45d65b543e29cd5d77502567ad6900",
+      "assets/audio/processed/frostNova.mp3": "95b4af17d00a14c36426f55988d90846a27556172ec2f721b76fd2d7e0ce85e6",
+      "assets/audio/processed/hit.mp3": "a4a4d665c179ce8c3f953c7dd599231e13905a94950c1889ae9aadc90534cc16",
+      "assets/audio/processed/katana.mp3": "5d4582b353f8ed01ff77395e2873c9fac857001ae801f16ccc7e6b74a0279411",
+      "assets/audio/processed/kill.mp3": "8f4f66c4a601446d134c478a344015eed7c45231baf08922b3f74ace1ac811d9",
+      "assets/audio/processed/levelUp.mp3": "6aa8b49b5e7749b9e5dd2f1a10ce6c8acbf7a7df70139a5ba0dc43685cfbfd52",
+      "assets/audio/processed/manifest.json": "270ac6469ae33ed4ba14d88ff25b3afa3a0cb208de8833b36289ed1188ff0552",
+      "assets/audio/processed/nightAmbience.mp3": "51abfb22b6c5885873f743ac6b90e20fe9f04ec7f29bd6a2bb9d0b6f73402898",
+      "assets/audio/processed/pistol.mp3": "478255abce4ba068fb473102313020016d4fea525a98d6b54428d2f05728a943",
+      "assets/audio/processed/talisman.mp3": "29e0e9a41c4dc138c10dfafd507add78577d667082180a90330d8c291945307b",
+      "assets/audio/processed/thunderstaff.mp3": "0a388823475a7f343f9a5c14f9810bcb342857a7a4c3ca8ecff9cdcf86e956b0",
+      "assets/audio/processed/uiSelect.mp3": "56c6cc69650f1c1dee86df38dc0a5c9375be92782c9ef309969bbe26214b9e9c",
+      "assets/audio/talisman.mp3": "481d286bbf2c75357a5404a84010f87911901d351d653f12f6142143a9bdd84b",
+      "assets/audio/thunderstaff.mp3": "ae8e33bb43d434052260d65ecb62a9d6bfaa643053ecbb01454338a0837c7c2a",
+      "assets/audio/uiSelect.mp3": "ad432c94a2f80aea75a9275fd14e5d56cfabb8d37443a62eab7d2706387ab48c",
+      "assets/models/aldric-hero.glb": "0e5da9d8a667fa44dbccf6c5ae9141f6f3183df555c2ed6781bc87d632327a32",
+      "assets/models/aldric-hero.provenance.json": "74449ef053859cdd0d32e465b48c861250ba41765f5bb6456da436dfc83a3781",
+      "assets/models/cedar-tree.glb": "1dda3a076d56ae6327ec1d41ab0b3cf322310abc8ed3b68e7d94c922f0c66e50",
+      "assets/models/dwarf-rifleman.glb": "e11eadb8b428ad46332b0f70bc2db3459628775b65cbb101886cd46fdcd643b0",
+      "assets/models/dwarf-rifleman.provenance.json": "464ed1379ded04cf02decda8bc331163c191d9fa1c4b3ca8d819d0bac7b644cb",
+      "assets/models/enemy-lods/brute.glb": "f522bc1e15e8297f93b73b1bf261d2692375665b8903bf4f23934379bea59d1a",
+      "assets/models/enemy-lods/lich.glb": "c2652b342d9eff7cf1ab74c50fc69483c52e9562ffbddf67cc502d846330fc6b",
+      "assets/models/enemy-lods/orcPeon.glb": "7ca398325c22843ac87c82fc55a94c9931a1c21eaf91bd60772423126c985a67",
+      "assets/models/enemy-lods/provenance.json": "d77f87bcec8a7bd786e19dd3a307cd82802e8c02a10d94e4834d8715c2df8081",
+      "assets/models/enemy-lods/zombie.glb": "55c8973fef23c17f2b5c963cbd791537abc5bbccc97075d802336f9e3773b6b1",
+      "assets/models/environment.provenance.json": "afee683e432492c49a64678ad7c4ddbdb7be87f0944461e154d1e787aecfc093",
+      "assets/models/lantern-post.glb": "a798d132f940a3cbe52aaffa3e2b313dfc498442cc40f4927e8fbe132d092f84",
+      "assets/models/monsters/brute.glb": "d1d58b1ae86045d9fa39dba9b4e87a0bd6d1a66b347d74624cf8095ce208c02a",
+      "assets/models/monsters/ground-probes.json": "cea642f1e5ffcfc0cb4fd7382c7e57f54b9c24498a4c7590a51db5ab7490a1cf",
+      "assets/models/monsters/lich.glb": "f6ddd47d97757b4acee76c056baa26c644ff19e2afa17fb5630b00108e832e44",
+      "assets/models/monsters/provenance.json": "ddeb44ea79841e65fb2b1f1a32893a4d02c02b705ad6fe0e4d11b908dc049f99",
+      "assets/models/monsters/source/boss-lich.glb": "8496c7b5e6642546d1f6603af50453a772ab4f67b29073329afb2996dfeea673",
+      "assets/models/monsters/source/boss-lich.json": "1164dbf05b9e1bd8e1169862e7df1da6646be69646b5f8962424d34b37a64a9d",
+      "assets/models/monsters/source/mixamo/README.source.md": "812310b5977214a5f833da60a7e044b3ac263dc0c8496a6826dc81b304f41295",
+      "assets/models/monsters/source/mixamo/Zombie Attack.glb": "be7b3a6319e7b736595dddb7ce552211cfaf9ae48a222f468d88db3903d4c1f5",
+      "assets/models/monsters/source/mixamo/Zombie Running.glb": "705901030da4e8c091f0552d2d85139c282c710880985d6f2884c7adb3c5730c",
+      "assets/models/monsters/source/mixamo/Zombie Walk.glb": "7078293a2985686f7af287730874d8d0534c717fcf69a229c2172cdba99e4e29",
+      "assets/models/monsters/source/zombie-brute.glb": "14791fcb26046fd2ecc00d16b14df857e1992025a34670dad22a53578628aa2f",
+      "assets/models/monsters/source/zombie-brute.json": "527ba3bf957ce39f4917db4db4050c679cfb7b127d71d403c6812e252f227f9b",
+      "assets/models/monsters/source/zombie-pre-mixamo.glb": "af6a973701eacee171d58521108a4b1e324194442946585b4b41c03c96ba1dbf",
+      "assets/models/monsters/source/zombie-walker.glb": "312a50c5a40909f886004d0f8e8e90028499f8f7db271dc544d5144b1f558742",
+      "assets/models/monsters/source/zombie-walker.json": "e93d1ea458cb44a18fac0d0f374582545a95947dfeb1cf8e5c1227fde8bb5df8",
+      "assets/models/monsters/zombie.glb": "91c975ebfef06f38239a7e5f3258c8ac545340dc217b625f6488fe01cc745b2c",
+      "assets/models/orc-peon.glb": "f183383155b0a763f46039a93bf048604a5a1f95529a3b4b9b6511b5767c846d",
+      "assets/models/orc-peon.provenance.json": "d7701c751b07d373f9e0c2e80cd875a26e246fd48e0e6c99c8196c415ca2b857",
+      "assets/models/ruined-wall.glb": "d78c11f97ae684670a673fcd6a24ade3753b2c8a41093ef0766147fbca276f1e",
+      "assets/models/rune-portal.glb": "a57abdd975277e06199550da56d26b7438e953f905b8ba5b5e094f2935978475",
+      "assets/textures/ATTRIBUTION.md": "7c2ec79de2bd7cef0ab0481671a86ea49970614cd63c5cb011b54997388bd072",
+      "assets/textures/stone/color.jpg": "1dca8a336518ce0adca4b5cbe2ab30819c8769388f1c15278082a99f022c615a",
+      "assets/textures/stone/normal.jpg": "8fd1d22eb6c7b6e4a374196c0de791f724538b8b86eb9c7a946fec1f5834cb94",
+      "assets/textures/stone/roughness.jpg": "f37850f72994458994716d084683d80611528d1685264bde3071569e8ca53489",
+      "assets/textures/terrain/color.jpg": "22650b378d43e7f62bf32c23aebf39a735c5e978ac27fac39827e142e6bd9ddf",
+      "assets/textures/terrain/normal.jpg": "bacada95d04b753497e2ce3d76513f6276ae65ab9e71c49cdd18c1bb2328009f",
+      "assets/textures/terrain/roughness.jpg": "09ba24fddb8241670d053a22e62ae6f304c2d0b9c21f6d75e06cf3a26b0795fb",
+      "assets/ui/portraits/aldric.png": "b3b0a45806699198f279efe1bb1fed182bbad201d3187649a1ab34a16c5b18bd",
+      "assets/ui/portraits/capture.mjs": "06c51b2c326f123ee7a9b1ab4c448b8a458d8a12cbfbed59a1b291330026c5fd",
+      "assets/ui/portraits/lyra.png": "b952390c2d30ad6793add80d9babac906c7867888a5d84c358354f06eaeb4cbf",
+      "assets/ui/portraits/provenance.json": "66db9f582eb1bb30babb03b67b7720f73161fb2f95269ab88132fa7f7471e0f0",
+      "assets/ui/portraits/verify.mjs": "b3c72cd8d8db39cbf6aea40ecbb9a6139b540cb2ea63e71f5ffcb52e0d606fd5",
+      "index.html": "9fa7ce1d48b4de726c02ea541984d64c2e0cdb0888153e87af6841b49f457c09",
+      "package-lock.json": "0f669753b8463fa1ed226a272e806f8c11ffe64f708a59290b5424487f4905f0",
+      "package.json": "293661e9892a614c8b5fcb0e30c1aa59ccd08eafa81c24e2e6f63e4098e700cb",
+      "server.mjs": "deb4d89fed0454beda52d35d12e00e5f23868cf7f2adaaabfd4359e8f244ef83",
+      "src/assets/asset-preview.html": "24119639f7074b66b95dce7df635ace7c811a0b1a08e2c48f045bcda62bc866a",
+      "src/assets/character-library.js": "c69704bf0c32d8e04252f8ea80c6dba66c0645807f22074353ba9b181a3ae829",
+      "src/assets/dwarf-library.js": "4eac65cede4882098b206c5c1aeb07b073cf5f78ae94859f2cb09c76168f0561",
+      "src/assets/enemy-library.js": "9c04933dad50fb5549d4430e35225e3b6e59926356b37b3a9da8477bec1abbac",
+      "src/assets/enemy-lod-library.js": "28c0277c2dfd3e6ca73b004bdb1b8fa20aeaeb04a548d64237da747650ebed61",
+      "src/assets/load-glb.js": "ea6cb1ba7f87e855bf976c0ad5bb991982cbbefe57253c46ed1fd0843ecfb453",
+      "src/assets/monster-library.js": "febe85c6c4b1bb4be36f80b5fbe824ba06c3679e669c6bbbe7a9c376fd6df483",
+      "src/assets/playable-characters.js": "22026f75443544c09a2ca2d19b3e572cd59ad7ef41d5292721556b906189885f",
+      "src/assets/vendor/BufferGeometryUtils.js": "0073e2341a100e95386d4b3b3f7b5154ef073f06d301d3c3c3269ff54dde4706",
+      "src/assets/vendor/GLTFLoader.js": "b4d8b9a8a185faca2523b2c7bfd5bc615199ba96ca8e155adcb410adb4e0f5ac",
+      "src/assets/vendor/SkeletonUtils.js": "49ea54550b43b1b6fcf8de5b5b782fdba7edb1e82064bbe1e96cba570d4ea80c",
+      "src/audio/sample-bank.js": "129f01dc5b5a95151ae7d293ac6c367e9a592d8dc4152f03d17031c222c6525c",
+      "src/combat/melee-timing.mjs": "21b900fb285ac33d21fc17356b8e5d4ea014c353c02a24830e867194e12f27e4",
+      "src/combat/projectile-sweep.js": "a7cd72b47cec7fb23154a207839afbd6be2d49bce18d1c1eaa597e85c2a12eec",
+      "src/config/defaults.js": "2aa6d92a6651c79f0485616b3e54e7f02b51a926ff29647dddaf69019b31b38b",
+      "src/config/index.js": "3d98f5d2552b688ba68a9ce9f118dac1a855c525123aade300bb77d16bc87ff0",
+      "src/config/runtime.js": "78aff61a3999b22368cd5617ead0ad9dda1cd61db0ba63610640554e1425a048",
+      "src/config/schema.js": "3b142592a4e9a2bbaf62a1a547c1255cd2d3367dd87b104c5069e9ba03a77433",
+      "src/config/targets.js": "85531003181eef9c8b99d1b8ad387f27a91543e6cf8fa5b7b54e1b20ba3bcb9a",
+      "src/editor/index.js": "c75a6a7cadf4b314610b903595eba64081c82fa4c329a0a016aa6984863d0b28",
+      "src/editor/layout.css": "ffb32bc93356364297cba577683750cb34738a327620afe29436c77295b000ca",
+      "src/main.js": "579f0bb35ec48f040da669830609531c0ea2a56ac65993ff5d5e7d0b16fd427b",
+      "src/render/animated-enemies.js": "b0d4dfda7b628ecf8240f9916fdbbf651ee9bbb2266b0694e0252580d417f655",
+      "src/render/asset-dressing.js": "d8f7d1de3082ef69f6d70df0d872248fb14a832f6e55b4d64a0b5dc3db4c2bdc",
+      "src/render/atmosphere.js": "34c4535661b7dc63eff2f9d89345d5f8668aabdf7c1dd2620a5ab8d3e047fd76",
+      "src/render/cemetery.js": "00edb960d6ede15efe537c6c4463bdedfeaea4a54cac90102a08881d3b00af2e",
+      "src/render/cinematic-pipeline.js": "a8762c74b13f8de430ed3063acd3c3f9daf0860df429e3d68ae9c6eb65c024ec",
+      "src/render/preferences.js": "a9f45b16493f4be36f0021f4fbe1a47011feb74b22fb012aaf3f93dcdb7f6669",
+      "src/ui/presentation.js": "dd1cc63264e98679fcda67ecc97036b705f630ba656a8ac9dd2ecc8ae95aa4c9",
+      "src/vfx/combat-vfx.js": "55d05901ed7f6fd730828eb467d1aaf52e758a94e2c81a7d00bd0dce588f9efa",
+      "src/vfx/leaves.js": "f0589d52364951e86df30f2df927ebf07f32aab8b84d5dded289a23ee30c178b",
+      "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+      "src/vfx/soul-echoes.js": "04b354800a1d7560ffd9f2e4e1d89d0b49ecec1bdf2c2f19bb1f7323d9e63cc7",
+      "src/vfx/target-markers.js": "b0de5d7806006f6d17797616c31fa70e4696bf11761d285593f1407ef01697f1",
+      "src/vfx/weapon-fire.js": "bf2b3e454888e6ba7bab9e5a74446dcbc9cd511d9c0be91c074168681a3e200b",
+      "styles.css": "40e9058e07930c60996007d9c86d855a4ee040f85b65ef2b6e8a3b23b34bb304",
+      "vendor/three/LICENSE": "4c40a1ef62450b857c3b2aaf294936304cd552d965fbcd9d32d4c5bcf4ba4454",
+      "vendor/three/three.module.js": "a97ec6852978949b7941c070b81292b842473a37549222353fa0a70c18d7285a"
+    },
+    "sourceFileCount": 114,
+    "verificationToolHashes": {
+      "tools/assets-dwarf-verify.mjs": "c79c783ea6c696a0c30af8f4e60e917adf09236a817107902c55cd8f8ace3aee",
+      "tools/assets-enemy-lods-extract.mjs": "40fd9d8868dae1ebd88eedfc065266011eb35cfc5d4a292eaa5918176e7b4416",
+      "tools/assets-orc-pool-verify.mjs": "854efb8b40752cd6807644b00fed838621230fed301b07f34255100681347c22",
+      "tools/assets-orc-verify.mjs": "071d37c3fd5b54b4bb7c4db654c998e4a55fc5825fba35d85ab6fb7efa017994",
+      "tools/assets-verify.mjs": "f188eb379660eff067aa30106e36800ad8a010f1fc04a139f7c821db4e071bce",
+      "tools/audio-process.mjs": "2d6f5913754e7d6c9099073232c8501a703ac5e30e50d9a2eb164547a831d2e5",
+      "tools/audio-review-reel.mjs": "db603c3685f503164b3c5bed2c358dd78c4421d852d0bceb876c4157d15ead08",
+      "tools/audio-signal-check.mjs": "be061923a1b3ed4cd08d0f52c662716b9d48666526a8d49b6a966b5fb6541e26",
+      "tools/audio-verify.mjs": "61d38faed2570b3717c3fd7ad18b30c2db86f4756d34e4d97c0ef3c8ddf3fd1c",
+      "tools/diagnose-asset-stream.mjs": "a4c163840c2bd1b0535780b1933dd6fb4ad746876ced2a17a01b995e8846be33",
+      "tools/evaluate-jev.mjs": "11cb653bdd368250568f08ce3697ceca4b9784aa487e30d91a1b684582963a69",
+      "tools/generate-elevenlabs.mjs": "6b144875bebbf1791cd9981fa10f65f18b55a0ef8174505ef561729d919c4253",
+      "tools/monster-motion-compare.mjs": "76c194ded6bad99aa7219695ee139c5905db80caa9b009cf1a2374ae3b7faec4",
+      "tools/monster-motion-cpu.mjs": "d90c987f146c5f2923d3ef9918e58185708030cd74dd3815e9bd4016e6e0ea37",
+      "tools/monster-motion-game.mjs": "0b4215966f2deeb368be450362ea23a3c3a339fcab4a5813608dbc72b8ff2abf",
+      "tools/monster-phase-cpu.mjs": "41063a0f018fb3c31a65dae01f6fdf40c154a295c07bfb85ab8603f7e328eeef",
+      "tools/monster-phase-native.mjs": "d8a17f9b871f7d719b64a46fc5a1cb4efdbb56a1be270c81efee376525925f66",
+      "tools/monster-retarget.mjs": "8f853b4267c327afde6b2fedfb3ac9f5bc9ee4afd7ea050dad9288d9b551f210",
+      "tools/monster-verify.mjs": "27232bfd2fd43adf3b1e4c4d5a42d93b88602587d8a432e31c5897d53f314feb",
+      "tools/quality-browser.mjs": "2b03332204ad3278b34c4cfa006bf7268c7e4948b5b91a6206358cb623f6ac71",
+      "tools/quality-protocol.mjs": "13d87d4fc93bd75c76b5330d3aeef5070e5696eef0c54af6689390bc12282fcc",
+      "tools/run-quality-suite.mjs": "6bf6f920787251ee6011c65868566c6d99d303cf59f74c23975f1927bd544384",
+      "tools/verify-canvas.mjs": "3afea933838c671b6dfdd74287a79c74ebe71ab10530a5b5f50bd432fa017506",
+      "tools/verify-character-authority.mjs": "dba828c58613bbdc565be32916857b4fdce41f28eff2fad2c7a1f0804e2778cd",
+      "tools/verify-character-experience.mjs": "01a1e18863c7cddf4505e08604f793822912acc19b846b252fb916f640d12ff6",
+      "tools/verify-enemy-lods.mjs": "bf96dcc9888cfe4657827dd199a3151eb59ecb5758c5bf5d325e47d46f34c9f0",
+      "tools/verify-enemy-pool.mjs": "3dacf2573b8e013d9342b9bdc7ab3b3983636a90cd9972161af15deb7c9ce88d",
+      "tools/verify-evaluator-contract.mjs": "4bf9e0e839b5b3a8868ca21ea2d634d00729cdebfe0a99b6a32329443db50cb1",
+      "tools/verify-experience.mjs": "6d02097b56bd4795799a9d07191d145bc39f4fed2772b786b0dc35d3182d6c82",
+      "tools/verify-http.mjs": "322f9e5d0b36a3538929529bc249569da6db59d3bb3b6dca68ff4b307f439ce7",
+      "tools/verify-keyboard-combat.mjs": "2b6f54ff33d25b06d600699009479395c312dbdbf7f4f753746a54c8567a958c",
+      "tools/verify-lifecycle.mjs": "47f682ae7aad9ee971ef5ca2dcf270bd2dfd92ee7590148e8f504e7d3a673f77",
+      "tools/verify-melee-integration.mjs": "29d2f626070a80ffa68a1db135af8f907edc90d9dab7717ca612862fa27121a5",
+      "tools/verify-melee-server.mjs": "99904d1395cd94f64bbbdff6094686ce89aff8a92c0ecfd794c0b6df76ffdd35",
+      "tools/verify-mobile.mjs": "62effd8d0b75b9bd3b12375288e90e9c8dbc18bb887633e327342544aebdffcb",
+      "tools/verify-multiplayer-browser.mjs": "d2a040399b9cdbb2d0049dc91764a05ca33587b158fc6be3d2e06d775af734ff",
+      "tools/verify-multiplayer-world.mjs": "d9a218e8f17a1e2c71aefa1162f9bcd0f04c776cc8765cc53305027103cfb54a",
+      "tools/verify-natural-runs.mjs": "fef95a5b6083ace76fc064de4cae54a6de14c15b6322c29ad9704b9b8b80dd82",
+      "tools/verify-npc-integration.mjs": "02a7dfad4f81964e452557298db36aa9c632fed938cb712d6c53467e55b0f4ad",
+      "tools/verify-orc-spawning.mjs": "6923f058761d295c675212569f77c36e747e22f4bcd04f626f33b384a5017b15",
+      "tools/verify-performance-lv16.mjs": "62a84140e9b9861beeb8942bba12b18da44e668b044393f83fd82f197205097b",
+      "tools/verify-performance.mjs": "6bc8f760d5570793456e9f5a7f4880fbacc3878d8c2a48f86d258c5ad99186e7",
+      "tools/verify-projectile-sweep.mjs": "c984e346d46a9bc8f6ab54819e029f817d236688ebbd3ea4620de787bbb9db5c",
+      "tools/verify-reconnect-browser.mjs": "cbd58a383e12b10ddf9410e98813eef9bc61df98c3064d66f8bf363bc8d084b8",
+      "tools/verify-reconnect-protocol.mjs": "8930402eb9e7b9c5d905328f6eac033c52ee5bf64555d4c97be1630120782301",
+      "tools/verify-vfx-catalogue.mjs": "1dbc27e36c25c70af2f4b5d3b987d24abc1bfeaba247b925529a83d8636813c6",
+      "tools/verify-vfx.mjs": "39936b808fdc90fde4cdf0fd54b2e1a712938c2f15e35189688a16ac9fbc4404",
+      "tools/verify-webkit.mjs": "d74aa69286a081f7db9c1410f5385fca0059880063f2162824e732d4bd2c6632"
+    },
+    "suiteSourceChangedDuringRun": false,
+    "verificationToolsChangedDuringRun": false,
+    "sourceInMotion": false,
+    "environment": {
+      "node": "v26.5.0",
+      "browserChannel": "chrome",
+      "headless": true,
+      "note": "Isolated headless Chrome; preflight confirmed ANGLE Metal Apple M5 Pro WebGL2. User Chrome remains open by request; no other QA GPU sessions. Compact viewports are emulation, not physical mobile."
+    },
+    "note": "Stable recorded candidate. Changes after the suite create a new candidate and do not inherit this pass."
+  },
+  "dimensions": {
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "874 x 402 landscape gameplay now shows the full LVL 1 text under the sword skill icon, unlike the 18:06 baseline. Main health/score, pause/sound and both touch controls are visible. Camera covers a larger arena region; whether small targets remain readable on physical mobile is pending.",
+        "390 x 844 character selection displays both model portraits, role/weapon labels, selection text, name field and both mode buttons legibly. Full-page desktop capture does not establish physical mobile keyboard behavior.",
+        "The actual simultaneous touch movement/firing portrait capture shows Lyra, muzzle glow and narrow white tracer; the remote Walker silhouette is small and soft. Canvas detail remains visibly softer than DOM text. Cyan portal and dark tree canopies remain strong visual elements.",
+        "Aldric natural 60 s capture shows imported Walkers surrounding the player, kill/pickup rewards, aim/lock rings and visible sword action. The top HUD duplicates Solo as Solo Solo; a floating Lâmina encantada +40% damage label appears truncated/small in the native capture.",
+        "The synthetic bounded-horde capture replaces the previous tan/green/purple cylindrical far proxies with textured character silhouettes matching Walker/Brute/Lich/Orc shapes. Dense rows contain repeated static poses, and tree canopy dither still obscures or visually complicates groups near the player. This fixture grants a legacy loadout/level 16 and seeds stationary formations; those HUD icons are not natural warrior abilities.",
+        "Natural Walker pursuit/attack and imported Aldric/Lyra are observed. Staged Lich/Brute reanimations are absent from this candidate; their distinct caster/heavy acting remains unfinished."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior-natural-60s.png",
+          "sha256": "76f566f2890f131f4ca903a4ce8e142d3bc77d4cf8426fd1f47452f003c70610"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-npcs/npc-desktop-bounded-horde.png",
+          "sha256": "f9ff57fee63b9d86a3cecac3410da198d197f53237c01416d11216a2ad3bc8dd"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/compact-touch-experience-login.png",
+          "sha256": "4885e55e4b30a4d2b8b4666d3abcb85ce37e8a40eae420c7c09142dd43453c8f"
+        }
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "Actual class combat integration and the separate 21-family catalogue passed shader/runtime/GL/pause/quality/resource checks. Catalogue/placed targets are synthetic and do not establish natural triggers for every family.",
+        "Natural input observes rifle muzzle/tracer and sword/impact/target/pickup feedback. Dense fixture is stationary and cannot establish readability throughout dense live combat. Exact physical fist/forged-weapon state machines and animated hunting-clone ability from upstream remain documented exclusions."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-vfx/vfx-integration.json",
+          "sha256": "fbee264d49f0ecbeb048bcb82fa246b082db42eb7172165556d15fa1b7840ed9"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-vfx-catalogue/vfx-catalogue.json",
+          "sha256": "d696a2c4be6587e962fe6dddf496d672ea66a5d50427ec190421c9d0965d732f"
+        }
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Two real-input natural runs lasted 100 s each with no injected world/health/XP/score. Aldric observed 21 kills in one life, level 3,5 upgrades,4 natural deaths/restarts. Lyra 55 kills, wave 2,level 5,8 upgrades,1 natural death/restart. Target-aware automation is not a human feel review.",
+        "Integrated rifle sweep 9 cases passes actual 35 ms crossing/nearest impact/near miss/lifetime/piercing without production test hooks. Zombie/runner melee 15 solo and 13 server cases pass windup at 0.46 s, exact-once impact, range/arc dodge, freeze/death cancellation, pause and late-attach phase.",
+        "Known enemy projectile endpoint-only grazing collision still misses contact in source-matched extracted-server CPU proof. Natural runs show long main-thread stalls; comprehensive difficulty/boss/feel review pending."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-runs.json",
+          "sha256": "745ed4606b306f870923debc258c40e252e3821f72b1c6d583a25c5adebf9fa3"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-projectiles/projectile-sweep.json",
+          "sha256": "9107a563976b5aac831a9e25fb9e8d0ce6c8bb53a0893c3e1d12e33921ef9d26"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-melee/melee-integration.json",
+          "sha256": "ccb295612e962baef77a218865f4d8fbfa0c282037e3e17f3a49ecb587a3d5f4"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-melee-server/melee-server.json",
+          "sha256": "9436223c8ce7af5426bdb8c0683731e23513bd640eeb444adbf476ef602e70d5"
+        }
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "Desktop/390 x 844/874 x 402 menus, help/settings/ranking/selection/start/HUD/touch pass. Full landscape skill level label is now visible. Keyboard Tab/Enter, WASD/IJKL/Space, diagonal release, partial hold, pointer takeover, chained upgrades, focus restoration and announcements pass both classes.",
+        "Observed minor polish gaps: duplicate Solo text and small/truncated floating drop label. Root code audit proves local multiplayer button still redirects to fixed production URL; this loses local candidate/selection context and is a functional defect. Direct-URL multiplayer tests do not cover that button."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/experience-summary.json",
+          "sha256": "416687aed93a58ccd530a7634c7650ace59bf50f6850d67a991afe14da523f8c"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-keyboard/keyboard-combat.json",
+          "sha256": "5189453ea6133fb63437e7bbd126ee3fec5295c5336206271871d2f2abfd4fba"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior-natural-60s.png",
+          "sha256": "76f566f2890f131f4ca903a4ce8e142d3bc77d4cf8426fd1f47452f003c70610"
+        }
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "Desktop Chrome emulation includes actual simultaneous touch movement/firing, portrait/landscape menus, controls and releases. Playwright WebKit passes 3 desktop/compact scenarios with rendered models, keyboard combat, native touch activation, audio unlock, pause and settings.",
+        "These are host-engine/viewport checks, not Safari.app, physical iOS/Android GPU, safe-area keyboard or sustained thermal evidence. Canvas is visibly softer than DOM text; physical target readability remains unreviewed."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/compact-touch-experience.json",
+          "sha256": "925c88fd6661ad9ac7f0d73e0e98fca8a7e9d9b60b0a2fe975b238f0d1acad3d"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/landscape-touch-experience.json",
+          "sha256": "ade867cecc3ed5ddfdd3ae3f75abd2db2f65a34b9aec3da760306642cc9c22b2"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-webkit/webkit-desktop-warrior.json",
+          "sha256": "9c7891733214c2c2bc68bd334948395b7076c7d05d0d8559970d69189c7a2c48"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-webkit/webkit-portrait-dwarf.json",
+          "sha256": "b97069a7b765d18bbd2edfdd266fe1cdf485a343827753f727a8bdc8775db5e0"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-webkit/webkit-landscape-warrior.json",
+          "sha256": "b638cadb3c3b4af9f5adde229c88cab8e09ae0465dd65779363172321427a8b6"
+        }
+      ]
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "13 processed ElevenLabs cues decoded. Actual compressor-output PCM captured 15.872 s with peak-7.614662 dBFS; no clipping observed. Real rifle input, synthetic cue audition, pause/mute/persistence, distance/pan/voice bounds pass.",
+        "Captured waveform and automation do not prove subjective mix, event recognition, fatigue or hardware speaker/headphone performance. Listening remains pending."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-audio/audio-runtime.json",
+          "sha256": "6ba03d25ad109ce61bdfc6648121579451f16e5d6f55f2aa37a140822e05d727"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-audio/audio-runtime-output.wav",
+          "sha256": "b9f176229cc40bf27608c084e9e8cec11888d773754f5f3c9d2e5d208ed16e6f"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-audio-signal/audio-signal.json",
+          "sha256": "4aed4831c128b2be80cec92f75f7fe6736435782bd5d58f18060920b8c2cdee1"
+        }
+      ]
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "Current isolated headless Chrome 153 on Apple M 5 Pro reports ANGLE Metal/WebGL 2 and about 60 Hz; user Chrome remains open by request. Natural 100 s rates 59.8224/59.7024 FPS, p 9516.8 ms;6 frames>50 ms total, worst 183.3 ms in both runs. All six overlap longtasks and none overlaps recorded screenshots. Diagnostic trace pending for causality.",
+        "Four~12 s stationary seeded stress samples 94/362 enemies average 59.8–60 FPS, p 9516.7–16.8 ms. Wave 16 desktop has one 66.7 ms frame. Frozen stress is not active dense combat. No invisible threats in measured integrity reports. Physical mobile and longer sustained sessions remain pending.",
+        "98.665 ms main-thread task in animate/render;95 ms sampled in renderer,83.526 ms inclusive in WebGLProgram onFirstUse/getUniforms, repeated synchronous GLES 2 GetProgramiv waits. No overlapping screenshot or GC event in this task; other historical spikes not individually attributed."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-runs.json",
+          "sha256": "745ed4606b306f870923debc258c40e252e3821f72b1c6d583a25c5adebf9fa3"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance/desktop.json",
+          "sha256": "9adfe0073b33bb0e21ba79a1544986141d3da02493700de2786750c3c4f28b25"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance/mobile.json",
+          "sha256": "42aa5461f25d58219500feb9e9bd83046b7da0c8455a00570a2f590afbb76b7e"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance-lv16/desktop-lv16.json",
+          "sha256": "c6ca956bb6d23ed07ce0346a04461cdb7f5529818f5e2c2f66ca1c0be5916c4a"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance-lv16/iphone17-lv16.json",
+          "sha256": "ac2960ca984b99fa3d6afe0abc556685a6e03fdf280236be000e983eb7f11292"
+        }
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Two actual browser clients share server world and rewards; fresh late join, class-only authority, dead no-attack, real IPC-triggered authoritative wipe pass. Reconnect protocol verifies private identity/run/HP/score/XP preservation,30 s real grace, stale-state rejection, terminal death, explicit idempotent startRun, no ledger duplication from reconnect and socket takeover.",
+        "Actual browser socket-wrapper fault injection proves input/simulation freezes during disconnect, lost reward recovery, ACK replay without duplicate XP and runStarted replay. Resume credentials are excluded from reports.",
+        "Supplemental isolated protocol audit proves XP 0 clients may forge level 999/build, HP 600 and maximum attack multipliers. Solo HTTP submission accepts fake and repeated totals. These open failures prevent a complete authority/security claim despite reconnect success. Local multiplayer button still opens remote production."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-multiplayer-browser/browser-multiplayer.json",
+          "sha256": "35e53bf9b786176a85be50c426fa98a8bbbdbd9ec881e3dd6d1447a6daade988"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-multiplayer/multiplayer-world.json",
+          "sha256": "453ab4f713fc62b5baad6cf0dece64049c93976aa79116a05efe2a70572ce422"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-classes/character-authority.json",
+          "sha256": "19e6975186d1fd7e114f6bdd6a5c11d2d30c063dbcbff0c6a0541691fc426ea8"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-reconnect/verification.json",
+          "sha256": "d2e198d0f07e27bcfa2fcc59390d3d8590bb7f4104049fd0445bac4da2175573"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-reconnect-browser/reconnect-browser.json",
+          "sha256": "6a09630ea05aafdb41962288335a7f1d87a2b6535e1757b356f1c45f08e1845d"
+        }
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "Keyboard-only navigation/aim/fire/settings, focus restoration, chained upgrade navigation and live announcement pass. Reduced motion, labels and browser zoom allowance are present; compact viewport menus have no horizontal overflow.",
+        "Full contrast audit, screen-reader gameplay, remapping, color-only cue equivalence, low-vision target readability and physical device zoom/keyboard are unverified."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-keyboard/keyboard-combat.json",
+          "sha256": "5189453ea6133fb63437e7bbd126ee3fec5295c5336206271871d2f2abfd4fba"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-lifecycle/lifecycle-keyboard.json",
+          "sha256": "8feaf29aad1c8da9ef860f087b80949fbf8bdc0f28e3d693729c9fdff346b96e"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/experience-summary.json",
+          "sha256": "416687aed93a58ccd530a7634c7650ace59bf50f6850d67a991afe14da523f8c"
+        }
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "All 29 suites passed for identical 114 runtime/asset/package files and unchanged verifier files. Browser telemetry has zero page/console/network/HTTP errors; expected test-only audio-tap deprecation warning is retained.20 UI character switches hold 67 geometries/27 textures;3 death/restarts 68/28.",
+        "Earlier unexpected natural Lyra pause remains open/not-reproduced; neither current 100 s run reproduced it. Main-thread stalls, authority exploits, entry-navigation error and enemy projectile grazing miss remain open.100 s runs and bounded lifecycle checks are not a long-session soak."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/suite.json",
+          "sha256": "dc12c449312343f68d082a9e4f5f888fa6fece2409e83af92ba724df6fecfaad"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-lifecycle/lifecycle-keyboard.json",
+          "sha256": "8feaf29aad1c8da9ef860f087b80949fbf8bdc0f28e3d693729c9fdff346b96e"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-characters/character-warrior.json",
+          "sha256": "cfa37470c8e0c32b91d6146125a5569d49982d916d333824f08ace542937c5d7"
+        },
+        {
+          "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-runs.json",
+          "sha256": "745ed4606b306f870923debc258c40e252e3821f72b1c6d583a25c5adebf9fa3"
+        }
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "verify",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify"
+    },
+    {
+      "name": "verify:experience",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience"
+    },
+    {
+      "name": "verify:characters",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-characters"
+    },
+    {
+      "name": "verify:projectiles",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-projectiles"
+    },
+    {
+      "name": "verify:keyboard",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-keyboard"
+    },
+    {
+      "name": "verify:natural",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural"
+    },
+    {
+      "name": "verify:melee",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-melee"
+    },
+    {
+      "name": "verify:melee:server",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-melee-server"
+    },
+    {
+      "name": "verify:npcs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-npcs"
+    },
+    {
+      "name": "verify:npcs:pool",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-npcs-pool"
+    },
+    {
+      "name": "verify:lifecycle",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-lifecycle"
+    },
+    {
+      "name": "verify:vfx",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-vfx"
+    },
+    {
+      "name": "verify:vfx:catalogue",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-vfx-catalogue"
+    },
+    {
+      "name": "verify:mobile",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-mobile"
+    },
+    {
+      "name": "verify:performance",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance"
+    },
+    {
+      "name": "verify:performance:lv16",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance-lv16"
+    },
+    {
+      "name": "verify:http",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-http"
+    },
+    {
+      "name": "verify:multiplayer",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-multiplayer"
+    },
+    {
+      "name": "verify:classes",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-classes"
+    },
+    {
+      "name": "verify:orc",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-orc"
+    },
+    {
+      "name": "verify:evaluator",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-evaluator"
+    },
+    {
+      "name": "verify:multiplayer:browser",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-multiplayer-browser"
+    },
+    {
+      "name": "verify:assets",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-assets"
+    },
+    {
+      "name": "verify:audio",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-audio"
+    },
+    {
+      "name": "verify:audio:signal",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-audio-signal"
+    },
+    {
+      "name": "verify:webkit",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-webkit"
+    },
+    {
+      "name": "verify:reconnect",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-reconnect"
+    },
+    {
+      "name": "verify:reconnect:browser",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-reconnect-browser"
+    },
+    {
+      "name": "verify:npcs:lods",
+      "status": "passed",
+      "exitCode": 0,
+      "evidenceDirectory": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-npcs-lods"
+    }
+  ],
+  "openDefects": [
+    "Zero-XP online client may forge level 999 and arbitrary build.",
+    "Current state revision may forge maxHealth/health 600 without earned upgrades.",
+    "Fresh level 1/XP 0 client may forge maximum damage/cadence/area/projectile multipliers.",
+    "Unauthenticated solo session POST accepts fabricated totals and repeated cumulative submission.",
+    "Enemy projectile endpoint-only test misses a grazing crossing: source-matched extracted CPU function reproduces no damage.",
+    "Local multiplayer button hardcodes remote production URL, leaving local candidate and selected-character storage.",
+    "Six full-suite natural frames exceed 50 ms. Follow-up tracing reproduces 100 ms frame dominated by synchronous shader-program first-use/uniform initialization during gameplay; other recorded spikes remain unattributed.",
+    "Historical unexpected natural pause remains open/not-reproduced.",
+    "Mobile canvas sharpness, tree occlusion/static distant poses, duplicate Solo and small/truncated floating pickup label require further polish."
+  ],
+  "missingEvidence": [
+    "Physical iOS/Android play, simultaneous inputs, safe areas/keyboard, GPU/thermal performance.",
+    "Human perceptual audio listening and combat-feel review.",
+    "Every applicable VFX natural trigger and temporal dense-live-combat readability.",
+    "Distinct caster/heavy monster choreography; staged Lich/Brute not installed.",
+    "Exhaustive screen-reader/contrast/zoom/remapping and redundant gameplay cue review.",
+    "Long-session soak and broader adverse-network cases beyond selected dropped messages/reconnect."
+  ],
+  "scope": "Paths/hashes identify artifacts. TypeSafe Jev is text-only and cannot inspect referenced media. Explicit natural input is distinct from seeded/IPC/catalogue fixtures. Automated suite pass is not a score and does not clear supplemental failures.",
+  "createdAt": "2026-09-18T19:21:31.358205+00:00",
+  "performanceSamples": [
+    {
+      "scenario": "desktop",
+      "syntheticFixture": true,
+      "physicalMobile": false,
+      "evidence": {
+        "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance/desktop.json",
+        "sha256": "9adfe0073b33bb0e21ba79a1544986141d3da02493700de2786750c3c4f28b25"
+      },
+      "frames": 722,
+      "durationMs": 12016.2,
+      "averageFps": 60,
+      "frameTimeP95Ms": 16.8,
+      "frameTimeP99Ms": 16.8,
+      "worstFrameMs": 16.8,
+      "framesOver50Ms": 0,
+      "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence",
+      "enemies": 94,
+      "quality": "high",
+      "drawCalls": 142,
+      "renderIntegrity": {
+        "activeZombies": 94,
+        "renderedAsMesh": 94,
+        "renderedAsInstance": 0,
+        "invisibleZombies": 0,
+        "invisibleThreats": 0,
+        "closeInstancedThreats": 0,
+        "objectAllocWarnings": 0
+      }
+    },
+    {
+      "scenario": "mobile",
+      "syntheticFixture": true,
+      "physicalMobile": false,
+      "evidence": {
+        "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance/mobile.json",
+        "sha256": "42aa5461f25d58219500feb9e9bd83046b7da0c8455a00570a2f590afbb76b7e"
+      },
+      "frames": 719,
+      "durationMs": 11999.4,
+      "averageFps": 59.8,
+      "frameTimeP95Ms": 16.8,
+      "frameTimeP99Ms": 16.8,
+      "worstFrameMs": 49.9,
+      "framesOver50Ms": 0,
+      "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence",
+      "enemies": 94,
+      "quality": "medium",
+      "drawCalls": 65,
+      "renderIntegrity": {
+        "activeZombies": 94,
+        "renderedAsMesh": 41,
+        "renderedAsInstance": 53,
+        "invisibleZombies": 0,
+        "invisibleThreats": 0,
+        "closeInstancedThreats": 0,
+        "objectAllocWarnings": 0
+      }
+    },
+    {
+      "scenario": "desktop-lv16",
+      "syntheticFixture": true,
+      "physicalMobile": false,
+      "evidence": {
+        "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance-lv16/desktop-lv16.json",
+        "sha256": "c6ca956bb6d23ed07ce0346a04461cdb7f5529818f5e2c2f66ca1c0be5916c4a"
+      },
+      "frames": 719,
+      "durationMs": 12016.3,
+      "averageFps": 59.8,
+      "frameTimeP95Ms": 16.7,
+      "frameTimeP99Ms": 16.8,
+      "worstFrameMs": 66.7,
+      "framesOver50Ms": 1,
+      "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence",
+      "enemies": 362,
+      "quality": "low",
+      "drawCalls": 168,
+      "renderIntegrity": {
+        "activeZombies": 362,
+        "renderedAsMesh": 142,
+        "renderedAsInstance": 220,
+        "invisibleZombies": 0,
+        "invisibleThreats": 0,
+        "closeInstancedThreats": 0,
+        "objectAllocWarnings": 0
+      }
+    },
+    {
+      "scenario": "iphone17-lv16",
+      "syntheticFixture": true,
+      "physicalMobile": false,
+      "evidence": {
+        "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-performance-lv16/iphone17-lv16.json",
+        "sha256": "ac2960ca984b99fa3d6afe0abc556685a6e03fdf280236be000e983eb7f11292"
+      },
+      "frames": 722,
+      "durationMs": 12016.1,
+      "averageFps": 60,
+      "frameTimeP95Ms": 16.7,
+      "frameTimeP99Ms": 16.8,
+      "worstFrameMs": 16.8,
+      "framesOver50Ms": 0,
+      "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence",
+      "enemies": 362,
+      "quality": "low",
+      "drawCalls": 112,
+      "renderIntegrity": {
+        "activeZombies": 362,
+        "renderedAsMesh": 84,
+        "renderedAsInstance": 278,
+        "invisibleZombies": 0,
+        "invisibleThreats": 0,
+        "closeInstancedThreats": 0,
+        "objectAllocWarnings": 0
+      }
+    }
+  ],
+  "naturalRuns": [
+    {
+      "character": "warrior",
+      "evidence": {
+        "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior.json",
+        "sha256": "76e84e4d11e9cb32d6cc4262b0b8ba1a92708d5b492a67c6c3bf25f51c74d42a"
+      },
+      "status": "passed",
+      "sourceChangedDuringRun": false,
+      "durationMs": 100063,
+      "coverage": {
+        "actualKillsObserved": true,
+        "maxKillsInOneLife": 21,
+        "maxWave": 1,
+        "maxLevel": 3,
+        "actualXpObserved": true,
+        "upgrades": "observed",
+        "death": "observed naturally",
+        "restart": "observed after natural death",
+        "humanFeelReview": "pending",
+        "physicalMobile": false
+      },
+      "upgrades": 5,
+      "naturalDeaths": 4,
+      "restarts": 4,
+      "frameSample": {
+        "frames": 5986,
+        "firstFramePerformanceMs": 1617,
+        "durationMs": 100046.1,
+        "averageFps": 59.822421863520916,
+        "p95Ms": 16.79999999998836,
+        "p99Ms": 16.80000000000291,
+        "worstMs": 183.29999999999563,
+        "framesOver50Ms": 2,
+        "slowFrames": [
+          {
+            "elapsedMs": 58547.7,
+            "frameMs": 83.29999999999563
+          },
+          {
+            "elapsedMs": 62064.2,
+            "frameMs": 183.29999999999563
+          }
+        ],
+        "mainThreadLongTasks": [
+          {
+            "startTime": 30467.700000047684,
+            "duration": 59,
+            "name": "self"
+          },
+          {
+            "startTime": 60082.299999952316,
+            "duration": 98,
+            "name": "self"
+          },
+          {
+            "startTime": 63499.89999985695,
+            "duration": 191,
+            "name": "self"
+          }
+        ],
+        "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+      }
+    },
+    {
+      "character": "dwarf",
+      "evidence": {
+        "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-dwarf.json",
+        "sha256": "014545703e322768aec551af20521878249f75706e6361a20f6886935c0085e3"
+      },
+      "status": "passed",
+      "sourceChangedDuringRun": false,
+      "durationMs": 100059,
+      "coverage": {
+        "actualKillsObserved": true,
+        "maxKillsInOneLife": 55,
+        "maxWave": 2,
+        "maxLevel": 5,
+        "actualXpObserved": true,
+        "upgrades": "observed",
+        "death": "observed naturally",
+        "restart": "observed after natural death",
+        "humanFeelReview": "pending",
+        "physicalMobile": false
+      },
+      "upgrades": 8,
+      "naturalDeaths": 1,
+      "restarts": 1,
+      "frameSample": {
+        "frames": 5973,
+        "firstFramePerformanceMs": 1570.7,
+        "durationMs": 100029.40000000001,
+        "averageFps": 59.702447480440746,
+        "p95Ms": 16.79999999998836,
+        "p99Ms": 16.80000000000291,
+        "worstMs": 183.29999999999563,
+        "framesOver50Ms": 4,
+        "slowFrames": [
+          {
+            "elapsedMs": 36298.600000000006,
+            "frameMs": 83.30000000000291
+          },
+          {
+            "elapsedMs": 40848.4,
+            "frameMs": 183.29999999999563
+          },
+          {
+            "elapsedMs": 42115.100000000006,
+            "frameMs": 50.10000000000582
+          },
+          {
+            "elapsedMs": 98529.5,
+            "frameMs": 116.69999999999709
+          }
+        ],
+        "mainThreadLongTasks": [
+          {
+            "startTime": 37787.39999985695,
+            "duration": 82,
+            "name": "self"
+          },
+          {
+            "startTime": 42237.39999985695,
+            "duration": 188,
+            "name": "self"
+          },
+          {
+            "startTime": 43637.299999952316,
+            "duration": 64,
+            "name": "self"
+          },
+          {
+            "startTime": 99985.59999990463,
+            "duration": 115,
+            "name": "self"
+          }
+        ],
+        "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+      }
+    }
+  ],
+  "resourceChecks": {
+    "characterSwitches": {
+      "baseline": {
+        "geometries": 67,
+        "textures": 27
+      },
+      "switches": [
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "dwarf",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        },
+        {
+          "character": "warrior",
+          "resources": {
+            "geometries": 67,
+            "textures": 27
+          }
+        }
+      ]
+    },
+    "deathRestarts": {
+      "observed": true,
+      "counts": [
+        {
+          "geometries": 68,
+          "textures": 28
+        },
+        {
+          "geometries": 68,
+          "textures": 28
+        },
+        {
+          "geometries": 68,
+          "textures": 28
+        }
+      ]
+    }
+  },
+  "audioMeasurement": {
+    "durationSeconds": 15.872,
+    "capturedPeakDbFS": -7.614662319757683,
+    "capture": "Actual final compressor PCM; test-only silent tap"
+  },
+  "runtimeDiagnostics": {
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "failedRequests": 0,
+    "httpErrors": 0,
+    "reports": 36,
+    "warnings": [
+      {
+        "report": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-audio/audio-runtime.json",
+        "warning": "The ScriptProcessorNode is deprecated. Use AudioWorkletNode instead. (https://bit.ly/audio-worklet)"
+      }
+    ]
+  },
+  "directReviews": {
+    "path": "docs/quality-review-20260918T190858.json",
+    "sha256": "c6dbd589af3716b2dcf764ce9ddc7e889b95df24256f4c8faf0e0df2f05cceb9"
+  },
+  "supplementalFindings": {
+    "path": "docs/quality-findings-20260918T190858.json",
+    "sha256": "9e796cbac85aafa347ad7dd82bb1778cc92a84dcf15169e4af3cfa93ac0c2db6"
+  },
+  "scoresAssignedByAudit": false,
+  "automatedSuitePassed": true,
+  "allCriteriaAt10Established": false,
+  "postSuiteDiagnostic": {
+    "path": "docs/quality-trace-20260918T190858.json",
+    "sha256": "2d38d3e71e2998eb56c45bf2d95ed1c778ce7a3a63326d956cf8ee765dc8f574",
+    "scope": "Separate100s Aldric natural run on same114-file source with CDP tracing and1ms CPU sampling. One100ms frame reproduced; trace dataLoss=false. Diagnostic overhead present; not a replacement benchmark.",
+    "finding": "98.665ms main-thread task in animate/render;95ms sampled in renderer,83.526ms inclusive in WebGLProgram onFirstUse/getUniforms, repeated synchronous GLES2 GetProgramiv waits. No overlapping screenshot or GC event in this task; other historical spikes not individually attributed."
+  },
+  "sourceChangesAfterSuiteObservedAtReportTime": []
+}

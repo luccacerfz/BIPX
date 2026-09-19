@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#07141b" />
+    <meta name="description" content="Entre no cemitério de BIPX. Sobreviva à horda, reúna poderes e enfrente a noite." />
+    <title>BIPX — Noite Zumbi</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2307141b'/%3E%3Cpath d='M32 8 48 32 32 56 16 32Z M32 8V56 M16 32H48' fill='none' stroke='%23c6a675' stroke-width='2'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/src/ui/arpg-painted.css" />
+  <link id="candidate-style" rel="stylesheet" href="./candidate.css">
+<style>.fixture-label {position:fixed;right:12px;top:8px;z-index:20;pointer-events:none;color:#e8cf9d;background:#07141b;padding:5px 8px;font:10px system-ui}.game-tools{display:none}</style></head>
+  <body>
+    <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+      <symbol id="icon-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></symbol>
+      <symbol id="icon-time" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="icon-soul" viewBox="0 0 24 24"><path d="m12 2 7 10-7 10-7-10Zm0 0v20M5 12h14"/></symbol>
+      <symbol id="icon-score" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m12 7 3 5-3 5-3-5Z"/></symbol>
+      <symbol id="icon-skull" viewBox="0 0 24 24"><path d="M8 17H6l-2-3V9a8 8 0 0 1 16 0v5l-2 3h-2v4H8ZM11 17v4m2-4v4"/><path d="M7 10h3v3H7Zm7 0h3v3h-3Z"/></symbol>
+      <symbol id="icon-wave" viewBox="0 0 24 24"><path d="M2 8c4-7 6 7 10 0s6 7 10 0M2 16c4-7 6 7 10 0s6 7 10 0"/></symbol>
+      <symbol id="icon-blade" viewBox="0 0 24 24"><path d="m5 19 3-3m-2-3 5 5m-3-4L18 4l2-1-1 5L9 17M3 21l2-2"/></symbol>
+      <symbol id="icon-rifle" viewBox="0 0 24 24"><path d="m3 18 3-5 4-1 1 2-6 6Zm5-6 3-3 3 3-3 3m1-5 7-7 2 2-7 7m-3 1 2 3 2-2m0-6 2 2M18 3l3 3"/></symbol>
+      <symbol id="icon-crown" viewBox="0 0 24 24"><path d="m3 6 5 5 4-7 4 7 5-5-3 13H6ZM6 16h12"/></symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></symbol>
+      <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3m0 3v.1"/></symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    </defs></svg>
+    <main id="app" aria-label="BIPX — Noite Zumbi">
+      <canvas id="game-canvas" tabindex="-1" aria-label="Cemitério e campo de batalha">BIPX precisa de um navegador com WebGL para desenhar o cemitério. Ative a aceleração gráfica e atualize a página.</canvas>
+      <div class="game-tools">
+        <button id="audio-toggle" class="audio-toggle" type="button" aria-pressed="false" aria-label="Ativar ou silenciar áudio">Som: ON</button>
+        <button id="pause-button" class="pause-button" type="button" aria-label="Pausar e abrir opções" title="Pausar · Esc"><svg class="ui-icon" aria-hidden="true"><use href="#icon-pause"/></svg></button>
+      </div>
+      <section class="hud survivor-hud" aria-label="Status da partida">
+        <div class="xp__track survivor-hud__xp" aria-hidden="true"><div id="xp-fill" class="xp__fill"></div></div>
+        <div class="survivor-hud__row survivor-hud__row--stats">
+          <span class="hud__stat" title="Tempo de sobrevivência"><svg class="ui-icon" aria-hidden="true"><use href="#icon-time"/></svg><strong id="time-value">00:00</strong></span>
+          <span class="hud__stat" title="Experiência"><svg class="ui-icon" aria-hidden="true"><use href="#icon-soul"/></svg><strong id="xp-value">0/18</strong></span>
+          <span class="hud__stat" title="Pontuação"><svg class="ui-icon" aria-hidden="true"><use href="#icon-score"/></svg><strong id="score">0</strong></span>
+          <span class="hud__stat" title="Inimigos eliminados"><svg class="ui-icon" aria-hidden="true"><use href="#icon-skull"/></svg><strong id="kills">0</strong></span>
+          <span class="hud__stat hud__stat--online"><strong id="online-count">Solo</strong><small id="online-status">Local</small></span>
+          <span class="hud__stat hud__stat--level">Nv. <strong id="level-value">1</strong></span>
+        </div>
+        <div class="survivor-hud__row survivor-hud__row--combat">
+          <div class="health" aria-label="Vida"><div class="health__track" aria-hidden="true"><div id="health-fill" class="health__fill"></div></div><strong id="health-value">100/100</strong></div>
+          <span class="hud__stat" title="Onda atual"><svg class="ui-icon" aria-hidden="true"><use href="#icon-wave"/></svg><strong id="wave">1</strong></span>
+          <span class="hud__stat hud__stat--weapon"><svg class="ui-icon" aria-hidden="true"><use href="#icon-blade"/></svg><strong id="weapon-name">Pistola</strong><small id="weapon-timer">Pronta</small></span>
+        </div>
+        <div id="skill-list" class="skill-list" aria-label="Poderes equipados"><span class="skill-chip"><span>✧</span><small>Nv. 1</small></span></div>
+        <div id="party-list" class="party-list" aria-label="Ranking dos jogadores"></div>
+      </section>
+      <section id="arpg-hud" class="arpg-hud arpg-art-v3" aria-label="Vida, recurso e habilidades de classe" hidden></section>
+      <section id="upgrade-panel" class="upgrade-panel is-hidden" aria-label="Escolha de poder">
+        <span id="upgrade-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
+        <div class="upgrade-panel__shell"><p class="upgrade-panel__kicker">A noite concede um poder</p><h2>Escolha sua evolução</h2><p class="upgrade-panel__copy">Use 1, 2 ou 3 para escolher. A horda continua avançando.</p><div id="upgrade-options" class="upgrade-options"></div></div>
+      </section>
+      <section id="message" class="message" aria-label="Menu principal">
+        <div class="main-menu__region"><svg class="ui-icon" aria-hidden="true"><use href="#icon-soul"/></svg><span>Um ritual de sobrevivência</span></div>
+        <div class="message__panel main-menu">
+          <div class="main-menu__brand" aria-label="BIPX Noite Zumbi">
+            <div class="brand-sigil" aria-hidden="true"><span></span><svg viewBox="0 0 42 54"><path d="m21 2 15 25-15 25L6 27Zm0 0v50M6 27h30M11 11l20 32m0-32L11 43"/></svg><span></span></div>
+            <h1 id="message-title">BIPX</h1><p id="message-kicker" class="message__kicker">Noite Zumbi</p>
+          </div>
+          <p class="main-menu__story">O cemitério desperta.<br>Faça a noite lembrar seu nome.</p>
+        </div>
+        <div class="mode-actions main-menu__actions" aria-label="Menu principal">
+          <button id="open-login-button" class="primary-button main-menu__button" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-play"/></svg><span>Entrar na noite</span><kbd>Enter</kbd></button>
+          <button id="menu-ranking-button" class="secondary-button main-menu__button" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-crown"/></svg><span>Hall dos sobreviventes</span></button>
+          <div class="main-menu__utilities"><button id="menu-help-button" class="text-button" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-help"/></svg>Como jogar</button><button id="menu-settings-button" class="text-button" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-settings"/></svg>Opções</button></div>
+        </div>
+        <div class="main-menu__login main-menu__login--characters" aria-label="Preparar partida">
+          <button id="login-back-button" class="main-menu__back" type="button">← Voltar</button><strong>Deixe sua marca.</strong><p id="message-copy">Escolha seu nome antes de entrar no cemitério.</p>
+          <fieldset id="character-picker" class="character-picker" aria-describedby="character-status" disabled>
+            <legend>Escolha seu sobrevivente</legend>
+            <div class="character-options">
+              <label class="character-option" for="character-warrior">
+                <input id="character-warrior" type="radio" name="character" value="warrior" aria-describedby="character-warrior-description" checked />
+                <span class="character-option__body"><span class="character-option__portrait"><img src="/assets/ui/portraits/aldric.png" width="384" height="300" alt="" decoding="async" /><svg class="ui-icon character-option__icon" aria-hidden="true"><use href="#icon-blade"/></svg></span><strong id="character-warrior-name">Aldric</strong><span class="character-option__weapon">Guerreiro · <span id="character-warrior-weapon">Espada</span></span><small id="character-warrior-description">Combate corpo a corpo. Avance e corte a horda.</small><span class="character-option__selection" aria-hidden="true">Selecionado</span></span>
+              </label>
+              <label class="character-option" for="character-dwarf">
+                <input id="character-dwarf" type="radio" name="character" value="dwarf" aria-describedby="character-dwarf-description" />
+                <span class="character-option__body"><span class="character-option__portrait"><img src="/assets/ui/portraits/lyra.png" width="384" height="300" alt="" decoding="async" /><svg class="ui-icon character-option__icon" aria-hidden="true"><use href="#icon-rifle"/></svg></span><strong id="character-dwarf-name">Lyra</strong><span class="character-option__weapon">Atiradora · <span id="character-dwarf-weapon">Rifle</span></span><small id="character-dwarf-description">Combate à distância. Mire e mantenha espaço.</small><span class="character-option__selection" aria-hidden="true">Selecionado</span></span>
+              </label>
+            </div>
+          </fieldset>
+          <div class="character-status-row"><p id="character-status" class="character-status" role="status" aria-live="polite">Preparando personagens…</p><button id="character-retry-button" class="character-retry" type="button" hidden>Tentar novamente</button></div>
+          <label class="name-field" for="player-name"><span>Nome do sobrevivente</span><input id="player-name" maxlength="16" autocomplete="nickname" placeholder="Seu nome" /></label>
+          <div class="mode-actions main-menu__login-actions" aria-label="Escolha o modo de jogo"><button id="play-button" class="primary-button main-menu__button" type="button" disabled><svg class="ui-icon" aria-hidden="true"><use href="#icon-play"/></svg><span id="play-button-label">Sobreviver sozinho</span></button><button id="multiplayer-button" class="secondary-button main-menu__button" type="button" disabled><span>Entrar no multiplayer</span></button></div>
+          <p class="main-menu__login-tip">Mova-se. Recolha as almas. Transforme-as em poder.</p>
+        </div>
+        <div class="main-menu__ranking" aria-label="Hall dos sobreviventes">
+          <div class="main-menu__ranking-header"><button id="ranking-back-button" class="main-menu__back" type="button">← Voltar</button><div><p class="main-menu__ranking-kicker">Quem enfrentou a noite</p><h2>Hall dos sobreviventes</h2></div><span id="menu-leaderboard-count">0 jogadores</span></div>
+          <p id="leaderboard-scope" class="ranking-scroll-hint">Recordes solo neste navegador</p>
+          <p class="ranking-scroll-hint">Deslize a tabela para ver todos os resultados.</p>
+          <div class="main-menu__ranking-table" role="table" aria-label="Ranking histórico detalhado" tabindex="0"><div class="main-menu__ranking-row main-menu__ranking-row--head" role="row"><span>#</span><span>Sobrevivente</span><span>Abates</span><span>Nível</span><span>Pontuação</span><span>Tempo</span><span>Poderes</span></div><ol id="menu-leaderboard-list" class="main-menu__ranking-list"></ol></div>
+        </div>
+        <div class="main-menu__scene-caption" aria-hidden="true"><span class="scene-caption__line"></span><p>Além dos portões<br><strong>só resta sobreviver.</strong></p></div>
+        <footer class="main-menu__footer"><span>BIPX</span><p>Enfrente a horda. Recolha almas. Escolha seus poderes.</p><span class="main-menu__input-hint">Teclado + mouse ou toque</span></footer>
+      </section>
+      <section class="touch-controls" aria-label="Controles de toque"><div id="touch-stick" class="touch-stick" role="img" aria-label="Arraste para mover"><div id="touch-knob" class="touch-stick__knob"></div></div><button id="touch-fire" class="touch-fire" type="button" aria-label="Segure para atacar e arraste para mirar"><span aria-hidden="true"></span></button></section>
+      <details class="leaderboard-panel" aria-label="Ranking da partida"><summary class="leaderboard-panel__title"><strong>Sobreviventes</strong><span id="leaderboard-count">0 jogadores</span></summary><ol id="leaderboard-list" class="leaderboard-list"></ol></details>
+      <div id="first-run-hint" class="first-run-hint" hidden><span class="desktop-control-copy"><kbd>W A S D</kbd> mover <i></i><kbd>Mouse</kbd> mirar e atacar <i></i><kbd>1 2 3</kbd> habilidades <i></i><kbd>Esc</kbd> opções</span><span class="touch-control-copy">Esquerda: mover. Direita: mirar e atacar. Barra: habilidades.</span><button type="button" aria-label="Dispensar dica">×</button></div>
+    </main>
+    <dialog id="game-dialog" class="game-dialog" aria-labelledby="dialog-title">
+      <div class="game-dialog__header"><h2 id="dialog-title">Opções</h2><button id="dialog-close" class="dialog-close" type="button" aria-label="Fechar opções">×</button></div>
+      <p id="dialog-game-status" class="dialog-game-status" hidden></p>
+      <nav class="dialog-tabs" aria-label="Painel de opções"><button id="settings-tab" class="dialog-tab" type="button" aria-pressed="true">Opções</button><button id="controls-tab" class="dialog-tab" type="button" aria-pressed="false">Como jogar</button></nav>
+      <div id="settings-content" class="dialog-content">
+        <label class="setting-row" for="quality-select"><span><strong>Qualidade visual</strong><small>Automática se adapta ao seu dispositivo.</small></span><select id="quality-select"><option value="auto">Automática</option><option value="high">Alta</option><option value="medium">Média</option><option value="low">Leve</option></select></label>
+        <label class="setting-row" for="motion-toggle"><span><strong>Reduzir movimento</strong><small>Suaviza animações e desativa tremores de câmera.</small></span><input id="motion-toggle" type="checkbox" role="switch" /></label>
+        <label class="setting-row" for="contrast-toggle"><span><strong>Contraste do painel</strong><small>Reforça o fundo das informações da partida.</small></span><input id="contrast-toggle" type="checkbox" role="switch" /></label>
+        <label class="setting-row" for="sound-toggle"><span><strong>Som do jogo</strong><small>Ambiente, ataques e efeitos de combate.</small></span><input id="sound-toggle" type="checkbox" role="switch" checked /></label>
+      </div>
+      <div id="controls-content" class="dialog-content" hidden><p class="controls-intro">Continue em movimento. Recolha as almas deixadas pela horda para subir de nível e escolher novos poderes.</p><dl class="control-list"><div><dt>Mover</dt><dd><kbd>W A S D</kbd><span>ou setas</span></dd></div><div><dt>Mirar</dt><dd>Mouse <span>ou</span> <kbd>I J K L</kbd></dd></div><div><dt>Atacar</dt><dd>Clique ou <kbd>Espaço</kbd></dd></div><div><dt>Habilidades de classe</dt><dd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></dd></div><div><dt>Escolher evolução</dt><dd>1, 2 ou 3 com as opções abertas</dd></div><div><dt>Abrir opções</dt><dd><kbd>Esc</kbd></dd></div></dl><p class="touch-instructions">No celular, arraste o controle esquerdo para mover. Segure o direito para atacar e arraste para mirar. Toque nas três habilidades da barra inferior para lançá-las na direção da mira.</p></div>
+      <button id="dialog-done" class="primary-button" type="button">Concluído</button>
+    </dialog>
+    
+    
+    
+  <aside class="fixture-label">Fixture GUI · sem jogo/rede</aside>
+<script>
+const proposed = new URLSearchParams(location.search).get('variant') !== 'before';
+const menu=document.querySelector('#message'), button=document.querySelector('#play-button');
+document.querySelector('#candidate-style').disabled=!proposed;
+menu.classList.add('message--login');
+if(proposed)menu.dataset.runStartRejected='true';
+document.querySelector('#message-title').textContent=proposed?'BIPX':'Entrada indisponível';
+document.querySelector('#message-kicker').textContent=proposed?'Noite Zumbi':'Aguarde um instante';
+document.querySelector('#message-copy').textContent=proposed?'Entrada indisponível. Ainda não há espaço livre para aparecer. Tente novamente em instantes.':'Ainda não há espaço livre para aparecer. Tente novamente em instantes.';
+if(proposed){document.querySelector('#message-copy').setAttribute('role','status');button.setAttribute('aria-describedby','message-copy');}
+document.querySelector('#play-button-label').textContent='Tentar novamente';
+document.querySelector('#player-name').value='Spawn browser';
+document.querySelector('#character-status').textContent='Aldric pronto para a noite.';
+document.querySelector('#character-picker').disabled=false;
+for(const e of document.querySelectorAll('.mode-actions button'))e.disabled=false;
+window.fixtureClicks=0;button.addEventListener('click',()=>window.fixtureClicks++);
+window.fixtureReady=true;
+</script></body>
+</html>

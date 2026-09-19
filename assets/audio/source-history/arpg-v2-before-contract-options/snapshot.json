@@ -1,0 +1,10 @@
+{
+  "createdAt": "2026-09-19T00:20:09.599807+00:00",
+  "reason": "Preserve delivered v2 before aligning direct status/options API with combat-v2-contract",
+  "sourceHashes": {
+    "src/audio/sample-bank.js": "43ae31345380a687377e9f7d413c0e03566a86e8eb70601afd0c9b0cadb9b3cb",
+    "src/audio/skill-sounds.js": "212c304dcbf5dd67e46a374790d0c79d5a8eca59d9ace857ce1a21b1a9d28328",
+    "tools/audio-arpg-loop-verify.mjs": "ff9df0aa307d49fd97d320d2f52b210a29a4941ba312438e155b6d9e22a47100",
+    "docs/arpg/sfx-handoff.md": "54c780f10b85cce423a45c4ad90844f7f751b038b6c28545e1f1ac15882775a7"
+  }
+}

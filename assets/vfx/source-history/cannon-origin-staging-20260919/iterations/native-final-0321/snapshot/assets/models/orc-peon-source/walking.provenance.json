@@ -1,0 +1,14 @@
+{
+  "source": "/Users/luccacerf/Projetos/Assets/Characters/Arthas/Animations/Mixamo_ActionAdventure/walking.fbx",
+  "sourceSha256": "4c4cbf54589d7bbd963e18d18f5141264aa66cc7e93462d9d5e3aedd8f6dfe93",
+  "sourcePreserved": true,
+  "output": "assets/models/orc-peon-source/mixamo-walking.glb",
+  "outputSha256": "29a0b5fedafa493183cf1b44dc0bd55fee3770169305e450ab18d1b1db03a4c5",
+  "frames": [
+    1.0,
+    32.0
+  ],
+  "fps": 30,
+  "bones": 65,
+  "blender": "5.2.0 LTS"
+}

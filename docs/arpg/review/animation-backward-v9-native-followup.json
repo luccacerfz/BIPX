@@ -1,0 +1,64 @@
+{
+  "at": "2026-09-19T04:38:22.711062+00:00",
+  "reviewer": "Root",
+  "decision": "native diagnostic completed; no obvious gross new pose break in five viewed stills, no continuous-flow or no-slide approval",
+  "report": "output/playwright/arpg-animation-backward-v9-ab-1789792325630/report.json",
+  "sourceStable": true,
+  "errors": [],
+  "runtimeDrift": [],
+  "realTimePlaybackVerifiedFromTelemetry": [
+    {
+      "name": "turn-6.5-30hz-close",
+      "wallDuration": 2.0402999999046325,
+      "simulationDuration": 2.033333333333333,
+      "maxRenderGapMS": 16.800000000000182
+    },
+    {
+      "name": "turn-6.5-30hz-game",
+      "wallDuration": 2.0486999999523166,
+      "simulationDuration": 2.033333333333333,
+      "maxRenderGapMS": 16.800000000000182
+    },
+    {
+      "name": "turn-6.5-60hz-close",
+      "wallDuration": 2.0184999999046327,
+      "simulationDuration": 2.0166666666666666,
+      "maxRenderGapMS": 16.800000000000182
+    },
+    {
+      "name": "turn-6.5-60hz-game",
+      "wallDuration": 2.026799999809265,
+      "simulationDuration": 2.0166666666666666,
+      "maxRenderGapMS": 16.800000000000182
+    }
+  ],
+  "imagesActuallyViewed": [
+    {
+      "file": "output/playwright/arpg-animation-backward-v9-ab-1789792325630/turn-6.5-60hz-close-frame111.png",
+      "sha256": "367965cecae969242a4c581d5b5114ec14e1bd19574b51f53932815e5a98c0f9"
+    },
+    {
+      "file": "output/playwright/arpg-animation-backward-v9-ab-1789792325630/turn-6.5-60hz-close-frame112.png",
+      "sha256": "c9d4f21749873c855bf5de1d7e8e333ef684067c59e94f8787369bc441ab59e2"
+    },
+    {
+      "file": "output/playwright/arpg-animation-backward-v9-ab-1789792325630/turn-6.5-60hz-game-frame112.png",
+      "sha256": "217162be6217aaa53baa76b75083aa6453c46642069d75769bafc8592d925873"
+    },
+    {
+      "file": "output/playwright/arpg-animation-backward-v9-ab-1789792325630/turn-6.5-30hz-close-frame55.png",
+      "sha256": "1c4f6216753757474da6504f20b6360e45d6f48ff9746596ce36e19c8fed6bc9"
+    },
+    {
+      "file": "output/playwright/arpg-animation-backward-v9-ab-1789792325630/turn-6.5-30hz-close-frame56.png",
+      "sha256": "e00b332cbb7dc3739d9acb13c14d597978919584415759a041fb22e950ecde03"
+    }
+  ],
+  "observations": [
+    "At111→112 and55→56 the boot enters swing; pose differences are locally small in stills, no basis to reject on swing speed magnitude alone.",
+    "ARPG still112 does not show an obvious gross difference between candidates.",
+    "Physical patch and declared stance are reported separately; frame111 has stance flag but0qualified vertices.",
+    "Five posed landmark screenshots are not continuous playback review, though four real-time recordings and timing telemetry exist."
+  ],
+  "next": "After owner current perceptual review, extend same CPU trajectory to encompass following full strides and landing before further pose solver search; keep physical criteria and all coverage explicit. No broad matrix or runtime promotion."
+}

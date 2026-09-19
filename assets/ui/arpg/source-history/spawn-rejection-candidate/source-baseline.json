@@ -1,0 +1,12 @@
+{
+  "preparedAt": "2026-09-19T02:27:45.088318+00:00",
+  "source": {
+    "index.html": "f3f909164742d1d79303fbc914b343d20d19585ced0fb198150912854bf8474c",
+    "styles.css": "41fedcf08a00261200324e3a929f1dedc9f4a7b4165318018a19d5cef67cac11",
+    "src/main.js": "10bc061d6907d87a476217955ce7fa4bba14e6530e5562ebc9b45b657a8b0add",
+    "src/ui/arpg-hud.js": "9f0f35dd4f80d71e6df073dc52707373a1068e212b45aed83c308d897d3b8927",
+    "src/ui/arpg-painted.css": "f143b4e2c1256b70bd7d30877dcfb4ae6bc4d2f6837f0d7259204c0b728267da",
+    "src/ui/presentation.js": "c846d5b334a77e178de44148ad49285f251c1b5b9223431ba8486c83f9bc944b"
+  },
+  "scope": "Static DOM fixture from current index without game scripts. No background gameplay image. No runtime import or promotion."
+}

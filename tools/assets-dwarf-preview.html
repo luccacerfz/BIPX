@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Lyra Brasswarden — runtime asset review</title>
+<style>body{margin:0;background:#101c23;color:#ded5b9;font:14px monospace}canvas{display:block}#label{position:absolute;top:20px;left:20px}</style>
+<div id="label">Lyra Brasswarden · exported GLB review</div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {loadDwarfVisual} from '../src/assets/dwarf-library.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#172630');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);camera.position.set(3,2.1,-5.5);camera.lookAt(0,1.1,0);
+scene.add(new THREE.HemisphereLight(0xb1d3df,0x444039,2));
+for(const [color,intensity,x,y,z]of[[0xffdaa8,4,-4,6,-3],[0x7bc5eb,3,4,5,4]]){const light=new THREE.DirectionalLight(color,intensity);light.position.set(x,y,z);scene.add(light);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x22333b,roughness:.95}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+const parent=new THREE.Group();scene.add(parent);
+const hero=await loadDwarfVisual({THREE,parent,height:2.2});
+let speed=0,dead=false,paused=new URLSearchParams(location.search).has('manual');
+window.assetReview={THREE,hero,scene,renderer,camera,ready:true,setState(s){speed=s.speed||0;dead=Boolean(s.dead);if(s.attack)hero.attack({duration:s.duration||.267});},step(dt){hero.update(dt,{speed,dead});renderer.render(scene,camera);},pause(value=true){paused=value;}};
+const clock=new THREE.Clock();
+function frame(){const dt=clock.getDelta();if(!paused)hero.update(dt,{speed,dead});renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+</script></html>

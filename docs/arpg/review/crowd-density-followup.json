@@ -1,0 +1,92 @@
+{
+  "reviewedAt": "2026-09-19T02:33:47.779805+00:00",
+  "scope": "Root static diff inspection and review of owner paired CPU reports. No independent rerun, native cost, or runtime promotion.",
+  "candidatePath": "output/physics/crowd-density-20260919/candidate/contacts.mjs",
+  "candidateSha256": "912c00fe18457ac0951812d31a6215bbff1cb01b05e9fae619e8aa2cbe4db6d4",
+  "runtimeSha256": "290a3f35b23e00ff86dcb5dad6911c5e8dfbda0b517cba4e7a63a02b69f07a80",
+  "report": "output/physics/crowd-density-20260919/2026-09-19T02-27-26-437Z-paired-replay.json",
+  "reportSha256": "79ca9a456555eeb51e61810381d0047bcf51b1da127bd81bfa3138a47ded4e10",
+  "sourceStableReported": true,
+  "measurements": [
+    {
+      "count": 120,
+      "trials": 4,
+      "comparedFrames": 6612,
+      "exactStateSHA256": "f5623dcf43782f384711383449ecc1d57cebaaf91ce9e45b8e671a7ffdd785e9",
+      "baseline": {
+        "samples": 5696,
+        "median": 2.358083999999508,
+        "p95": 2.97820800000045,
+        "max": 5.3929170000010345,
+        "total": 13257.36793799992
+      },
+      "candidate": {
+        "samples": 5696,
+        "median": 1.403083000001061,
+        "p95": 1.762124999999287,
+        "max": 3.115415999999641,
+        "total": 7882.789139000037
+      },
+      "p95ReductionPercent": 40.8327087967321,
+      "worldCreationMs": {
+        "baseline": [
+          0.15641599999980826,
+          0.14379100000041944,
+          0.34425000000010186,
+          0.10224999999991269
+        ],
+        "candidate": [
+          0.15041599999995015,
+          0.13541699999950652,
+          0.1680419999993319,
+          0.12795799999730662
+        ]
+      }
+    },
+    {
+      "count": 400,
+      "trials": 4,
+      "comparedFrames": 3036,
+      "exactStateSHA256": "60a4c6f44f40dbc1be10fbde1ceae193c2bd96147cc2469f151466fd6fcd9872",
+      "baseline": {
+        "samples": 2472,
+        "median": 9.382041999997455,
+        "p95": 15.768125000002328,
+        "max": 22.923833999993803,
+        "total": 27249.263746999863
+      },
+      "candidate": {
+        "samples": 2472,
+        "median": 5.5758330000026035,
+        "p95": 7.948583000004874,
+        "max": 10.13841699999466,
+        "total": 14738.890410999855
+      },
+      "p95ReductionPercent": 49.59081691701645,
+      "worldCreationMs": {
+        "baseline": [
+          0.110833000002458,
+          0.13729199999943376,
+          0.14937500000087311,
+          0.150166999999783
+        ],
+        "candidate": [
+          0.10766700000021956,
+          0.13141600000381004,
+          0.12433299999975134,
+          0.13470899999083485
+        ]
+      }
+    }
+  ],
+  "findings": [
+    "Only immutable worlds created by createCollisionWorld gain a private WeakMap static index; foreign or very small worlds use original full scan.",
+    "Grid candidates preserve original collider index order; exact AABB, vertical window, rounded shape and arena tests remain unchanged.",
+    "Allocation/query limits fall back to complete scan instead of dropping obstacles.",
+    "Baseline replay uses earlier138-collider native arrangement. Environment143 is now promoted; next native comparison must use a common explicit environment candidate for both sides.",
+    "Source-reviewed optimization targets static sweeps/deepest queries, not enemy count, AI cadence, mass/control durations or gameplay speed."
+  ],
+  "acceptedForNextNativeComparison": true,
+  "runtimePromotionApproved": false,
+  "aaaAccepted": false
+}

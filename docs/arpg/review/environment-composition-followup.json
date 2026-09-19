@@ -1,0 +1,84 @@
+{
+  "observedAt": "2026-09-19T02:01:12.671692+00:00",
+  "scope": "Root independently inspected eight original native static A/B PNGs; fixed actors/camera/light, not gameplay or pathfinding approval.",
+  "artDirectionSelectedForIntegration": true,
+  "runtimePromoted": false,
+  "acceptedAAA": false,
+  "images": [
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-baseline-center.png",
+      "sha256": "13a9c1d31622be278248cb1ce89290a49c1925332ac45e893f0be5fd6529be3f"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-candidate-center.png",
+      "sha256": "7415a460f00ec674f83fabead265fab92896dcfe6684d5fd4241a9b906b0cedf"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-baseline-crypt.png",
+      "sha256": "7b5ae9f8950996e93771c47d2179bfb57f950c6b4ddedc3b7ad855cb275c3828"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-candidate-crypt.png",
+      "sha256": "dbb5f35de2cb2ec2b7628dff843bc8388eca49f72c4aa305f3338fb271384d1b"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-baseline-garden.png",
+      "sha256": "53ed991e79c7090b9965b6b712ed568730b2a65ce7e4c867b1414fe2fce17d8f"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-candidate-garden.png",
+      "sha256": "0b12d42fa623eea45be6f07819337b03b27a338d510c6147a1613dd671396c55"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-baseline-maintenance.png",
+      "sha256": "41c295edd3f1571004a6c58bb2526d88010ccc2bc776f0d14541d1dedfe43631"
+    },
+    {
+      "path": "output/playwright/environment-composition-v2-v3/composition-candidate-maintenance.png",
+      "sha256": "24f22c6788fea6603695f5fa84a24d4a9d50659b67492d01ab1ed90f91265eb8"
+    }
+  ],
+  "nativeReports": {
+    "baseline": {
+      "sourceChangedDuringRun": false,
+      "assertions": "passed"
+    },
+    "candidate": {
+      "sourceChangedDuringRun": false,
+      "assertions": "passed"
+    }
+  },
+  "cpuReport": "output/environment/composition-v2/cpu.json",
+  "cpuPassed": true,
+  "cpuChecks": [
+    "143 unique finite colliders with visible source and arena55",
+    "Every solid prop has exactly one declared contact core",
+    "Fewer imported placements and no new derivative families",
+    "Spawn4m, portal and principal cross axes remain clear of candidate changes",
+    "Corridor14m 135 degrees radius0.64",
+    "Corridor14m 135 degrees radius1.3",
+    "Corridor14m 210 degrees radius0.64",
+    "Corridor14m 210 degrees radius1.3",
+    "Corridor14m 270 degrees radius0.64",
+    "Corridor14m 270 degrees radius1.3",
+    "Corridor14m 345 degrees radius0.64",
+    "Corridor14m 345 degrees radius1.3",
+    "Owned production Environment and reused source assets unchanged",
+    "Current Physics same corridor 135 radius0.64",
+    "Current Physics same corridor 135 radius1.3",
+    "Current Physics same corridor 210 radius0.64",
+    "Current Physics same corridor 210 radius1.3",
+    "Current Physics same corridor 270 radius0.64",
+    "Current Physics same corridor 270 radius1.3",
+    "Current Physics same corridor 345 radius0.64",
+    "Current Physics same corridor 345 radius1.3"
+  ],
+  "routes": 8,
+  "colliders": {
+    "before": 138,
+    "candidate": 143,
+    "added": 6,
+    "removed": 1,
+    "changed": 28
+  }
+}

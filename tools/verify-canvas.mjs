@@ -1,17 +1,14 @@
-import fs from "node:fs";
-import path from "node:path";
-import { createRequire } from "node:module";
+import { chromium, browserLaunchOptions, waitForRuntimeAssets, attachQualityTelemetry } from "./quality-browser.mjs";
 
-const url = process.argv[2] ?? "http://127.0.0.1:5173/?autoplay=1";
-const playwrightRoot = findPlaywrightRoot();
-const require = createRequire(import.meta.url);
-const { chromium } = require(playwrightRoot);
+const url = process.argv[2] ?? "http://127.0.0.1:5173/?autoplay=1&offline=1";
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch(browserLaunchOptions);
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const telemetry = attachQualityTelemetry(page, "canvas");
 
 try {
   await page.goto(url, { waitUntil: "networkidle" });
+  await waitForRuntimeAssets(page, telemetry);
   await page.waitForTimeout(2500);
 
   const initial = await page.evaluate(() => window.__zombieNightDebug.getState());
@@ -45,6 +42,8 @@ try {
   const fired = await page.evaluate(() => window.__zombieNightDebug.getState());
   await page.mouse.up();
 
+  await telemetry.capture("natural-combat");
+  telemetry.markFixture();
   const beforeAutoWeapon = await page.evaluate(() => {
     window.__zombieNightDebug.unlockAutoWeapon("guardianBlade");
     window.__zombieNightDebug.spawnZombieAhead(14, "runner");
@@ -71,76 +70,21 @@ try {
   await page.keyboard.press("Digit1");
   const afterUpgradeChoice = await page.evaluate(() => window.__zombieNightDebug.getState());
 
-  const beforeFlame = await page.evaluate(() => {
-    window.__zombieNightDebug.equipWeapon("flamethrower");
-    window.__zombieNightDebug.spawnZombieAhead(3.4, "runner");
-    return window.__zombieNightDebug.getState();
-  });
-
-  await page.mouse.down();
-  await page.waitForTimeout(650);
-  await page.mouse.up();
-
-  const afterFlame = await page.evaluate(() => window.__zombieNightDebug.getState());
-
-  const beforeFrost = await page.evaluate(() => {
-    window.__zombieNightDebug.spawnZombieAhead(3.4, "brute");
-    window.__zombieNightDebug.equipWeapon("frostNova");
-    return window.__zombieNightDebug.getState();
-  });
-
-  await page.mouse.down();
-  await page.waitForTimeout(180);
-  await page.mouse.up();
-
-  const afterFrost = await page.evaluate(() => window.__zombieNightDebug.getState());
-
   const playerDamageState = await page.evaluate(() => window.__zombieNightDebug.damagePlayer(13));
-
-  const beforeAxe = await page.evaluate(() => {
-    window.__zombieNightDebug.spawnZombieAhead(2.4);
-    window.__zombieNightDebug.equipWeapon("axe");
+  const beforeClassBuff = await page.evaluate(() => {
+    window.__zombieNightDebug.equipWeapon("flamethrower");
     return window.__zombieNightDebug.getState();
   });
-
-  await page.waitForTimeout(250);
-  const afterAxe = await page.evaluate(() => window.__zombieNightDebug.getState());
-
+  // Former arsenal pickups now apply a temporary buff without switching class.
   const beforeKatana = await page.evaluate(() => {
+    window.__zombieNightDebug.clearCombatEntities();
     window.__zombieNightDebug.spawnZombieAhead(3, "runner");
-    window.__zombieNightDebug.equipWeapon("katana");
     return window.__zombieNightDebug.getState();
   });
-
   await page.mouse.down();
-  await page.waitForTimeout(160);
+  await page.waitForTimeout(450);
   await page.mouse.up();
-
   const afterKatana = await page.evaluate(() => window.__zombieNightDebug.getState());
-
-  const beforeCrossbow = await page.evaluate(() => {
-    window.__zombieNightDebug.spawnZombieAhead(5, "runner");
-    window.__zombieNightDebug.equipWeapon("crossbow");
-    return window.__zombieNightDebug.getState();
-  });
-
-  await page.mouse.down();
-  await page.waitForTimeout(520);
-  await page.mouse.up();
-
-  const afterCrossbow = await page.evaluate(() => window.__zombieNightDebug.getState());
-
-  const beforeTalisman = await page.evaluate(() => {
-    window.__zombieNightDebug.spawnZombieAhead(4.4, "runner");
-    window.__zombieNightDebug.equipWeapon("talisman");
-    return window.__zombieNightDebug.getState();
-  });
-
-  await page.mouse.down();
-  await page.waitForTimeout(760);
-  await page.mouse.up();
-
-  const afterTalisman = await page.evaluate(() => window.__zombieNightDebug.getState());
 
   const monsterState = await page.evaluate(() => {
     window.__zombieNightDebug.spawnZombieAhead(8, "brute");
@@ -161,8 +105,10 @@ try {
     return window.__zombieNightDebug.getState();
   });
 
-  await page.waitForTimeout(450);
-  const signatureBossAttackState = await page.evaluate(() => window.__zombieNightDebug.getState());
+  const signatureBossAttackState = await collectProjectileEvidence(page, [
+    ["visor", "evilEye"], ["himetrica", "lightning"], ["dinzo", "boleto"],
+    ["sofra", "briefcase"], ["gitcity", "airplane"],
+  ]);
 
   const hordePlusSpawnState = await page.evaluate(() => {
     window.__zombieNightDebug.clearCombatEntities();
@@ -185,8 +131,9 @@ try {
     return window.__zombieNightDebug.getState();
   });
 
-  await page.waitForTimeout(1450);
-  const hordePlusAttackState = await page.evaluate(() => window.__zombieNightDebug.getState());
+  const hordePlusAttackState = await collectProjectileEvidence(page, [
+    ["angelSheep", "feather"], ["plumaFinance", "tornado"],
+  ]);
 
   await page.waitForTimeout(400);
   const lateSpawn = await page.evaluate(() => {
@@ -217,21 +164,20 @@ try {
     return window.__zombieNightDebug.getState();
   });
 
-  const evolutionState = await page.evaluate(() => {
+  const afterBossChoice = await page.evaluate(() => {
     window.__zombieNightDebug.chooseUpgrade(0);
-    window.__zombieNightDebug.grantPerk("bladeEcho");
-    window.__zombieNightDebug.grantPerk("bladeEcho");
     return window.__zombieNightDebug.getState();
   });
 
   const canvas = await page.evaluate(readCanvasStats);
+  telemetry.report.canvas = canvas;
 
   assert(initial.state === "playing", "game did not enter playing state");
   assert(typeof initialAudio.supported === "boolean", "audio debug state did not expose support flag");
   assert(typeof initialAudio.muted === "boolean", "audio debug state did not expose mute flag");
   assert(toggledAudio.muted !== initialAudio.muted, "audio mute toggle did not change state");
   assert(restoredAudio.muted === initialAudio.muted, "audio mute toggle did not restore state");
-  assert(leaderboardHeaders.includes("Level"), "leaderboard header did not include Level column");
+  assert(leaderboardHeaders.some((header) => ["Level", "Nível"].includes(header)), "leaderboard header did not include a level column");
   assert(leaderboardHeaders.includes("Pontuação"), "leaderboard header did not include score column");
   assert(avatarTierProbe.tier === "diamond", "score-based diamond avatar threshold is wrong");
   assert(
@@ -244,38 +190,17 @@ try {
   assert(initial.zombies >= 1, "zombies did not spawn");
   assert(initial.powerups === 0, "weapon powerups spawned without kills");
   assert(moved.player.z < initial.player.z - 0.1, "keyboard movement did not change player position");
-  assert(fired.bullets >= 1, "shooting did not create bullets");
+  assert(fired.character === "warrior" && fired.weapon === "katana" && fired.bullets === 0 && fired.swordSwingRemaining > 0, "Warrior input did not animate a sword strike without projectiles");
   assert(initial.autoWeapons.guardianBlade === 0, "guardian blade should not start unlocked");
-  assert(afterAutoWeapon.score > beforeAutoWeapon.score, "automatic weapon did not defeat a monster without shooting");
-  assert(
-    afterAutoWeapon.xpGems > beforeAutoWeapon.xpGems || afterAutoWeapon.xp > beforeAutoWeapon.xp || afterAutoWeapon.level > beforeAutoWeapon.level,
-    "defeated monster did not drop or collect XP",
-  );
+  assert(afterAutoWeapon.score === beforeAutoWeapon.score && afterAutoWeapon.bullets === 0, "Warrior auto-weapon diagnostic attempt created automatic damage/projectiles");
   assert(afterXpPickup.xp > beforeXpPickup.xp || afterXpPickup.level > beforeXpPickup.level, "XP gem was not collected");
   assert(levelUpChoices.level > beforeLevelUp.level, "XP did not trigger level up");
   assert(levelUpChoices.pendingUpgradeChoices.length >= 1, "level up did not create upgrade choices");
   assert(JSON.stringify(afterUpgradeChoice.build) !== JSON.stringify(levelUpChoices.build), "upgrade choice did not alter build");
-  assert(beforeFlame.weapon === "flamethrower", "flamethrower did not equip");
-  assert(afterFlame.score > beforeFlame.score, "flamethrower did not defeat a monster");
-  assert(afterFlame.statuses.burning >= 1 || afterFlame.damageNumbers >= beforeFlame.damageNumbers, "flamethrower did not apply burn feedback");
-  assert(beforeFrost.weapon === "frostNova", "frost orb did not equip");
-  assert(afterFrost.statuses.frozen >= 1, "frost orb did not freeze monsters");
-  assert(
-    playerDamageState.damageNumberDetails.some((number) => number.variant === "playerDamage"),
-    "player damage did not spawn a red negative number",
-  );
-  assert(beforeAxe.weapon === "axe", "axe did not equip");
-  assert(afterAxe.score > beforeAxe.score, "axe spin did not defeat a zombie");
-  assert(beforeKatana.weapon === "katana", "katana did not equip");
-  assert(afterKatana.score > beforeKatana.score, "katana slash did not defeat a runner");
-  assert(beforeCrossbow.weapon === "crossbow", "crossbow did not equip");
-  assert(afterCrossbow.score > beforeCrossbow.score, "crossbow did not defeat a runner");
-  assert(beforeTalisman.weapon === "talisman", "talisman did not equip");
-  assert(afterTalisman.score > beforeTalisman.score, "talisman blast did not defeat a runner");
-  assert(
-    afterTalisman.powerupDetails.some((powerup) => powerup.hasLabel && powerup.label.startsWith("1 ")),
-    "kill weapon drop did not create a labeled pickup",
-  );
+  assert(beforeClassBuff.character === "warrior" && beforeClassBuff.weapon === "katana" && beforeClassBuff.weaponTimer > 0, "Legacy pickup did not become a temporary class buff");
+  assert(playerDamageState.damageNumberDetails.some(number => number.variant === "playerDamage"), "Player damage feedback missing");
+  assert(afterKatana.weapon === "katana" && afterKatana.bullets === 0, "Sword attack created a projectile or switched weapon");
+  assert(afterKatana.score > beforeKatana.score, "Actual sword input did not defeat the nearby runner");
   assert(monsterState.monsters.brute >= 1, "brute monster did not spawn");
   assert(monsterState.monsters.caster >= 1, "caster monster did not spawn");
   assert(casterState.enemyProjectiles >= 1 || casterState.health < monsterState.health, "caster did not attack");
@@ -306,18 +231,18 @@ try {
   assert(hordePlusBossState.bossLabels.bloodCow >= 1, "Vaca Sanguinaria label did not spawn");
   assert(hordePlusBossState.bossLabels.plumaFinance >= 1, "Pluma Finance label did not spawn");
   assert(
-    hordePlusAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "angelSheep" && projectile.kind === "feather"),
+    hordePlusAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "angelSheep" && projectile.kind === "feather"),
     "Ovelha Celestial did not fire feather projectiles",
   );
   assert(
-    hordePlusAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "plumaFinance" && projectile.kind === "tornado"),
+    hordePlusAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "plumaFinance" && projectile.kind === "tornado"),
     "Pluma Finance did not fire tornado projectiles",
   );
-  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "visor" && projectile.kind === "evilEye"), "Visor did not fire an evil-eye projectile");
-  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "himetrica" && projectile.kind === "lightning"), "Himetrica did not fire a lightning projectile");
-  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "dinzo" && projectile.kind === "boleto"), "Dinzo did not fire a boleto projectile");
-  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "sofra" && projectile.kind === "briefcase"), "Sofra did not fire a briefcase projectile");
-  assert(signatureBossAttackState.enemyProjectileDetails.some((projectile) => projectile.source === "gitcity" && projectile.kind === "airplane"), "GitCity did not fire a tiny airplane projectile");
+  assert(signatureBossAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "visor" && projectile.kind === "evilEye"), "Visor did not fire an evil-eye projectile");
+  assert(signatureBossAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "himetrica" && projectile.kind === "lightning"), "Himetrica did not fire a lightning projectile");
+  assert(signatureBossAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "dinzo" && projectile.kind === "boleto"), "Dinzo did not fire a boleto projectile");
+  assert(signatureBossAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "sofra" && projectile.kind === "briefcase"), "Sofra did not fire a briefcase projectile");
+  assert(signatureBossAttackState.observedEnemyProjectiles.some((projectile) => projectile.source === "gitcity" && projectile.kind === "airplane"), "GitCity did not fire a tiny airplane projectile");
   assert(lateSpawn.spawnInterval < initial.spawnInterval, "zombie spawn interval did not increase over time");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "rare"), "rare perk drop did not spawn");
   assert(rarityDropState.powerupDetails.some((powerup) => powerup.kind === "perk" && powerup.rarity === "epic"), "epic perk drop did not spawn");
@@ -337,10 +262,11 @@ try {
       bossRewardChoices.pendingUpgradeRarities.every((rarity) => ["rare", "epic", "legendary"].includes(rarity)),
     "boss reward choices were not all rare+",
   );
-  assert(evolutionState.evolvedWeapons.guardianBlade === "eclipseBlade", "guardian blade did not evolve into eclipse blade");
+  assert(afterBossChoice.character === "warrior" && afterBossChoice.weapon === "katana", "Boss upgrade changed fixed warrior role");
   assert(canvas.uniqueColors >= 40, "canvas has too few color samples");
   assert(canvas.lumaStdDev >= 3, "canvas pixel variance is too low");
 
+  telemetry.assertClean();
   console.log(
     JSON.stringify(
       {
@@ -361,19 +287,11 @@ try {
         beforeLevelUp,
         levelUpChoices,
         afterUpgradeChoice,
-        beforeFlame,
-        afterFlame,
-        beforeFrost,
-        afterFrost,
+        beforeClassBuff,
+        afterBossChoice,
         playerDamageState,
-        beforeAxe,
-        afterAxe,
         beforeKatana,
         afterKatana,
-        beforeCrossbow,
-        afterCrossbow,
-        beforeTalisman,
-        afterTalisman,
         monsterState,
         casterState,
         bossState,
@@ -386,30 +304,20 @@ try {
         rarityDropState,
         chestDropState,
         bossRewardChoices,
-        evolutionState,
         canvas,
       },
       null,
       2,
     ),
   );
+} catch (error) {
+  telemetry.fail(error);
+  throw error;
 } finally {
+  await telemetry.save();
   await browser.close();
 }
 
-function findPlaywrightRoot() {
-  const paths = process.env.PATH.split(path.delimiter);
-
-  for (const searchPath of paths) {
-    const binaryPath = path.join(searchPath, "playwright");
-
-    if (fs.existsSync(binaryPath)) {
-      return path.dirname(fs.realpathSync(binaryPath));
-    }
-  }
-
-  throw new Error("Playwright binary not found in PATH");
-}
 
 function assert(condition, message) {
   if (!condition) {
@@ -417,7 +325,23 @@ function assert(condition, message) {
   }
 }
 
-function readCanvasStats() {
+async function collectProjectileEvidence(page, expected, durationMs = 2200) {
+  const observed = new Map();
+  const start = Date.now();
+  let latest;
+  do {
+    latest = await page.evaluate(() => window.__zombieNightDebug.getState());
+    for (const projectile of latest.enemyProjectileDetails) observed.set(`${projectile.source}:${projectile.kind}`, projectile);
+    if (expected.every(([source, kind]) => observed.has(`${source}:${kind}`))) break;
+    await page.waitForTimeout(50);
+  } while (Date.now() - start < durationMs);
+  return { ...latest, observedEnemyProjectiles: [...observed.values()], observationWindowMs: Date.now() - start };
+}
+
+async function readCanvasStats() {
+  // With preserveDrawingBuffer=false, inspect the game frame before browser
+  // presentation clears it. The game's render callback is already queued.
+  await new Promise((resolve) => requestAnimationFrame(resolve));
   const canvasElement = document.querySelector("#game-canvas");
   const gl = canvasElement.getContext("webgl2") ?? canvasElement.getContext("webgl");
   const pixels = new Uint8Array(canvasElement.width * canvasElement.height * 4);

@@ -1,0 +1,12 @@
+{
+  "reviewedAt": "2026-09-19T00:07:28.405592+00:00",
+  "scope": "Six individually inspected native fixture PNGs, not gameplay; playback not reviewed",
+  "files": {
+    "output/playwright/2026-09-19T00-05-38-851Z-class-skill-vfx-v2/dwarf_explosive_cannon-impact-high.png": "af8bf9967f5c0d98760a9878467a3182e298a002c77bf6a6db5447a1c37b68da",
+    "output/playwright/2026-09-19T00-05-38-851Z-class-skill-vfx-v2/dwarf_gravity_shot-state-high.png": "993e2c55d76ac14823704964f89b33aba84c8efdb79512b32d228739cad628f4",
+    "output/playwright/2026-09-19T00-05-38-851Z-class-skill-vfx-v2/warrior_war_cry-state-high.png": "509a75ec84362ac0e605fc17b6ce5963805196f1d16ac2c69cc7a3717a1bda5a",
+    "output/playwright/2026-09-19T00-05-38-851Z-class-skill-vfx-v2/dwarf_frost_shot-state-high.png": "55d44a05b3563aa6e5d29d160ae11e040865930ef14593afc02179377eda0fbc",
+    "output/playwright/2026-09-19T00-05-38-851Z-class-skill-vfx-v2/warrior_shield_charge-travel-high.png": "ad9618741da910de5170dd93261a14b58543bb79e3270ad0bdb744e707b9b55c",
+    "output/playwright/2026-09-19T00-05-38-851Z-class-skill-vfx-v2/warrior_cleaving_dash-travel-high.png": "57bb8198b37c139c9dc780bb49eb6db3f8174d0b3a760febaa745856196fc332"
+  }
+}

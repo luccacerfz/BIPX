@@ -1,4 +1,37 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js";
+import { createCasterProjectilePresenter, withCasterProjectilePresentation } from './combat/caster-projectile-presentation.mjs';
+import { stepCasterCaller } from './combat/caster-caller-boundary.mjs';
+import { cancelCasterCast } from './combat/caster-cast.mjs';
+import { casterVisual, createCasterPresentationInbox } from './combat/caster-presentation.mjs';
+import * as THREE from "../vendor/three/three.module.js";
+import { createWorldLabelLayout } from "./ui/world-label-layout.js";
+import { createCinematicPipeline } from "./render/cinematic-pipeline.js";
+import { shareEnvironmentCutawayDepth } from "./render/environment-cutaway.js";
+import { createCemetery } from "./render/cemetery.js";
+import { createWorldAtmosphere } from "./render/atmosphere.js";
+import { loadAssetDressing } from "./render/asset-dressing.js";
+import { createAnimatedEnemies } from "./render/animated-enemies.js";
+import { createVisualMotion, sampleVisualMotion } from "./render/visual-motion.js";
+import { loadEnemyLibrary } from "./assets/enemy-library.js";
+import { loadMonsterLibrary } from "./assets/monster-library.js";
+import { loadEnemyLodLibrary } from "./assets/enemy-lod-library.js";
+import { playableCharacters, readCharacterPreference, loadPlayableCharacter } from "./assets/playable-characters.js";
+import { loadPresentationPreferences, savePresentationPreferences } from "./render/preferences.js";
+import { createCollisionWorld, createActorIndex, moveActor, stepActor, sweepStatic, pullActors, findFreePosition } from "./physics/contacts.mjs";
+import { separateControlledActors } from "./combat/crowd-control.mjs";
+import { getEnvironmentColliders, ENVIRONMENT_GROUND } from "./render/environment-layout.js";
+import { getPursuitDirection } from "./physics/navigation.mjs";
+import { createSkillState, skillSnapshot, restoreSkillSnapshot, getClassSkills, getClassSkill, getSkillHud, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills } from "./combat/class-skills.mjs";
+import { createClassSkillVfx } from "./vfx/class-skill-vfx.js";
+import { createCombatVfx } from "./vfx/combat-vfx.js";
+import { createHazardVfx } from "./vfx/hazard-vfx.js";
+import { createElementalVfx } from "./vfx/elemental-vfx.js";
+import { emitProjectileCast, emitProjectileTrail, emitProjectileImpact } from "./vfx/elemental-projectiles.js";
+import { createLocalLeaderboard } from "./progression/local-leaderboard.mjs";
+import { paintBossLabel } from "./ui/boss-label-painter.js";
+import { createSampleBank } from "./audio/sample-bank.js";
+import { RIFLE_COLLISION_HEIGHT, enemyProjectileCollisionHeight } from "./combat/collision-heights.mjs";
+import { segmentCircleContact } from "./combat/projectile-sweep.js";
+import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc } from "./combat/melee-timing.mjs";
 import {
   forceConfigTarget,
   getAllOverrides,
@@ -51,8 +84,66 @@ const touchKnob = document.querySelector("#touch-knob");
 const touchFire = document.querySelector("#touch-fire");
 const queryParams = new URLSearchParams(window.location.search);
 const multiplayerServerOrigin = "https://bipx-multiplayer-server.onrender.com";
-const multiplayerEntryUrl = `https://bipx.vercel.app/?ws=${multiplayerServerOrigin.replace(/^http/, "ws")}/ws&room=cemiterio`;
-const requestedQuality = sanitizeQuality(queryParams.get("quality"));
+let soloRecordStorage;
+try { soloRecordStorage = window.localStorage; } catch {}
+const soloLeaderboard = createLocalLeaderboard(soloRecordStorage);
+const presentationPreferences = loadPresentationPreferences();
+const requestedQuality = sanitizeQuality(queryParams.get("quality") || presentationPreferences.quality);
+let cinematicPipeline = null;
+let combatVfx = null;
+let classSkillVfx = null;
+const worldLabelLayout = createWorldLabelLayout(THREE);
+let classSkillState;
+let arpgHudTimer = 0;
+let pendingSkillRequest = null;
+let onlineSkillMotion = null;
+let zombieNavigationBudget = 4;
+let zombieNavigationTick = 0;
+let zombieActorIndex = null;
+let remoteSkillSnapshots = [];
+const persistentSkillPresentation = new Map();
+const preparingWarCries = new Map();
+const retiredWarCries = new Set();
+const activeDashTransforms = new Map();
+const retiredDashTransforms = new Set();
+const skillPresentationHistory = [];
+const skillSoundTravel = new Set();
+let hazardVfx = null;
+let elementalVfx = null;
+let cemetery = null;
+let worldAtmosphere = null;
+let heroVisual = null;
+const heroVisualMotion = createVisualMotion();
+let animatedEnemies = null;
+let enemyLodLibrary = null;
+const enemyLodProfiles = {
+  orcPeon: { id: 'orcPeon', height: 2.5 },
+  zombie: { id: 'zombie', height: 2.55 },
+  runner: { id: 'zombie', height: 2.3 },
+  brute: { id: 'brute', height: 3.3 },
+  caster: { id: 'lich', height: 2.8 },
+  visor: { id: 'lich', height: 3.5 },
+};
+let characterPreview = true;
+let selectedCharacter = readCharacterPreference();
+let characterLoading = true;
+let characterLoadVersion = 0;
+let characterError = null;
+const readyCharacters = new Set();
+let pendingSwordStrike = null;
+let swordSwingRemaining = 0;
+let keyboardAimActive = false;
+let keyboardAimReleaseUntil = 0;
+const swordSwingDirection = new THREE.Vector3(0, 0, -1);
+let worldVisuals = null;
+const visualAssetErrors = [];
+let paused = false;
+let cameraTrauma = 0;
+let footstepVisual = null;
+let footstepSerial = 0;
+let weaponFireEmitter = null;
+let playerMoveBlend = 0;
+let playerSwingTime = 0;
 const perfOverlayEnabled = queryParams.get("perf") === "1";
 const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
 let runtimeReady = false;
@@ -87,6 +178,7 @@ const perfStats = {
 };
 
 const audioManager = {
+  samples: null,
   context: null,
   masterGain: null,
   musicGain: null,
@@ -136,6 +228,7 @@ const audioManager = {
     this.musicGain.connect(this.masterGain);
     this.masterGain.connect(compressor);
     compressor.connect(this.context.destination);
+    this.samples = createSampleBank(this.context, this.masterGain);
     this.noiseBuffer = this.createNoiseBuffer();
     this.applyMasterVolume();
     this.updateToggle();
@@ -315,6 +408,7 @@ const audioManager = {
     }
 
     this.lastEvent = type;
+    if (this.samples?.play(type, options)) return true;
     switch (type) {
       case "gameStart":
         this.playTone({ group: "ui", frequency: 146, duration: 0.18, gain: 0.08, type: "triangle" });
@@ -572,6 +666,7 @@ const audioManager = {
       masterVolume: this.masterVolume,
       groups: { ...this.groups },
       lastEvent: this.lastEvent,
+      samples: this.samples?.getState() ?? null,
     };
   },
 };
@@ -660,8 +755,10 @@ const renderer = new THREE.WebGLRenderer({
   canvas,
   antialias: true,
   powerPreference: "high-performance",
-  preserveDrawingBuffer: true,
+  preserveDrawingBuffer: false,
 });
+renderer.localClippingEnabled = true; // Private corpse materials carry complementary clipping planes.
+canvas.textContent = '';
 renderer.setPixelRatio(getQualityPixelRatio());
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -676,7 +773,8 @@ const upVector = new THREE.Vector3(0, 1, 0);
 const groundPlane = new THREE.Plane(upVector, 0);
 const pointer = new THREE.Vector2(0, 0);
 const pointerWorld = new THREE.Vector3(0, 0, -1);
-const worldLimit = 55;
+const worldLimit = ENVIRONMENT_GROUND.radius;
+const collisionWorld = createCollisionWorld({ colliders: getEnvironmentColliders(), bounds: ENVIRONMENT_GROUND, groundY: ENVIRONMENT_GROUND.y });
 const spatialGridCellSize = 8;
 const tempVectorA = new THREE.Vector3();
 const tempVectorB = new THREE.Vector3();
@@ -837,6 +935,7 @@ const hudUpgradeIcons = {
 };
 
 const monsterProfiles = {
+  orcPeon: { label: 'Peão Orc', health: 8, speed: 3, radius: .85, damage: 15, score: 18, minWave: 2 },
   zombie: {
     label: "Zumbi",
     health: 4.2,
@@ -994,9 +1093,10 @@ const monsterProfiles = {
   },
 };
 
-const commonMonsterTypes = new Set(["zombie", "runner", "brute", "caster", "cowWalker", "cowCharger", "cowBrute"]);
+const commonMonsterTypes = new Set(["orcPeon", "zombie", "runner", "brute", "caster", "cowWalker", "cowCharger", "cowBrute"]);
 const cowMonsterTypes = new Set(["cowWalker", "cowCharger", "cowBrute"]);
 const commonMonsterPalettes = {
+  orcPeon: { skin: 0x5e7543, cloth: 0x695337, eye: 0xe6bb73 },
   zombie: { skin: 0x76a64f, cloth: 0x5d3b3b, eye: 0xff514d },
   runner: { skin: 0x8ad05d, cloth: 0x273545, eye: 0x87f7ff },
   brute: { skin: 0x8c6c4c, cloth: 0x493028, eye: 0xff9538 },
@@ -1138,7 +1238,7 @@ const upgradeDefinitions = [
   {
     id: "damage",
     label: "+Dano",
-    description: "Aumenta todo dano causado por armas manuais e automáticas.",
+    description: "Aumenta todo o dano causado por seus ataques e habilidades.",
     rarity: "common",
     kind: "stat",
     weight: 72,
@@ -1146,7 +1246,7 @@ const upgradeDefinitions = [
   },
   {
     id: "cadence",
-    label: "Attack Speed",
+    label: "+Cadência",
     description: "Reduz o tempo entre ataques e deixa sua build mais agressiva.",
     rarity: "common",
     kind: "stat",
@@ -1156,7 +1256,7 @@ const upgradeDefinitions = [
   {
     id: "area",
     label: "+Área",
-    description: "Aumenta cones, explosões, giros e zonas das armas automáticas.",
+    description: "Aumenta cones, explosões e áreas de efeito.",
     rarity: "common",
     kind: "stat",
     weight: 72,
@@ -1366,10 +1466,36 @@ const multiplayer = {
   socket: null,
   spawn: new THREE.Vector3(0, 0, 0),
   status: "Solo",
-  url: null,
 };
 
+// Transport credentials never enter presentation/debug snapshots or request logs.
+let multiplayerResumeToken = null;
+let multiplayerAuthorityRunId = null;
+let multiplayerAuthorityVersion = -1;
+let multiplayerAppliedXpTotal = 0;
+let multiplayerWorldEpoch = null;
+let offlineCasterEpoch = crypto.randomUUID(), offlineCasterTick = 0;
+let casterPresentationInbox = createCasterPresentationInbox(null);
+const casterEventHistory = [];
+const casterProjectilePresentation = createCasterProjectilePresenter({ sweepVisual: sweepCasterLaunchVisual });
+function recordCasterEvent(event, source) {
+  casterEventHistory.push({ ...event, source });
+  if (casterEventHistory.length > 128) casterEventHistory.shift();
+}
+let multiplayerClockOffset = null;
+let multiplayerReconnectAt = 0;
+let pendingMultiplayerStart = null;
+let runStartRejectionPresentation = null;
+const appliedMultiplayerRewards = new Set();
+let multiplayerUpgradeOfferId = null;
+let pendingMultiplayerUpgrade = null;
+let restoreMultiplayerUpgradeFocus = false;
+const pendingMultiplayerPickups = new Map();
+const serverPowerupsById = new Map();
+const retiredServerDrops = new Set();
+
 const player = {
+  character: selectedCharacter,
   name: loadPlayerName(),
   health: playerBaseMaxHealth,
   maxHealth: playerBaseMaxHealth,
@@ -1380,9 +1506,9 @@ const player = {
   bestLevel: 1,
   xp: 0,
   xpToNext: 12,
-  speed: 11,
+  speed: 6.5,
   shotCooldown: 0,
-  weapon: "pistol",
+  weapon: playableCharacters[selectedCharacter].weaponId,
   weaponTimer: 0,
   axeSpinTimer: 0,
   upgradeStats: createDefaultUpgradeStats(),
@@ -1419,10 +1545,7 @@ const game = {
   survivalTime: 0,
   hudTimer: 0,
   leaderboardSubmitted: false,
-  leaderboardLiveTimer: 0,
   leaderboardRefreshTimer: 0,
-  lastLiveLeaderboardSentAt: 0,
-  lastLiveLeaderboardSignature: "",
   partyHudTimer: 0,
   labelTimer: 0,
   labelFrameReady: true,
@@ -1442,6 +1565,53 @@ const game = {
 runtimeReady = true;
 scene.add(player.mesh);
 buildWorld();
+cinematicPipeline = createCinematicPipeline({ THREE, renderer, adaptDepthMaterial: shareEnvironmentCutawayDepth });
+classSkillState = createSkillState(player.character);
+combatVfx = createCombatVfx({ THREE, scene, quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
+combatVfx.setSoulSource(player.mesh);
+hazardVfx = createHazardVfx({ THREE, scene, vfx: combatVfx, capacity: 8,
+  quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
+elementalVfx = createElementalVfx({ THREE, scene,
+  quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
+classSkillVfx = createClassSkillVfx({ THREE, scene, combatVfx, elementalVfx, sweepVisual: sweepClassSkillVisual, quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
+window.addEventListener('bipx:skill-request', event => requestClassSkill(event.detail?.slot));
+window.addEventListener('bipx:arpg-ready', () => publishArpgState());
+
+window.__bipxCharacters = { getState: getCharacterState, select: selectCharacter };
+const gameVisualsReady = loadGameVisuals();
+cinematicPipeline.setQuality(qualityManager.level);
+cinematicPipeline.setReducedMotion(presentationPreferences.reducedMotion);
+window.__bipxPresentation = {
+  getSettings: () => ({ ...presentationPreferences, quality: qualityManager.mode, effectiveQuality: qualityManager.level, paused, canPause: !multiplayer.enabled }),
+  setQuality(value) {
+    qualityManager.mode = sanitizeQuality(value);
+    qualityManager.level = qualityManager.mode === 'auto' ? getDefaultQualityLevel() : qualityManager.mode;
+    presentationPreferences.quality = qualityManager.mode;
+    applyQualitySettings(true);
+    savePresentationPreferences(presentationPreferences);
+    announcePresentationSettings();
+  },
+  setReducedMotion(value) {
+    presentationPreferences.reducedMotion = Boolean(value);
+    combatVfx.setReducedMotion(presentationPreferences.reducedMotion);
+    hazardVfx?.setReducedMotion(presentationPreferences.reducedMotion);
+    elementalVfx?.setReducedMotion(presentationPreferences.reducedMotion);
+    classSkillVfx?.setReducedMotion(presentationPreferences.reducedMotion);
+    cinematicPipeline.setReducedMotion(presentationPreferences.reducedMotion);
+    cameraTrauma = 0;
+    savePresentationPreferences(presentationPreferences);
+    announcePresentationSettings();
+  },
+  setPaused(value) {
+    paused = Boolean(value) && !multiplayer.enabled && game.state === 'playing';
+    clearPlayerInput();
+    document.body.classList.toggle('game-paused', paused);
+    announcePresentationSettings();
+    return paused;
+  },
+  togglePause() { return this.setPaused(!paused); },
+};
+announcePresentationSettings();
 if (playerNameInput) {
   playerNameInput.value = player.name;
 }
@@ -1462,6 +1632,8 @@ audioToggleButton?.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopPropagation();
   audioManager.toggleMute();
+  // Pointer activation hands the keyboard back to the arena; keyboard activation keeps focus.
+  if (event.detail > 0 && game.state === 'playing') canvas.focus({ preventScroll: true });
 });
 
 for (const eventName of ["pointerdown", "touchstart", "keydown"]) {
@@ -1469,6 +1641,7 @@ for (const eventName of ["pointerdown", "touchstart", "keydown"]) {
 }
 
 openLoginButton?.addEventListener("click", () => {
+  clearRunStartRejection();
   audioManager.play("uiSelect", { priority: 3 });
   message.classList.remove("message--ranking");
   message.classList.add("message--login");
@@ -1476,6 +1649,7 @@ openLoginButton?.addEventListener("click", () => {
 });
 
 menuRankingButton?.addEventListener("click", () => {
+  clearRunStartRejection();
   audioManager.play("uiSelect", { priority: 3 });
   message.classList.remove("message--login");
   message.classList.remove("message--game-over");
@@ -1484,24 +1658,22 @@ menuRankingButton?.addEventListener("click", () => {
 });
 
 rankingBackButton?.addEventListener("click", () => {
+  clearRunStartRejection();
   audioManager.play("uiSelect", { priority: 3 });
   message.classList.remove("message--ranking");
 });
 
 loginBackButton?.addEventListener("click", () => {
+  clearRunStartRejection();
   audioManager.play("uiSelect", { priority: 3 });
-  if (message.classList.contains("message--game-over")) {
-    messageTitle.textContent = "BIPX";
-    messageKicker.textContent = "☠ Noite Zumbi ☠";
-    messageCopy.textContent = "Escolha seu nome antes de entrar no cemiterio.";
-    playButton.innerHTML = "<span aria-hidden=\"true\">▶</span><span id=\"play-button-label\">Entrar no jogo</span>";
-  }
+  restoreMenuIdentity();
   message.classList.remove("message--game-over");
   message.classList.remove("message--login");
   message.classList.remove("message--ranking");
 });
 
 playButton.addEventListener("click", () => {
+  if (isDeathInputGuarded()) return;
   audioManager.play("uiSelect", { priority: 3 });
   if (game.state !== "playing") {
     updateLocalPlayerName(playerNameInput?.value);
@@ -1512,7 +1684,7 @@ playButton.addEventListener("click", () => {
 multiplayerButton?.addEventListener("click", () => {
   audioManager.play("uiSelect", { priority: 3 });
   updateLocalPlayerName(playerNameInput?.value);
-  window.location.assign(multiplayerEntryUrl);
+  window.location.assign(getMultiplayerEntryUrl());
 });
 
 playerNameInput?.addEventListener("change", () => {
@@ -1533,17 +1705,43 @@ window.addEventListener("resize", resizeRenderer, { passive: true });
 window.addEventListener("orientationchange", resizeRenderer, { passive: true });
 window.visualViewport?.addEventListener("resize", resizeRenderer, { passive: true });
 window.visualViewport?.addEventListener("scroll", resizeRenderer, { passive: true });
+window.addEventListener('blur', () => {
+  clearPlayerInput();
+  if (!multiplayer.enabled) window.__bipxPresentation.setPaused(true);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearPlayerInput();
+    if (!multiplayer.enabled) window.__bipxPresentation.setPaused(true);
+  }
+});
 window.addEventListener("keydown", (event) => {
+  if (paused) return;
+  // During a run only text entry and dialogs own the keyboard; a focused HUD button
+  // (audio, pause, skill) must not swallow movement, aim or attack keys.
+  const blockers = game.state === 'playing' ? 'input,textarea,select,dialog,[role="dialog"]' : 'input,textarea,select,button,dialog,[role="dialog"]';
+  const interactiveTarget = event.target instanceof Element && event.target.closest(blockers);
+  const upgradeTarget = event.target instanceof Element && event.target.closest('#upgrade-options .upgrade-card');
   const upgradeIndex = ["Digit1", "Digit2", "Digit3", "Numpad1", "Numpad2", "Numpad3"].indexOf(event.code);
-  if (upgradeIndex >= 0 && player.pendingUpgradeChoices.length > 0) {
+  if (upgradeIndex >= 0 && player.pendingUpgradeChoices.length > 0 && (!interactiveTarget || upgradeTarget)) {
     event.preventDefault();
+    if (event.repeat) return;
     chooseUpgrade(upgradeIndex % 3);
     return;
   }
+  if (interactiveTarget) return;
+  // Space/Enter on a focused control keep their native activation for keyboard users;
+  // they simply do not also fire the weapon.
+  if (event.target instanceof Element && event.target.closest('button,summary') && ['Space', 'Enter'].includes(event.code)) return;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
 
   keys.add(event.code);
+  if (['KeyI', 'KeyJ', 'KeyK', 'KeyL'].includes(event.code)) {
+    keyboardAimActive = true;
+    if (!event.repeat) keyboardAimReleaseUntil = 0;
+  }
 
-  if (event.code === "Enter" && game.state !== "playing" && !message.classList.contains("message--ranking")) {
+  if (event.code === "Enter" && game.state !== "playing" && !message.classList.contains("message--ranking") && !isDeathInputGuarded()) {
     audioManager.play("uiSelect", { priority: 3 });
     startGame();
   }
@@ -1555,16 +1753,21 @@ window.addEventListener("keydown", (event) => {
 
 window.addEventListener("keyup", (event) => {
   keys.delete(event.code);
+  if (['KeyI', 'KeyJ', 'KeyK', 'KeyL'].includes(event.code)) keyboardAimReleaseUntil = performance.now() + 60;
 
   if (event.code === "Space") {
     game.shooting = false;
   }
 });
 
-window.addEventListener("mousemove", (event) => updatePointerFromClient(event.clientX, event.clientY));
+window.addEventListener("mousemove", (event) => {
+  keyboardAimActive = false;
+  keyboardAimReleaseUntil = 0;
+  updatePointerFromClient(event.clientX, event.clientY);
+});
 
 window.addEventListener("mousedown", (event) => {
-  if (isInteractiveOverlay(event.target)) {
+  if (paused || game.state !== 'playing' || isInteractiveOverlay(event.target)) {
     return;
   }
 
@@ -1604,9 +1807,42 @@ upgradeOptionsElement?.addEventListener("click", (event) => {
 });
 
 window.__zombieNightDebug = {
+  getVfxStats: () => combatVfx?.getStats(),
+  getClassSkillVfxStats: () => classSkillVfx?.getStats(),
+  getWorldLabelLayoutStats: () => worldLabelLayout.getStats(),
+  getArpgState: () => buildArpgState(),
+  getSkillEvents: () => skillPresentationHistory.map(event => ({ ...event })),
+  getSkillState: () => skillSnapshot(classSkillState),
+  projectWorldPosition: (x, y, z) => {
+    const p = new THREE.Vector3(x, y, z).project(camera), rect = canvas.getBoundingClientRect();
+    return { x: rect.left + (p.x + 1) * rect.width / 2, y: rect.top + (1 - p.y) * rect.height / 2 };
+  },
+  getCasterCasts: () => zombies.filter(z => z.type === 'caster').map(z => ({ id: z.id,
+    state: z.casterCastState || null, visual: z.casterCastVisual || null,
+    position: { x: z.mesh.position.x, z: z.mesh.position.z },
+    emitter: animatedEnemies?.getCastEmitter(z, { castId: z.casterCastVisual?.id }) || null })),
+  getCasterEvents: () => structuredClone(casterEventHistory),
+  getCasterProjectilePresentation: () => [...enemyProjectiles, ...serverProjectileById.values()].filter(p => p.sourceType === 'caster').map(p => ({
+    castId: p.castId, age: p.age, logical: { x: p.mesh.position.x, y: p.mesh.position.y, z: p.mesh.position.z },
+    visual: p.casterPresentation || null, bridge: p.casterLaunchBridge?.getStats() || null })),
+  getSkillTargets: () => zombies.map(z => ({ id: z.id, x: z.mesh.position.x, z: z.mesh.position.z, health: z.health, freeze: z.freezeTimer || 0, stun: z.stunTimer || 0, pull: z.pullTimer || 0 })),
+  getHazardVfxStats: () => hazardVfx?.getStats(),
+  getElementalVfxStats: () => elementalVfx?.getStats(),
+  getActorMotionState: () => {
+    const snapshot = (id, mesh, motion, visual) => ({ id, position: mesh.position.toArray(),
+      motion: { ...motion, velocity: { ...motion.velocity } },
+      locomotion: visual?.stats.locomotion ? JSON.parse(JSON.stringify(visual.stats.locomotion)) : null });
+    return { local: snapshot(multiplayer.id || 'solo', player.mesh, heroVisualMotion, heroVisual),
+      remote: [...remotePlayers.values()].map(peer => snapshot(peer.id, peer.mesh, peer.visualMotion, peer.visual)) };
+  },
+  getPresentationStats: () => ({ ...window.__bipxPresentation.getSettings(), pipeline: cinematicPipeline?.getStats(), resources: { ...renderer.info.memory }, atmosphere: worldAtmosphere?.getStats(), assets: { hero: heroVisual?.stats ?? { loaded: false }, world: worldVisuals?.stats ?? { loaded: false }, enemies: animatedEnemies?.getStats(), errors: [...visualAssetErrors] } }),
   getState() {
     return {
       state: game.state,
+      character: player.character,
+      characterLoading,
+      swordSwingRemaining,
+      paused,
       health: player.health,
       maxHealth: player.maxHealth,
       score: player.score,
@@ -1618,6 +1854,14 @@ window.__zombieNightDebug = {
       xpToNext: player.xpToNext,
       xpGems: xpGems.length,
       pendingUpgradeChoices: player.pendingUpgradeChoices.map((choice) => choice.id),
+      progressionAuthority: multiplayer.enabled ? {
+        runId: multiplayerAuthorityRunId,
+        version: multiplayerAuthorityVersion,
+        xpTotal: multiplayerAppliedXpTotal,
+        offerId: multiplayerUpgradeOfferId,
+        waitingForChoice: Boolean(pendingMultiplayerUpgrade),
+        waitingForPickups: pendingMultiplayerPickups.size,
+      } : null,
       zombies: zombies.length,
       damageNumbers: damageNumbers.length,
       damageNumberDetails: damageNumbers.slice(0, 8).map((number) => ({
@@ -1632,12 +1876,13 @@ window.__zombieNightDebug = {
       })),
       bullets: bullets.length,
       enemyProjectiles: enemyProjectiles.length,
-      enemyProjectileDetails: enemyProjectiles.slice(0, 12).map((projectile) => ({
+      enemyProjectileDetails: enemyProjectiles.map((projectile) => ({
         kind: projectile.visualKind ?? "orb",
         source: projectile.sourceType ?? "caster",
       })),
       powerups: powerups.length,
       powerupDetails: powerups.map((powerup) => ({
+        serverId: powerup.serverDropId || null,
         type: powerup.type,
         kind: powerup.kind ?? "weapon",
         amount: powerup.amount ?? null,
@@ -1700,6 +1945,8 @@ window.__zombieNightDebug = {
         name: player.name,
         x: Number(player.position.x.toFixed(3)),
         z: Number(player.position.z.toFixed(3)),
+        aimX: Number(player.aimDirection.x.toFixed(3)),
+        aimZ: Number(player.aimDirection.z.toFixed(3)),
       },
       serverWorld: {
         active: game.serverWorldActive,
@@ -2031,32 +2278,121 @@ function normalizeConfigConsoleValue(value) {
 }
 
 if (queryParams.get("autoplay") === "1") {
-  requestAnimationFrame(() => {
-    startGame();
-
+  void gameVisualsReady.then(() => {
+    if (game.state !== 'menu' || startGame() === false) return;
     if (queryParams.get("bosses") === "1") {
       spawnBossPreview();
     }
   });
 }
 
+// The death screen borrows the login panel; the menu gets its own words back afterwards.
+let menuIdentity = null;
+let deathInputGuardUntil = 0;
+function isDeathInputGuarded() { return performance.now() < deathInputGuardUntil; }
+function restoreMenuIdentity() {
+  if (!menuIdentity) return;
+  messageTitle.textContent = menuIdentity.title;
+  messageKicker.textContent = menuIdentity.kicker;
+  messageCopy.textContent = menuIdentity.copy;
+  currentPlayButtonLabel().textContent = menuIdentity.label;
+  if (menuIdentity.copyRole === null) messageCopy.removeAttribute('role'); else messageCopy.setAttribute('role', menuIdentity.copyRole);
+  if (menuIdentity.describedBy === null) playButton.removeAttribute('aria-describedby'); else playButton.setAttribute('aria-describedby', menuIdentity.describedBy);
+  menuIdentity = null;
+}
+
+function currentPlayButtonLabel() {
+  let label = playButton.querySelector('#play-button-label');
+  if (!label) {
+    // The game-over button has a direct text node beside its restart icon.
+    const textNodes = [...playButton.childNodes].filter(node => node.nodeType === Node.TEXT_NODE);
+    const text = textNodes.map(node => node.textContent).join('').trim();
+    label = document.createElement('span');
+    label.id = 'play-button-label';
+    label.textContent = text;
+    for (const node of textNodes) node.remove();
+    playButton.append(label);
+  }
+  return label;
+}
+
+function clearRunStartRejection() {
+  if (!runStartRejectionPresentation) return;
+  const previous = runStartRejectionPresentation;
+  runStartRejectionPresentation = null;
+  delete message.dataset.runStartRejected;
+  messageTitle.textContent = previous.title;
+  messageKicker.textContent = previous.kicker;
+  messageCopy.textContent = previous.copy;
+  currentPlayButtonLabel().textContent = previous.label;
+  for (const [element, name, value] of previous.attributes) {
+    if (value === null) element.removeAttribute(name);
+    else element.setAttribute(name, value);
+  }
+}
+
+function showRunStartRejection() {
+  const label = currentPlayButtonLabel();
+  if (!runStartRejectionPresentation) runStartRejectionPresentation = {
+    title: messageTitle.textContent, kicker: messageKicker.textContent,
+    copy: messageCopy.textContent, label: label.textContent,
+    attributes: [[playButton, 'aria-describedby', playButton.getAttribute('aria-describedby')],
+      [messageCopy, 'role', messageCopy.getAttribute('role')]],
+  };
+  message.dataset.runStartRejected = 'true';
+  messageKicker.textContent = 'Noite Zumbi';
+  messageTitle.textContent = 'BIPX';
+  messageCopy.setAttribute('role', 'status');
+  messageCopy.textContent = 'Entrada indisponível. Ainda não há espaço livre para aparecer. Tente novamente em instantes.';
+  label.textContent = 'Tentar novamente';
+  playButton.setAttribute('aria-describedby', 'message-copy');
+  message.classList.add('message--login');
+  message.classList.remove('is-hidden');
+  playButton.focus();
+}
+
 function startGame() {
+  if (characterLoading || !heroVisual || !readyCharacters.has(selectedCharacter)) return false;
+  if (pendingMultiplayerStart) return false;
+  clearRunStartRejection();
+  restoreMenuIdentity();
+  characterPreview = false;
+  paused = false;
+  cameraTrauma = 0;
+  footstepSerial = heroVisual?.stats.locomotion?.footPlantSerial ?? 0;
+  playerMoveBlend = playerSwingTime = 0;
+  pendingSwordStrike = null;
+  swordSwingRemaining = 0;
+  keyboardAimActive = false;
+  keyboardAimReleaseUntil = 0;
+  clearPlayerInput();
+  document.body.classList.remove('game-paused');
   prewarmEntityPools();
   applyQualitySettings(true);
   clearEntities();
   resetProgressionState();
+  classSkillState = createSkillState(player.character);
+  pendingSkillRequest = null;
+  skillPresentationHistory.length = 0;
+  onlineSkillMotion = null; remoteSkillSnapshots = []; persistentSkillPresentation.clear();
+  skillSoundTravel.clear();
+  audioManager.samples?.reset();
   player.health = player.maxHealth;
   player.score = 0;
   player.kills = 0;
   player.wave = 0;
   player.shotCooldown = 0;
-  player.weapon = "pistol";
+  player.weapon = playableCharacters[player.character].weaponId;
   player.weaponTimer = 0;
   player.axeSpinTimer = 0;
-  player.position.copy(getMultiplayerStartPosition());
+  const requestedSpawn = getMultiplayerStartPosition();
+  const freeSpawn = findFreePosition(collisionWorld, { x: requestedSpawn.x, z: requestedSpawn.z, radius: .64 }, { maxDistance: 16 });
+  if (!freeSpawn.found) throw new Error("No valid player spawn");
+  player.position.set(freeSpawn.x, 0, freeSpawn.z);
   player.aimDirection.set(0, 0, -1);
   player.mesh.position.copy(player.position);
   game.state = "playing";
+  heroVisualMotion.initialized = false;
   game.nextWaveDelay = 0;
   game.spawnTimer = 0;
   game.zombiesToSpawn = 0;
@@ -2066,11 +2402,9 @@ function startGame() {
   game.milestonesTriggered = new Set();
   game.survivalTime = 0;
   game.hudTimer = 0;
+  game.soloRunId = crypto.randomUUID();
   game.leaderboardSubmitted = false;
-  game.leaderboardLiveTimer = 0;
   game.leaderboardRefreshTimer = 0;
-  game.lastLiveLeaderboardSentAt = 0;
-  game.lastLiveLeaderboardSignature = "";
   game.partyHudTimer = 0;
   game.labelTimer = 0;
   game.labelFrameReady = true;
@@ -2089,16 +2423,44 @@ function startGame() {
   message.classList.remove("message--login");
   message.classList.remove("message--ranking");
   message.classList.add("is-hidden");
-  if (usesServerAuthoritativeWorld()) {
+  canvas.focus({ preventScroll: true });
+  if (multiplayer.enabled) {
     clearServerSyncedWorld();
     player.wave = 1;
     waveElement.textContent = "1";
-    sendMultiplayerState();
+    pendingMultiplayerStart = { requestId: crypto.randomUUID(), sent: false };
+    sendMultiplayerStart();
   } else {
     startNextWave();
   }
   updateHud(true);
   updateMultiplayerHud();
+  combatVfx?.emit('teleport', player.position, { color: 0x91dbe3, radius: 2 });
+  announcePresentationSettings();
+}
+
+function clearPlayerInput() {
+  keys.clear();
+  game.shooting = false;
+  game.touchAimActive = false;
+  game.touchAimPointerId = null;
+  resetStick();
+}
+
+function isMultiplayerSuspended() {
+  return multiplayer.enabled && (!multiplayer.connected || Boolean(pendingMultiplayerStart));
+}
+
+function sendMultiplayerStart() {
+  if (!multiplayer.connected || !pendingMultiplayerStart || pendingMultiplayerStart.sent) return;
+  pendingMultiplayerStart.sent = true;
+  sendMultiplayerMessage({ type: 'startRun', requestId: pendingMultiplayerStart.requestId, state: { character: player.character } });
+}
+
+function announcePresentationSettings() {
+  if (window.__bipxPresentation) {
+    window.dispatchEvent(new CustomEvent('bipx:presentation-change', { detail: window.__bipxPresentation.getSettings() }));
+  }
 }
 
 function createDefaultUpgradeStats() {
@@ -2128,6 +2490,14 @@ function createDefaultPerkCooldowns() {
 }
 
 function resetProgressionState() {
+  multiplayerUpgradeOfferId = null;
+  pendingMultiplayerUpgrade = null;
+  pendingMultiplayerPickups.clear();
+  for (let index = powerups.length - 1; index >= 0; index--) {
+    if (powerups[index].serverDropId) removePowerup(index);
+  }
+  serverPowerupsById.clear();
+  retiredServerDrops.clear();
   player.maxHealth = playerBaseMaxHealth;
   player.level = 1;
   player.bestLevel = 1;
@@ -2304,6 +2674,11 @@ function applyQualitySettings(force = false) {
   }
 
   renderer.shadowMap.enabled = qualityManager.level === "high" || (qualityManager.level === "medium" && !mobileTuned);
+  combatVfx?.setQuality(qualityManager.level);
+  classSkillVfx?.setQuality(qualityManager.level);
+  hazardVfx?.setQuality(qualityManager.level);
+  elementalVfx?.setQuality(qualityManager.level);
+  cinematicPipeline?.setQuality(qualityManager.level);
 }
 
 function updateQualityManager(dt) {
@@ -2464,7 +2839,118 @@ function recordPoolExpansion(poolName) {
   perfStats.poolExpansions[poolName] = (perfStats.poolExpansions[poolName] || 0) + 1;
 }
 
+function getCharacterState() {
+  return {
+    selected: selectedCharacter, loading: characterLoading, error: characterError,
+    characters: Object.values(playableCharacters).map(profile => ({ ...profile, ready: readyCharacters.has(profile.id) })),
+  };
+}
+
+function announceCharacter() {
+  window.dispatchEvent(new CustomEvent('bipx:character-change', { detail: getCharacterState() }));
+}
+
+async function selectCharacter(id) {
+  if (!playableCharacters[id] || game.state === 'playing') return false;
+  characterPreview = true;
+  if (id === player.character && heroVisual && !characterLoading) return true;
+  const version = ++characterLoadVersion;
+  const previous = player.character;
+  selectedCharacter = id;
+  characterLoading = true;
+  characterError = null;
+  announceCharacter();
+  const fallback = player.mesh.children.filter(child => !child.isLight && !child.userData.contactShadow && child !== heroVisual?.root);
+  try {
+    const visual = await loadPlayableCharacter(id, { THREE, parent: player.mesh });
+    if (version !== characterLoadVersion) { visual.dispose(); return false; }
+    weaponFireEmitter?.dispose(); weaponFireEmitter = null;
+    heroVisual?.dispose(); heroVisual = visual;
+    for (const child of fallback) child.visible = false;
+    player.character = id;
+    player.weapon = playableCharacters[id].weaponId;
+    player.weaponTimer = 0;
+    player.mesh.userData.swordBlade = id === 'warrior' ? visual.weapon : null;
+    combatVfx.setSoulSource(visual.root);
+    pendingSwordStrike = null; swordSwingRemaining = 0;
+    readyCharacters.add(id);
+    try { localStorage.setItem('bipx-character', id); } catch { /* Optional persistence. */ }
+    updateHud(true);
+    sendMultiplayerState();
+    return true;
+  } catch (error) {
+    if (version !== characterLoadVersion) return false;
+    selectedCharacter = previous;
+    characterError = error.message;
+    console.error(`Character ${id} failed to load`, error);
+    return false;
+  } finally {
+    if (version === characterLoadVersion) { characterLoading = false; announceCharacter(); }
+  }
+}
+
+async function loadGameVisuals() {
+  animatedEnemies = createAnimatedEnemies({ THREE, scene });
+  await Promise.allSettled([
+    selectCharacter(selectedCharacter),
+    loadEnemyLibrary({ THREE }).then(library => animatedEnemies.register('orc', library)).catch(error => {
+      visualAssetErrors.push(`orc: ${error.message}`);
+      console.error('Orc visuals failed to load', error);
+    }),
+    loadMonsterLibrary({ THREE }).then(library => animatedEnemies.register('monsters', library)).catch(error => {
+      visualAssetErrors.push(`monsters: ${error.message}`);
+      console.error('Monster visuals failed to load', error);
+    }),
+    loadEnemyLodLibrary({ THREE }).then(library => {
+      enemyLodLibrary = library;
+      // Detach first: animated actors must not retain the procedural children
+      // in their fallback snapshots when the native static layer is installed.
+      for (const zombie of zombies) {
+        if (!enemyLodProfiles[zombie.type]) continue;
+        animatedEnemies.remove(zombie);
+        upgradeZombieLodMesh(zombie.mesh, zombie.type);
+        setZombieLod(zombie.mesh, zombie.renderMode === 'proxy');
+      }
+      for (const [type, pool] of entityPools.zombies) {
+        if (enemyLodProfiles[type]) for (const mesh of pool) upgradeZombieLodMesh(mesh, type);
+      }
+      for (const [type, bucket] of monsterRenderer.instanced) {
+        if (!enemyLodProfiles[type]) continue;
+        for (const mesh of [bucket.mesh, bucket.headMesh, bucket.armMesh]) {
+          if (mesh) { mesh.removeFromParent(); mesh.dispose(); }
+        }
+        monsterRenderer.instanced.delete(type);
+      }
+      window.__zombieNightDebug.getEnemyLodStats = () => ({
+        ...library.getStats(),
+        entities: zombies.filter(zombie => enemyLodProfiles[zombie.type]).map(zombie => ({
+          id: zombie.id, type: zombie.type, mode: zombie.renderMode, visible: zombie.mesh.visible,
+          animated: Boolean(zombie.mesh.userData.animatedEnemy), instanced: zombie.renderedAsInstance,
+          native: Boolean(zombie.mesh.userData.staticEnemyLod),
+          detailVisible: zombie.mesh.userData.staticEnemyLod?.detail.visible,
+          proxyVisible: zombie.mesh.userData.staticEnemyLod?.proxy.visible,
+          obsoleteChildren: zombie.mesh.children.filter(child => !child.userData.nativeEnemyLod && !child.userData.eliteMarker && child !== zombie.mesh.userData.animatedEnemy?.root).length,
+        })),
+        buckets: [...monsterRenderer.instanced].map(([type, bucket]) => ({ type, native: Boolean(bucket.nativeLod), count: bucket.count, capacity: bucket.capacity, triangles: bucket.nativeLod?.stats.triangles ?? null })),
+      });
+    }).catch(error => {
+      visualAssetErrors.push(`enemy LODs: ${error.message}`);
+      console.error('Static enemy visuals failed to load', error);
+    }),
+    loadAssetDressing({ THREE, scene, trees: scene.userData.treePositions, lanterns: cemetery.lanternPositions }).then(visuals => {
+      worldVisuals = visuals;
+      for (const mesh of scene.userData.treePlaceholders) mesh.visible = false;
+      for (const mesh of cemetery.lanternPlaceholders) mesh.visible = false;
+      worldAtmosphere.patchObject(visuals.group);
+    }).catch(error => {
+      visualAssetErrors.push(`environment: ${error.message}`);
+      console.error('Environment visuals failed to load', error);
+    }),
+  ]);
+}
+
 function buildWorld() {
+  cemetery = createCemetery({ THREE, scene });
   const hemiLight = new THREE.HemisphereLight(
     getGameConfig("lighting.hemi.skyColor"),
     getGameConfig("lighting.hemi.groundColor"),
@@ -2489,16 +2975,11 @@ function buildWorld() {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(140, 140),
-    new THREE.MeshStandardMaterial({ color: 0x242c20, roughness: 0.94, metalness: 0.02 }),
+    cemetery.groundMaterial,
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
-
-  const grid = new THREE.GridHelper(140, 56, 0x5f8d66, 0x304235);
-  grid.material.transparent = true;
-  grid.material.opacity = 0.3;
-  scene.add(grid);
 
   const fenceMaterial = new THREE.MeshStandardMaterial({ color: 0x403423, roughness: 0.88 });
   const fence = new THREE.InstancedMesh(
@@ -2523,11 +3004,19 @@ function buildWorld() {
   fence.instanceMatrix.needsUpdate = true;
   scene.add(fence);
 
-  const graveMaterial = new THREE.MeshStandardMaterial({ color: 0xa0aa9b, roughness: 0.84 });
-  const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x496b42, roughness: 0.88 });
-  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6a4930, roughness: 0.88 });
+  const graveMaterial = cemetery.graveMaterial;
+  const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x244848, roughness: 0.88 });
+  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x394648, roughness: 0.88 });
   const graves = new THREE.InstancedMesh(
-    getSharedGeometry("world-grave", () => new THREE.BoxGeometry(1.2, 1.8, 0.28)),
+    getSharedGeometry("world-grave-arched", () => {
+      const arch = new THREE.Shape();
+      arch.moveTo(-.58, -.9); arch.lineTo(.58, -.9); arch.lineTo(.58, .37);
+      arch.quadraticCurveTo(.58, .9, 0, .95); arch.quadraticCurveTo(-.58, .9, -.58, .37);
+      arch.closePath();
+      const geometry = new THREE.ExtrudeGeometry(arch, { depth: .24, bevelEnabled: true, bevelThickness: .045, bevelSize: .04, bevelSegments: 2, curveSegments: 10, steps: 1 });
+      geometry.translate(0, 0, -.12);
+      return geometry;
+    }),
     graveMaterial,
     52,
   );
@@ -2549,6 +3038,7 @@ function buildWorld() {
   crowns.receiveShadow = true;
   let graveInstance = 0;
   let treeInstance = 0;
+  const treePositions = [];
 
   for (let index = 0; index < 52; index += 1) {
     const angle = index * 2.38;
@@ -2561,11 +3051,13 @@ function buildWorld() {
     }
 
     if (index % 5 === 0) {
+      treePositions.push(new THREE.Vector3(x, 0, z));
       setStaticInstance(trunks, treeInstance, x, 1.2, z, angle);
       setStaticInstance(crowns, treeInstance, x, 3.2, z, angle);
       treeInstance += 1;
     } else {
       setStaticInstance(graves, graveInstance, x, 0.9, z, angle + Math.PI * 0.5);
+      graves.setColorAt(graveInstance, new THREE.Color().setHSL(.13, .06 + (index % 3) * .025, .62 + (index % 5) * .055));
       graveInstance += 1;
     }
   }
@@ -2578,15 +3070,19 @@ function buildWorld() {
   scene.add(graves);
   scene.add(trunks);
   scene.add(crowns);
+  scene.userData.treePositions = treePositions;
+  scene.userData.treePlaceholders = [trunks, crowns];
 
   const reticle = new THREE.Mesh(
     new THREE.TorusGeometry(0.65, 0.035, 8, 42),
-    new THREE.MeshBasicMaterial({ color: 0x8ef151, transparent: true, opacity: 0.85 }),
+    new THREE.MeshBasicMaterial({ color: 0xa1e6e6, transparent: true, opacity: 0.65, depthWrite: false }),
   );
   reticle.name = "reticle";
   reticle.rotation.x = Math.PI * 0.5;
   reticle.position.set(0, 0.06, -6);
   scene.add(reticle);
+  worldAtmosphere = createWorldAtmosphere({ THREE, moon });
+  for (const object of scene.children) if (object !== player.mesh) worldAtmosphere.patchObject(object);
 }
 
 function setStaticInstance(mesh, index, x, y, z, rotationY) {
@@ -2780,6 +3276,7 @@ function createPlayerMesh() {
   group.add(guard);
 
   const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 1.65), blade);
+  group.userData.swordBlade = swordBlade;
   swordBlade.position.set(0.05, 1.1, -1.92);
   swordBlade.castShadow = true;
   group.add(swordBlade);
@@ -2805,6 +3302,37 @@ function createPlayerMesh() {
   if (!scene.userData.editorRefs.playerLight) {
     scene.userData.editorRefs.playerLight = playerLight;
   }
+
+  // Put feet and hands under actual joint pivots so the held weapon moves with
+  // its grip, and the boot follows the leg rather than sliding independently.
+  const pivot = (x, y, z, parts) => {
+    const joint = new THREE.Group(); joint.position.set(x, y, z); group.add(joint);
+    for (const part of parts) { part.position.sub(joint.position); joint.add(part); }
+    return joint;
+  };
+  const leftHip = pivot(-.22, .78, .02, [leftLeg, leftBoot]);
+  const rightHip = pivot(.22, .78, .02, [rightLeg, rightBoot]);
+  // Reposition the grip onto the existing right hand before parenting it.
+  const handOffset = rightHand.position.clone();
+  for (const part of [hilt, guard, swordBlade, bladeLight]) {
+    part.position.x += .6;
+    part.position.y -= .13;
+    part.position.sub(handOffset);
+    rightHand.add(part);
+  }
+  leftArm.position.set(-.65, 1.18, -.36); leftArm.rotation.x = .8;
+  rightArm.position.set(.65, 1.18, -.36); rightArm.rotation.x = .8;
+  const leftElbow = pivot(-.65, 1.42, -.08, [leftArm, leftHand]);
+  const rightElbow = pivot(.65, 1.42, -.08, [rightArm, rightHand]);
+  group.userData.locomotion = { leftHip, rightHip, leftElbow, rightElbow, backPanel };
+
+  const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.7), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader: 'varying vec2 vUv; void main(){float d=length((vUv-.5)*2.); gl_FragColor=vec4(.015,.024,.027,(1.-smoothstep(.08,1.,d))*.38);}',
+  }));
+  contact.userData.contactShadow = true;
+  contact.rotation.x = -Math.PI / 2; contact.position.y = .035; group.add(contact);
 
   return group;
 }
@@ -3191,6 +3719,17 @@ function getInstancedMonsterBucket(type) {
     return monsterRenderer.instanced.get(type);
   }
 
+  const nativeProfile = enemyLodProfiles[type];
+  if (enemyLodLibrary && nativeProfile) {
+    const nativeLod = enemyLodLibrary.get(nativeProfile.id);
+    const capacity = 800;
+    const mesh = enemyLodLibrary.createInstancedMesh(nativeProfile.id, capacity);
+    scene.add(mesh);
+    const bucket = { capacity, count: 0, armCount: 0, mesh, nativeLod, height: nativeProfile.height };
+    monsterRenderer.instanced.set(type, bucket);
+    return bucket;
+  }
+
   const { bodyRadius, bodyHeight } = getCommonMonsterBodySpec(type);
   const palette = commonMonsterPalettes[type] ?? commonMonsterPalettes.zombie;
   const capacity = 420;
@@ -3242,8 +3781,8 @@ function resetInstancedMonsterBuckets() {
     bucket.count = 0;
     bucket.armCount = 0;
     bucket.mesh.count = 0;
-    bucket.headMesh.count = 0;
-    bucket.armMesh.count = 0;
+    if (bucket.headMesh) bucket.headMesh.count = 0;
+    if (bucket.armMesh) bucket.armMesh.count = 0;
   }
 }
 
@@ -3260,9 +3799,14 @@ function syncMonsterRenderer() {
 
   for (const zombie of zombies) {
     zombie.renderedAsInstance = false;
+    if (enemyLodLibrary && enemyLodProfiles[zombie.type]) {
+      upgradeZombieLodMesh(zombie.mesh, zombie.type);
+      zombie.mesh.position.y = 0;
+    }
 
     if (!isCommonMonsterType(zombie.type)) {
       zombie.mesh.visible = true;
+      if (zombie.mesh.userData.staticEnemyLod) setZombieLod(zombie.mesh, false);
       zombie.renderVisibleFrame = monsterRenderer.frame;
       continue;
     }
@@ -3293,18 +3837,18 @@ function syncMonsterRenderer() {
 
   for (const bucket of monsterRenderer.instanced.values()) {
     bucket.mesh.count = bucket.count;
-    bucket.headMesh.count = bucket.count;
-    bucket.armMesh.count = bucket.armCount;
+    if (bucket.headMesh) bucket.headMesh.count = bucket.count;
+    if (bucket.armMesh) bucket.armMesh.count = bucket.armCount;
     bucket.mesh.instanceMatrix.needsUpdate = true;
-    bucket.headMesh.instanceMatrix.needsUpdate = true;
-    bucket.armMesh.instanceMatrix.needsUpdate = true;
+    if (bucket.headMesh) bucket.headMesh.instanceMatrix.needsUpdate = true;
+    if (bucket.armMesh) bucket.armMesh.instanceMatrix.needsUpdate = true;
     if (bucket.mesh.instanceColor) {
       bucket.mesh.instanceColor.needsUpdate = true;
     }
-    if (bucket.headMesh.instanceColor) {
+    if (bucket.headMesh?.instanceColor) {
       bucket.headMesh.instanceColor.needsUpdate = true;
     }
-    if (bucket.armMesh.instanceColor) {
+    if (bucket.armMesh?.instanceColor) {
       bucket.armMesh.instanceColor.needsUpdate = true;
     }
   }
@@ -3369,7 +3913,11 @@ function assignMonsterRenderModes() {
 }
 
 function shouldKeepFullMonsterMeshes() {
-  return queryParams.get("monsterLod") !== "1";
+  // Detailed nearby silhouettes remain intact; large hordes use the existing
+  // distance/threat tiers by default, rather than requiring a debug URL flag.
+  if (queryParams.get('monsterLod') === '0') return true;
+  if (queryParams.get('monsterLod') === '1') return false;
+  return zombies.length <= (usesMobileTuning() ? 18 : 32) && qualityManager.level !== 'low';
 }
 
 function getMonsterLodBudget() {
@@ -3434,6 +3982,20 @@ function addInstancedMonster(zombie) {
   if (bucket.count >= bucket.capacity) {
     perfStats.objectAllocWarnings += 1;
     return false;
+  }
+
+  if (bucket.nativeLod) {
+    tempQuaternion.setFromAxisAngle(upVector, zombie.mesh.rotation.y);
+    tempVectorA.set(zombie.mesh.position.x, 0, zombie.mesh.position.z);
+    tempScale.copy(zombie.mesh.scale).multiplyScalar(bucket.height);
+    tempMatrix.compose(tempVectorA, tempQuaternion, tempScale);
+    bucket.mesh.setMatrixAt(bucket.count, tempMatrix);
+    bucket.mesh.setColorAt(bucket.count, tempColor.setHex(0xffffff));
+    bucket.count += 1;
+    zombie.renderedAsInstance = true;
+    zombie.renderVisibleFrame = monsterRenderer.frame;
+    perfStats.instancedZombies += 1;
+    return true;
   }
 
   tempQuaternion.setFromAxisAngle(upVector, zombie.mesh.rotation.y);
@@ -4216,9 +4778,8 @@ function createPowerupMesh(type) {
     }
   }
 
-  const light = new THREE.PointLight(glowColor, 1.6, 7);
-  light.position.y = 1.1;
-  group.add(light);
+  // Drop identity already comes from emissive meshes and its ground ring.
+  // Adding/removing a scene light here changes every lit shader's light count.
 
   return group;
 }
@@ -4340,7 +4901,7 @@ function createPowerupLabelSprite(type) {
 function createDropLabelSprite(drop) {
   const canvas = document.createElement("canvas");
   canvas.width = 448;
-  canvas.height = 112;
+  canvas.height = 128;
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -4353,14 +4914,14 @@ function createDropLabelSprite(drop) {
       depthWrite: false,
     }),
   );
-  sprite.scale.set(4.3, 1.08, 1);
+  sprite.scale.set(4.3, 4.3 * 128 / 448, 1);
   sprite.renderOrder = 24;
   sprite.userData = {
     canvas,
     context: canvas.getContext("2d"),
     drop,
     baseScaleX: 4.3,
-    baseScaleY: 1.08,
+    baseScaleY: 4.3 * 128 / 448,
     texture,
   };
 
@@ -4370,35 +4931,38 @@ function createDropLabelSprite(drop) {
 
 function drawDropLabel(sprite, drop) {
   const { canvas, context, texture } = sprite.userData;
-  const rarity = normalizeRarity(drop?.rarity);
-  const style = getRarityStyle(rarity);
-  const icon = drop?.icon ? `${drop.icon} ` : "";
-  const label = `${icon}${drop?.label || "Drop"}`;
-
+  const style = getRarityStyle(normalizeRarity(drop?.rarity));
+  const parts = String(drop?.label || "Drop").split(" · ");
+  const title = `${drop?.icon ? `${drop.icon} ` : ""}${parts.shift()}`;
+  const detail = parts.join(" · ");
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.shadowColor = style.glow;
   context.shadowBlur = style.animated ? 22 : 12;
-  context.fillStyle = "rgba(18, 10, 12, 0.72)";
-  context.fillRect(22, 26, 404, 62);
+  context.fillStyle = "rgba(18, 10, 12, 0.86)";
+  context.fillRect(22, 18, 404, 92);
   context.strokeStyle = style.border;
   context.lineWidth = 2;
-  context.strokeRect(22, 26, 404, 62);
+  context.strokeRect(22, 18, 404, 92);
   context.shadowBlur = 0;
   context.fillStyle = style.css;
-  context.fillRect(28, 82, 392, 4);
-  context.fillStyle = style.css;
+  context.fillRect(28, 104, 392, 4);
   context.font = "900 13px Arial, Helvetica, sans-serif";
   context.textAlign = "right";
   context.textBaseline = "middle";
-  context.fillText(style.label, 408, 40);
+  context.fillText(style.label, 408, 31);
   context.shadowColor = "rgba(0, 0, 0, 0.82)";
   context.shadowBlur = 6;
   context.shadowOffsetY = 2;
   context.fillStyle = "#fff5f3";
-  context.font = "900 29px Georgia, 'Times New Roman', serif";
   context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(label, 224, 60);
+  let titleSize = 28;
+  do { context.font = `900 ${titleSize}px Georgia, 'Times New Roman', serif`; }
+  while (context.measureText(title).width > 376 && --titleSize > 20);
+  context.fillText(title, 224, detail ? 58 : 68, 376);
+  if (detail) {
+    context.font = "700 20px Arial, Helvetica, sans-serif";
+    context.fillText(detail, 224, 86, 376);
+  }
   context.shadowBlur = 0;
   context.shadowOffsetY = 0;
   texture.needsUpdate = true;
@@ -4539,8 +5103,8 @@ function updateDamageNumbers(dt) {
   }
 }
 
-function getPowerupDropLabel(type) {
-  return `1 ${weapons[type]?.label || "Arma"}`;
+function getPowerupDropLabel(_type) {
+  return player.character === 'warrior' ? 'Lâmina encantada · +40% dano' : 'Munição reforçada · +40% dano';
 }
 
 function getZombiePool(type) {
@@ -4559,6 +5123,7 @@ function acquireZombieMesh(type) {
     recordPoolExpansion(`zombie:${type}`);
   }
 
+  upgradeZombieLodMesh(mesh, type);
   mesh.visible = true;
   mesh.position.set(0, 0, 0);
   mesh.rotation.set(0, 0, 0);
@@ -4599,7 +5164,10 @@ function acquireProjectileMesh(pool, color, radius) {
   }
 
   mesh.visible = true;
-  mesh.scale.setScalar(radius / 0.3);
+  if (pool === entityPools.bullets) {
+    mesh.geometry = getSharedGeometry('rifle-tracer', () => new THREE.CylinderGeometry(.025, .04, .75, 6));
+    mesh.scale.set(1, 1, 1);
+  } else mesh.scale.setScalar(radius / 0.3);
   mesh.material.color.setHex(color);
   mesh.material.emissive.setHex(color);
   mesh.material.opacity = 1;
@@ -5403,7 +5971,13 @@ function applyMeshQuality(mesh, shadowDistance) {
 
 function animate() {
   const rawDt = clock.getDelta();
-  const dt = Math.min(rawDt, 0.035);
+  const dt = paused ? 0 : Math.min(rawDt, 0.035);
+  const suspended = isMultiplayerSuspended();
+  if (suspended) {
+    clearPlayerInput();
+    pendingSwordStrike = null; swordSwingRemaining = 0;
+    playerMoveBlend = playerSwingTime = 0;
+  }
   const frameStartedAt = performance.now();
   perfStats.dt = rawDt;
   perfStats.frameMs = rawDt * 1000;
@@ -5415,7 +5989,7 @@ function animate() {
   updateLabelThrottle(dt);
   const updateStartedAt = performance.now();
 
-  if (game.state === "playing") {
+  if (game.state === "playing" && !paused && !suspended) {
     game.survivalTime += dt;
     if (game.perfStressImmortal) {
       updateAim();
@@ -5424,6 +5998,7 @@ function animate() {
     } else {
       updateAim();
       updatePlayer(dt);
+      updateClassSkills(dt);
       updatePerks(dt);
       updatePowerups(dt);
       updateXpGems(dt);
@@ -5454,20 +6029,53 @@ function animate() {
     updateAim();
   }
 
-  updateMultiplayer(dt);
-  audioManager.update(dt);
+  arpgHudTimer -= rawDt;
+  const refreshArpgPresentation = arpgHudTimer <= 0;
+  if (refreshArpgPresentation) publishArpgState();
+  updateMultiplayer(Math.min(rawDt, .25));
+  if (!paused) audioManager.update(dt);
+  else audioManager.fadeMusicToSilence();
+  audioManager.samples?.update({ playing: game.state === 'playing' && !isMultiplayerSuspended(), paused, muted: audioManager.muted });
   updateCamera(dt);
   updateEffects(dt);
   updateDamageNumbers(dt);
-  animateProps(clock.elapsedTime);
+  if (!paused) animateProps(game.state === 'playing' ? game.survivalTime : clock.elapsedTime);
+  sampleVisualMotion(heroVisualMotion, player.mesh.position, dt,
+    game.state === 'playing' && !suspended, Math.max(24, player.speed * player.upgradeStats.speedMultiplier));
+  heroVisualMotion.dead = game.state === 'dead' && !characterPreview;
+  heroVisual?.update(dt, heroVisualMotion);
+  syncPreparingWarCryTransforms(dt);
+  syncDashTransforms();
+  updateHeroFootsteps(dt);
+  worldAtmosphere?.update();
+  const skillAreas = syncPersistentSkillPresentation(refreshArpgPresentation);
+  worldVisuals?.update(player.position, game.state === 'playing' && !paused, zombies, traps, skillAreas, remotePlayers.values(), camera, dt);
+  if (game.state === 'playing') {
+    const actors = [{ position: player.mesh.position, height: 3.2, radius: 2 }];
+    for (const remote of remotePlayers.values()) if (remote.state === 'playing' && remote.health > 0)
+      actors.push({ position: remote.mesh.position, height: 3.2, radius: 2 });
+    worldLabelLayout.update({ camera, viewport: { width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight }, actors, drops: powerups });
+  } else {
+    worldLabelLayout.hide(powerups);
+  }
+  if (game.labelFrameReady && game.state === 'playing' && !paused) {
+    const target = getClosestZombie(player.position, 20);
+    combatVfx?.setTargets(target ? [{ id: target.zombie.id, position: target.zombie.mesh.position, locked: game.shooting }] : []);
+  } else if (game.state !== 'playing') combatVfx?.setTargets([]);
+  combatVfx?.update(dt, { camera, playerPosition: player.position, time: game.survivalTime });
+  elementalVfx?.update(dt);
+  classSkillVfx?.update(dt);
   syncMonsterRenderer();
+  animatedEnemies?.update(zombies, { dt, playerPosition: player.position, mobile: usesMobileTuning(), quality: qualityManager.level });
   syncXpGemRenderer();
-  syncEnemyProjectileRenderer();
-  perfStats.updateMs = performance.now() - updateStartedAt;
-  perfStats.logicMs = perfStats.updateMs;
-  const renderStartedAt = performance.now();
-  renderer.render(scene, camera);
-  perfStats.renderMs = performance.now() - renderStartedAt;
+  withCasterProjectilePresentation([...enemyProjectiles, ...serverProjectileById.values()], () => {
+    syncEnemyProjectileRenderer();
+    perfStats.updateMs = performance.now() - updateStartedAt;
+    perfStats.logicMs = perfStats.updateMs;
+    const renderStartedAt = performance.now();
+    cinematicPipeline.render(scene, camera, dt, classSkillVfx);
+    perfStats.renderMs = performance.now() - renderStartedAt;
+  });
   perfStats.drawCalls = renderer.info.render.calls;
   perfStats.totalFrameMs = performance.now() - frameStartedAt;
   requestAnimationFrame(animate);
@@ -5485,7 +6093,21 @@ function updateLabelThrottle(dt) {
 }
 
 function updateAim() {
-  if (game.touchAimActive || game.touchVector.lengthSq() > 0.0025) {
+  if (game.state === 'menu' || characterPreview) {
+    tempVectorA.subVectors(camera.position, player.mesh.position); tempVectorA.y = 0;
+    if (tempVectorA.lengthSq() > .01) player.mesh.rotation.y = getForwardRotation(tempVectorA);
+    return;
+  }
+  if (player.character === 'warrior' && swordSwingRemaining > 0 && game.state === 'playing') {
+    player.aimDirection.copy(swordSwingDirection);
+    player.mesh.rotation.y = getForwardRotation(swordSwingDirection);
+    return;
+  }
+  if (keyboardAimActive && !game.touchAimActive) {
+    tempVectorC.set(Number(keys.has('KeyL')) - Number(keys.has('KeyJ')), 0, Number(keys.has('KeyK')) - Number(keys.has('KeyI')));
+    if (tempVectorC.lengthSq() > 0 && performance.now() >= keyboardAimReleaseUntil) player.aimDirection.copy(tempVectorC.normalize());
+  }
+  if (keyboardAimActive || game.touchAimActive || game.touchVector.lengthSq() > 0.0025) {
     const reticle = scene.getObjectByName("reticle");
     if (reticle) {
       reticle.position.copy(player.position).addScaledVector(player.aimDirection, 5);
@@ -5516,6 +6138,15 @@ function updateAim() {
 }
 
 function updatePlayer(dt) {
+  if (multiplayer.enabled && onlineSkillMotion) {
+    const alpha = 1 - Math.exp(-dt * 35);
+    player.position.x += (onlineSkillMotion.x - player.position.x) * alpha;
+    player.position.z += (onlineSkillMotion.z - player.position.z) * alpha;
+    player.mesh.position.copy(player.position);
+    if (onlineSkillMotion.terminal && classSkillState.lock <= 0 && Math.hypot(player.position.x - onlineSkillMotion.x, player.position.z - onlineSkillMotion.z) < .03) onlineSkillMotion = null;
+    return;
+  }
+  if (isSkillMoving(classSkillState)) return;
   const move = tempVectorB.set(0, 0, 0);
 
   if (keys.has("KeyW") || keys.has("ArrowUp")) move.z -= 1;
@@ -5533,19 +6164,38 @@ function updatePlayer(dt) {
   }
 
   const moveLengthSq = move.lengthSq();
+  playerMoveBlend += (Math.min(1, Math.sqrt(moveLengthSq)) - playerMoveBlend) * (1 - Math.exp(-dt * 12));
   if (moveLengthSq > 0) {
     if (moveLengthSq > 1) {
       move.normalize();
     }
-    player.position.addScaledVector(move, player.speed * player.upgradeStats.speedMultiplier * dt);
+
   }
 
-  const distanceFromCenter = Math.hypot(player.position.x, player.position.z);
-  if (distanceFromCenter > worldLimit) {
-    player.position.multiplyScalar(worldLimit / distanceFromCenter);
-  }
+  const speed = player.speed * player.upgradeStats.speedMultiplier * getSkillModifiers(classSkillState).speed;
+  const moved = stepActor(collisionWorld, { id: "player", x: player.position.x, z: player.position.z, radius: .64 }, { x: move.x * speed, z: move.z * speed }, dt);
+  player.position.set(moved.x, 0, moved.z);
 
   player.mesh.position.copy(player.position);
+}
+
+function updateHeroFootsteps(dt) {
+  const motion = heroVisual?.stats.locomotion;
+  if (!motion) return;
+  if (footstepVisual !== heroVisual || motion.footPlantSerial < footstepSerial) {
+    footstepVisual = heroVisual;
+    footstepSerial = motion.footPlantSerial;
+    return;
+  }
+  if (dt > 0 && game.state === 'playing' && heroVisualMotion.speed > .2 && !heroVisualMotion.teleport) {
+    for (const plant of motion.recentFootPlants) {
+      if (plant.serial <= footstepSerial) continue;
+      tempVectorA.fromArray(plant.position);
+      tempVectorA.y = .06;
+      combatVfx?.emit('dust', tempVectorA, { intensity: .25, direction: heroVisualMotion.velocity });
+    }
+  }
+  footstepSerial = motion.footPlantSerial;
 }
 
 function updatePowerups(dt) {
@@ -5682,6 +6332,7 @@ function updateXpGems(dt) {
 }
 
 function collectXp(value) {
+  if (multiplayer.enabled) return;
   const xpGain = Math.max(0, Math.floor(value));
   if (xpGain <= 0) {
     return;
@@ -5718,6 +6369,7 @@ function getXpToNext(level) {
 }
 
 function activateLevelUpPerks() {
+  if (multiplayer.enabled) return;
   if (hasPerk("prismStorm")) {
     player.perkCooldowns.prismStorm = 8;
     triggerPerkAnimation("prismStorm", player.position, "epic");
@@ -5740,7 +6392,7 @@ function getXpValueForZombie(type, eliteType = null) {
     return Math.ceil((8 + Math.floor(player.wave * 0.35)) * eliteMultiplier);
   }
 
-  if (type === "runner" || type === "cowCharger") {
+  if (type === "orcPeon" || type === "runner" || type === "cowCharger") {
     return Math.ceil((5 + Math.floor(player.wave * 0.2)) * eliteMultiplier);
   }
 
@@ -5752,12 +6404,14 @@ function getXpValueForZombie(type, eliteType = null) {
 }
 
 function updateUpgradeChoices() {
+  if (multiplayer.enabled) return;
   if (player.pendingLevelUps > 0 && player.pendingUpgradeChoices.length === 0) {
     openUpgradeChoices();
   }
 }
 
 function openUpgradeChoices(source = "level") {
+  if (multiplayer.enabled) return;
   const choices = rollUpgradeChoices(source);
   if (choices.length === 0) {
     player.pendingLevelUps = 0;
@@ -5772,6 +6426,7 @@ function openUpgradeChoices(source = "level") {
 }
 
 function openBossRewardChoices(bossType = "boss") {
+  if (multiplayer.enabled) return false;
   if (player.pendingUpgradeChoices.length > 0) {
     return false;
   }
@@ -5858,6 +6513,8 @@ function getUpgradeRollWeight(upgrade, source = "level") {
 }
 
 function isUpgradeAvailable(upgrade, minimumRarity = "common", source = "level") {
+  if (upgrade.id === 'autoWeapon' || upgrade.id === 'sealRitual') return false;
+  if (player.character === 'warrior' && ['projectile', 'prismStorm'].includes(upgrade.id)) return false;
   if (getRarityRank(upgrade.rarity) < getRarityRank(minimumRarity)) {
     return false;
   }
@@ -5882,6 +6539,19 @@ function chooseUpgrade(index) {
     return;
   }
 
+  if (multiplayer.enabled) {
+    if (isMultiplayerSuspended() || pendingMultiplayerUpgrade || !multiplayerUpgradeOfferId || game.state !== 'playing') return;
+    restoreMultiplayerUpgradeFocus = upgradeOptionsElement?.contains(document.activeElement) || false;
+    pendingMultiplayerUpgrade = {
+      type: 'chooseUpgrade', runId: multiplayerAuthorityRunId,
+      offerId: multiplayerUpgradeOfferId, upgradeId: choice.id,
+      requestId: crypto.randomUUID(), lastSentAt: -Infinity,
+    };
+    sendPendingProgressionCommands();
+    renderUpgradeChoices();
+    return;
+  }
+
   audioManager.play("upgradeChoice", { rarity: choice.rarity, priority: 3 });
   applyUpgrade(choice);
   if (player.pendingUpgradeSource === "level") {
@@ -5900,6 +6570,7 @@ function chooseUpgrade(index) {
 }
 
 function applyUpgrade(upgrade) {
+  if (multiplayer.enabled) return false;
   const currentStacks = player.upgradeStacks[upgrade.id] || 0;
   if (currentStacks >= upgrade.maxStacks) {
     return false;
@@ -5969,9 +6640,17 @@ function renderUpgradeChoices() {
     return;
   }
 
+  const restoreChoiceFocus = upgradeOptionsElement.contains(document.activeElement) || restoreMultiplayerUpgradeFocus;
+  const waitingForServer = multiplayer.enabled && (isMultiplayerSuspended() || Boolean(pendingMultiplayerUpgrade));
+  if (restoreChoiceFocus && waitingForServer) restoreMultiplayerUpgradeFocus = true;
+  upgradePanel.setAttribute('aria-busy', waitingForServer ? 'true' : 'false');
+  const announcement = document.querySelector('#upgrade-announcement');
   if (player.pendingUpgradeChoices.length === 0) {
     upgradePanel.classList.add("is-hidden");
     upgradeOptionsElement.innerHTML = "";
+    if (announcement) announcement.textContent = '';
+    if (restoreChoiceFocus && game.state === 'playing') canvas.focus({ preventScroll: true });
+    restoreMultiplayerUpgradeFocus = false;
     return;
   }
 
@@ -5983,16 +6662,23 @@ function renderUpgradeChoices() {
       const rarity = normalizeRarity(upgrade.rarity);
       const rarityLabel = getRarityStyle(rarity).label;
       return `
-        <button class="upgrade-card upgrade-card--${rarity}" type="button" data-upgrade-index="${index}">
+        <button class="upgrade-card upgrade-card--${rarity}" type="button" data-upgrade-index="${index}" aria-keyshortcuts="${index + 1}" ${waitingForServer ? 'disabled' : ''}>
           <span class="upgrade-card__key">${index + 1}</span>
           <span class="upgrade-card__rarity">${escapeHtml(rarityLabel)}</span>
           <strong>${escapeHtml(upgrade.label)}</strong>
           <span>${escapeHtml(description)}</span>
-          <span>${stacks}/${upgrade.maxStacks} stacks</span>
+          <span>Nível ${stacks}/${upgrade.maxStacks}</span>
         </button>
       `;
     })
     .join("");
+  if (announcement) announcement.textContent = waitingForServer
+    ? (multiplayer.connected ? 'Confirmando evolução.' : 'Reconectando. Suas escolhas serão preservadas.')
+    : `Escolha uma evolução: ${player.pendingUpgradeChoices.map((upgrade, index) => `${index + 1}, ${upgrade.label}`).join('; ')}.`;
+  if (restoreChoiceFocus && !waitingForServer) {
+    upgradeOptionsElement.querySelector('.upgrade-card')?.focus({ preventScroll: true });
+    restoreMultiplayerUpgradeFocus = false;
+  }
 }
 
 function getAutoWeaponUnlockDescription() {
@@ -6088,6 +6774,7 @@ function getSlayerPactMultiplier() {
 }
 
 function spawnLevelPulse() {
+  combatVfx?.emit('levelUp', player.position, { color: 0xf5d594, radius: 3 });
   const ring = acquireEffectMesh("pulse", createPooledPulseEffect);
   ring.rotation.x = Math.PI * 0.5;
   ring.position.copy(player.position);
@@ -6097,72 +6784,340 @@ function spawnLevelPulse() {
   addTimedEffect(ring, 0.55, true, "pulse");
 }
 
-function updateActiveWeapon(dt) {
-  if (player.weapon !== "pistol") {
-    player.weaponTimer -= dt;
-
-    if (player.weaponTimer <= 0) {
-      resetWeapon();
-    }
+function buildArpgState() {
+  if (pendingSkillRequest && performance.now() - pendingSkillRequest.at >= 2500) pendingSkillRequest = null;
+  if (classSkillState.classId !== player.character) classSkillState = createSkillState(player.character);
+  return getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
+    weapon: player.character === 'warrior' ? 'Espada' : 'Rifle', dead: game.state === 'dead',
+    // Open cards keep the run live: skills stay unavailable, but this is not a pause.
+    paused, enabled: game.state === 'playing' && !isMultiplayerSuspended() && !pendingSkillRequest && player.pendingUpgradeChoices.length === 0,
+    // Display mirror of trusted progression; the server recomputes its own value for every cast.
+    areaMultiplier: getAreaMultiplier() });
+}
+function publishArpgState() {
+  arpgHudTimer = .1;
+  window.dispatchEvent(new CustomEvent('bipx:arpg-state', { detail: buildArpgState() }));
+}
+function playSkillFeedback(slot, phase) {
+  const def = getClassSkills(player.character)[slot];
+  if (!def) return;
+  audioManager.samples?.update({ playing: game.state === 'playing' && !isMultiplayerSuspended(), paused, muted: audioManager.muted });
+  audioManager.samples?.playSkillSound?.(def.id, phase, { local: true });
+}
+function playSkillsReady(previous, next) {
+  if (previous.classId !== next.classId) return;
+  for (const def of getClassSkills(next.classId)) if (previous.cooldowns[def.slot] > 0 && next.cooldowns[def.slot] <= 0) playSkillFeedback(def.slot, 'ready');
+}
+function requestClassSkill(slot) {
+  if (!Number.isInteger(slot) || slot < 0 || slot > 2 || game.state !== 'playing' || paused || player.pendingUpgradeChoices.length || isMultiplayerSuspended()) return false;
+  if (pendingSkillRequest && performance.now() - pendingSkillRequest.at < 2500) return false;
+  const intent = { slot, aimX: player.aimDirection.x, aimZ: player.aimDirection.z };
+  // Keyboard/touch aim uses a bounded forward target; pointer uses its ground intersection.
+  const def = getClassSkills(player.character)[slot];
+  const target = keyboardAimActive || game.touchAimActive
+    ? { x: player.position.x + intent.aimX * def.range, z: player.position.z + intent.aimZ * def.range } : pointerWorld;
+  intent.targetX = target.x; intent.targetZ = target.z;
+  if (multiplayer.enabled) {
+    const id = crypto.randomUUID(); pendingSkillRequest = { id, slot, at: performance.now() };
+    sendMultiplayerMessage({ type: 'skill', requestId: id, runId: multiplayerAuthorityRunId, ...intent });
+  } else {
+    const result = beginSkill(classSkillState, intent, { x: player.position.x, z: player.position.z,
+      runId: game.soloRunId, damageMultiplier: getCombatDamageMultiplier() / getSkillModifiers(classSkillState).damage, areaMultiplier: getAreaMultiplier(), playing: true, dead: player.health <= 0 });
+    if (result.ok) presentClassSkill(result.event);
+    else playSkillFeedback(slot, 'resourcefail');
   }
+  publishArpgState();
+  return true;
+}
+function sweepCasterLaunchVisual(from, to, radius, context) {
+  let first = Infinity;
+  for (const [a, b] of [[from, to], [{ ...from, y: context.authorityY }, { ...to, y: context.authorityY }]]) {
+    const hit = sweepStatic(collisionWorld, a, b, radius, { kind: 'projectile' });
+    if (hit) first = Math.min(first, hit.t);
+  }
+  for (const zombie of zombies) {
+    if (zombie.health <= 0 || (zombie.serverControlled ? zombie.serverId : zombie.id) === context.actorId) continue;
+    first = Math.min(first, segmentCircleContact(from, to, zombie.mesh.position, radius + zombie.radius));
+  }
+  for (const target of getLivingPlayerTargets())
+    first = Math.min(first, segmentCircleContact(from, to, target.position, radius + target.radius));
+  return Number.isFinite(first) ? { t: first } : null;
+}
 
-  if (player.axeSpinTimer > 0) {
-    player.axeSpinTimer = Math.max(0, player.axeSpinTimer - dt);
-    damageZombiesInRadius(4.4, 8, false, "axe");
+function emitEnemyProjectileTrail(projectile, terminal = false) {
+  casterProjectilePresentation.sample(projectile, terminal);
+  emitProjectileTrail(elementalVfx, projectile.casterTrailProxy || projectile);
+}
+
+function clearCasterLaunchPresentation() {
+  casterProjectilePresentation.clear();
+  for (const projectile of [...enemyProjectiles, ...serverProjectileById.values()]) casterProjectilePresentation.release(projectile);
+}
+
+function sweepClassSkillVisual(from, to, radius, context) {
+  if (![from.x, from.y, from.z, to.x, to.y, to.z, radius, context.authorityY].every(Number.isFinite))
+    throw new TypeError('Visual sweep requires finite coordinates/radius/authorityY');
+  let first = Infinity;
+  for (const [a, b] of [[from, to], [{ ...from, y: context.authorityY }, { ...to, y: context.authorityY }]]) {
+    const hit = sweepStatic(collisionWorld, a, b, radius, { kind: 'projectile' });
+    if (hit) first = Math.min(first, hit.t);
+  }
+  for (const monster of zombies) {
+    if (monster.dead || !(monster.health > 0) || monster.ally || monster.eligible === false) continue;
+    const center = monster.mesh?.position ?? monster.position ?? monster;
+    if (![center.x, center.z, monster.radius].every(Number.isFinite) || monster.radius < 0) throw new TypeError('Invalid eligible monster collider');
+    first = Math.min(first, segmentCircleContact(from, to, center, radius + monster.radius));
+  }
+  return Number.isFinite(first) ? { t: first } : null;
+}
+
+function trackPreparingWarCry(event, actorId) {
+  if (event.skillId !== 'warrior_war_cry' || typeof event.castId !== 'string') return;
+  if (event.phase === 'release' || event.phase === 'end' || event.phase === 'cancel') {
+    preparingWarCries.delete(event.castId); retiredWarCries.add(event.castId);
+    while (retiredWarCries.size > 128) retiredWarCries.delete(retiredWarCries.values().next().value);
+    return;
+  }
+  if (event.phase !== 'cast' || preparingWarCries.has(event.castId) || retiredWarCries.has(event.castId)) return;
+  const age = Math.max(0, Number(event.ageMs) || 0) / 1000;
+  const duration = Number(event.duration) || getClassSkill(event.skillId).duration;
+  if (age >= duration) return;
+  preparingWarCries.set(event.castId, { actorId, remaining: duration - age + .5 });
+  while (preparingWarCries.size > 32) preparingWarCries.delete(preparingWarCries.keys().next().value);
+}
+
+function clearPreparingWarCries() { preparingWarCries.clear(); retiredWarCries.clear(); }
+
+function syncPreparingWarCryTransforms(dt = 0) {
+  if (isMultiplayerSuspended()) { clearPreparingWarCries(); return; }
+  for (const [castId, entry] of preparingWarCries) {
+    if (!paused) entry.remaining -= Math.max(0, Number(dt) || 0);
+    const local = !multiplayer.enabled || entry.actorId === multiplayer.id;
+    const remote = local ? null : remotePlayers.get(entry.actorId);
+    const alive = local ? game.state === 'playing' && player.health > 0 : remote?.state === 'playing' && remote.health > 0;
+    const localCast = !multiplayer.enabled && classSkillState.active.find(c => c.castId === castId && !c.released);
+    const snapshot = local ? classSkillState : remoteSkillSnapshots.find(owner => owner.id === entry.actorId)?.skills;
+    if (!alive || entry.remaining <= 0 || snapshot?.buff?.castId === castId || (!multiplayer.enabled && !localCast)) { preparingWarCries.delete(castId); continue; }
+    const root = local ? player.mesh : remote?.mesh;
+    const visual = local ? heroVisual : remote?.visual;
+    if (!root) continue;
+    root.updateWorldMatrix(true, false);
+    const origin = root.getWorldPosition(new THREE.Vector3());
+    const socket = visual?.weapon || visual?.muzzle;
+    let emitter;
+    if (socket) { socket.updateWorldMatrix(true, false); emitter = socket.getWorldPosition(new THREE.Vector3()); }
+    classSkillVfx?.updateCastTransform?.(castId, { origin, ...(emitter ? { emitter } : {}) });
   }
 }
 
+function retireDashTransform(castId) {
+  retiredDashTransforms.add(castId);
+  while (retiredDashTransforms.size > 128) retiredDashTransforms.delete(retiredDashTransforms.values().next().value);
+}
+
+function trackDashTransform(event, actorId) {
+  if (event.skillId !== 'warrior_cleaving_dash' || typeof event.castId !== 'string' || !event.castId) return;
+  if (event.phase === 'cancel' || (event.phase === 'end' && event.reason)) {
+    activeDashTransforms.delete(event.castId); retireDashTransform(event.castId); return;
+  }
+  if (event.phase === 'end') {
+    // A normal end follows terminal travel in the same simulation step.
+    // Block replay while the existing terminal arc follows its original visual tail.
+    if (!activeDashTransforms.get(event.castId)?.terminal) activeDashTransforms.delete(event.castId);
+    retireDashTransform(event.castId); return;
+  }
+  if (!['cast', 'release', 'travel'].includes(event.phase) || retiredDashTransforms.has(event.castId)) return;
+  const previous = activeDashTransforms.get(event.castId);
+  if (previous && (previous.actorId !== actorId || previous.terminal)) return;
+  activeDashTransforms.set(event.castId, { actorId, terminal: event.phase === 'travel' && Boolean(event.terminal) });
+  while (activeDashTransforms.size > 32) activeDashTransforms.delete(activeDashTransforms.keys().next().value);
+}
+
+function clearDashTransforms(actorId) {
+  if (actorId === undefined) { activeDashTransforms.clear(); retiredDashTransforms.clear(); return; }
+  for (const [castId, entry] of activeDashTransforms) if (entry.actorId === actorId) {
+    activeDashTransforms.delete(castId); retireDashTransform(castId);
+  }
+}
+
+function syncDashTransforms() {
+  if (isMultiplayerSuspended()) { clearDashTransforms(); return; }
+  for (const [castId, entry] of activeDashTransforms) {
+    // Remote roots/mixers also move between packets. Follow only an existing
+    // live arc; the pool owns its lifetime, including the normal terminal tail.
+    const local = !multiplayer.enabled || entry.actorId === multiplayer.id;
+    const remote = local ? null : remotePlayers.get(entry.actorId);
+    const alive = local ? game.state === 'playing' && player.health > 0 : remote?.state === 'playing' && remote.health > 0 && !remote.disposed;
+    if (!alive) { activeDashTransforms.delete(castId); retireDashTransform(castId); continue; }
+    const visual = local ? heroVisual : remote?.visual;
+    const socket = visual?.muzzle || visual?.weapon;
+    if (!socket) { activeDashTransforms.delete(castId); continue; }
+    socket.updateWorldMatrix(true, false);
+    const emitter = socket.getWorldPosition(new THREE.Vector3());
+    if (![emitter.x, emitter.y, emitter.z].every(Number.isFinite)) { activeDashTransforms.delete(castId); continue; }
+    const accepted = classSkillVfx?.updateDashTransform?.(castId, { emitter });
+    if (!accepted) activeDashTransforms.delete(castId);
+    if (entry.terminal) retireDashTransform(castId);
+  }
+}
+
+function presentClassSkill(event, actorId = multiplayer.id) {
+  if (!getClassSkill(event?.skillId)) return;
+  trackPreparingWarCry(event, actorId);
+  trackDashTransform(event, actorId);
+  const local = !multiplayer.enabled || actorId === multiplayer.id;
+  const visual = local ? heroVisual : remotePlayers.get(actorId)?.visual;
+  if (event.phase === 'cast') {
+    if (typeof visual?.cast === 'function') visual.cast({ skillId: event.skillId, castId: event.castId, duration: event.duration, impactAt: event.impactAt, elapsed: (event.ageMs || 0) / 1000 });
+    else visual?.attack({ duration: event.duration });
+    if (local) { player.shotCooldown = Math.max(player.shotCooldown, event.duration); pendingSwordStrike = null; }
+  }
+  if (multiplayer.enabled && event.actorPosition) {
+    if (local) onlineSkillMotion = { ...event.actorPosition, terminal: Boolean(event.terminal) };
+    else {
+      const remote = remotePlayers.get(actorId);
+      remote?.targetPosition?.set(event.actorPosition.x, 0, event.actorPosition.z);
+    }
+  }
+  if (event.phase === 'cast' || event.phase === 'release' || (event.phase === 'travel' && event.skillId === 'warrior_cleaving_dash')) {
+    const socket = visual?.muzzle || visual?.weapon;
+    if (socket) { socket.updateWorldMatrix(true, false); const emitter = socket.getWorldPosition(new THREE.Vector3()); event = { ...event, emitter: { x: emitter.x, y: emitter.y, z: emitter.z } }; }
+  }
+  classSkillVfx?.emit(event);
+  audioManager.samples?.update({ playing: game.state === 'playing' && !isMultiplayerSuspended(), paused, muted: audioManager.muted });
+  if (event.phase !== 'travel' || !skillSoundTravel.has(event.castId)) {
+    const soundAt = event.phase === "cast" ? event.origin : event.target;
+    const position = new THREE.Vector3(soundAt.x, soundAt.y || 0, soundAt.z);
+    audioManager.samples?.playSkillEvent?.(event, { local, ageMs: event.ageMs || 0, ...getSpatialAudioOptions(position) });
+    if (event.phase === 'travel') {
+      skillSoundTravel.add(event.castId);
+      if (skillSoundTravel.size > 128) skillSoundTravel.delete(skillSoundTravel.values().next().value);
+    }
+  }
+  if (event.phase === 'status') return;
+  skillPresentationHistory.push({ ...event, actorId, local, time: game.survivalTime });
+  if (skillPresentationHistory.length > 128) skillPresentationHistory.shift();
+}
+
+// Reconstruct enduring visuals from authoritative snapshots, including late join.
+// No attack/impact sound or damage is replayed here.
+function syncPersistentSkillPresentation(syncAudio = false) {
+  if (isMultiplayerSuspended()) {
+    classSkillVfx?.syncState?.({ buffs: [], fields: [], statuses: [] });
+    return [];
+  }
+  const next = new Map();
+  const states = multiplayer.enabled ? remoteSkillSnapshots : [{ id: 'solo', x: player.position.x, z: player.position.z, skills: classSkillState }];
+  for (const owner of states) {
+    const ownerPosition = !multiplayer.enabled || owner.id === multiplayer.id ? player.position : remotePlayers.get(owner.id)?.mesh?.position || owner;
+    for (const value of [owner.skills?.buff, ...(owner.skills?.fields || [])].filter(Boolean)) {
+      if (!(value.remaining > 0)) continue;
+      const p = value.status === 'buff' ? { x: ownerPosition.x, y: .1, z: ownerPosition.z } : { x: value.x, y: value.y, z: value.z };
+      const event = { ...value, phase: 'status', target: p, origin: p, statusDuration: value.duration, groundY: .04 };
+      next.set(`${value.castId}:${value.status}`, event);
+    }
+  }
+  for (const zombie of zombies) for (const value of Object.values(zombie.skillStatuses || {})) {
+    const remaining = value.status === 'freeze' ? zombie.freezeTimer : zombie.stunTimer;
+    if (!(remaining > 0) || zombie.health <= 0) continue;
+    const p = { x: zombie.mesh.position.x, y: .8, z: zombie.mesh.position.z };
+    const event = { ...value, remaining, phase: 'status', targetId: zombie.id, contactId: String(zombie.id), origin: p, target: p, groundY: .04 };
+    next.set(`${value.castId}:${value.status}:${zombie.id}`, event);
+  }
+  const values = [...next.values()];
+  classSkillVfx?.syncState?.({
+    buffs: values.filter(e => e.status === 'buff').map(e => ({ id: e.castId, position: e.target, remaining: e.remaining, duration: e.statusDuration })),
+    fields: values.filter(e => e.status === 'gravity').map(e => ({ id: e.castId, position: e.target, radius: e.radius, remaining: e.remaining, duration: e.statusDuration })),
+    statuses: zombies.filter(z => z.health > 0 && (z.freezeTimer > 0 || z.stunTimer > 0)).map(z => ({ id: z.id, position: z.mesh.position,
+      freezeRemaining: z.freezeTimer || 0, stunRemaining: z.stunTimer || 0, radius: z.radius + .2, height: (monsterProfiles[z.type]?.height || 2) + .3 })),
+  });
+  const skillAreas = values.filter(event => event.status === 'buff' || event.status === 'gravity').map(event => ({
+    id: event.castId, castId: event.castId, skillId: event.skillId, position: event.target, radius: event.radius, remaining: event.remaining,
+  }));
+  if (!syncAudio) return skillAreas;
+  const soundState = event => {
+    if (event.status !== 'buff' && event.status !== 'gravity') return;
+    const local = !multiplayer.enabled || event.castId.startsWith(`${multiplayerAuthorityRunId}:`);
+    const position = new THREE.Vector3(event.target.x, event.target.y || 0, event.target.z);
+    audioManager.samples?.playSkillEvent?.(event, { local, ageMs: 0, ...getSpatialAudioOptions(position) });
+  };
+  for (const event of values) soundState(event);
+  for (const [key, value] of persistentSkillPresentation) if (!next.has(key)) soundState({ ...value, phase: 'end', remaining: 0, reason: 'snapshot-removed' });
+  persistentSkillPresentation.clear(); for (const [key, value] of next) persistentSkillPresentation.set(key, value);
+  return skillAreas;
+}
+
+function updateClassSkills(dt) {
+  if (multiplayer.enabled) return; // HUD follows server snapshots; UI never grants regeneration.
+  const previous = skillSnapshot(classSkillState);
+  advanceSkills(classSkillState, dt, {
+    actor: player.position,
+    sweepStatic: (from, to, radius, kind) => sweepStatic(collisionWorld, from, to, radius, { kind }),
+    moveCaster(delta) {
+      const moved = moveActor(collisionWorld, { id: 'player', x: player.position.x, z: player.position.z, radius: .64 }, delta, { stopOnContact: true });
+      player.position.set(moved.x, 0, moved.z); player.mesh.position.copy(player.position); return moved;
+    },
+    pullTargets(targets, field, step) {
+      const bodies = targets.map(t => ({ ...t, inverseMass: 1, pullScale: t.boss ? .35 : 1 }));
+      bodies.push({id:'player',x:player.position.x,z:player.position.z,radius:.64,inverseMass:0});
+      const result = pullActors(collisionWorld, bodies, field, step, {radius:field.radius,speed:4.5,coreRadius:.55,iterations:4});
+      const affected = new Set(result.affectedIds), byId = new Map(targets.map(t=>[t.id,t]));
+      for (const body of result.bodies) { const target = byId.get(body.id); if (target) { target.x=body.x;target.z=body.z;target.zombie.mesh.position.set(body.x,0,body.z);if(affected.has(body.id))target.zombie.pullTimer=step+1e-4; } }
+    },
+    targets: classSkillState.active.length || classSkillState.fields.length ? zombies.map(zombie => ({ id: zombie.id, x: zombie.mesh.position.x, z: zombie.mesh.position.z, radius: zombie.radius, health: zombie.health, dead: zombie.health <= 0, boss: Boolean(monsterProfiles[zombie.type]?.boss), zombie })) : [],
+    hit(target, effect) {
+      const zombie = target.zombie;
+      if (zombie.health <= 0) return;
+      applySkillControl(zombie, effect);
+      const killed = damageZombie(zombie, effect.damage, true, true, effect.skillId, effect);
+      target.dead = killed; target.health = zombie.health; return killed;
+    },
+    emit: event => presentClassSkill(event),
+  });
+  playSkillsReady(previous, classSkillState);
+}
+
+function updateActiveWeapon(dt) {
+  if (player.weaponTimer > 0) {
+    player.weaponTimer = Math.max(0, player.weaponTimer - dt);
+    if (player.weaponTimer === 0) resetWeapon();
+  }
+  player.weapon = playableCharacters[player.character].weaponId;
+}
+
 function updateShooting(dt) {
-  player.shotCooldown -= dt;
-
-  if (player.weapon === "flamethrower") {
-    updateFlamethrower(dt);
-    return;
+  player.shotCooldown = Math.max(0, player.shotCooldown - dt);
+  swordSwingRemaining = Math.max(0, swordSwingRemaining - dt);
+  if (pendingSwordStrike) {
+    pendingSwordStrike.remaining -= dt;
+    if (pendingSwordStrike.remaining <= 0) {
+      const direction = pendingSwordStrike.direction;
+      pendingSwordStrike = null;
+      damageZombiesInConeFrom(player.position, direction, 4.2 * getAreaMultiplier(), Math.cos(.92), 7 * getCombatDamageMultiplier(), true, true, 'katana');
+      audioManager.play('katana', { priority: 2 });
+      sendMultiplayerAttack('katana', player.position, direction);
+    }
   }
-
-  if (player.weapon === "axe") {
-    updateAxeAttack();
-    return;
+  if (!game.shooting || player.shotCooldown > 0 || classSkillState.lock > 0 || !heroVisual) return;
+  if (player.character === 'warrior') {
+    const duration = Math.max(.32, .55 * player.upgradeStats.cooldownMultiplier);
+    player.shotCooldown = duration;
+    swordSwingRemaining = duration;
+    swordSwingDirection.copy(player.aimDirection);
+    pendingSwordStrike = { remaining: duration * .42, direction: swordSwingDirection.clone() };
+    heroVisual.attack({ duration });
+  } else {
+    const duration = Math.max(.16, .32 * player.upgradeStats.cooldownMultiplier);
+    player.shotCooldown = duration;
+    heroVisual.attack({ duration });
+    spawnBullet();
+    audioManager.play('pistol', { priority: 1 });
+    sendMultiplayerAttack('pistol');
   }
+}
 
-  if (player.weapon === "katana") {
-    updateKatanaAttack();
-    return;
-  }
-
-  if (player.weapon === "crossbow") {
-    updateCrossbowAttack();
-    return;
-  }
-
-  if (player.weapon === "talisman") {
-    updateTalismanAttack();
-    return;
-  }
-
-  if (player.weapon === "thunderstaff") {
-    updateThunderstaffAttack();
-    return;
-  }
-
-  if (player.weapon === "boneCannon") {
-    updateBoneCannonAttack();
-    return;
-  }
-
-  if (player.weapon === "frostNova") {
-    updateFrostNovaAttack();
-    return;
-  }
-
-  if (!game.shooting || player.shotCooldown > 0) {
-    return;
-  }
-
-  player.shotCooldown = getPlayerCooldown(Math.max(0.1, 0.2 - player.wave * 0.006));
-  spawnBullet();
-  audioManager.play("pistol", { priority: 1 });
-  sendMultiplayerAttack("pistol");
+function getCombatDamageMultiplier() {
+  return player.upgradeStats.damageMultiplier * (player.weaponTimer > 0 ? 1.4 : 1) * getSkillModifiers(classSkillState).damage;
 }
 
 function updateFlamethrower(dt) {
@@ -6291,15 +7246,16 @@ function updateFrostNovaAttack() {
 function spawnBullet() {
   spawnPlayerProjectiles({
     color: 0xfff2a3,
-    damage: 1,
-    lifespan: 1.25,
-    radius: 0.3,
-    speed: 33,
+    damage: 2,
+    lifespan: .52,
+    radius: .12,
+    speed: 48,
     hitEffect: "pistol",
   });
 }
 
 function spawnPlayerProjectiles(config) {
+  if (player.character !== 'dwarf') return;
   const count = 1 + getProjectileBonus();
   const spreadStep = count > 1 ? 0.12 : 0;
   const areaMultiplier = getAreaMultiplier();
@@ -6309,7 +7265,7 @@ function spawnPlayerProjectiles(config) {
     spawnProjectile({
       ...config,
       angleOffset,
-      damage: config.damage * player.upgradeStats.damageMultiplier,
+      damage: config.damage * getCombatDamageMultiplier(),
       explodeDamage: (config.explodeDamage || 0) * player.upgradeStats.damageMultiplier,
       explodeColor: config.explodeColor || 0,
       explodeRadius: (config.explodeRadius || 0) * areaMultiplier,
@@ -6333,15 +7289,23 @@ function spawnProjectile({
   direction = player.aimDirection,
   angleOffset = 0,
 }) {
+  if (player.character !== 'dwarf') return;
   const projectileDirection = rotateDirectionY(direction, angleOffset);
   const mesh = acquireProjectileMesh(entityPools.bullets, color, radius);
+  mesh.quaternion.setFromUnitVectors(upVector, projectileDirection);
   mesh.position.copy(origin);
   mesh.position.y = 1.12;
-  mesh.position.addScaledVector(projectileDirection, 1.25);
+  if (heroVisual?.muzzle && origin === player.position) heroVisual.muzzle.getWorldPosition(mesh.position);
+  else mesh.position.addScaledVector(projectileDirection, 1.25);
   scene.add(mesh);
 
   bullets.push({
     mesh,
+    previousPosition: mesh.position.clone(),
+    nextPosition: mesh.position.clone(),
+    trailPosition: mesh.position.clone(),
+    trailTimer: 0,
+    color,
     age: 0,
     damage,
     explodeDamage,
@@ -6356,10 +7320,9 @@ function spawnProjectile({
   });
 }
 
-function updateAutoWeapons(dt) {
-  updateGuardianBlade(dt);
-  updateOrbitOrb(dt);
-  updateSealRain(dt);
+function updateAutoWeapons(_dt) {
+  // Playable classes keep their equipped sword/rifle. Effects do not grant a
+  // second autonomous ranged weapon to the sword character.
 }
 
 function updateGuardianBlade(dt) {
@@ -6541,7 +7504,8 @@ function getPlayerCooldown(seconds) {
 }
 
 function spawnPowerup(type = getNextWeaponDropType(), x, z, options = {}) {
-  if (!weapons[type] || type === "pistol") {
+  type = playableCharacters[player.character].weaponId;
+  if (!weapons[type]) {
     return;
   }
 
@@ -6783,18 +7747,7 @@ function countActivePowerupsByKind(kind) {
 }
 
 function getNextWeaponDropType() {
-  for (let attempt = 0; attempt < weaponDropTypes.length; attempt += 1) {
-    const index = (game.weaponDropIndex + attempt) % weaponDropTypes.length;
-    const type = weaponDropTypes[index];
-    if (type !== player.weapon) {
-      game.weaponDropIndex = (index + 1) % weaponDropTypes.length;
-      return type;
-    }
-  }
-
-  const type = weaponDropTypes[game.weaponDropIndex % weaponDropTypes.length];
-  game.weaponDropIndex = (game.weaponDropIndex + 1) % weaponDropTypes.length;
-  return type;
+  return playableCharacters[player.character].weaponId;
 }
 
 function getWeaponDropThreshold() {
@@ -6846,6 +7799,20 @@ function animateDropLabel(powerup, dt) {
 }
 
 function collectPowerup(powerup) {
+  if (multiplayer.enabled) {
+    if (!powerup.serverDropId || isMultiplayerSuspended() || game.state !== 'playing') return false;
+    if (powerup.kind === 'bossChest' && player.pendingUpgradeChoices.length) return false;
+    if (!pendingMultiplayerPickups.has(powerup.serverDropId) && performance.now() >= (powerup.nextPickupAttemptAt || 0)) {
+      pendingMultiplayerPickups.set(powerup.serverDropId, {
+        type: 'pickup', runId: multiplayerAuthorityRunId, dropId: powerup.serverDropId,
+        requestId: crypto.randomUUID(), lastSentAt: -Infinity,
+      });
+      // Keep movement and the range check ordered on the same transport.
+      sendMultiplayerState();
+      sendPendingProgressionCommands();
+    }
+    return false;
+  }
   if (powerup.kind === "perk") {
     const perk = upgradeById.get(powerup.perkId);
     if (perk && isUpgradeAvailable(perk)) {
@@ -6864,6 +7831,7 @@ function collectPowerup(powerup) {
     const previousHealth = player.health;
     player.health = Math.min(player.maxHealth, player.health + (powerup.amount || bossHealthPotionAmount));
     if (player.health > previousHealth) {
+      combatVfx?.emit('heal', player.position, { color: 0xa2e4bc, radius: 2 });
       pulseHealth();
       audioManager.play("xp", { priority: 1 });
       updateHud(true);
@@ -6876,26 +7844,21 @@ function collectPowerup(powerup) {
 }
 
 function activateWeapon(type) {
-  if (!weapons[type] || type === "pistol") {
-    return;
-  }
-
-  player.weapon = type;
-  player.weaponTimer = weapons[type].duration;
-  player.shotCooldown = 0;
-  audioManager.play("weaponPickup", { priority: 2 });
-
-  if (type === "axe") {
-    startAxeSpin();
-  } else {
-    spawnWeaponPulse(weapons[type].color);
-  }
-
-  updateHud();
+  if (!weapons[type]) return false;
+  player.weapon = playableCharacters[player.character].weaponId;
+  weaponFireEmitter?.dispose();
+  weaponFireEmitter = player.character === 'warrior' && heroVisual?.weapon
+    ? combatVfx?.attachWeapon(heroVisual.weapon, { intensity: .5, rate: 10 }) : null;
+  player.weaponTimer = 15;
+  audioManager.play('weaponPickup', { priority: 2 });
+  combatVfx?.emit('seal', player.position, { color: 0xe4bf78, radius: 1.3, intensity: .45 });
+  updateHud(true);
+  return true;
 }
 
 function resetWeapon() {
-  player.weapon = "pistol";
+  weaponFireEmitter?.dispose(); weaponFireEmitter = null;
+  player.weapon = playableCharacters[player.character].weaponId;
   player.weaponTimer = 0;
   player.axeSpinTimer = 0;
 }
@@ -6941,6 +7904,8 @@ function spawnKatanaSlash() {
 }
 
 function spawnExplosion(position, color, radius) {
+  combatVfx?.emit('shockwave', position, { color, radius });
+  combatVfx?.emit('smoke', position, { intensity: .5, radius: radius * .45 });
   const group = acquireEffectMesh("explosion", createPooledExplosionEffect);
   group.position.copy(position);
   group.position.y = 0.24;
@@ -7037,6 +8002,14 @@ function spawnDropSparkle(powerup) {
 
 function triggerPerkAnimation(key, origin = player.position, rarity = "rare") {
   const color = getRarityStyle(rarity).color;
+  if (key === 'bladeEcho' || key === 'lastBreath') {
+    combatVfx?.summonEcho(origin, { direction: player.aimDirection, color, duration: .9 });
+    combatVfx?.emit('shadow', origin, { color, radius: 2.5 });
+  } else if (key === 'sealRitual' || key === 'bossChest') {
+    combatVfx?.emit('seal', origin, { color, radius: 3 });
+  } else if (key === 'ashenHeart') {
+    combatVfx?.emit('heal', player.position, { color: 0x9fdfad, radius: 1.4 });
+  }
   if (key === "soulMagnet") {
     spawnRemotePulse(origin, color, 5.4);
     return;
@@ -7114,6 +8087,7 @@ function handleWaveMilestone() {
   game.milestonesTriggered.add(player.wave);
   spawnMilestoneBoss(milestone.bossType);
   spawnTemporaryDropLabel(milestone.title, "legendary", "⚠", player.position, 1.8);
+  clearRunStartRejection();
   messageKicker.textContent = `Onda ${player.wave}`;
   messageTitle.textContent = milestone.title;
   messageCopy.textContent = milestone.copy;
@@ -7209,8 +8183,21 @@ function spawnTrap(type = "graveSpikes", position = player.position) {
     color: profile.color,
     triggered: false,
   };
+  trap.visualManaged = syncTrapVisual(trap);
+  if (trap.visualManaged) {
+    // Keep the existing pooled group as a logical position anchor and grave
+    // spike owner; only the fixed-radius instanced warning replaces its discs.
+    mesh.userData.trapCore.visible = false;
+    mesh.userData.trapTelegraph.visible = false;
+  }
   traps.push(trap);
   return trap;
+}
+
+function syncTrapVisual(trap) {
+  return hazardVfx?.upsert({ id: trap, type: trap.type, position: trap.mesh.position,
+    radius: trap.radius, elapsed: trap.age, telegraph: trap.telegraph,
+    duration: trap.duration, color: trap.color, triggered: trap.triggered }) === true;
 }
 
 function getTrapBudget() {
@@ -7225,10 +8212,15 @@ function updateTraps(dt) {
   for (let index = traps.length - 1; index >= 0; index -= 1) {
     const trap = traps[index];
     trap.age += dt;
-    const telegraphProgress = Math.min(1, trap.age / trap.telegraph);
-    const pulse = 0.88 + Math.sin(trap.age * 12) * 0.08 + telegraphProgress * 0.18;
-    trap.mesh.scale.setScalar(trap.radius * pulse);
-    trap.mesh.rotation.y += dt * 0.8;
+    if (trap.visualManaged) {
+      syncTrapVisual(trap);
+      trap.mesh.scale.setScalar(trap.radius);
+    } else {
+      const telegraphProgress = Math.min(1, trap.age / trap.telegraph);
+      const pulse = 0.88 + Math.sin(trap.age * 12) * 0.08 + telegraphProgress * 0.18;
+      trap.mesh.scale.setScalar(trap.radius * pulse);
+      trap.mesh.rotation.y += dt * 0.8;
+    }
 
     if (!trap.triggered && trap.age >= trap.telegraph) {
       triggerTrap(trap);
@@ -7242,12 +8234,14 @@ function updateTraps(dt) {
 
 function triggerTrap(trap) {
   trap.triggered = true;
-  trap.mesh.traverse((child) => {
-    if (child.userData.trapSpike) {
-      child.visible = true;
-    }
-  });
-  spawnExplosion(trap.mesh.position, trap.color, trap.radius);
+  if (!trap.visualManaged || trap.type === 'graveSpikes') {
+    trap.mesh.traverse((child) => {
+      if (child.userData.trapSpike) child.visible = true;
+    });
+  }
+  // Presentation consumes the existing impact event; damage remains below.
+  const impactDrawn = trap.visualManaged && hazardVfx?.impact(trap) === true;
+  if (!impactDrawn) spawnExplosion(trap.mesh.position, trap.color, trap.radius);
   refreshLivingPlayerTargets();
   const radiusSq = trap.radius * trap.radius;
 
@@ -7260,6 +8254,9 @@ function triggerTrap(trap) {
 
 function removeTrap(index) {
   const [trap] = traps.splice(index, 1);
+  hazardVfx?.remove(trap);
+  trap.mesh.userData.trapCore.visible = true;
+  trap.mesh.userData.trapTelegraph.visible = true;
   releaseTrapMesh(trap.mesh);
 }
 
@@ -7282,7 +8279,13 @@ function spawnZombie(x, z, type = pickMonsterType(), options = {}) {
     const distance = 28 + Math.random() * 22;
     mesh.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
   }
+  if (!options.serverControlled) {
+    const placed = findFreePosition(collisionWorld, { id: 'spawn', x: mesh.position.x, z: mesh.position.z, radius: profile.radius }, { maxDistance: 16, actors: getEnemyCrowdBodies() });
+    if (!placed.found) { releaseZombieMesh(mesh, type); return null; }
+    mesh.position.x = placed.x; mesh.position.z = placed.z;
+  }
   scene.add(mesh);
+  if (profile.boss && game.state === 'playing') audioManager.play('bossSpawn', { priority: 4, ...getSpatialAudioOptions(mesh.position) });
 
   const difficulty = getWaveDifficultyScale();
   const balance = getMonsterBalanceModifiers(type, profile);
@@ -7329,6 +8332,7 @@ function spawnZombie(x, z, type = pickMonsterType(), options = {}) {
   };
   setEliteMarker(mesh, eliteType);
   zombies.push(zombie);
+  zombieActorIndex?.update(getZombieCollisionBody(zombie));
   if (labelSprite) {
     updateBossLabelPosition(zombies[zombies.length - 1], true);
   }
@@ -7468,30 +8472,7 @@ function updateBossLabel(sprite, health, force = false) {
   const healthRatio = Math.max(0, Math.min(1, health / maxHealth));
   const accent = getBossAccentColor(type);
 
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(5, 8, 10, 0.84)";
-  context.fillRect(16, 10, 352, 104);
-  context.strokeStyle = accent;
-  context.lineWidth = 4;
-  context.strokeRect(16, 10, 352, 104);
-
-  context.fillStyle = "#f6fbff";
-  context.font = "900 38px Inter, Arial, sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(label, 192, 40);
-
-  context.fillStyle = "rgba(255, 255, 255, 0.18)";
-  context.fillRect(48, 72, 288, 22);
-  context.fillStyle = accent;
-  context.fillRect(48, 72, 288 * healthRatio, 22);
-  context.strokeStyle = "rgba(255, 255, 255, 0.5)";
-  context.lineWidth = 2;
-  context.strokeRect(48, 72, 288, 22);
-
-  context.fillStyle = "#f6fbff";
-  context.font = "800 16px Inter, Arial, sans-serif";
-  context.fillText(`VIDA ${Math.ceil(health)}/${Math.ceil(maxHealth)}`, 192, 105);
+  paintBossLabel(context, { label, health, maxHealth, healthRatio, accent });
 
   texture.needsUpdate = true;
   perfStats.labelUpdates += 1;
@@ -7603,6 +8584,7 @@ function pickMonsterType() {
   }
 
   const weights = {
+    orcPeon: .12,
     zombie: 1,
     runner: Math.min(0.35 + player.wave * 0.08 + game.survivalTime * 0.004, 1.35),
     brute: Math.min(0.2 + player.wave * 0.045 + game.survivalTime * 0.002, 0.85),
@@ -7650,70 +8632,162 @@ function pickCowMonsterType() {
   return "cowWalker";
 }
 
+function getOfflineCasterTarget(target) {
+  if (!target) return null;
+  const state = target.isLocal ? player : target.remotePlayer;
+  return { id: target.id, lifeId: target.isLocal ? game.soloRunId || offlineCasterEpoch : state?.runId || target.id,
+    present: Boolean(state), alive: Boolean(state && state.health > 0 && (target.isLocal ? game.state : state.state) === 'playing'),
+    position: target.position };
+}
+
+function updateCasterZombie(zombie, dt, controls) {
+  const active = zombie.casterCastState?.cast?.phase && zombie.casterCastState.cast.phase !== 'end';
+  const target = active ? livingPlayerTargets.find(t => t.id === zombie.casterCastState.cast.targetId) : getClosestPlayerTarget(zombie.mesh.position);
+  const context = getOfflineCasterTarget(target);
+  const distance = context ? Math.hypot(context.position.x - zombie.mesh.position.x, context.position.z - zombie.mesh.position.z) : Infinity;
+  const step = stepCasterCaller({ state: zombie.casterCastState, worldEpoch: offlineCasterEpoch,
+    actor: { id: zombie.id, type: zombie.type, position: zombie.mesh.position, present: zombies.includes(zombie),
+      alive: zombie.health > 0, frozen: controls.frozen, stunned: controls.stunned },
+    target: context, tick: offlineCasterTick, dt, paused,
+    ready: zombie.attackCooldown - dt <= 0,
+    inRange: canUseRangedAttack('caster', distance),
+    losClear: Boolean(context && clearEnemyMelee(zombie.mesh.position, context.position)),
+    cooldownDuration: getRangedCooldown('caster') });
+  zombie.casterCastState = step.state; // Persist before emitting anything.
+  if (step.consumeActorStep) zombie.attackCooldown = step.assignCooldown ?? Math.max(controls.frozen || controls.stunned ? .12 : 0, zombie.attackCooldown - dt);
+  if (step.state.cast) zombie.mesh.rotation.y = Math.atan2(-step.state.cast.direction.x, -step.state.cast.direction.z);
+  for (const event of step.events) {
+    recordCasterEvent(event, 'offline');
+    if (event.phase !== 'release') continue;
+    // Sample the actual marker pose before displaying this tick's final age.
+    animatedEnemies?.syncCast(zombie, { ...casterVisual(step.state), elapsed: event.elapsed, active: true });
+    const emitter = animatedEnemies?.getCastEmitter(zombie, { castId: event.castId });
+    spawnEnemyProjectile(zombie, target, new THREE.Vector3(event.direction.x, 0, event.direction.z), null,
+      { castId: event.castId, firstStepDt: event.remainderAfterRelease, emitter });
+  }
+  zombie.casterCastVisual = casterVisual(step.state);
+  animatedEnemies?.syncCast(zombie);
+  return step.consumeActorStep;
+}
+
+function cancelZombieCaster(zombie, reason) {
+  if (!zombie?.casterCastState?.cast || zombie.serverControlled) return;
+  const result = cancelCasterCast(zombie.casterCastState, { castId: zombie.casterCastState.cast.castId, reason });
+  zombie.casterCastState = result.state;
+  zombie.casterCastVisual = casterVisual(result.state);
+  for (const event of result.events) recordCasterEvent(event, 'offline');
+  // Do not force Idle here: the death-cut pool must capture the presented pose.
+}
+
 function updateZombies(dt) {
-  for (let index = zombies.length - 1; index >= 0; index -= 1) {
-    const zombie = zombies[index];
-    if (!updateZombieStatusEffects(zombie, dt)) {
-      continue;
-    }
+  offlineCasterTick++;
+  // Construct after skills/pull/spawn; discard after final crowd corrections.
+  zombieActorIndex = createActorIndex(getEnemyCrowdBodies());
+  try {
+    zombieNavigationBudget = 4;
+    const offset = (++zombieNavigationTick * 4) % Math.max(1, zombies.length);
+    const ordered = zombies.slice(offset).concat(zombies.slice(0, offset)).reverse();
+    for (const zombie of ordered) {
+      const casterControls = { frozen: zombie.freezeTimer > 0, stunned: zombie.stunTimer > 0 };
+      if (!updateZombieStatusEffects(zombie, dt)) {
+        continue;
+      }
 
-    if (zombie.freezeTimer > 0) {
-      zombie.attackCooldown = Math.max(zombie.attackCooldown - dt, 0.12);
-      updateBossLabelPosition(zombie);
-      continue;
-    }
+      if (zombie.type === 'caster' && updateCasterZombie(zombie, dt, casterControls)) {
+        updateBossLabelPosition(zombie); continue;
+      }
+      if (zombie.freezeTimer > 0 || zombie.stunTimer > 0) {
+        if (zombie.meleeAttack) zombie.meleeAttack.active = false;
+        zombie.attackCooldown = Math.max(zombie.attackCooldown - dt, 0.12);
+        updateBossLabelPosition(zombie);
+        continue;
+      }
 
-    const isBoss = Boolean(monsterProfiles[zombie.type]?.boss);
-    const target = isBoss ? getBossPlayerTarget(zombie, dt) : getClosestPlayerTarget(zombie.mesh.position);
-    if (!target) {
-      continue;
-    }
+      const isBoss = Boolean(monsterProfiles[zombie.type]?.boss);
+      const target = isBoss ? getBossPlayerTarget(zombie, dt) : getClosestPlayerTarget(zombie.mesh.position);
+      if (!target) {
+        continue;
+      }
 
-    const toTarget = tempVectorA.subVectors(target.position, zombie.mesh.position);
-    toTarget.y = 0;
-    const distance = toTarget.length();
-    zombie.attackCooldown -= dt;
-    updateSofraSummons(zombie, dt);
+      const toTarget = tempVectorA.subVectors(target.position, zombie.mesh.position);
+      toTarget.y = 0;
+      const distance = toTarget.length();
+      zombie.attackCooldown -= dt;
+      updateSofraSummons(zombie, dt);
 
-    if (isBoss) {
-      updateBossBehavior(zombie, target, toTarget, distance, dt);
-      updateBossLabelPosition(zombie);
-      continue;
-    }
+      const meleeTiming = getMeleeTiming(zombie.type);
+      if (zombie.meleeAttack?.active) {
+        const strike = zombie.meleeAttack;
+        const lockedTarget = livingPlayerTargets.find(candidate => candidate.id === strike.targetId);
+        if (!lockedTarget) strike.active = false;
+        else {
+          const phase = advanceMeleeAttack(strike, dt);
+          if (phase.impact && isWithinMeleeArc(zombie.mesh.position, lockedTarget.position, strike) && clearEnemyMelee(zombie.mesh.position, lockedTarget.position)) {
+            damagePlayerTarget(lockedTarget, zombie.damage + Math.floor(player.wave * .55));
+          }
+        }
+        updateBossLabelPosition(zombie);
+        continue;
+      }
 
-    if (canUseRangedAttack(zombie.type, distance)) {
+      zombie.pursuitTarget = target.position;
+      if (meleeTiming && distance <= meleeTiming.reach + (zombie.reachBonus || 0) && clearEnemyMelee(zombie.mesh.position, target.position)) {
+        if (distance > .05) zombie.mesh.rotation.y = getForwardRotation(toTarget.normalize());
+        if (zombie.attackCooldown <= 0) {
+          zombie.meleeSequence = (zombie.meleeSequence || 0) + 1;
+          zombie.meleeAttack = beginMeleeAttack(zombie.mesh.position, target.position, {
+            ...meleeTiming, id: zombie.meleeSequence, targetId: target.id,
+            reach: meleeTiming.reach + (zombie.reachBonus || 0),
+          });
+          zombie.attackCooldown = meleeTiming.cooldown;
+        }
+        updateBossLabelPosition(zombie);
+        continue;
+      }
+
+      if (isBoss) {
+        updateBossBehavior(zombie, target, toTarget, distance, dt);
+        updateBossLabelPosition(zombie);
+        continue;
+      }
+
+      if (canUseRangedAttack(zombie.type, distance) && clearEnemyMelee(zombie.mesh.position, target.position)) {
+        if (distance > 0.05) {
+          toTarget.normalize();
+          zombie.mesh.rotation.y = getForwardRotation(toTarget);
+        }
+
+        if (zombie.type !== 'caster' && zombie.attackCooldown <= 0) {
+          zombie.attackCooldown = getRangedCooldown(zombie.type);
+          spawnEnemyProjectile(zombie, target);
+        }
+
+        updateBossLabelPosition(zombie);
+        continue;
+      }
+
       if (distance > 0.05) {
         toTarget.normalize();
-        zombie.mesh.rotation.y = getForwardRotation(toTarget);
+        const moveDirection = getZombieCrowdAwareMoveDirection(zombie, toTarget, distance);
+        moveZombieWithPhysics(zombie, moveDirection, zombie.speed, dt);
+        zombie.mesh.rotation.y = getForwardRotation(moveDirection);
       }
 
-      if (zombie.attackCooldown <= 0) {
-        zombie.attackCooldown = getRangedCooldown(zombie.type);
-        spawnEnemyProjectile(zombie, target);
+      if (distance < zombie.radius + 0.72 + (zombie.reachBonus || 0) && zombie.attackCooldown <= 0 && clearEnemyMelee(zombie.mesh.position, target.position)) {
+        zombie.attackCooldown = zombie.type === 'orcPeon' ? .9 : .62;
+        animatedEnemies?.attack(zombie, zombie.type === 'orcPeon' ? .8 : .55);
+        damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.55));
       }
 
       updateBossLabelPosition(zombie);
-      continue;
     }
 
-    if (distance > 0.05) {
-      toTarget.normalize();
-      const moveDirection = getZombieCrowdAwareMoveDirection(zombie, toTarget, distance);
-      zombie.mesh.position.addScaledVector(moveDirection, zombie.speed * dt);
-      zombie.mesh.rotation.y = getForwardRotation(moveDirection);
-    }
-
-    if (distance < zombie.radius + 0.72 + (zombie.reachBonus || 0) && zombie.attackCooldown <= 0) {
-      zombie.attackCooldown = 0.62;
-      damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.55));
-    }
-
-    updateBossLabelPosition(zombie);
+    spatialGrid.dirty = true;
+    resolveEnemyCrowding(dt);
+    spatialGrid.dirty = true;
+  } finally {
+    zombieActorIndex = null;
   }
-
-  spatialGrid.dirty = true;
-  resolveEnemyCrowding();
-  spatialGrid.dirty = true;
 }
 
 function getZombieCrowdAwareMoveDirection(zombie, targetDirection, targetDistance) {
@@ -7796,77 +8870,41 @@ function addZombieLaneOffset(zombie, targetDirection, moveDirection, amount) {
   moveDirection.z -= targetDirection.x * laneSide * laneStrength;
 }
 
-function resolveEnemyCrowding() {
-  if (zombies.length < 2) {
-    return;
+function clearEnemyMelee(from, to) {
+  return !sweepStatic(collisionWorld, {x:from.x,y:.9,z:from.z}, {x:to.x,y:.9,z:to.z}, 0);
+}
+function moveZombieWithPhysics(zombie, direction, speed, dt, attackRegion) {
+  if (zombie.pullTimer > 0) return; // Field owns translation; attack state remains independent.
+  const body = getZombieCollisionBody(zombie);
+  const target = zombie.pursuitTarget;
+  let dx=direction.x,dz=direction.z;
+  if (target && dx*(target.x-body.x)+dz*(target.z-body.z)>0) {
+    const result = getPursuitDirection(collisionWorld, body, target, zombie.navigation, dt, {speed,arrivalRadius:zombie.radius+.72,attackRegion,allowPlanning:zombieNavigationBudget>0});
+    zombie.navigation=result.state;if(result.state.planned)zombieNavigationBudget--;
+    if (result.mode !== 'direct') {dx=result.direction.x;dz=result.direction.z;}
   }
-
-  spatialGrid.dirty = true;
-  ensureSpatialGrid();
-  const frame = monsterRenderer.frame || 0;
-
-  for (const zombie of zombies) {
-    if (!shouldResolveEnemyCrowding(zombie, frame)) {
-      continue;
-    }
-
-    const profile = monsterProfiles[zombie.type] ?? {};
-    const isBoss = Boolean(profile.boss);
-    const queryRadius = isBoss ? Math.max(5.2, zombie.radius + 3.2) : Math.max(2.4, zombie.radius + 1.8);
-    const candidates = queryZombiesNear(zombie.mesh.position, queryRadius, spatialGrid.crowdCandidates);
-    let pushX = 0;
-    let pushZ = 0;
-    let pushes = 0;
-
-    for (const neighbor of candidates) {
-      if (neighbor === zombie) {
-        continue;
-      }
-
-      const neighborProfile = monsterProfiles[neighbor.type] ?? {};
-      const neighborIsBoss = Boolean(neighborProfile.boss);
-      const offsetX = zombie.mesh.position.x - neighbor.mesh.position.x;
-      const offsetZ = zombie.mesh.position.z - neighbor.mesh.position.z;
-      let distanceSq = offsetX * offsetX + offsetZ * offsetZ;
-      let directionX = offsetX;
-      let directionZ = offsetZ;
-
-      if (distanceSq <= 0.0001) {
-        const angle = ((zombie.id * 37 + neighbor.id * 17) % 360) * THREE.MathUtils.DEG2RAD;
-        directionX = Math.cos(angle);
-        directionZ = Math.sin(angle);
-        distanceSq = 0.0001;
-      }
-
-      const distance = Math.sqrt(distanceSq);
-      const desiredDistance = getEnemyCrowdDistance(zombie, neighbor, isBoss, neighborIsBoss);
-      if (distance >= desiredDistance) {
-        continue;
-      }
-
-      const force = ((desiredDistance - distance) / desiredDistance) * (isBoss || neighborIsBoss ? 1.65 : 1.15);
-      pushX += (directionX / distance) * force;
-      pushZ += (directionZ / distance) * force;
-      pushes += 1;
-
-      if (pushes >= (isBoss ? 12 : 8)) {
-        break;
-      }
-    }
-
-    if (pushes === 0) {
-      continue;
-    }
-
-    const pushLength = Math.hypot(pushX, pushZ);
-    if (pushLength <= 0.0001) {
-      continue;
-    }
-
-    const maxPush = isBoss ? 0.42 : 0.26;
-    const pushAmount = Math.min(maxPush, pushLength * (isBoss ? 0.16 : 0.11));
-    zombie.mesh.position.x = clamp(zombie.mesh.position.x + (pushX / pushLength) * pushAmount, -worldLimit + 2.2, worldLimit - 2.2);
-    zombie.mesh.position.z = clamp(zombie.mesh.position.z + (pushZ / pushLength) * pushAmount, -worldLimit + 2.2, worldLimit - 2.2);
+  const moved = stepActor(collisionWorld, body, { x: dx * speed, z: dz * speed }, dt, { bodies: zombieActorIndex });
+  zombie.mesh.position.x = moved.x; zombie.mesh.position.z = moved.z;
+  zombieActorIndex?.update({ ...body, x: moved.x, z: moved.z });
+  if (Math.hypot(dx, dz) > .01) zombie.mesh.rotation.y = Math.atan2(-dx, -dz);
+}
+function getZombieCollisionBody(zombie) {
+  return { id: `monster:${zombie.id}`, x: zombie.mesh.position.x, z: zombie.mesh.position.z,
+    radius: zombie.radius, freezeTimer: zombie.freezeTimer, stunTimer: zombie.stunTimer };
+}
+function getEnemyCrowdBodies() {
+  const bodies = zombies.filter(zombie => zombie.health > 0).map(getZombieCollisionBody);
+  for (const target of getLivingPlayerTargets()) bodies.push({
+    id: `player:${target.id}`, x: target.position.x, z: target.position.z, radius: target.radius, inverseMass: 0,
+  });
+  return bodies;
+}
+function resolveEnemyCrowding(dt) {
+  const separated = separateControlledActors(collisionWorld, getEnemyCrowdBodies(), dt);
+  const byId = new Map(zombies.map(zombie => [`monster:${zombie.id}`, zombie]));
+  for (const body of separated.bodies) {
+    const zombie = byId.get(body.id);
+    if (zombie) { zombie.mesh.position.x = body.x; zombie.mesh.position.z = body.z; }
   }
 }
 
@@ -7941,10 +8979,10 @@ function updateBossBehavior(zombie, target, toTarget, distance, dt) {
   const aiProfile = bossAiProfiles[zombie.type] ?? { minDistance: 4.5, idealDistance: 9, maxDistance: 18, strafeSpeed: 0.5 };
   const direction = distance > 0.05 ? tempVectorB.copy(toTarget).normalize() : tempVectorB.set(0, 0, 1);
   zombie.mesh.rotation.y = getForwardRotation(direction);
-  updateBossMovement(zombie, direction, distance, aiProfile, dt);
-
   const meleeRange = zombie.radius + target.radius + 0.74 + (zombie.reachBonus || 0);
-  if (distance <= meleeRange && zombie.attackCooldown <= 0) {
+  const attackRegion = zombie.type === "bloodCow" ? { range: meleeRange, minDistance: zombie.radius + target.radius, losY: .9 } : undefined;
+  updateBossMovement(zombie, direction, distance, aiProfile, dt, attackRegion);
+  if (distance <= meleeRange && zombie.attackCooldown <= 0 && clearEnemyMelee(zombie.mesh.position, target.position)) {
     zombie.attackCooldown = getBossMeleeCooldown(zombie);
     damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.65));
     return;
@@ -7956,7 +8994,7 @@ function updateBossBehavior(zombie, target, toTarget, distance, dt) {
   }
 }
 
-function updateBossMovement(zombie, direction, distance, aiProfile, dt) {
+function updateBossMovement(zombie, direction, distance, aiProfile, dt, attackRegion) {
   zombie.bossStrafeTimer = Math.max(0, (zombie.bossStrafeTimer || 0) - dt);
   if (zombie.bossStrafeTimer <= 0) {
     zombie.bossStrafeDirection *= Math.random() < 0.7 ? -1 : 1;
@@ -7985,9 +9023,7 @@ function updateBossMovement(zombie, direction, distance, aiProfile, dt) {
 
   const enrageSpeed = getBossHealthRatio(zombie) < 0.35 ? 1.08 : 1;
   move.normalize();
-  zombie.mesh.position.addScaledVector(move, zombie.speed * enrageSpeed * dt);
-  zombie.mesh.position.x = clamp(zombie.mesh.position.x, -worldLimit + 2.2, worldLimit - 2.2);
-  zombie.mesh.position.z = clamp(zombie.mesh.position.z, -worldLimit + 2.2, worldLimit - 2.2);
+  moveZombieWithPhysics(zombie, move, zombie.speed * enrageSpeed, dt, attackRegion);
 }
 
 function executeBossRangedAttack(zombie, target) {
@@ -8112,10 +9148,63 @@ function getZombieDetailDistance() {
   return baseDistance;
 }
 
+function upgradeZombieLodMesh(mesh, type) {
+  const profile = enemyLodProfiles[type];
+  if (!enemyLodLibrary || !profile || mesh.userData.staticEnemyLod) return;
+  // Callers detach an animated owner before upgrading. Detached/pool groups
+  // never have an actor, so no fallback snapshot can resurrect the old parts.
+  if (mesh.userData.animatedEnemy) return;
+  const cachedGeometry = new Set(assetCache.geometries.values());
+  const cachedMaterials = new Set(assetCache.materials.values());
+  const retiredGeometry = new Set(), retiredMaterials = new Set();
+  const markers = mesh.children.filter(child => child.userData.eliteMarker);
+  for (const child of [...mesh.children]) {
+    if (child.userData.eliteMarker) continue;
+    child.removeFromParent();
+    child.traverse(part => {
+      if (part.geometry && !cachedGeometry.has(part.geometry)) retiredGeometry.add(part.geometry);
+      for (const material of part.material ? (Array.isArray(part.material) ? part.material : [part.material]) : []) {
+        if (!cachedMaterials.has(material)) retiredMaterials.add(material);
+      }
+    });
+  }
+  for (const geometry of retiredGeometry) geometry.dispose();
+  for (const material of retiredMaterials) material.dispose();
+  const entry = enemyLodLibrary.get(profile.id);
+  const detail = new THREE.Mesh(entry.geometry, entry.material);
+  const proxy = new THREE.Mesh(entry.geometry, entry.material);
+  detail.name = `enemy-static-detail:${type}`;
+  proxy.name = `enemy-static-proxy:${type}`;
+  for (const visual of [detail, proxy]) {
+    visual.scale.setScalar(profile.height);
+    visual.userData.nativeEnemyLod = true;
+    visual.castShadow = false;
+    visual.receiveShadow = false;
+  }
+  proxy.userData.isLodProxy = true;
+  proxy.visible = false;
+  mesh.add(detail, proxy);
+  mesh.userData.staticEnemyLod = { id: profile.id, height: profile.height, detail, proxy };
+  mesh.userData.detailChildren = [detail, ...markers];
+  mesh.userData.lodProxy = proxy;
+  mesh.userData.lodState = null;
+  delete mesh.userData.animatedParts;
+}
+
 function setZombieLod(mesh, useProxy) {
   const detailChildren = mesh.userData.detailChildren;
   const proxy = mesh.userData.lodProxy;
   if (!detailChildren || !proxy) {
+    return;
+  }
+
+  if (mesh.userData.staticEnemyLod) {
+    const animated = Boolean(mesh.userData.animatedEnemy);
+    for (const child of detailChildren) {
+      child.visible = child.userData.eliteMarker ? !useProxy && Boolean(child.userData.eliteActive) : !animated && !useProxy;
+    }
+    proxy.visible = !animated && useProxy;
+    mesh.userData.lodState = useProxy ? 'proxy' : 'detail';
     return;
   }
 
@@ -8205,14 +9294,13 @@ function getLivingPlayerTargets() {
 }
 
 function getProjectileHitTarget(projectile) {
+  let firstContact = Infinity, hitTarget = null;
   for (const target of livingPlayerTargets) {
-    const hitRadius = projectile.radius + target.radius;
-    if (distanceXZSquared(projectile.mesh.position, target.position) < hitRadius * hitRadius) {
-      return target;
-    }
+    const contact = segmentCircleContact(projectile.previousPosition, projectile.mesh.position, target.position, projectile.radius + target.radius);
+    if (contact < firstContact) { firstContact = contact; hitTarget = target; }
   }
-
-  return null;
+  projectile.contactFraction = firstContact;
+  return hitTarget;
 }
 
 function damagePlayerTarget(target, amount) {
@@ -8224,6 +9312,13 @@ function damagePlayerTarget(target, amount) {
   damageRemotePlayer(target.id, amount);
 }
 
+function getSpatialAudioOptions(position) {
+  const dx = position.x - player.position.x;
+  const dz = position.z - player.position.z;
+  const right = camera.matrixWorld.elements;
+  return { pan: THREE.MathUtils.clamp((dx * right[0] + dz * right[2]) / 18, -.85, .85), distance: Math.hypot(dx, dz) };
+}
+
 function damageLocalPlayer(amount) {
   if (game.perfStressImmortal) {
     player.health = player.maxHealth;
@@ -8231,7 +9326,10 @@ function damageLocalPlayer(amount) {
   }
 
   const reducedAmount = amount * (1 - player.damageReduction);
+  cinematicPipeline?.impact(Math.min(.5, reducedAmount / 60));
+  if (!presentationPreferences.reducedMotion) cameraTrauma = Math.min(.55, cameraTrauma + .18);
   audioManager.play("playerDamage", { priority: 3 });
+  heroVisual?.hit();
   if (player.damageReduction > 0) {
     triggerPerkAnimation("ironBlood", player.position, "rare");
   }
@@ -8268,6 +9366,7 @@ function damageRemotePlayer(playerId, amount) {
   }
 
   remotePlayer.health = Math.max(0, remotePlayer.health - amount);
+  if (remotePlayer.health <= 0) zombieActorIndex?.remove(`player:${playerId}`);
   spawnPlayerDamageNumber(amount, remotePlayer.mesh.position);
   updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health, remotePlayer.maxHealth);
 
@@ -8323,10 +9422,11 @@ function getRangedCooldown(type) {
   return 1.45;
 }
 
-function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mesh.position), directionOverride = null, projectileSpecOverride = null) {
+function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mesh.position), directionOverride = null, projectileSpecOverride = null, preparedCast = null) {
   if (!target) {
     return;
   }
+  if (!preparedCast) animatedEnemies?.attack(zombie, .65);
 
   if (!directionOverride && zombie.type === "angelSheep") {
     spawnEnemyProjectileSpread(zombie, target, 3, 0.24);
@@ -8351,7 +9451,7 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
   mesh.rotation.y = forwardRotation;
   scene.add(mesh);
 
-  enemyProjectiles.push({
+  const projectile = {
     mesh,
     pooled: projectileVisual.pooled,
     visualKind: projectileSpec.kind,
@@ -8369,8 +9469,17 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
     speed: projectileSpec.speed,
     targetId: target.id,
     velocity: direction.clone().multiplyScalar(projectileSpec.speed),
-  });
+  };
+  if (preparedCast) Object.assign(projectile, { castId: preparedCast.castId, firstStepDt: preparedCast.firstStepDt });
+  enemyProjectiles.push(projectile);
+  const castPosition = preparedCast?.emitter?.position;
+  const safeLaunch = !castPosition || casterProjectilePresentation.remember({ castId: preparedCast.castId, actorId: zombie.id,
+    origin: { x: mesh.position.x, y: enemyProjectileCollisionHeight(zombie.type), z: mesh.position.z },
+    emitter: castPosition, radius: projectile.radius });
+  casterProjectilePresentation.attach(projectile);
+  if (safeLaunch) emitProjectileCast(elementalVfx, castPosition ? { ...projectile, mesh: { position: new THREE.Vector3(castPosition.x, castPosition.y, castPosition.z) } } : projectile);
   audioManager.play("bossAttack", { boss: zombie.type, priority: monsterProfiles[zombie.type]?.boss ? 3 : 1 });
+  return projectile;
 }
 
 function spawnEnemyProjectileSpread(zombie, target, count, spreadRadians) {
@@ -8393,22 +9502,38 @@ function spawnEnemyProjectileSpread(zombie, target, count, spreadRadians) {
 function updateEnemyProjectiles(dt) {
   for (let index = enemyProjectiles.length - 1; index >= 0; index -= 1) {
     const projectile = enemyProjectiles[index];
-    projectile.age += dt;
-    updateProjectileHoming(projectile, dt);
-    projectile.mesh.position.addScaledVector(projectile.velocity, dt);
-    animateEnemyProjectileVisual(projectile, dt);
-
+    const remaining = Math.max(0, projectile.lifespan - projectile.age);
+    if (remaining <= 0) { removeEnemyProjectile(index); continue; }
+    const firstStepDt = projectile.firstStepDt;
+    delete projectile.firstStepDt;
+    const travelDt = Math.min(Math.max(0, firstStepDt ?? dt), remaining);
+    if (travelDt <= 0) continue;
+    projectile.previousPosition ??= new THREE.Vector3();
+    projectile.previousPosition.copy(projectile.mesh.position);
+    projectile.age += travelDt;
+    updateProjectileHoming(projectile, travelDt);
+    projectile.mesh.position.addScaledVector(projectile.velocity, travelDt);
+    animateEnemyProjectileVisual(projectile, travelDt);
     const hitTarget = getProjectileHitTarget(projectile);
-    if (hitTarget) {
-      damagePlayerTarget(hitTarget, projectile.damage);
-      spawnExplosion(projectile.mesh.position, projectile.color, projectile.impactRadius ?? 2.4);
+    const wall = sweepStatic(collisionWorld, {x:projectile.previousPosition.x,y:enemyProjectileCollisionHeight(projectile.sourceType),z:projectile.previousPosition.z}, {x:projectile.mesh.position.x,y:enemyProjectileCollisionHeight(projectile.sourceType),z:projectile.mesh.position.z}, projectile.radius);
+    if (wall && (!hitTarget || wall.t <= projectile.contactFraction)) {
+      projectile.mesh.position.lerpVectors(projectile.previousPosition, projectile.mesh.position, wall.t);
+      emitEnemyProjectileTrail(projectile, true);
+      emitProjectileImpact(elementalVfx, projectile);
       removeEnemyProjectile(index);
       continue;
     }
-
-    if (projectile.age > projectile.lifespan || Math.abs(projectile.mesh.position.x) > 70 || Math.abs(projectile.mesh.position.z) > 70) {
+    if (hitTarget) {
+      projectile.mesh.position.lerpVectors(projectile.previousPosition, projectile.mesh.position, projectile.contactFraction);
+      emitEnemyProjectileTrail(projectile, true);
+      const elementalImpact = emitProjectileImpact(elementalVfx, projectile);
+      damagePlayerTarget(hitTarget, projectile.damage);
+      if (!elementalImpact) spawnExplosion(projectile.mesh.position, projectile.color, projectile.impactRadius ?? 2.4);
       removeEnemyProjectile(index);
+      continue;
     }
+    emitEnemyProjectileTrail(projectile);
+    if (projectile.age >= projectile.lifespan || Math.abs(projectile.mesh.position.x) > 70 || Math.abs(projectile.mesh.position.z) > 70) removeEnemyProjectile(index);
   }
 }
 
@@ -8447,42 +9572,56 @@ function getLivingTargetById(id) {
 function updateBullets(dt) {
   for (let bulletIndex = bullets.length - 1; bulletIndex >= 0; bulletIndex -= 1) {
     const bullet = bullets[bulletIndex];
-    bullet.age += dt;
-    bullet.mesh.position.addScaledVector(bullet.velocity, dt);
+    const travelDt = Math.min(dt, Math.max(0, bullet.lifespan - bullet.age));
+    bullet.age += travelDt;
+    bullet.previousPosition.copy(bullet.mesh.position);
+    bullet.nextPosition.copy(bullet.mesh.position).addScaledVector(bullet.velocity, travelDt);
 
+    const wall = sweepStatic(collisionWorld, {x:bullet.previousPosition.x,y:RIFLE_COLLISION_HEIGHT,z:bullet.previousPosition.z}, {x:bullet.nextPosition.x,y:RIFLE_COLLISION_HEIGHT,z:bullet.nextPosition.z}, bullet.radius);
     let hit = false;
-    const candidates = queryZombiesNear(bullet.mesh.position, bullet.radius + 2.1, spatialGrid.bulletCandidates);
-    for (const zombie of candidates) {
-      if (bullet.hitZombies.has(zombie.id)) {
-        continue;
+    // Broad phase covers the whole traveled segment, including its end caps.
+    tempVectorA.lerpVectors(bullet.previousPosition, bullet.nextPosition, .5);
+    const halfTravel = Math.sqrt(distanceXZSquared(bullet.previousPosition, bullet.nextPosition)) * .5;
+    const candidates = queryZombiesNear(tempVectorA, halfTravel + bullet.radius + 2.1, spatialGrid.bulletCandidates);
+    while (true) {
+      let firstContact = wall?.t ?? Infinity;
+      let target = null;
+      for (const zombie of candidates) {
+        if (zombie.health <= 0 || bullet.hitZombies.has(zombie.id)) continue;
+        const contact = segmentCircleContact(bullet.previousPosition, bullet.nextPosition, zombie.mesh.position, bullet.radius + zombie.radius);
+        if (contact < firstContact) { firstContact = contact; target = zombie; }
       }
+      if (!target) break;
 
-      const hitRadius = bullet.radius + zombie.radius;
-
-      if (distanceXZSquared(bullet.mesh.position, zombie.mesh.position) < hitRadius * hitRadius) {
-        hit = true;
-        bullet.hitZombies.add(zombie.id);
-        damageZombie(zombie, bullet.damage, true, true, bullet.hitEffect);
-
-        if (bullet.explodeRadius > 0) {
-          damageZombiesAtPoint(bullet.mesh.position, bullet.explodeRadius, bullet.explodeDamage || bullet.damage, false, true, bullet.hitEffect);
-          spawnExplosion(bullet.mesh.position, bullet.explodeColor || weapons.talisman.color, bullet.explodeRadius);
-          break;
-        }
-
-        if (bullet.pierceHits > 0) {
-          bullet.pierceHits -= 1;
-          hit = false;
-          continue;
-        }
-
+      // Grid iteration order cannot let a farther enemy intercept the shot.
+      bullet.mesh.position.lerpVectors(bullet.previousPosition, bullet.nextPosition, firstContact);
+      hit = true;
+      bullet.hitZombies.add(target.id);
+      damageZombie(target, bullet.damage, true, true, bullet.hitEffect);
+      if (bullet.explodeRadius > 0) {
+        damageZombiesAtPoint(bullet.mesh.position, bullet.explodeRadius, bullet.explodeDamage || bullet.damage, false, true, bullet.hitEffect);
+        spawnExplosion(bullet.mesh.position, bullet.explodeColor || weapons.talisman.color, bullet.explodeRadius);
         break;
       }
+      if (bullet.pierceHits <= 0) break;
+      bullet.pierceHits -= 1;
+      hit = false;
+    }
+    if (!hit && wall) {
+      bullet.mesh.position.lerpVectors(bullet.previousPosition, bullet.nextPosition, wall.t);
+      hit = true;
+    }
+    if (!hit) bullet.mesh.position.copy(bullet.nextPosition);
+    bullet.trailTimer -= travelDt;
+    if (bullet.trailTimer <= 0 && !presentationPreferences.reducedMotion) {
+      bullet.trailTimer = qualityManager.level === 'low' ? .09 : .045;
+      combatVfx?.emitTrail(bullet.trailPosition, bullet.mesh.position, 'ember', { color: bullet.color });
+      bullet.trailPosition.copy(bullet.mesh.position);
     }
 
     if (
       hit ||
-      bullet.age > bullet.lifespan ||
+      bullet.age >= bullet.lifespan ||
       Math.abs(bullet.mesh.position.x) > 70 ||
       Math.abs(bullet.mesh.position.z) > 70
     ) {
@@ -8513,12 +9652,12 @@ function damageZombiesInConeFrom(origin, direction, range, minDot, amount, shoul
     tempVectorA.y = 0;
     const distanceSq = tempVectorA.lengthSq();
 
-    if (distanceSq <= 0.0025 || distanceSq > rangeSq) {
+    if (distanceSq > rangeSq) {
       continue;
     }
 
-    const dot = tempVectorA.normalize().dot(direction);
-    if (dot >= minDot) {
+    const dot = distanceSq <= .0025 ? 1 : tempVectorA.normalize().dot(direction);
+    if (dot >= minDot && !sweepStatic(collisionWorld, { x: origin.x, z: origin.z, y: .9 }, { x: zombie.mesh.position.x, z: zombie.mesh.position.z, y: .9 }, 0)) {
       damageZombie(zombie, amount, shouldFlash, awardRewards, hitEffectType);
     }
   }
@@ -8615,7 +9754,7 @@ function damageZombiesAtPoint(position, radius, amount, shouldFlash, awardReward
   spatialGrid.pointQueryActive = wasPointQueryActive;
 }
 
-function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffectType = null) {
+function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffectType = null, skillEffect = null) {
   const zombie = typeof target === "number" ? zombies[target] : target;
 
   if (!zombie) {
@@ -8634,7 +9773,8 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
   applyWeaponHitEffect(zombie, hitEffectType, finalDamage);
 
   if (shouldFlash) {
-    flashZombie(zombie.mesh);
+    if (zombie.mesh.userData.animatedEnemy) animatedEnemies.hit(zombie);
+    else flashZombie(zombie.mesh);
   }
 
   if (zombie.labelSprite) {
@@ -8642,10 +9782,15 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
   }
 
   if (zombie.health <= 0) {
-    audioManager.play("kill", { priority: profile.boss ? 3 : 1 });
+    combatVfx?.emit('blood', zombie.mesh.position, { color: 0x644448, intensity: .35 });
+    combatVfx?.emit('death', zombie.mesh.position, { intensity: profile.boss ? 2 : .65, color: profile.boss ? 0xecc891 : 0x71bbb4 });
+  if (profile.boss && !presentationPreferences.reducedMotion) cameraTrauma = .45;
+    audioManager.play("kill", { priority: profile.boss ? 3 : 1, ...getSpatialAudioOptions(zombie.mesh.position) });
     const xpPosition = zombie.mesh.position.clone();
     const xpValue = getXpValueForZombie(zombie.type, zombie.eliteType);
     const shouldBurst = zombie.type === "sofra";
+    cancelZombieCaster(zombie, 'death');
+    animatedEnemies?.remove(zombie, { death: true, deathStyle: skillEffect?.deathStyle, killedBySkillId: skillEffect?.skillId, direction: skillEffect?.direction });
     removeZombieByRef(zombie);
     if (shouldBurst) {
       spawnSofraDeathBurst(xpPosition);
@@ -8666,7 +9811,7 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
   }
 
   if (shouldFlash) {
-    audioManager.play("hit", { priority: 0 });
+    audioManager.play("hit", { priority: 0, ...getSpatialAudioOptions(zombie.mesh.position) });
   }
 
   return false;
@@ -8723,14 +9868,15 @@ function updateZombieStatusEffects(zombie, dt) {
     }
   }
 
-  if (zombie.freezeTimer > 0) {
-    zombie.freezeTimer = Math.max(0, zombie.freezeTimer - dt);
-  }
+  tickSkillControl(zombie, dt, event => presentClassSkill(event), zombie.mesh.position);
+  zombie.pullTimer = Math.max(0, (zombie.pullTimer || 0) - dt);
 
   return zombie.health > 0;
 }
 
 function spawnWeaponHitEffect(position, hitEffectType) {
+  const vfxType = { flamethrower: 'fire', burnTick: 'fire', frostNova: 'frost', thunderstaff: 'lightning', talisman: 'shockwave', sealRain: 'shockwave', boneCannon: 'impact' }[hitEffectType] || 'impact';
+  combatVfx?.emit(vfxType, position, { color: getWeaponColorValue(hitEffectType, 0xffda95), intensity: .55, radius: 1.1 });
   const effectPosition = tempVectorB.copy(position);
   effectPosition.y = 0.28;
 
@@ -8863,6 +10009,18 @@ function updateEffects(dt) {
 }
 
 function updateCamera(dt) {
+  if (game.state === 'menu' || characterPreview) {
+    if (message.classList.contains('message--login')) {
+      const desired = tempVectorC.copy(player.position).add(tempVectorA.set(5, 4.1, 8));
+      camera.position.lerp(desired, 1 - Math.exp(-dt * 3));
+      camera.lookAt(player.position.x + 1.8, 1.45, player.position.z);
+      return;
+    }
+    const drift = presentationPreferences.reducedMotion ? 0 : Math.sin(clock.elapsedTime * .07) * 1.5;
+    camera.position.lerp(tempVectorC.set(12 + drift, 12.5, 20), 1 - Math.exp(-dt * 2));
+    camera.lookAt(-3, 1, -6);
+    return;
+  }
   const lookAlpha = 1 - Math.pow(usesMobileTuning() ? 0.045 : 0.012, dt);
   game.cameraLookDirection.lerp(player.aimDirection, lookAlpha);
   if (game.cameraLookDirection.lengthSq() < 0.1) {
@@ -8880,11 +10038,22 @@ function updateCamera(dt) {
     player.position.z + getCameraDepth(),
   );
   camera.position.lerp(desiredPosition, 1 - Math.pow(usesMobileTuning() ? 0.008 : 0.001, dt));
+  cameraTrauma *= Math.exp(-dt * 9);
+  if (!presentationPreferences.reducedMotion && cameraTrauma > .005) {
+    const t = game.survivalTime;
+    camera.position.x += Math.sin(t * 67) * cameraTrauma * .24;
+    camera.position.y += Math.cos(t * 79) * cameraTrauma * .17;
+  }
   camera.lookAt(cameraTarget);
 }
 
 function getCameraZoomScale() {
-  return getGameConfig("camera.zoomScale");
+  const scale = getGameConfig("camera.zoomScale");
+  const layout = getMobileLayoutStats();
+  if (layout.profile !== 'mobile' && layout.profile !== 'mobilePro') return scale;
+  // A short landscape viewport otherwise halves the actor's screen height.
+  // Ease the framing by aspect ratio while retaining a bounded threat view.
+  return scale * clamp(layout.height / layout.width * 1.3, .64, 1);
 }
 
 function getCameraHeight() {
@@ -8900,9 +10069,19 @@ function getCameraLookAhead() {
 }
 
 function animateProps(time) {
-  player.mesh.position.y = Math.sin(time * 8) * 0.035;
+  player.mesh.position.y = heroVisual ? 0 : Math.sin(time * 16) * .025 * playerMoveBlend;
+  playerSwingTime = Math.max(0, playerSwingTime - Math.min(perfStats.dt || .016, .035));
+  const pose = player.mesh.userData.locomotion;
+  const gait = Math.sin(time * 13) * playerMoveBlend;
+  pose.leftHip.rotation.x = gait * .6;
+  pose.rightHip.rotation.x = -gait * .6;
+  pose.leftElbow.rotation.x = -gait * .28;
+  pose.rightElbow.rotation.x = gait * .1;
+  pose.rightElbow.rotation.y = -Math.sin(playerSwingTime / .28 * Math.PI) * .95;
+  pose.backPanel.rotation.x = .04 + Math.sin(time * 9) * .06 * playerMoveBlend;
 
   for (const zombie of zombies) {
+    if (zombie.mesh.userData.animatedEnemy) { zombie.mesh.position.y = 0; continue; }
     const flyingBase = zombie.mesh.userData.flying ? 0.85 : 0;
     zombie.mesh.position.y = flyingBase + Math.sin(time * (zombie.mesh.userData.flying ? 3.2 : 6) + zombie.wobble) * (zombie.mesh.userData.flying ? 0.18 : 0.05);
     animateZombieParts(zombie, time);
@@ -8936,7 +10115,10 @@ function animateZombieParts(zombie, time) {
 }
 
 function removeZombie(index) {
+  cancelZombieCaster(zombies[index], zombies[index]?.health <= 0 ? 'death' : 'removed');
   const [zombie] = zombies.splice(index, 1);
+  zombieActorIndex?.remove(`monster:${zombie.id}`);
+  animatedEnemies?.remove(zombie);
   if (zombie.labelSprite) {
     scene.remove(zombie.labelSprite);
     zombie.labelSprite.material.map.dispose();
@@ -8960,11 +10142,18 @@ function removeBullet(index) {
 
 function removeEnemyProjectile(index) {
   const [projectile] = enemyProjectiles.splice(index, 1);
+  casterProjectilePresentation.release(projectile);
   releaseEnemyProjectileVisual(projectile);
 }
 
 function removePowerup(index) {
   const [powerup] = powerups.splice(index, 1);
+  if (powerup.serverDropId) {
+    serverPowerupsById.delete(powerup.serverDropId);
+    pendingMultiplayerPickups.delete(powerup.serverDropId);
+    retiredServerDrops.add(powerup.serverDropId);
+    while (retiredServerDrops.size > 1024) retiredServerDrops.delete(retiredServerDrops.values().next().value);
+  }
   scene.remove(powerup.mesh);
   if (powerup.labelSprite) {
     scene.remove(powerup.labelSprite);
@@ -8980,6 +10169,18 @@ function removeXpGem(index) {
 }
 
 function clearEntities() {
+  clearDashTransforms();
+  clearPreparingWarCries();
+  clearCasterLaunchPresentation();
+  for (const zombie of zombies) cancelZombieCaster(zombie, 'world-reset');
+  offlineCasterEpoch = crypto.randomUUID(); offlineCasterTick = 0; casterEventHistory.length = 0;
+  animatedEnemies?.clear();
+  weaponFireEmitter?.dispose();
+  weaponFireEmitter = null;
+  combatVfx?.reset();
+  classSkillVfx?.reset();
+  hazardVfx?.reset();
+  elementalVfx?.reset();
   while (zombies.length > 0) {
     removeZombie(zombies.length - 1);
   }
@@ -9068,22 +10269,46 @@ function pulseHealth() {
 }
 
 function endGame() {
+  clearDashTransforms();
+  clearPreparingWarCries();
+  for (const zombie of zombies) cancelZombieCaster(zombie, 'run-ended');
+  clearRunStartRejection();
+  zombieActorIndex?.remove(`player:${multiplayer.id || 'local'}`);
+  pendingSkillRequest = null;
+  cancelSkills(classSkillState, event => classSkillVfx?.emit(event), 'end');
+  classSkillVfx?.reset();
+  onlineSkillMotion = null; remoteSkillSnapshots = []; persistentSkillPresentation.clear();
+  audioManager.samples?.reset();
+  characterPreview = false;
+  paused = false;
+  document.body.classList.remove('game-paused');
+  clearPlayerInput();
+  combatVfx?.emit('death', player.position, { color: 0xd76955, intensity: 2 });
   game.state = "dead";
+  pendingSwordStrike = null; swordSwingRemaining = 0;
   game.shooting = false;
   audioManager.endRun();
   player.pendingUpgradeChoices = [];
   player.pendingLevelUps = 0;
   renderUpgradeChoices();
   sendMultiplayerState();
-  void submitLiveLeaderboardSnapshot({ clear: true });
   void submitSoloLeaderboardSession();
+  menuIdentity ??= { title: messageTitle.textContent, kicker: messageKicker.textContent, copy: messageCopy.textContent,
+    label: currentPlayButtonLabel().textContent, copyRole: messageCopy.getAttribute('role'), describedBy: playButton.getAttribute('aria-describedby') };
+  const build = getPlayerBuildSummary();
   messageKicker.textContent = `Onda ${player.wave}`;
   messageTitle.textContent = "Fim da noite";
-  messageCopy.textContent = `${player.score} pontos · Nivel ${player.bestLevel}`;
-  playButton.innerHTML = "<span aria-hidden=\"true\">↻</span>Reiniciar";
+  messageCopy.textContent = `${formatSurvivalTime(game.survivalTime)} de sobrevivência · ${formatHudNumber(player.kills)} abates · ${formatHudNumber(player.score)} pontos · Nível ${player.bestLevel}. `
+    + (build.length ? `Poderes: ${build.join(', ')}.` : 'Nenhum poder escolhido.');
+  messageCopy.setAttribute('role', 'status');
+  currentPlayButtonLabel().textContent = 'Tentar de novo';
+  playButton.setAttribute('aria-describedby', 'message-copy');
   message.classList.add("message--game-over");
   message.classList.add("message--login");
   message.classList.remove("is-hidden");
+  // The player often dies holding attack; ignore restart input briefly, then make the next step explicit.
+  deathInputGuardUntil = performance.now() + 600;
+  if (!playButton.disabled) playButton.focus({ preventScroll: true });
 }
 
 function updateHud(force = false) {
@@ -9108,8 +10333,8 @@ function updateHud(force = false) {
   levelValueElement.textContent = player.level.toString();
   xpFillElement.style.transform = `scaleX(${xpRatio})`;
   xpValueElement.textContent = `${Math.floor(player.xp)}/${Math.floor(player.xpToNext)}`;
-  weaponNameElement.textContent = weapons[player.weapon].label;
-  weaponTimerElement.textContent = player.weapon === "pistol" ? "READY" : `${Math.ceil(player.weaponTimer)}s`;
+  weaponNameElement.textContent = playableCharacters[player.character].weapon;
+  weaponTimerElement.textContent = player.weaponTimer > 0 ? `+40% · ${Math.ceil(player.weaponTimer)}s` : 'PRONTA';
   renderSkillHud();
   renderPerfOverlay();
   updateOnlineScoreboardHud();
@@ -9123,7 +10348,7 @@ function formatSurvivalTime(seconds) {
 }
 
 function formatHudNumber(value) {
-  return Math.floor(Number(value) || 0).toLocaleString("en-US");
+  return Math.floor(Number(value) || 0).toLocaleString("pt-BR");
 }
 
 function renderSkillHud() {
@@ -9142,8 +10367,8 @@ function renderSkillHud() {
     .map(
       (skill) => `
         <span class="skill-chip" title="${escapeHtml(skill.title)}">
-          <span>${skill.icon}</span>
-          <small>LVL ${skill.level}</small>
+          <span aria-hidden="true">${skill.symbol ? `<svg class="ui-icon"><use href="#icon-${skill.symbol}"/></svg>` : skill.icon}</span>
+          <small>Nv. ${skill.level}</small>
         </span>
       `,
     )
@@ -9154,8 +10379,9 @@ function getHudSkills() {
   const skills = [
     {
       icon: hudWeaponIcons[player.weapon] || "⚔",
-      title: weapons[player.weapon]?.label || "Arma",
-      level: player.weapon === "pistol" ? 1 : Math.max(1, Math.ceil(player.weaponTimer)),
+      symbol: player.character === 'warrior' ? 'blade' : 'rifle',
+      title: playableCharacters[player.character].weapon,
+      level: 1 + (player.upgradeStacks.damage || 0),
     },
   ];
 
@@ -9234,7 +10460,7 @@ function shouldUseMultiplayer() {
 }
 
 function usesServerAuthoritativeWorld() {
-  return multiplayer.connected;
+  return multiplayer.enabled;
 }
 
 function sanitizeRoomName(roomName) {
@@ -9253,6 +10479,9 @@ function getMultiplayerUrl() {
       const websocketUrl = new URL(explicitUrl);
       websocketUrl.searchParams.set("room", multiplayer.room);
       websocketUrl.searchParams.set("name", player.name);
+      websocketUrl.searchParams.set("character", player.character);
+      if (multiplayerResumeToken) websocketUrl.searchParams.set('resumeToken', multiplayerResumeToken);
+      else websocketUrl.searchParams.delete('resumeToken');
       return websocketUrl.toString();
     } catch {
       return null;
@@ -9264,7 +10493,12 @@ function getMultiplayerUrl() {
   }
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws?room=${encodeURIComponent(multiplayer.room)}&name=${encodeURIComponent(player.name)}`;
+  const websocketUrl = new URL(`${protocol}//${window.location.host}/ws`);
+  websocketUrl.searchParams.set('room', multiplayer.room);
+  websocketUrl.searchParams.set('name', player.name);
+  websocketUrl.searchParams.set('character', player.character);
+  if (multiplayerResumeToken) websocketUrl.searchParams.set('resumeToken', multiplayerResumeToken);
+  return websocketUrl.toString();
 }
 
 function connectMultiplayer() {
@@ -9276,7 +10510,6 @@ function connectMultiplayer() {
     return;
   }
 
-  multiplayer.url = websocketUrl;
   multiplayer.status = "Conectando";
   updateMultiplayerHud();
 
@@ -9290,6 +10523,7 @@ function connectMultiplayer() {
   });
 
   socket.addEventListener("message", (event) => {
+    if (multiplayer.socket !== socket) return;
     handleMultiplayerMessage(event.data);
   });
 
@@ -9300,16 +10534,38 @@ function connectMultiplayer() {
 
     multiplayer.socket = null;
     multiplayer.connected = false;
-    multiplayer.id = null;
+    clearDashTransforms();
+    clearPreparingWarCries();
+    casterPresentationInbox.clear();
+    clearCasterLaunchPresentation();
+    for (const zombie of zombies) if (zombie.type === 'caster' && zombie.casterCastVisual) {
+      zombie.casterCastVisual = { ...zombie.casterCastVisual, paused: true };
+      animatedEnemies?.syncCast(zombie);
+    }
+    // Presentation has no authority to extend the last disconnected snapshot.
+    remoteSkillSnapshots = [];
+    persistentSkillPresentation.clear();
+    skillSoundTravel.clear();
+    onlineSkillMotion = null;
+    audioManager.samples?.reset();
+    classSkillVfx?.reset();
+    if (pendingMultiplayerStart) pendingMultiplayerStart.sent = false;
+    if (pendingMultiplayerUpgrade) pendingMultiplayerUpgrade.lastSentAt = -Infinity;
+    for (const command of pendingMultiplayerPickups.values()) command.lastSentAt = -Infinity;
+    clearPlayerInput();
+    pendingSwordStrike = null; swordSwingRemaining = 0;
+    keyboardAimActive = false; keyboardAimReleaseUntil = 0;
     clearRemotePlayers();
 
     if (!multiplayer.full) {
       multiplayer.status = multiplayer.enabled ? "Reconectando" : "Solo";
       multiplayer.reconnectTimer = Math.min(8, 2 + multiplayer.reconnectAttempts * 1.5);
+      multiplayerReconnectAt = performance.now() + multiplayer.reconnectTimer * 1000;
       multiplayer.reconnectAttempts += 1;
     }
 
     updateMultiplayerHud();
+    renderUpgradeChoices();
   });
 
   socket.addEventListener("error", () => {
@@ -9327,6 +10583,35 @@ function handleMultiplayerMessage(rawMessage) {
     return;
   }
 
+  if (messageData.type === 'positionCorrection') {
+    if (messageData.runId === multiplayerAuthorityRunId && Number.isFinite(messageData.x) && Number.isFinite(messageData.z)) {
+      if (onlineSkillMotion) Object.assign(onlineSkillMotion, { x: messageData.x, z: messageData.z });
+      else { player.position.set(messageData.x, 0, messageData.z); player.mesh.position.copy(player.position); heroVisualMotion.initialized = false; }
+    }
+    return;
+  }
+  if (messageData.type === 'skillEvent') {
+    if (!messageData.runId || messageData.id !== multiplayer.id || messageData.runId === multiplayerAuthorityRunId) {
+      const ageMs = Number.isFinite(messageData.serverTime) && multiplayerClockOffset !== null ? Math.max(0, Date.now() - messageData.serverTime - multiplayerClockOffset) : 0;
+      presentClassSkill({ ...messageData.event, ageMs }, messageData.id);
+    }
+    return;
+  }
+  if (messageData.type === 'skillState' || messageData.type === 'skillResult') {
+    if (messageData.runId !== multiplayerAuthorityRunId) return;
+    const previous = classSkillState;
+    classSkillState = restoreSkillSnapshot(messageData.skills);
+    playSkillsReady(previous, classSkillState);
+    if (messageData.type === 'skillResult') {
+      if (pendingSkillRequest?.id === messageData.requestId) {
+        if (!messageData.result?.ok) playSkillFeedback(pendingSkillRequest.slot, 'resourcefail');
+        pendingSkillRequest = null;
+      }
+    }
+    publishArpgState();
+    return;
+  }
+
   if (messageData.type === "roomFull") {
     multiplayer.full = true;
     multiplayer.status = "Sala cheia";
@@ -9334,7 +10619,14 @@ function handleMultiplayerMessage(rawMessage) {
     return;
   }
 
+  if (Number.isFinite(messageData.world?.serverTime)) {
+    const observedOffset = Date.now() - messageData.world.serverTime;
+    multiplayerClockOffset = multiplayerClockOffset === null ? observedOffset : Math.min(multiplayerClockOffset, observedOffset);
+  }
+
   if (messageData.type === "welcome") {
+    const hadResumeToken = Boolean(multiplayerResumeToken);
+    multiplayerResumeToken = typeof messageData.resumeToken === 'string' ? messageData.resumeToken : null;
     multiplayer.connected = true;
     multiplayer.full = false;
     multiplayer.id = messageData.id;
@@ -9358,6 +10650,22 @@ function handleMultiplayerMessage(rawMessage) {
       player.mesh.position.copy(player.position);
     }
 
+    clearPlayerInput();
+    if (pendingMultiplayerStart) {
+      // An explicit start may have reached the server before its reply was lost.
+      // Re-send its same requestId only after welcome; the server deduplicates it.
+      pendingMultiplayerStart.sent = false;
+    } else if (!messageData.resumed && hadResumeToken && game.state === 'playing') {
+      // Grace expired: the new server identity has no prior authoritative run.
+      startGame();
+    } else {
+      applyAuthoritativeSelfState(messageData.selfState ?? selfSnapshot?.state);
+      const resumePosition = messageData.selfState ?? selfSnapshot?.state;
+      if (messageData.resumed && Number.isFinite(resumePosition?.x) && Number.isFinite(resumePosition?.z)) {
+        player.position.set(resumePosition.x, 0, resumePosition.z); player.mesh.position.copy(player.position); heroVisualMotion.initialized = false;
+      }
+    }
+
     clearRemotePlayers();
     for (const remotePlayer of messageData.players ?? []) {
       if (remotePlayer.id !== multiplayer.id) {
@@ -9369,9 +10677,64 @@ function handleMultiplayerMessage(rawMessage) {
       syncServerWorld(messageData.world);
     }
 
+    if (!pendingMultiplayerStart) {
+      for (const reward of messageData.pendingRewards ?? []) applyServerPlayerReward(reward);
+    }
+
     updateMultiplayerHud();
-    sendMultiplayerState();
+    if (pendingMultiplayerStart) sendMultiplayerStart();
+    else sendMultiplayerState();
+    renderUpgradeChoices();
     updateLocalPlayerName(playerNameInput?.value || player.name);
+    return;
+  }
+
+  if (messageData.type === 'runStarted') {
+    if (pendingMultiplayerStart && messageData.requestId !== pendingMultiplayerStart.requestId) return;
+    clearRunStartRejection();
+    pendingMultiplayerStart = null;
+    clearPlayerInput();
+    if (Number.isFinite(messageData.state?.x) && Number.isFinite(messageData.state?.z)) {
+      player.position.set(messageData.state.x, 0, messageData.state.z);
+      player.mesh.position.copy(player.position); multiplayer.spawn.copy(player.position);
+      heroVisualMotion.initialized = false;
+    }
+    applyAuthoritativeSelfState(messageData.state);
+    if (messageData.world) syncServerWorld(messageData.world);
+    sendMultiplayerState();
+    return;
+  }
+
+  if (messageData.type === 'runStartRejected') {
+    if (!pendingMultiplayerStart || messageData.requestId !== pendingMultiplayerStart.requestId) return;
+    pendingMultiplayerStart = null;
+    clearPlayerInput();
+    if (Number.isFinite(messageData.state?.x) && Number.isFinite(messageData.state?.z)) {
+      player.position.set(messageData.state.x, 0, messageData.state.z);
+      player.mesh.position.copy(player.position); heroVisualMotion.initialized = false;
+    }
+    applyAuthoritativeSelfState(messageData.state);
+    multiplayer.status = 'Sem espaço para entrar';
+    if (messageData.state?.state !== 'playing') {
+      game.state = messageData.state?.state === 'dead' ? 'dead' : 'menu';
+      audioManager.samples?.reset(); audioManager.endRun(); classSkillVfx?.reset();
+      showRunStartRejection();
+    }
+    updateMultiplayerHud(); publishArpgState();
+    return;
+  }
+
+  if (messageData.type === 'progressionResult') {
+    handleProgressionResult(messageData);
+    return;
+  }
+
+  if (messageData.type === 'progressionEffect') {
+    if (messageData.effect?.kind === 'cuttingMoon') {
+      const origin = new THREE.Vector3(Number(messageData.x) || 0, 0, Number(messageData.z) || 0);
+      spawnExplosion(origin, rarityStyles.legendary.color, Number(messageData.effect.radius) || 9.5);
+      spawnTemporaryDropLabel('LUA CORTANTE', 'legendary', '🌙', origin, 1.1);
+    }
     return;
   }
 
@@ -9382,6 +10745,10 @@ function handleMultiplayerMessage(rawMessage) {
   }
 
   if (messageData.type === "playerState") {
+    if (messageData.id === multiplayer.id) {
+      if (!pendingMultiplayerStart) applyAuthoritativeSelfState(messageData.state);
+      return;
+    }
     const remotePlayer = remotePlayers.get(messageData.id);
     if (remotePlayer) {
       updateRemotePlayerState(remotePlayer, messageData.state);
@@ -9417,8 +10784,25 @@ function handleMultiplayerMessage(rawMessage) {
     return;
   }
 
+  if (messageData.type === 'monsterCast' && messageData.worldEpoch === multiplayerWorldEpoch && multiplayer.connected) {
+    const zombie = serverMonsterById.get(messageData.snapshot?.actorId);
+    if (!zombie || zombie.type !== 'caster') return;
+    syncNetworkCasterCast(zombie, messageData.snapshot, messageData.event);
+    return;
+  }
+
+  if (messageData.type === 'monsterMelee'  && messageData.monster) {
+    syncServerMonster(Number(messageData.monster.id), messageData.monster);
+    return;
+  }
+
   if (messageData.type === "roomWave") {
     syncRoomWave(messageData);
+    return;
+  }
+
+  if (messageData.type === "roomWipe") {
+    handleServerRoomWipe(messageData);
     return;
   }
 
@@ -9450,7 +10834,7 @@ function handleMultiplayerMessage(rawMessage) {
 
 function updateMultiplayer(dt) {
   if (multiplayer.reconnectTimer > 0) {
-    multiplayer.reconnectTimer -= dt;
+    multiplayer.reconnectTimer = Math.max(0, (multiplayerReconnectAt - performance.now()) / 1000);
 
     if (multiplayer.reconnectTimer <= 0 && multiplayer.enabled && !multiplayer.socket && !multiplayer.full) {
       connectMultiplayer();
@@ -9458,6 +10842,7 @@ function updateMultiplayer(dt) {
   }
 
   if (multiplayer.connected) {
+    sendPendingProgressionCommands();
     multiplayer.sendTimer -= dt;
 
     if (multiplayer.sendTimer <= 0) {
@@ -9481,7 +10866,17 @@ function syncServerWorld(world) {
     return;
   }
 
+  if (world.epoch && world.epoch !== multiplayerWorldEpoch) {
+    clearServerSyncedWorld();
+    multiplayerWorldEpoch = world.epoch;
+    casterPresentationInbox = createCasterPresentationInbox(world.epoch);
+  }
+
   game.serverWorldActive = true;
+  remoteSkillSnapshots = world.skillStates || [];
+  const skillSnapshotAgeMs = Number.isFinite(world.serverTime) && multiplayerClockOffset !== null
+    ? Math.max(0, Date.now() - world.serverTime - multiplayerClockOffset) : 0;
+  classSkillVfx?.syncProjectiles?.({ epoch: world.epoch, sequence: world.seq, serverTime: world.serverTime, ageMs: skillSnapshotAgeMs, owners: remoteSkillSnapshots });
   game.serverWorldSeq = Math.max(game.serverWorldSeq, Number(world.seq) || 0);
   player.wave = Math.max(1, Math.floor(Number(world.wave) || 1));
   game.zombiesToSpawn = Math.max(0, Math.floor(Number(world.zombiesToSpawn) || 0));
@@ -9531,6 +10926,33 @@ function syncServerWorld(world) {
   updateHud(true);
 }
 
+function syncNetworkCasterCast(zombie, snapshot, event = null) {
+  const result = casterPresentationInbox.receive(snapshot, event);
+  if (!result.accepted) return false;
+  const preserveDeathPose = ['death', 'removed'].includes(result.visual?.cancelReason);
+  const finalVisual = preserveDeathPose && zombie.casterCastVisual
+    ? { ...zombie.casterCastVisual, paused: true } : result.visual;
+  for (const phase of result.events) {
+    recordCasterEvent(phase, 'network');
+    if (phase.phase !== 'release') continue;
+    animatedEnemies?.syncCast(zombie, { ...result.visual, elapsed: phase.elapsed, active: true, paused: false });
+    const sampled = animatedEnemies?.getCastEmitter(zombie, { castId: phase.castId });
+    const emitter = sampled && Math.abs(sampled.elapsed - phase.elapsed) < 1e-6 ? sampled : null;
+    const spec = getEnemyProjectileSpec('caster');
+    const position = emitter?.position || { x: phase.origin.x, y: enemyProjectileCollisionHeight('caster'), z: phase.origin.z };
+    // This is only the hand flash. Projectile replicas come exclusively from
+    // the authoritative world's projectile list, never from a phase event.
+    const safeLaunch = !emitter || casterProjectilePresentation.remember({ castId: phase.castId, actorId: phase.actorId,
+      origin: { x: phase.origin.x, y: enemyProjectileCollisionHeight('caster'), z: phase.origin.z }, emitter: emitter.position,
+      radius: spec.radius, ageMs: Math.max(0, (snapshot.cast.elapsed - phase.elapsed) * 1000) });
+    if (safeLaunch) emitProjectileCast(elementalVfx, { sourceType: 'caster', mesh: { position: new THREE.Vector3(position.x, position.y, position.z) },
+      velocity: new THREE.Vector3(phase.direction.x, 0, phase.direction.z), radius: spec.radius, color: spec.color });
+  }
+  zombie.casterCastVisual = finalVisual;
+  animatedEnemies?.syncCast(zombie);
+  return true;
+}
+
 function syncServerMonster(monsterId, monsterState) {
   let zombie = serverMonsterById.get(monsterId);
   const type = monsterProfiles[monsterState.type] ? monsterState.type : "zombie";
@@ -9554,6 +10976,21 @@ function syncServerMonster(monsterId, monsterState) {
   zombie.maxHealth = Math.max(1, Number(monsterState.maxHealth) || zombie.maxHealth || 1);
   zombie.targetPosition.set(Number(monsterState.x) || 0, 0, Number(monsterState.z) || 0);
   zombie.targetRotation = Number(monsterState.rotation) || 0;
+  zombie.freezeTimer = Math.max(0, Number(monsterState.freezeTimer) || 0);
+  zombie.stunTimer = Math.max(0, Number(monsterState.stunTimer) || 0);
+  zombie.pullTimer = Math.max(0, Number(monsterState.pullTimer) || 0);
+  zombie.skillStatuses = monsterState.skillStatuses || {};
+  zombie.controlResistance = monsterState.controlResistance || null;
+  if (type === 'caster' && monsterState.casterCast) {
+    syncNetworkCasterCast(zombie, monsterState.casterCast);
+  }
+  if (monsterState.meleeAttack && (!zombie.meleeAttack || monsterState.meleeAttack.id >= zombie.meleeAttack.id)) {
+    const incoming = monsterState.meleeAttack;
+    if (zombie.meleeAttack?.id === incoming.id) {
+      const elapsed = Math.max(zombie.meleeAttack.elapsed, incoming.elapsed);
+      Object.assign(zombie.meleeAttack, incoming, { elapsed: Math.min(incoming.duration, elapsed) });
+    } else zombie.meleeAttack = { ...incoming };
+  }
 
   if (zombie.labelSprite) {
     zombie.labelSprite.userData.maxHealth = zombie.maxHealth;
@@ -9572,15 +11009,23 @@ function updateServerWorldInterpolation(dt) {
     zombie.mesh.position.x += (zombie.targetPosition.x - zombie.mesh.position.x) * moveAlpha;
     zombie.mesh.position.z += (zombie.targetPosition.z - zombie.mesh.position.z) * moveAlpha;
     zombie.mesh.rotation.y = lerpAngle(zombie.mesh.rotation.y, zombie.targetRotation || 0, turnAlpha);
+    if (zombie.type === 'caster' && multiplayer.connected) zombie.casterCastVisual = casterPresentationInbox.advance(zombie.serverId, dt);
+    if (zombie.meleeAttack?.active) {
+      // Visual extrapolation only; the server owns the impact and damage.
+      zombie.meleeAttack.elapsed = Math.min(zombie.meleeAttack.duration, zombie.meleeAttack.elapsed + dt);
+    }
     updateBossLabelPosition(zombie);
   }
 
   for (const projectile of serverProjectileById.values()) {
+    projectile.previousPosition ??= new THREE.Vector3();
+    projectile.previousPosition.copy(projectile.mesh.position);
     projectile.mesh.position.x += (projectile.targetPosition.x - projectile.mesh.position.x) * moveAlpha;
     projectile.mesh.position.y += (projectile.targetPosition.y - projectile.mesh.position.y) * moveAlpha;
     projectile.mesh.position.z += (projectile.targetPosition.z - projectile.mesh.position.z) * moveAlpha;
     projectile.mesh.rotation.y = lerpAngle(projectile.mesh.rotation.y, projectile.targetRotation || 0, turnAlpha);
     animateEnemyProjectileVisual(projectile, dt);
+    emitEnemyProjectileTrail(projectile);
   }
 }
 
@@ -9621,6 +11066,8 @@ function syncServerProjectile(projectileId, projectileState) {
     serverProjectileById.set(projectileId, projectile);
   }
 
+  projectile.castId = projectileState.castId || null;
+  casterProjectilePresentation.attach(projectile);
   projectile.age += perfStats.dt || 0.016;
   projectile.targetPosition.set(
     Number(projectileState.x) || 0,
@@ -9634,11 +11081,14 @@ function removeServerProjectile(projectile) {
   if (!projectile?.mesh) {
     return;
   }
+  casterProjectilePresentation.release(projectile);
   scene.remove(projectile.mesh);
   releaseEnemyProjectileVisual(projectile);
 }
 
 function clearServerSyncedWorld() {
+  clearDashTransforms();
+  clearCasterLaunchPresentation();
   for (const zombie of [...zombies]) {
     removeZombieByRef(zombie);
   }
@@ -9655,12 +11105,21 @@ function clearServerSyncedWorld() {
   serverProjectileById.clear();
   game.serverWorldActive = false;
   game.serverWorldSeq = 0;
+  casterPresentationInbox.clear();
 }
 
 function syncRoomWave(messageData) {
   player.wave = Math.max(1, Math.floor(Number(messageData.wave) || 1));
   game.zombiesToSpawn = Math.max(0, Math.floor(Number(messageData.zombiesToSpawn) || 0));
   waveElement.textContent = player.wave.toString();
+}
+
+function handleServerRoomWipe() {
+  clearServerSyncedWorld();
+  game.zombiesToSpawn = 0;
+  player.wave = 1;
+  waveElement.textContent = "1";
+  updateHud(true);
 }
 
 function handleServerMonsterHit(messageData) {
@@ -9673,7 +11132,8 @@ function handleServerMonsterHit(messageData) {
   zombie.health = Math.max(0, Number(messageData.health) || zombie.health - amount);
   spawnDamageNumber(zombie.mesh.position, amount, false, zombie.id);
   applyWeaponHitEffect(zombie, messageData.hitEffect, amount);
-  flashZombie(zombie.mesh);
+  if (zombie.mesh.userData.animatedEnemy) animatedEnemies.hit(zombie);
+  else flashZombie(zombie.mesh);
   if (zombie.labelSprite) {
     updateBossLabel(zombie.labelSprite, zombie.health, true);
   }
@@ -9681,15 +11141,18 @@ function handleServerMonsterHit(messageData) {
 
 function handleServerMonsterKilled(messageData) {
   const monsterState = messageData.monster || {};
+  casterPresentationInbox.remove(Number(monsterState.id));
   const zombie = serverMonsterById.get(Number(monsterState.id));
   const position = zombie
     ? zombie.mesh.position.clone()
     : new THREE.Vector3(Number(monsterState.x) || player.position.x, 0, Number(monsterState.z) || player.position.z);
   const type = monsterProfiles[monsterState.type] ? monsterState.type : "zombie";
   const profile = monsterProfiles[type] ?? {};
+  combatVfx?.emit('death', position, { color: profile.boss ? 0xecc891 : 0x71bbb4, intensity: profile.boss ? 2 : .65 });
 
   if (zombie) {
-    audioManager.play("kill", { priority: profile.boss ? 3 : 1 });
+    audioManager.play("kill", { priority: profile.boss ? 3 : 1, ...getSpatialAudioOptions(position) });
+    animatedEnemies?.remove(zombie, { death: true, deathStyle: messageData.deathStyle, killedBySkillId: messageData.killedBySkillId, direction: messageData.direction });
     removeZombieByRef(zombie);
     serverMonsterById.delete(Number(monsterState.id));
   }
@@ -9700,30 +11163,187 @@ function handleServerMonsterKilled(messageData) {
 }
 
 function applyServerPlayerReward(messageData) {
-  const totalScore = Number(messageData.totalScore);
-  const totalKills = Number(messageData.totalKills);
-  if (Number.isFinite(totalScore)) {
-    player.score = Math.max(0, Math.floor(totalScore));
+  if (pendingMultiplayerStart) return;
+  const rewardId = String(messageData.rewardId || `${messageData.runId}:${messageData.monster?.id}`);
+  if (messageData.runId && multiplayerAuthorityRunId && messageData.runId !== multiplayerAuthorityRunId) {
+    sendMultiplayerMessage({ type: 'rewardAck', rewardId });
+    return;
   }
-  if (Number.isFinite(totalKills)) {
-    player.kills = Math.max(0, Math.floor(totalKills));
+  if (messageData.state) applyAuthoritativeSelfState(messageData.state);
+  if (appliedMultiplayerRewards.has(rewardId)) {
+    sendMultiplayerMessage({ type: 'rewardAck', rewardId });
+    return;
   }
-  collectXp(Math.max(0, Number(messageData.xp) || 0));
+  appliedMultiplayerRewards.add(rewardId);
+  while (appliedMultiplayerRewards.size > 512) appliedMultiplayerRewards.delete(appliedMultiplayerRewards.values().next().value);
 
-  const monsterState = messageData.monster || {};
-  const rewardPosition = new THREE.Vector3(
-    Number(monsterState.x) || player.position.x,
-    0,
-    Number(monsterState.z) || player.position.z,
-  );
-
-  if (messageData.boss) {
-    player.bossKills += 1;
-    spawnHealthPotionAt(rewardPosition, bossHealthPotionAmount, monsterState.type || "boss");
-    spawnBossRewardChestAt(rewardPosition.clone().add(new THREE.Vector3(1.2, 0, 0.8)), monsterState.type || "boss");
-  }
-
+  // XP, boss count and loot are already included in the authoritative snapshot.
   updateHud(true);
+  sendMultiplayerMessage({ type: 'rewardAck', rewardId });
+}
+
+function sendPendingProgressionCommands() {
+  if (isMultiplayerSuspended() || game.state !== 'playing') return;
+  const now = performance.now();
+  const commands = [pendingMultiplayerUpgrade, ...pendingMultiplayerPickups.values()];
+  for (const command of commands) {
+    if (!command || command.runId !== multiplayerAuthorityRunId || now - command.lastSentAt < 1000) continue;
+    const { lastSentAt, ...payload } = command;
+    command.lastSentAt = now;
+    sendMultiplayerMessage(payload);
+  }
+}
+
+function handleProgressionResult(messageData) {
+  if (pendingMultiplayerStart || messageData.runId !== multiplayerAuthorityRunId) return;
+  const choice = pendingMultiplayerUpgrade?.requestId === messageData.requestId ? pendingMultiplayerUpgrade : null;
+  const pickup = [...pendingMultiplayerPickups.values()].find(command => command.requestId === messageData.requestId);
+  if (choice) pendingMultiplayerUpgrade = null;
+  if (pickup) {
+    pendingMultiplayerPickups.delete(pickup.dropId);
+    const powerup = serverPowerupsById.get(pickup.dropId);
+    if (powerup && !messageData.result?.ok) powerup.nextPickupAttemptAt = performance.now() + 500;
+  }
+  applyAuthoritativeSelfState(messageData.state);
+  if (choice) renderUpgradeChoices();
+}
+
+function syncAuthoritativeDrops(descriptors = []) {
+  const active = new Set();
+  for (const descriptor of descriptors) {
+    if (typeof descriptor.id !== 'string' || !(Number(descriptor.ttl) > 0) || retiredServerDrops.has(descriptor.id)) continue;
+    active.add(descriptor.id);
+    let powerup = serverPowerupsById.get(descriptor.id);
+    if (!powerup) {
+      const before = powerups.length;
+      const position = new THREE.Vector3(Number(descriptor.x) || 0, 0, Number(descriptor.z) || 0);
+      if (descriptor.kind === 'healthPotion') spawnHealthPotionAt(position, descriptor.amount, descriptor.source);
+      else if (descriptor.kind === 'bossChest') spawnBossRewardChestAt(position, descriptor.bossType);
+      else if (descriptor.kind === 'perk') spawnPerkDropAt(position, descriptor.perkId, descriptor.rarity, descriptor.source);
+      else if (descriptor.kind === 'weapon') spawnPowerup(descriptor.type, position.x, position.z, { source: descriptor.source });
+      if (powerups.length === before) continue;
+      powerup = powerups[powerups.length - 1];
+      powerup.serverDropId = descriptor.id;
+      powerup.life = 0;
+      powerup.ttl = Number(descriptor.ttl);
+      serverPowerupsById.set(descriptor.id, powerup);
+    } else {
+      // A reward replay with the same stateVersion cannot extend an item's life.
+      powerup.ttl = powerup.life + Math.min(Math.max(0, powerup.ttl - powerup.life), Number(descriptor.ttl));
+    }
+    powerup.mesh.position.x = Number(descriptor.x) || 0;
+    powerup.mesh.position.z = Number(descriptor.z) || 0;
+    powerup.radius = Number(descriptor.radius) || powerup.radius;
+    updatePowerupLabelPosition(powerup);
+  }
+  for (let index = powerups.length - 1; index >= 0; index--) {
+    const id = powerups[index].serverDropId;
+    if (!id || !active.has(id)) removePowerup(index);
+  }
+  for (const [id] of pendingMultiplayerPickups) if (!active.has(id)) pendingMultiplayerPickups.delete(id);
+}
+
+function applyAuthoritativeProgression(progression, { newRun = false, newerVersion = false } = {}) {
+  if (!progression) return;
+  const previousStacks = player.upgradeStacks;
+  const previousOfferId = multiplayerUpgradeOfferId;
+  const previousChoice = pendingMultiplayerUpgrade;
+  const previousWeaponTimer = player.weaponTimer;
+  const previousRevives = player.revives;
+  player.xp = Math.max(0, Number(progression.xp) || 0);
+  player.xpToNext = Math.max(1, Number(progression.xpToNext) || getXpToNext(player.level));
+  player.upgradeStacks = { ...progression.upgradeStacks };
+  player.upgradeStats = { ...createDefaultUpgradeStats(), ...progression.upgradeStats };
+  player.perks = { ...progression.perks };
+  player.pendingLevelUps = Math.max(0, Number(progression.pendingLevelUps) || 0);
+  player.pendingUpgradeSource = progression.offer?.source || 'level';
+  player.pendingUpgradeChoices = (progression.offer?.upgradeIds || []).map(id => upgradeById.get(id)).filter(Boolean);
+  multiplayerUpgradeOfferId = progression.offer?.id || null;
+  player.rarityPity = Math.max(0, Number(progression.rarityPity) || 0);
+  player.damageReduction = Math.max(0, Number(progression.damageReduction) || 0);
+  player.critChance = Math.max(0, Number(progression.critChance) || 0);
+  player.critMultiplier = Number(progression.critMultiplier) || 1.8;
+  player.bossKills = Math.max(0, Number(progression.bossKills) || 0);
+  player.revives = Math.max(0, Number(progression.revives) || 0);
+  const weaponTimer = Math.max(0, Number(progression.weaponTimer) || 0);
+  const prismTimer = Math.max(0, Number(progression.prismStormRemaining) || 0);
+  player.weaponTimer = newerVersion ? weaponTimer : Math.min(player.weaponTimer, weaponTimer);
+  player.perkCooldowns.prismStorm = newerVersion ? prismTimer : Math.min(player.perkCooldowns.prismStorm, prismTimer);
+  if (player.weaponTimer > 0 && !weaponFireEmitter && player.character === 'warrior' && heroVisual?.weapon) {
+    weaponFireEmitter = combatVfx?.attachWeapon(heroVisual.weapon, { intensity: .5, rate: 10 }) || null;
+  } else if (player.weaponTimer <= 0 && weaponFireEmitter) {
+    weaponFireEmitter.dispose(); weaponFireEmitter = null;
+  }
+  if (!newRun && player.weaponTimer > previousWeaponTimer + .5) {
+    audioManager.play('weaponPickup', { priority: 2 });
+    combatVfx?.emit('seal', player.position, { color: 0xe4bf78, radius: 1.3, intensity: .45 });
+  }
+  if (!newRun && player.revives < previousRevives) triggerPerkAnimation('lastBreath', player.position, 'legendary');
+  if (pendingMultiplayerUpgrade && pendingMultiplayerUpgrade.offerId !== multiplayerUpgradeOfferId) pendingMultiplayerUpgrade = null;
+  let stacksChanged = false;
+  for (const [id, stacks] of Object.entries(player.upgradeStacks)) {
+    if (stacks <= (previousStacks[id] || 0)) continue;
+    stacksChanged = true;
+    const definition = upgradeById.get(id);
+    if (!newRun && definition) {
+      audioManager.play('upgradeChoice', { rarity: definition.rarity, priority: 3 });
+      if (definition.kind === 'perk') triggerPerkAnimation(id, player.position, definition.rarity);
+    }
+  }
+  syncAuthoritativeDrops(progression.drops);
+  if (newRun || stacksChanged || previousOfferId !== multiplayerUpgradeOfferId || previousChoice !== pendingMultiplayerUpgrade) renderUpgradeChoices();
+}
+
+function applyAuthoritativeSelfState(state) {
+  if (!state || typeof state.runId !== 'string') return false;
+  const version = Number(state.stateVersion) || 0;
+  const newRun = state.runId !== multiplayerAuthorityRunId;
+  if (!newRun && version < multiplayerAuthorityVersion) return false;
+  const newerVersion = newRun || version > multiplayerAuthorityVersion;
+  const previousHealth = player.health;
+  const previousLevel = player.level;
+  if (newRun) {
+    multiplayerAuthorityRunId = state.runId;
+    multiplayerAppliedXpTotal = 0;
+    appliedMultiplayerRewards.clear();
+    resetProgressionState();
+  }
+  multiplayerAuthorityVersion = version;
+  player.maxHealth = Math.max(1, Math.min(playerNetworkMaxHealthCap, Number(state.maxHealth) || playerBaseMaxHealth));
+  player.health = Math.max(0, Math.min(player.maxHealth, Number(state.health) || 0));
+  player.score = Math.max(0, Math.floor(Number(state.score) || 0));
+  player.kills = Math.max(0, Math.floor(Number(state.kills) || 0));
+  player.level = Math.max(1, Math.floor(Number(state.level) || 1));
+  player.bestLevel = Math.max(player.level, Number(state.bestLevel) || 1);
+  const xpTotal = Math.max(0, Math.floor(Number(state.xpTotal) || 0));
+  const xpDelta = Math.max(0, xpTotal - multiplayerAppliedXpTotal);
+  multiplayerAppliedXpTotal = Math.max(multiplayerAppliedXpTotal, xpTotal);
+  applyAuthoritativeProgression(state.progression, { newRun, newerVersion });
+  if (state.skills) classSkillState = restoreSkillSnapshot(state.skills);
+  if (state.state !== 'playing') {
+    pendingMultiplayerUpgrade = null;
+    pendingMultiplayerPickups.clear();
+    player.pendingUpgradeChoices = [];
+    renderUpgradeChoices();
+  }
+  if (!newRun && xpDelta > 0) audioManager.play('xp', { value: xpDelta, priority: 1 });
+  if (!newRun && player.level > previousLevel) {
+    spawnLevelPulse();
+    audioManager.play('levelUp', { priority: 3 });
+    if (player.perkCooldowns.prismStorm > 0) triggerPerkAnimation('prismStorm', player.position, 'epic');
+  }
+  if (!newRun && player.health > previousHealth) {
+    combatVfx?.emit('heal', player.position, { color: 0xa2e4bc, radius: 2 });
+    pulseHealth();
+  }
+  if (state.state === 'playing') clearRunStartRejection();
+  if (state.state === 'dead' && game.state === 'playing') endGame();
+  else if (state.state === 'playing' && game.state !== 'playing') {
+    game.state = 'playing';
+    message.classList.add('is-hidden');
+  }
+  updateHud(true);
+  return true;
 }
 
 function getPlayerBuildSummary() {
@@ -9787,22 +11407,17 @@ function getPerfStats() {
 }
 
 function sendMultiplayerState() {
+  if (pendingMultiplayerStart) return;
   sendMultiplayerMessage({
     type: "state",
     state: {
+      stateVersion: multiplayerAuthorityVersion,
       x: player.position.x,
       z: player.position.z,
       rotation: player.mesh.rotation.y,
       aimX: player.aimDirection.x,
       aimZ: player.aimDirection.z,
-      health: player.health,
-      maxHealth: player.maxHealth,
-      score: player.score,
-      kills: player.kills,
-      wave: Math.max(player.wave, 1),
-      level: player.level,
-      bestLevel: player.bestLevel,
-      build: getPlayerBuildSummary(),
+      character: player.character,
       weapon: player.weapon,
       shooting: game.shooting,
       state: game.state,
@@ -9810,7 +11425,41 @@ function sendMultiplayerState() {
   });
 }
 
+function emitAttackVfx(kind, origin, direction) {
+  if (kind === 'katana' && origin === player.position) playerSwingTime = .28;
+  const type = {
+    pistol: 'muzzle', crossbow: 'muzzle', flamethrower: 'fire', katana: 'slash', axe: 'slash',
+    guardianBlade: 'slash', talisman: 'teleport', thunderstaff: 'lightning', boneCannon: 'muzzle',
+    frostNova: 'frost', orbitOrb: 'ambient', sealRain: 'shockwave',
+  }[kind] || 'impact';
+  const radius = { axe: 4.4, katana: 2.1, guardianBlade: 2.4, frostNova: 7.2, sealRain: 3.5 }[kind] || 1.2;
+  let visualOrigin = kind === 'pistol' && origin === player.position && heroVisual?.muzzle
+    ? heroVisual.muzzle.getWorldPosition(new THREE.Vector3()) : origin;
+  if (kind === 'katana') {
+    visualOrigin = new THREE.Vector3().copy(origin).addScaledVector(direction, .35);
+    visualOrigin.y += (origin === player.position ? heroVisual?.stats.runtimeHeight || 2.7 : 2.7) * .48;
+  }
+  combatVfx?.emit(type, visualOrigin, {
+    direction, radius, tilt: kind === 'katana' ? .35 : undefined, color: getWeaponColorValue(kind, 0xffd69a),
+    target: kind === 'thunderstaff' ? { x: origin.x + direction.x * 14, y: 1, z: origin.z + direction.z * 14 } : undefined,
+  });
+  if (kind === 'guardianBlade' && player.evolvedWeapons.guardianBlade) {
+    combatVfx?.emit('bladeStorm', origin, { color: 0xbdebf2, radius: 3.2, direction });
+  }
+  if (kind === 'sealRain') {
+    combatVfx?.emit('judgement', origin, { color: 0xe4c9fc, radius: 3.5 });
+  }
+  if (kind === 'talisman' && origin === player.position) {
+    combatVfx?.summonEcho(origin, { direction, color: 0x98b8e1, duration: .85 });
+  }
+  if (['axe', 'katana', 'boneCannon', 'frostNova'].includes(kind) && !presentationPreferences.reducedMotion) {
+    cameraTrauma = Math.max(cameraTrauma, .08);
+  }
+}
+
 function sendMultiplayerAttack(kind, origin = player.position, direction = player.aimDirection) {
+  if (kind !== playableCharacters[player.character].weaponId) return;
+  emitAttackVfx(kind, origin, direction);
   const attackDirection = direction.lengthSq() < 0.01 ? player.aimDirection : direction;
 
   sendMultiplayerMessage({
@@ -9822,9 +11471,6 @@ function sendMultiplayerAttack(kind, origin = player.position, direction = playe
       z: origin.z,
       aimX: attackDirection.x,
       aimZ: attackDirection.z,
-      damageMultiplier: player.upgradeStats.damageMultiplier,
-      areaMultiplier: getAreaMultiplier(),
-      projectileBonus: getProjectileBonus(),
     },
   });
 }
@@ -9859,6 +11505,12 @@ function upsertRemotePlayer(playerData) {
 
 function createRemotePlayer(playerData) {
   const mesh = createPlayerMesh();
+  // Remote avatars use the arena lighting and their existing marker/emissive
+  // materials. Keep the local player's lights; peer joins must not change the
+  // scene light-count shader variants (including a light nested under a hand).
+  const remoteLights = [];
+  mesh.traverse(object => { if (object.isLight) remoteLights.push(object); });
+  for (const light of remoteLights) { light.removeFromParent(); light.dispose?.(); }
   const color = new THREE.Color(playerData.color || "#74d1ff");
   const marker = new THREE.Mesh(
     new THREE.TorusGeometry(1.02, 0.045, 8, 42),
@@ -9868,8 +11520,10 @@ function createRemotePlayer(playerData) {
   marker.position.y = 0.08;
   mesh.add(marker);
 
-  return {
+  const remotePlayer = {
     id: playerData.id,
+    character: playableCharacters[playerData.state?.character || playerData.character] ? (playerData.state?.character || playerData.character) : 'dwarf',
+    visualVersion: 0,
     name: playerData.name || "P?",
     color: playerData.color || "#74d1ff",
     health: playerBaseMaxHealth,
@@ -9883,6 +11537,9 @@ function createRemotePlayer(playerData) {
     weapon: "pistol",
     shooting: false,
     state: "menu",
+    visual: null,
+    visualMotion: createVisualMotion(),
+    disposed: false,
     combatTimer: 0,
     phase: Math.random() * Math.PI * 2,
     mesh,
@@ -9890,6 +11547,22 @@ function createRemotePlayer(playerData) {
     aimDirection: new THREE.Vector3(0, 0, -1),
     targetPosition: new THREE.Vector3(0, 0, 0),
   };
+  remotePlayer.fallback = mesh.children.filter(child => child !== marker && !child.isLight && !child.userData.contactShadow);
+  void loadRemoteCharacter(remotePlayer);
+  return remotePlayer;
+}
+
+async function loadRemoteCharacter(remotePlayer) {
+  const version = ++remotePlayer.visualVersion;
+  try {
+    const visual = await loadPlayableCharacter(remotePlayer.character, { THREE, parent: remotePlayer.mesh });
+    if (remotePlayer.disposed || remotePlayer.visualVersion !== version) { visual.dispose(); return; }
+    remotePlayer.visual?.dispose();
+    remotePlayer.visual = visual;
+    for (const child of remotePlayer.fallback) child.visible = false;
+  } catch (error) {
+    if (!remotePlayer.disposed) console.error('Remote character failed to load', error);
+  }
 }
 
 function updateRemotePlayerState(remotePlayer, state) {
@@ -9914,7 +11587,12 @@ function updateRemotePlayerState(remotePlayer, state) {
   remotePlayer.level = Math.max(1, Number(state.level) || 1);
   remotePlayer.bestLevel = Math.max(remotePlayer.level, Number(state.bestLevel) || remotePlayer.level);
   remotePlayer.build = Array.isArray(state.build) ? state.build.slice(0, 8) : [];
-  remotePlayer.weapon = weapons[state.weapon] ? state.weapon : "pistol";
+  const character = playableCharacters[state.character] ? state.character : 'dwarf';
+  if (remotePlayer.character !== character) {
+    remotePlayer.character = character;
+    void loadRemoteCharacter(remotePlayer);
+  }
+  remotePlayer.weapon = playableCharacters[character].weaponId;
   remotePlayer.shooting = Boolean(state.shooting);
   remotePlayer.state = state.state || "menu";
   updatePlayerLabel(remotePlayer.labelSprite, remotePlayer.name, remotePlayer.color, remotePlayer.health, remotePlayer.maxHealth);
@@ -9926,11 +11604,13 @@ function applyNetworkPlayerState(playerId, state, amount = 0) {
   }
 
   if (playerId === multiplayer.id) {
+    if (pendingMultiplayerStart) return;
     const previousHealth = player.health;
-    player.maxHealth = Math.max(1, Math.min(playerNetworkMaxHealthCap, Number(state.maxHealth) || player.maxHealth));
-    player.health = Math.max(0, Math.min(player.maxHealth, Number(state.health) || 0));
+    if (!applyAuthoritativeSelfState(state)) return;
 
     if (player.health < previousHealth || amount > 0) {
+      heroVisual?.hit();
+      cinematicPipeline?.impact(Math.min(.5, Math.max(amount, previousHealth - player.health) / 60));
       spawnPlayerDamageNumber(amount > 0 ? amount : previousHealth - player.health, player.position);
       pulseHealth();
     }
@@ -9956,12 +11636,15 @@ function updateRemotePlayers(dt) {
   for (const remotePlayer of remotePlayers.values()) {
     remotePlayer.mesh.position.x += (remotePlayer.targetPosition.x - remotePlayer.mesh.position.x) * moveAlpha;
     remotePlayer.mesh.position.z += (remotePlayer.targetPosition.z - remotePlayer.mesh.position.z) * moveAlpha;
-    remotePlayer.mesh.position.y = Math.sin(clock.elapsedTime * 8 + remotePlayer.phase) * 0.035;
+    remotePlayer.mesh.position.y = remotePlayer.visual ? 0 : Math.sin(clock.elapsedTime * 8 + remotePlayer.phase) * 0.035;
     remotePlayer.mesh.rotation.y = lerpAngle(
       remotePlayer.mesh.rotation.y,
       getForwardRotation(remotePlayer.aimDirection),
       turnAlpha,
     );
+    sampleVisualMotion(remotePlayer.visualMotion, remotePlayer.mesh.position, dt, remotePlayer.state === 'playing');
+    remotePlayer.visualMotion.dead = remotePlayer.state === 'dead';
+    remotePlayer.visual?.update(dt, remotePlayer.visualMotion);
 
     if (game.labelFrameReady) {
       remotePlayer.labelSprite.position.copy(remotePlayer.mesh.position);
@@ -9971,6 +11654,7 @@ function updateRemotePlayers(dt) {
 
     if (remotePlayer.shooting && remotePlayer.state === "playing" && remotePlayer.combatTimer <= 0) {
       remotePlayer.combatTimer = getRemoteAttackInterval(remotePlayer.weapon);
+      remotePlayer.visual?.attack({ duration: remotePlayer.combatTimer });
       spawnRemoteAttackVisual(
         remotePlayer.mesh.position,
         remotePlayer.aimDirection,
@@ -9997,6 +11681,7 @@ function handleRemoteAttack(playerId, attack) {
     : weapons[attack?.weapon]
       ? attack.weapon
       : attack?.kind || "pistol";
+  if (remotePlayer && remotePlayer.combatTimer < .1) remotePlayer.visual?.attack({ duration: getRemoteAttackInterval(weapon) });
   spawnRemoteAttackVisual(origin, direction, weapon, remotePlayer?.color || "#74d1ff");
   applyRemoteAttackDamage(origin, direction, weapon);
 }
@@ -10074,6 +11759,7 @@ function getRemoteAttackDamage(amount) {
 }
 
 function spawnRemoteAttackVisual(origin, direction, weapon, fallbackColor) {
+  emitAttackVfx(weapon, origin, direction);
   const color = getWeaponColorValue(weapon, fallbackColor);
 
   if (weapon === "flamethrower") {
@@ -10163,6 +11849,7 @@ function spawnRemoteSlash(origin, direction, color) {
 }
 
 function getRemoteAttackInterval(weapon) {
+  if (weapon === "pistol") return .32;
   if (weapon === "flamethrower") {
     return 0.14;
   }
@@ -10172,7 +11859,7 @@ function getRemoteAttackInterval(weapon) {
   }
 
   if (weapon === "katana") {
-    return 0.28;
+    return 0.55;
   }
 
   if (weapon === "crossbow") {
@@ -10261,12 +11948,15 @@ function updatePlayerLabel(sprite, label, color, health, maxHealth = 100) {
 }
 
 function removeRemotePlayer(playerId) {
+  clearDashTransforms(playerId);
   const remotePlayer = remotePlayers.get(playerId);
 
   if (!remotePlayer) {
     return;
   }
 
+  remotePlayer.disposed = true;
+  remotePlayer.visual?.dispose();
   scene.remove(remotePlayer.mesh);
   scene.remove(remotePlayer.labelSprite);
   disposeObject(remotePlayer.mesh);
@@ -10302,8 +11992,8 @@ function updateMultiplayerHud() {
     return;
   }
 
-  onlineCountElement.textContent = multiplayer.full ? "Cheia" : "Solo";
-  onlineStatusElement.textContent = multiplayer.status;
+  onlineCountElement.textContent = multiplayer.full ? "Cheia" : multiplayer.enabled ? "Online" : "Solo";
+  onlineStatusElement.textContent = multiplayer.enabled ? multiplayer.status : "Local";
   updatePartyHud();
   updateOnlineScoreboardHud();
 }
@@ -10397,12 +12087,22 @@ function updateLeaderboard(leaderboard, status = "ready") {
     recentSessions: Array.isArray(snapshot.recentSessions) ? snapshot.recentSessions.slice(0, 10) : [],
     status,
     generatedAt: snapshot.generatedAt || null,
-    source: getLeaderboardApiUrl("/api/leaderboard"),
+    source: snapshot.scope === "device" ? "browser" : getLeaderboardApiUrl("/api/leaderboard"),
+    scope: snapshot.scope || "rooms",
+    persistence: snapshot.persistence !== false,
   };
+  const scopeLabel = document.querySelector("#leaderboard-scope");
+  if (scopeLabel) scopeLabel.textContent = snapshot.scope === "device"
+    ? snapshot.persistence === false ? "Recordes solo desta sessão" : "Recordes solo neste navegador"
+    : "Histórico das salas";
   updateLeaderboardHud();
 }
 
 async function loadLeaderboardSnapshot({ clearBeforeFetch = false } = {}) {
+  if (!multiplayer.enabled) {
+    updateLeaderboard(soloLeaderboard.snapshot());
+    return;
+  }
   if (clearBeforeFetch) {
     updateLeaderboard(null, "loading");
   }
@@ -10425,108 +12125,42 @@ async function loadLeaderboardSnapshot({ clearBeforeFetch = false } = {}) {
 }
 
 async function submitSoloLeaderboardSession() {
-  if (game.leaderboardSubmitted || multiplayer.connected) {
-    return;
-  }
-
+  if (game.leaderboardSubmitted || multiplayer.enabled) return;
   game.leaderboardSubmitted = true;
-
-  try {
-    const response = await fetch(getLeaderboardApiUrl("/api/leaderboard/session"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: player.name,
-        score: player.score,
-        kills: player.kills,
-        wave: Math.max(player.wave, 1),
-        level: player.level,
-        bestLevel: player.bestLevel,
-        build: getPlayerBuildSummary(),
-        durationMs: Math.floor(game.survivalTime * 1000),
-      }),
-    });
-
-    if (response.ok) {
-      updateLeaderboard(await response.json());
-    }
-  } catch {
-  }
+  const result = soloLeaderboard.record({
+    runId: game.soloRunId,
+    name: player.name, score: player.score, kills: player.kills,
+    wave: Math.max(player.wave, 1), level: player.level, bestLevel: player.bestLevel,
+    build: getPlayerBuildSummary(), durationMs: Math.floor(game.survivalTime * 1000),
+  });
+  updateLeaderboard(result.snapshot);
 }
 
-function createLiveLeaderboardPayload(state = game.state) {
-  return {
-    name: player.name,
-    score: Math.max(0, Math.floor(Number(player.score) || 0)),
-    kills: Math.max(0, Math.floor(Number(player.kills) || 0)),
-    wave: Math.max(player.wave, 1),
-    level: Math.max(player.level, 1),
-    bestLevel: Math.max(player.bestLevel, player.level, 1),
-    build: getPlayerBuildSummary(),
-    durationMs: Math.floor(game.survivalTime * 1000),
-    state,
-  };
-}
 
-function getLiveLeaderboardSignature() {
-  const build = getPlayerBuildSummary().join(",");
-  return [
-    player.name,
-    Math.floor(Number(player.score) || 0),
-    Math.floor(Number(player.kills) || 0),
-    Math.max(player.wave, 1),
-    Math.max(player.level, 1),
-    Math.floor(game.survivalTime / 8),
-    build,
-    game.state,
-  ].join("|");
-}
+
+
 
 function updateLiveLeaderboardSync(dt) {
-  if (game.state !== "playing") {
-    return;
-  }
-
-  game.leaderboardLiveTimer -= dt;
+  if (game.state !== 'playing' || !multiplayer.enabled || !multiplayer.connected) return;
   game.leaderboardRefreshTimer -= dt;
-
-  if (game.leaderboardLiveTimer <= 0) {
-    game.leaderboardLiveTimer = 2;
-    const signature = getLiveLeaderboardSignature();
-    const now = performance.now();
-    const shouldRenewPresence = now - game.lastLiveLeaderboardSentAt > 8_000;
-
-    if (signature !== game.lastLiveLeaderboardSignature || shouldRenewPresence) {
-      game.lastLiveLeaderboardSignature = signature;
-      game.lastLiveLeaderboardSentAt = now;
-      void submitLiveLeaderboardSnapshot();
-    }
-  }
-
   if (game.leaderboardRefreshTimer <= 0) {
     game.leaderboardRefreshTimer = 4;
     void loadLeaderboardSnapshot({ clearBeforeFetch: false });
   }
 }
 
-async function submitLiveLeaderboardSnapshot({ clear = false } = {}) {
-  if (!clear && game.state !== "playing") {
-    return;
-  }
 
-  try {
-    const response = await fetch(getLeaderboardApiUrl("/api/leaderboard/live"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      keepalive: clear,
-      body: JSON.stringify(createLiveLeaderboardPayload(clear ? "dead" : game.state)),
-    });
 
-    if (response.ok && !clear) {
-      updateLeaderboard(await response.json());
-    }
-  } catch {
-  }
+function getMultiplayerEntryUrl() {
+  const entry = new URL(window.location.href);
+  const serverOrigin = window.location.hostname === 'bipx.vercel.app' ? multiplayerServerOrigin : window.location.origin;
+  const socket = new URL('/ws', serverOrigin);
+  socket.protocol = socket.protocol === 'https:' ? 'wss:' : 'ws:';
+  entry.searchParams.delete('offline');
+  entry.searchParams.delete('autoplay');
+  entry.searchParams.set('ws', socket.toString());
+  entry.searchParams.set('room', sanitizeRoomName(queryParams.get('room') || 'cemiterio'));
+  return entry.toString();
 }
 
 function getLeaderboardApiUrl(pathname) {
@@ -11027,10 +12661,11 @@ function updatePointerFromClient(clientX, clientY) {
 }
 
 function isInteractiveOverlay(target) {
-  return target instanceof Element && Boolean(target.closest("button, input, .touch-controls, .message, .upgrade-panel"));
+  return target instanceof Element && Boolean(target.closest("button, input, select, dialog, .touch-controls, .message, .upgrade-panel"));
 }
 
 function handleFirePointerDown(event) {
+  if (paused || game.state !== 'playing') return;
   event.preventDefault();
   touchFire.setPointerCapture?.(event.pointerId);
   game.shooting = true;
@@ -11098,6 +12733,7 @@ function applyTouchAimAssist() {
 }
 
 function handleStickMove(event) {
+  if (paused || game.state !== 'playing') return;
   event.preventDefault();
   if (event.type === "pointerdown" || game.touchStickPointerId === null) {
     const rect = touchStick.getBoundingClientRect();

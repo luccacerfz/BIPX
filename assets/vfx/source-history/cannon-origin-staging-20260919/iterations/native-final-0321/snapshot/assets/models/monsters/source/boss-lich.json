@@ -1,0 +1,27 @@
+{
+  "id": "boss-lich",
+  "mode": "character",
+  "theme": "mega-300",
+  "prompt": "Low-poly stylized towering LICH BOSS skeletal mage crown, FULL BODY standing huge feet visible, A-pose, isolated symmetric game character Quake Diablo hybrid",
+  "anims": [
+    "IDLE",
+    "WALK",
+    "RUN",
+    "SLASH",
+    "FALL"
+  ],
+  "animate_in_place": true,
+  "tasks": {
+    "model": "de2d1293-ddd8-4e3c-a373-bcc443359e84",
+    "rig": "b60a3c29-12c3-494a-a938-4f6c9d502de3",
+    "retarget": "8465d9fc-a2ab-4a8d-9474-ff51b873d453"
+  },
+  "inspect": {
+    "mb": 1.49,
+    "bones": 41,
+    "clips": 5,
+    "ready": true,
+    "aspect_h_w": 2.887001791110193
+  },
+  "created": "2026-07-11T15:31:19.243577+00:00"
+}

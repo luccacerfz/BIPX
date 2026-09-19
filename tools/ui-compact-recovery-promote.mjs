@@ -1,0 +1,100 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+import {chromium, waitForRuntimeAssets, sourceFingerprint} from './quality-browser.mjs';
+import {launchProtocolServer} from './quality-protocol.mjs';
+import {spawnFixture} from './player-spawn-fixture.mjs';
+import {localServer} from './quality-isolated-server.mjs';
+
+const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const candidate = fs.readFileSync('output/gui-compact-recovery-v1/candidate.css');
+const selection = JSON.parse(fs.readFileSync('docs/arpg/review/gui-compact-recovery-selection.json'));
+assert.equal(candidate.length, 545);
+assert.equal(sha(candidate), selection.candidateSHA256);
+assert.equal(sha(candidate), '00e53e45b8606e6ebdea29b70ad84a19067c83fbd754a2ef396c718c9cb390f8');
+const lock = '/tmp/bipx-arpg-gpu.lock', token = crypto.randomUUID();
+try { fs.mkdirSync(lock); } catch (error) {
+  if (error.code === 'EEXIST') { console.log('GPU owned by another participant; no write performed.'); process.exit(75); }
+  throw error;
+}
+const owner = {owner:'gui-compact-promotion', pid:process.pid, token, created:new Date().toISOString()};
+fs.writeFileSync(path.join(lock, 'owner.json'), JSON.stringify(owner));
+const output = path.resolve('output/gui-compact-recovery-v1/promotion', new Date().toISOString().replace(/[:.]/g, '-'));
+fs.mkdirSync(output, {recursive:true});
+fs.copyFileSync(new URL(import.meta.url), path.join(output, 'verifier.mjs'));
+const report = {scope:'Only selected CSS promotion plus real rejection/retry at320x568 with private synthetic blocked spawn; no injected CSS, no full matrix.', owner, checks:[], errors:[], promoted:false};
+const check = (name, value) => { assert.ok(value, name); report.checks.push(name); };
+let browser, server, protocol;
+try {
+  const baseline = fs.readFileSync('styles.css'), before = sourceFingerprint();
+  assert.equal(sha(baseline), '8ede8bb92ae3a92e3a8b5d80e4d3701bf2c49e7b6e562b732286f4d5ed015fc0', 'Unexpected GUI baseline; stop before writing');
+  assert.ok(!baseline.includes(candidate), 'Candidate already applied; do not append twice');
+  fs.writeFileSync(path.join(output, 'styles.before.css'), baseline);
+  fs.writeFileSync(path.join(output, 'candidate.css'), candidate);
+  fs.writeFileSync(path.join(output, 'source.before.json'), JSON.stringify(before, null, 2)+'\n');
+  for (const name of ['combat-handoff.md', 'vfx-handoff.md']) fs.copyFileSync('docs/arpg/'+name, path.join(output, name));
+  fs.copyFileSync('docs/arpg/review/gui-compact-recovery-selection.json', path.join(output, 'selection.json'));
+  const promoted = Buffer.concat([baseline, Buffer.from('\n'), candidate]);
+  fs.writeFileSync('styles.css', promoted);
+  report.promoted = true;
+  report.receipt = {at:new Date().toISOString(), file:'styles.css', baselineSha256:sha(baseline), baselineBytes:baseline.length, candidateSha256:sha(candidate), candidateBytes:candidate.length, finalSha256:sha(promoted), finalBytes:promoted.length, operation:'preserve exact baseline bytes + newline + exact approved candidate', coordination:['msg_146e9c306c82', 'msg_40749d1da32a'], runtimeRestarted:false};
+  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(report.receipt, null, 2)+'\n');
+  const after = sourceFingerprint();
+  report.source = after;
+  const changed = Object.keys({...before,...after}).filter(key=>before[key]!==after[key]);
+  check('Only styles.css runtime hash changed', changed.length===1 && changed[0]==='styles.css');
+  check('Exact baseline prefix and approved CSS bytes applied', fs.readFileSync('styles.css').equals(promoted));
+  const response = await fetch('http://127.0.0.1:5173/styles.css?gui-compact-promotion='+Date.now(), {cache:'no-store'});
+  report.http5173 = {status:response.status, sha256:sha(Buffer.from(await response.arrayBuffer()))};
+  check('5173 serves exact promoted CSS without restart', report.http5173.status===200 && report.http5173.sha256===sha(promoted));
+  server = await localServer(); protocol = await launchProtocolServer('compact-promoted', spawnFixture);
+  browser = await chromium.launch({channel:'chrome', headless:false});
+  const context = await browser.newContext({viewport:{width:320,height:568}, hasTouch:true, isMobile:true, deviceScaleFactor:1});
+  await context.addInitScript(()=>localStorage.setItem('bipx-controls-seen','true'));
+  const page = await context.newPage(), messages=[];
+  page.on('pageerror', error=>report.errors.push(error.message));
+  page.on('console', message=>{ if(message.type()==='error') report.errors.push(message.text()); });
+  page.on('response', response=>{ if(response.status()>=400) report.errors.push(`${response.status()} ${response.url()}`); });
+  page.on('websocket', socket=>socket.on('framereceived', ({payload})=>{ try { messages.push(JSON.parse(String(payload))); } catch {} }));
+  const room='gui-compact-promoted', url=new URL(server.origin+'/');
+  url.searchParams.set('room',room); url.searchParams.set('ws',protocol.wsUrl);
+  await page.goto(url.href, {waitUntil:'domcontentloaded'}); await waitForRuntimeAssets(page);
+  await page.waitForFunction(()=>window.__zombieNightDebug.getState().multiplayer.connected);
+  const welcome=messages.find(message=>message.type==='welcome'); assert.ok(welcome);
+  await protocol.requestFixture('qa-spawn-config',{room,actors:[{x:0,z:welcome.selfState.z,radius:30}]});
+  await page.locator('#open-login-button').click(); await page.locator('#player-name').fill('Compact QA');
+  await page.evaluate(()=>{window.compactLabel=document.querySelector('#play-button-label');window.compactIcon=document.querySelector('#play-button svg');});
+  await page.locator('#play-button').click();
+  await page.waitForFunction(()=>document.querySelector('#message').dataset.runStartRejected==='true');
+  report.rejected=await page.evaluate(()=>{
+    const rect=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+    const menu=document.querySelector('#message'), copy=document.querySelector('#message-copy'), button=document.querySelector('#play-button');
+    return {menu:rect(menu),copy:rect(copy),retry:rect(button),sound:rect(document.querySelector('#audio-toggle')),position:getComputedStyle(copy).position,overflow:getComputedStyle(menu).overflowY,focused:document.activeElement.id,text:copy.textContent,name:document.querySelector('#player-name').value,selected:document.querySelector('[name="character"]:checked').value,sameLabel:window.compactLabel===document.querySelector('#play-button-label'),sameIcon:window.compactIcon===button.querySelector('svg'),width:innerWidth,height:innerHeight};
+  });
+  await page.screenshot({path:path.join(output,'integrated-rejected-320x568.png')});
+  const r=report.rejected, visible=rect=>rect.top>=r.menu.top && rect.bottom<=r.height && rect.left>=0 && rect.right<=r.width;
+  check('Real authoritative rejection received',messages.some(message=>message.type==='runStartRejected'));
+  check('Integrated CSS shows reason and focused retry, separated from sound', r.position==='sticky' && visible(r.copy) && visible(r.retry) && r.sound.bottom<r.menu.top && r.focused==='play-button' && r.overflow==='auto');
+  check('Name/class/label/icon retained',r.name==='Compact QA' && r.selected==='warrior' && r.sameLabel && r.sameIcon);
+  await protocol.requestFixture('qa-spawn-config',{room,actors:[]});
+  await page.locator('#play-button').click();
+  for(let i=0;i<80&&!messages.some(message=>message.type==='runStarted');i++) await page.waitForTimeout(25);
+  await page.waitForFunction(()=>window.__zombieNightDebug.getState().state==='playing' && !document.querySelector('#message').dataset.runStartRejected);
+  await page.mouse.move(5,300);
+  report.retry=await page.evaluate(()=>({state:window.__zombieNightDebug.getState().state,marker:document.querySelector('#message').dataset.runStartRejected||null,position:getComputedStyle(document.querySelector('#message-copy')).position,orbs:document.querySelectorAll('.arpg-orb').length,sameLabel:window.compactLabel===document.querySelector('#play-button-label'),sameIcon:window.compactIcon===document.querySelector('#play-button svg')}));
+  report.responses=messages.filter(message=>['runStartRejected','runStarted'].includes(message.type)).map(message=>message.type);
+  await page.screenshot({path:path.join(output,'integrated-retry-320x568.png')});
+  check('Actual retry accepted and recovery styles cleared',report.responses.includes('runStarted') && report.retry.marker===null && report.retry.position==='static' && report.retry.orbs===2 && report.retry.sameLabel && report.retry.sameIcon);
+  check('No page/console/HTTP errors', report.errors.length===0);
+  report.sourceChanged=JSON.stringify(after)!==JSON.stringify(sourceFingerprint());
+  check('Integrated runtime source stable during focal QA',!report.sourceChanged);
+  report.passed=true;
+} catch(error) { report.failure=error.stack; process.exitCode=1; }
+finally {
+  await browser?.close(); await protocol?.stop(); await server?.stop();
+  if(fs.existsSync(path.join(lock,'owner.json')) && JSON.parse(fs.readFileSync(path.join(lock,'owner.json'))).token===token) fs.rmSync(lock,{recursive:true});
+  report.resourcesClosed=true;
+  fs.writeFileSync(path.join(output,'promotion-qa.json'),JSON.stringify(report,null,2)+'\n');
+  console.log(JSON.stringify({output,promoted:report.promoted,passed:report.passed,checks:report.checks.length,hash:report.receipt?.finalSha256,failure:report.failure}));
+}

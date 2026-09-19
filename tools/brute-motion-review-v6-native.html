@@ -1,0 +1,76 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Brute v6 · frozen handoff-01</title>
+<style>body{margin:0;background:#17232c;color:#eee;font:15px system-ui}#info{position:absolute;left:20px;top:16px;white-space:pre;pointer-events:none}#scope{position:absolute;bottom:16px;left:20px;pointer-events:none}canvas{display:block}</style>
+<div id="info"></div><div id="scope">FIXTURE NATIVA · alvos fixos 1,89m · 1× / 1,45s · marker NÃO selecionado · sem dano/gameplay</div>
+<script type="module">
+import * as THREE from '/vendor/three/three.module.js';
+import {GLTFLoader} from '/src/assets/vendor/GLTFLoader.js';
+import {makePair,DURATION} from './brute-motion-review-v6-native-scene.mjs';
+const base='/output/brute-motion-v6',profile=await fetch(`${base}/handoff-01/attack-profiles.json`).then(r=>r.json());
+const probes=(await fetch(`${base}/source/assets__models__monsters__ground-probes.json`).then(r=>r.json())).brute.vertexIndices;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#17232c');
+scene.add(new THREE.HemisphereLight(0xd6e3f5,0x4c392d,2.3));
+for(const[c,p,x,y,z]of [[0xffd3ad,3,-4,6,-4],[0x80c7ff,2,4,5,4]]){const light=new THREE.DirectionalLight(c,p);light.position.set(x,y,z);scene.add(light);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshStandardMaterial({color:0x34444a,roughness:1}));
+floor.rotation.x=-Math.PI/2;scene.add(floor);
+const grid=new THREE.GridHelper(60,60,0x74878c,0x425b62);grid.position.y=.001;scene.add(grid);
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.1,120);
+const pairs=new Map();
+for(const p of profile.variants){
+ const loader=new GLTFLoader();
+ const [brute,hero]=await Promise.all([loader.loadAsync('/'+p.asset),loader.loadAsync('/'+p.nativeTargetCopy)]);
+ const pair=makePair({brute,hero,id:p.id,probes,profile:p});
+ // Rigid common transform only: hero at origin, Brute ahead, same 1.89 m separation.
+ pair.stage.rotation.y=Math.PI;pair.stage.position.z=-1.89;pair.stage.visible=false;scene.add(pair.stage);pairs.set(p.id,pair);
+}
+let id='warrior',view='threequarter',pair=pairs.get(id),playing=false,raf=0,frames=[],label='PRONTO',recording=null,recorded=null;
+function render(){
+ renderer.render(scene,camera);
+ document.querySelector('#info').textContent=`BRUTE v6 handoff-01 · ${id==='warrior'?'ALDRIC 2,70m':'LYRA 2,55m'} · ${view}\n${label} · ${pair.snapshot().time.toFixed(3)} / 1.450 s\n${id==='dwarf'?'Lyra dc0867 metadata OPAQUE; CPU histórico e11ead':'Aldric 5c1903 OPAQUE'} · sem alteração de alvo/rig/range`;
+}
+function configure(nextId,nextView){
+ if(playing)throw Error('Cannot change fixture during playback');
+ for(const p of pairs.values())p.stage.visible=false;
+ id=nextId;view=nextView;pair=pairs.get(id);pair.stage.visible=true;pair.seek(0);
+ if(view==='arpg'){camera.fov=48;camera.position.set(0,17,20);camera.lookAt(0,1.2,-2.6);}
+ else{camera.fov=40;camera.position.set(5,3.7,5);camera.lookAt(0,1.45,-.945);}
+ camera.updateProjectionMatrix();label='PRONTO';render();
+ return {id,view,camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov},...pair.snapshot()};
+}
+function seek(time){if(playing)throw Error('Cannot seek during playback');pair.seek(time);label='POSE AMOSTRADA, NÃO PLAYBACK';render();return pair.snapshot();}
+function captureStart(){
+ const stream=renderer.domElement.captureStream(60),chunks=[];
+ const mimeType=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+ const recorder=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:14000000});
+ recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+ const done=new Promise(resolve=>recorder.onstop=async()=>{
+  const blob=new Blob(chunks,{type:mimeType}),bytes=new Uint8Array(await blob.arrayBuffer());
+  recorded={mimeType,bytes:Array.from(bytes)};stream.getTracks().forEach(t=>t.stop());resolve();
+ });recorder.start();recording={recorder,done};
+}
+async function play(){
+ if(playing)throw Error('Already playing');
+ cancelAnimationFrame(raf);pair.seek(0);playing=true;frames=[];recorded=null;label='PLAYBACK NATIVO 1×';
+ render();captureStart();
+ const start=performance.now();let last=start,previous=0;
+ await new Promise(resolve=>{
+  function frame(now){
+   const wallTime=(now-start)/1000,dt=(now-last)/1000;last=now;
+   const desired=Math.min(DURATION,Math.max(0,wallTime-.35));
+   pair.advance(desired-previous);previous=desired;render();
+   frames.push({wallTime,dt,mode:wallTime<.35?'lead-in':desired<DURATION?'attack':'terminal-hold',...pair.snapshot()});
+   if(wallTime<2.15)raf=requestAnimationFrame(frame);else resolve();
+  }raf=requestAnimationFrame(frame);
+ });
+ recording.recorder.stop();await recording.done;playing=false;
+ return {id,view,frames,leadIn:.35,fullClip:DURATION,speed:1,terminalHold:.35,
+  recording:{mimeType:recorded.mimeType,bytes:recorded.bytes.length},final:pair.snapshot()};
+}
+configure(id,view);
+window.bruteReview={ready:true,configure,seek,play,get playing(){return playing;},get frames(){return frames;},
+ takeVideo(){const r=recorded;recorded=null;return r;},
+ geometry(){return{brute:pair.positions(pair.body),heroes:Object.fromEntries([...pair.heroModel.children].length?(()=>{const a=[];pair.heroModel.traverse(m=>{if(m.isMesh)a.push([m.name,pair.positions(m,true)]);});return a;})():[])};},
+ glInfo(){const gl=renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');return{renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),error:gl.getError(),calls:renderer.info.render.calls};}};
+</script></html>

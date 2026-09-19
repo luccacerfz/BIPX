@@ -1,0 +1,15 @@
+# JEF — composição Environment143 / checkpoint03:00
+
+Avaliação real **HTTP200**, `jev-1.13.0`, `requires_further_work` às03:00:36UTC. Doze acceptedScore=null, alvo10 inalterado, fullGoalComplete=false. [Resposta](../output/qa/arpg-environment-integrated-20260919/jef.json), [evidência enviada](../output/qa/arpg-environment-integrated-20260919/evidence.json). Avaliação indireta de texto; JEF não viu PNG/vídeo nem ouviu áudio. Nenhuma credencial foi registrada.
+
+[215fontes](../output/qa/arpg-environment-integrated-20260919/source-manifest.json) correspondem a [9relatórios de fonte completa](../output/qa/arpg-environment-integrated-20260919/evidence-provenance.json). Somente quatro módulos Environment e navigation911e0 diferem do checkpoint Physics. Main/server/contacts/VFX/Animation/GUI/audio preservados nesta janela. Cenário143 e visual promovidos juntos; conector inicial corrige boss sem alterar corpo, props ou orçamento.
+
+Provas novas: layout7/7; crowd16/16funcionais; spawn4grupos CPU/WebSocket; backend7/7selecionados; Environment21CPU+8nativefocal; nativewarrior6casos e dwarf3; seis skills por dois browsers/reconnect/latejoin. [Medições e caminhos](../output/qa/arpg-environment-integrated-20260919/measurements.json). Native controlado é fixture declarada. Rodada warrior inicialmente esperou status de buff fora do histórico: harness corrigido para snapshot e apenas warrior refeito; falha preservada.
+
+Natural60s: warrior19kills/lvl3/morte+restart, P957.7ms. Dwarf original falhou **0kills/XP e P9520.9ms>20**, parada em manutenção. Repetição dwarf78kills/lvl7/3skills, P957.7ms, pior69.4ms/1longtask70ms. **Nenhum escape de estagnação foi acionado na repetição**: não prova reparo causal do ponto anterior. Fonte runtime igual, runner atualizado apenas para WASD de retorno por posições observadas. Caso(18.933,14.268) e planner no-route/visited2 continuam abertos; Physics analisa em cópia. [Achados completos](arpg/combat-environment-findings.md).
+
+GPU focal do Environment: piso+HDR mediana1.348→1.475ms/P951.504→1.609ms;20casos×24amostras/zero disjoint. Não é FPS global ou custo de horda. 400corpos históricosP9521.6ms>20 continuam pendência; density não promovida. Canhão novo tem composição65.289% no caso apertado, porém origem real/socket continua gate em staging.
+
+Quatro PNGs nativos atuais inspecionados diretamente por Combat: [observações](../output/qa/arpg-environment-integrated-20260919/native-observations.json). Cenário tem três conjuntos reconhecíveis e campo legível nas vistas; grito geométrico, repetição/cutaway, boss primitivo/rótulo dominante, corte e transições ainda limitados. No-slidefalse; sem aceite de escuta, dispositivo físico, tecnologia assistiva, links degradados ou soak. AAA não concluído.
+
+Servidor http://localhost:5173/?offline=1 atualizado após isolados, PID18430/HTTP200. Supabase desligado, ledger7f580798…byteigual. [Recibo](../output/qa/arpg-environment-integrated-20260919/local-server-restart.json). Próxima janela autorizada: CSS GUI mínimo e estado/rótulo/limpeza no main, só rejeição→retry e voltar/reabrir integrados; nenhuma promoção VFX/density/Animation neste lote.

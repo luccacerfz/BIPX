@@ -1,0 +1,315 @@
+{
+  "at": "2026-09-19T05:40:31.089366+00:00",
+  "nativeReport": "output/playwright/2026-09-19T05-37-28-168Z-cannon-depth-composition-vfx/report.json",
+  "reportSha256": "1a026674ecc3a93a02213ee4c0474e155ab9f08876338e25ba3be418b65eeb82",
+  "scope": "Synthetic frozen camera/poses/assets, high1440x900 per panel, two2880x1800 originals; not current153 gameplay or global/AAA",
+  "imagesReviewedOriginalResolution": true,
+  "exactDwarf": {
+    "sha256": "dc0867dacd22b04e42475a686fffe808ad8c7e66e9889b2a182eb4393eb5378e",
+    "requests": 1,
+    "manualMutation": false,
+    "materials": [
+      {
+        "mesh": "DwarfRifle",
+        "material": "tripo_01932b64_84dd_4f30_9312_879995f80f71",
+        "transparent": false,
+        "depthWrite": true,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "mesh": "DwarfBody",
+        "material": "tripo_mat_2a1e3867",
+        "transparent": false,
+        "depthWrite": true,
+        "opacity": 1,
+        "visible": true
+      }
+    ],
+    "depthWorldYMedian": 1.9256967814440566
+  },
+  "cases": [
+    {
+      "fields": 1,
+      "file": "focal-fields-1.png",
+      "sha256": "0aaf0ef59f7b22a0c87c26d7c0eddbbab455841f313b67f5dd0d83c146fa9ee9",
+      "gateByMode": {
+        "gravity-before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 120,
+            "preservedFraction": 0.9917355371900827
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "gravity-after": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 120,
+            "preservedFraction": 0.9917355371900827
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "combined-before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 119,
+            "preservedFraction": 0.9834710743801653
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "combined-after": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ]
+      },
+      "cost": {
+        "combined-before": {
+          "count": 24,
+          "medianMs": 3.9174995,
+          "meanMs": 4.3105567916666665,
+          "p95NearestRankMs": 8.75725,
+          "minMs": 1.668083,
+          "maxMs": 9.568874
+        },
+        "combined-after": {
+          "count": 24,
+          "medianMs": 3.6365625,
+          "meanMs": 4.584185333333333,
+          "p95NearestRankMs": 8.534374,
+          "minMs": 1.804208,
+          "maxMs": 8.625166
+        },
+        "pairedDeltaMs": {
+          "median": 0.10968800000000001,
+          "mean": 0.27362854166666684,
+          "positive": 14,
+          "min": -6.118,
+          "max": 4.920291000000001
+        }
+      },
+      "warmupPerVariant": 8,
+      "samplesPerVariant": 24,
+      "disjoint": []
+    },
+    {
+      "fields": 8,
+      "file": "focal-fields-8.png",
+      "sha256": "19170acb3163d6bb0f9fda723b30e48398f17bfe7e9a27e7cc369443ab7aac5d",
+      "gateByMode": {
+        "gravity-before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 63,
+            "preservedFraction": 0.5206611570247934
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 75,
+            "preservedFraction": 0.6198347107438017
+          }
+        ],
+        "gravity-after": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 63,
+            "preservedFraction": 0.5206611570247934
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 75,
+            "preservedFraction": 0.6198347107438017
+          }
+        ],
+        "combined-before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 63,
+            "preservedFraction": 0.5206611570247934
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 75,
+            "preservedFraction": 0.6198347107438017
+          }
+        ],
+        "combined-after": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 68,
+            "preservedFraction": 0.5619834710743802
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 75,
+            "preservedFraction": 0.6198347107438017
+          }
+        ]
+      },
+      "cost": {
+        "combined-before": {
+          "count": 24,
+          "medianMs": 6.0229995,
+          "meanMs": 6.946610583333333,
+          "p95NearestRankMs": 8.425791,
+          "minMs": 4.796375,
+          "maxMs": 24.310041
+        },
+        "combined-after": {
+          "count": 24,
+          "medianMs": 6.826541,
+          "meanMs": 6.7594352083333336,
+          "p95NearestRankMs": 7.885041,
+          "minMs": 5.036833,
+          "maxMs": 7.982749
+        },
+        "pairedDeltaMs": {
+          "median": 0.5204584999999997,
+          "mean": -0.18717537500000003,
+          "positive": 17,
+          "min": -18.076666,
+          "max": 3.127416
+        }
+      },
+      "warmupPerVariant": 8,
+      "samplesPerVariant": 24,
+      "disjoint": []
+    }
+  ],
+  "lifecycle": {
+    "checks": [
+      {
+        "name": "visible8",
+        "count": 8
+      },
+      {
+        "name": "pause",
+        "count": 8,
+        "sameTime": true
+      },
+      {
+        "name": "offCamera",
+        "count": 0,
+        "passes": 0
+      },
+      {
+        "name": "backToOne",
+        "count": 1
+      },
+      {
+        "name": "reset",
+        "count": 0,
+        "passes": 0
+      },
+      {
+        "name": "beforeExpiry",
+        "count": 1
+      },
+      {
+        "name": "expiry",
+        "count": 0,
+        "passes": 0
+      }
+    ],
+    "glError": 0
+  },
+  "technicalPassed": true,
+  "gate65Passed": false,
+  "candidateStable": true,
+  "runtimeVfxUnchanged": true,
+  "observations": [
+    "One field: fire remains visible on front of core and actors legible; selected direction preserved in this frame.",
+    "Eight near-concentric fields: violet-white accumulation and thicker coincident borders dominate; fire occupies small central patch, two enemy ROIs fail65 even with exact opaque body.",
+    "Gravity-only8 already fails at63/121 and75/121; composed fire improves first to68/121, second unchanged. This does not isolate gas versus horizon versus bloom cause.",
+    "No global bloom/mask/radius reduction or shader edit was made."
+  ],
+  "decision": "HOLD IN STAGING: exact loader and lifecycle done; eight-field actor readability fails. Not promoted.",
+  "gpuReleased": true,
+  "animationExplicitReleaseQueue": "01a0b82c-0fac-7110-b682-c5d2101864a2",
+  "environmentOrderQueue": "01a0b82c-0fac-7402-8467-604aa29312e2",
+  "nextOrder": "Animationv11 then Environmentcanopy; art2 after coordinated focal sequence. No repeat4oldpairs/global."
+}

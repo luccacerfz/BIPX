@@ -1,0 +1,9 @@
+# Brute — decisão Root sobre adaptação do encontro
+
+Root leu `brute-v6-contact-policy-proposal.md`, preparação/câmera e resultados CPU. Os34contraexemplos mostram que o encaixe de Idle0 a1.89m não representa a faixa legal nem outras poses:1.855/1.82 e Idle25%/Run/yaw+15 atravessam guarda/corpo/props; yaw−15 perde contato. Isto muda a próxima ação: não promover o clip rígido universal nem corrigir somente pela distância.
+
+O helper de diagnóstico15checks não é código de combate e não deve ser integrado como substituto de uma solução visual. Manter os quatro playbacks/267fontes originais e o negativo1.82. O focal lateral autorizado ainda é útil para verificar a pose autorada sem alvo escondendo a mão.
+
+**Autorizada autoria CPU de adaptação visual em nova cópia**, depois de congelar o parecer lateral, sem exigir outra confirmação. Preservar1.45s, carga/passo/recuperação, raiz/pelvis/pernas e rig/skin; trabalhar encontro do braço e recolhimento contínuo. A referência deve ser a primeira superfície real de corpo/guarda/arma, sem perseguir jogador com raiz nem alongar cadeia. Usar os contraexemplos existentes como condições, não fabricar nova posição/pose do alvo para passar. Começar pela faixa próxima legal e duas guardas; explicitar quais poses permanecem fora do envelope.
+
+O resultado precisa oferecer um recolhimento/erro contínuo quando o alvo sai, muda de superfície ou exige deformação inválida. Não esconder um dano confirmado atrás de miss visual: a futura integração precisa conciliar evento autoritativo e contato, com marker/cadência escolhidos explicitamente. Não usar tolerância de triângulos ou counts menores como aprovação artística por si só. Medir mão inteira/antebraço/ombreira e passos antes/depois, preservar negativos. Nenhum runtime/main/server/novo take/provider/GPU de adaptação por enquanto; primeiro entregar candidato funcional CPU e limites.

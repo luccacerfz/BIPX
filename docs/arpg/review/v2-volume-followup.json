@@ -1,0 +1,67 @@
+{
+  "at": "2026-09-19T00:38:18.455833+00:00",
+  "acceptedAAA": false,
+  "scope": "Root static inspection of original native PNGs; no frame compositing or temporal/audio/device approval.",
+  "artifacts": [
+    {
+      "file": "output/playwright/2026-09-19T00-29-00-799Z-class-skill-vfx-v2/warrior_war_cry-state-high.png",
+      "kind": "synthetic_native_fixture",
+      "sha256": "f3cbdcf5193f6509091ea009f54fc542ab4f75ed9465ef6c845fdae236f28e5f",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-29-00-799Z-class-skill-vfx-v2/warrior_shield_charge-travel-high.png",
+      "kind": "synthetic_native_fixture",
+      "sha256": "75ff31da8dde3de08413e28c24182f6261f249a52492586b5d91f46ee5bdaa65",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-29-00-799Z-class-skill-vfx-v2/dwarf_gravity_shot-state-high.png",
+      "kind": "synthetic_native_fixture",
+      "sha256": "d3c2d9294106df0603043a63a218af0ec4b35956dab997e6a15529846f8af0ff",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-29-00-799Z-class-skill-vfx-v2/dwarf_frost_shot-state-high.png",
+      "kind": "synthetic_native_fixture",
+      "sha256": "6a5a5bb2a001ada6b972ae51dd1b5366fb08056979cb94913d65e7f96eb1da83",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-30-38-775Z-class-skill-vfx-gameplay/vfx-v2-warrior-high-slot1-release.png",
+      "kind": "native_gameplay",
+      "sha256": "449ce9c7222a99cc409957491ce2dd9962f23eb5414bb94cd49e9a2367254e70",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-30-38-775Z-class-skill-vfx-gameplay/vfx-v2-warrior-high-slot3-execution.png",
+      "kind": "native_gameplay",
+      "sha256": "7465b76b845ba42720c876c6d0efdc029acc7083202a6ce3c275aff3e766b60e",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-30-38-775Z-class-skill-vfx-gameplay/vfx-v2-dwarf-high-slot2-impact.png",
+      "kind": "native_gameplay",
+      "sha256": "997d08cb03f96a47fd779d92e208749525fc8f73692177130d18916dfed6e0ce",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-30-38-775Z-class-skill-vfx-gameplay/vfx-v2-dwarf-high-slot3-impact.png",
+      "kind": "native_gameplay",
+      "sha256": "b8b70b1f4a346c5fb23f7e215396d2a924efafc44ad32162c859e39322fada60",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-25-23-626Z-ui-arpg-gameplay/gui-v2-dwarf-cast-3.png",
+      "kind": "native_gameplay_emulated_touch",
+      "sha256": "a412552831013c85ba09ab9bc6ae3fa3b3776f37b3fb5770da908309f81677e8",
+      "reviewedIndividually": true
+    },
+    {
+      "file": "output/playwright/2026-09-19T00-25-23-626Z-ui-arpg-gameplay/gui-v2-dwarf-landscape.png",
+      "kind": "native_gameplay_emulated_touch",
+      "sha256": "49815b1cfe2f6a351bd0a00648b9616c921b71d5eebbe1366d240ac2676668da",
+      "reviewedIndividually": true
+    }
+  ]
+}

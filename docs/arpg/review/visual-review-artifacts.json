@@ -1,0 +1,25 @@
+{
+  "reviewedAt": "2026-09-18T23:45:57.139448+00:00",
+  "scope": "observed still images of first ARPG increment; v2 skill direction is not validated by these images",
+  "accepted": false,
+  "sha256": {
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/verification.json": "fe76007fd96e94e12c2406db36c2b533d39abed892641c1e5f1e01795bf37fd9",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/warrior_flame_cleave-cast-high.png": "75f7edf87f90534a9eb1a25574d9030ec1c20cc0daebeefe152cf2d503ce2546",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/warrior_frost_nova-impact-high.png": "0d9affcc91f110265443b14b0debc785a8e14b8ce422083c3a64ecfa1c1261c7",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/warrior_thunder_judgment-impact-high.png": "d89fc84fba635fc5291b1b3879ca8778a5b841e3beae27b5d75e7ba45dedb3c4",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/dwarf_incendiary_burst-impact-high.png": "3f3ed0421d2908e562d9ab72c77d51d1badf2ecdfbbde8e6062acaa4e00a2230",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/dwarf_cryo_grenade-travel-high.png": "d5f64522f475235729b6d8530fc0c9fcbc4aaafb5a088c59dcfb4006491df478",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/dwarf_arcane_shot-travel-high.png": "e2c7bc0ee016162a3beebbbe8095dee3c3bc53da8f5f6b33ed3cf27a8c9b17b5",
+    "output/playwright/2026-09-18T23-32-34-351Z-class-skill-vfx/warrior_frost_nova-impact-low-reduced.png": "5cccb47800c19dc466f875153f7c170589e811ef876bf30a9c86935a9f454350",
+    "output/playwright/2026-09-18T23-31-52-150Z-ui-arpg-verify/gui-fixture-dwarf-desktop.png": "3bd53e26b595ea0c07347454d14e84f39847da8782f82b56e81cebfc7dff3529",
+    "output/playwright/2026-09-18T23-31-52-150Z-ui-arpg-verify/gui-fixture-mobile-393x852.png": "86af72ac9bae870680aa9a26a72deb11876792f16fc2649b0dc2fbbcb27ccf27",
+    "output/playwright/2026-09-18T23-35-01-604Z-verify-arpg-browser/arpg-warrior-skill-2.png": "64b06abb55f6ce62f9aee407a513ad80e697b21359183290af99dc78c2418689"
+  },
+  "liveSvgHeader": {
+    "checkedAt": "2026-09-18T23:44:55Z",
+    "httpStatus": 200,
+    "contentType": "application/octet-stream",
+    "xContentTypeOptions": "nosniff",
+    "url": "http://127.0.0.1:5173/assets/ui/arpg/icons.svg"
+  }
+}

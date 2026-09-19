@@ -1,0 +1,46 @@
+{
+  "observedAt": "2026-09-19T01:56:18.708313+00:00",
+  "scope": "Six original native controlled A/B stills inspected by Root; not actual gameplay/full playback.",
+  "sourceReport": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-report.json",
+  "sourceStable": true,
+  "artDirectionSelectedForIntegration": true,
+  "runtimePromoted": false,
+  "acceptedAAA": false,
+  "minimumFourBurstTorsoFraction": 0.7768595041322314,
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-vfx-prototype-high-0.74.png",
+      "sha256": "06b41c447a5f9535fe928c08a456c05f83012a0c4f1f391f295c67a82cecafcc"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-vfx-prototype-high-0.86.png",
+      "sha256": "f7a0902cdd27dd76137a20185a0cbff3dcef7231e743c03c939a1218f60f0c1a"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-vfx-prototype-high-1.25.png",
+      "sha256": "b7b0e0ca3d4bc9988f7747a3f86fc0d3541f03c190929d796d13dd43ff757665"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-vfx-prototype-high-1.8.png",
+      "sha256": "cd4ae720731ea33883d7b5555d59a86c5e28f395bbaecbb2b93f6010a0cc854b"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-vfx-prototype-low-reduced-1.25.png",
+      "sha256": "28552ecefec6d6c159a4714937887c385e1bb5107826a22d2168ebbe7d79f810"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-53-40-392Z-cannon-vfx-prototype/cannon-vfx-prototype-four-bursts.png",
+      "sha256": "5c1e21ad43e4f79ac6634a3ac333c4d164a43b60131ca6c9c1ef086d9b5ada29"
+    }
+  ],
+  "stagingSources": {
+    "assets/vfx/source-history/cannon-volumetric-staging-20260919/cannon-defaults.js": "010fbff04a43c19c2ec172c8d5bf0f35f13c6e5d816b4534202b521fd0f5187a",
+    "assets/vfx/source-history/cannon-volumetric-staging-20260919/cannon-prototype.js": "d3318057b1430338ca20ea7192a9fb02947d0bcc534fe4700388f164deb90205",
+    "assets/vfx/source-history/cannon-volumetric-staging-20260919/cannon-source-glsl.js": "71fa3db0991f18a7ba852b37b51d01aeac0bd1589ba09d954a337783fdc60795",
+    "assets/vfx/source-history/cannon-volumetric-staging-20260919/fire-blackbody.glsl.js": "6570394ae1e8d0099af2924f46336341be990e7b35baf262c978a25f44b0e8ca",
+    "assets/vfx/source-history/cannon-volumetric-staging-20260919/fire-common.glsl.js": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+    "assets/vfx/source-history/cannon-volumetric-staging-20260919/fire-noise.glsl.js": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+    "tools/cannon-vfx-prototype.html": "dfd78846b4ebd54d72ca608587314e99a2c96886f3a85098ccfe9c5512291bba",
+    "tools/cannon-vfx-prototype.mjs": "db7b85054fc2354bf8379a474d5a5e649747100b690f53c888d6a71bc4a29ec7"
+  }
+}

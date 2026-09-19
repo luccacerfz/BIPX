@@ -1,0 +1,33 @@
+{
+  "reviewedAt": "2026-09-19T03:30:01.056329+00:00",
+  "comparison": "output/arpg-animation/backward-v7/comparison.json",
+  "sha256": "f1d1dde622d8ca42c2c43a337a1e2e65d1501f608b486f2c3cfe965dc1dd4c2e",
+  "candidate": "9a530ce1e9b45009f15410ffbbd7a47e1789650cd8ef186a07d12c23864890e9",
+  "sourceStable": true,
+  "runtimeUnchanged": true,
+  "blockingRegressions": [
+    {
+      "case": "turn",
+      "hz": 30,
+      "speed": 6.5,
+      "addedReach": [
+        0.02723324708779995,
+        53,
+        1
+      ]
+    },
+    {
+      "case": "turn",
+      "hz": 60,
+      "speed": 6.5,
+      "addedReach": [
+        0.007248301572270743,
+        106,
+        1
+      ]
+    }
+  ],
+  "decision": "Retain v7; authorize a separate v8 bounded causal investigation of reverse-to-strafe contact/yaw handoff before any broad matrix or native capture.",
+  "noSlidingAccepted": false,
+  "nativeReviewed": false
+}

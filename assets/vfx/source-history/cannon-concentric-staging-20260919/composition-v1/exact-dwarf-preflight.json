@@ -1,0 +1,18 @@
+{
+  "at": "2026-09-19T05:06:51.828876+00:00",
+  "originalSha256": "e11eadb8b428ad46332b0f70bc2db3459628775b65cbb101886cd46fdcd643b0",
+  "candidateSha256": "dc0867dacd22b04e42475a686fffe808ad8c7e66e9889b2a182eb4393eb5378e",
+  "onlyMaterials1AlphaModeChanged": true,
+  "remainingJsonExact": true,
+  "followingChunksByteIdentical": true,
+  "nativeExactGlbPending": true,
+  "previousNativeUsedManualClone": true,
+  "promotionRequested": false,
+  "nextCapturePrepared": {
+    "runnerSha256": "e06a8c6d16a5a29b2dc5b2258d578cdc0b4dd23c992c614aa56414671f1c4245",
+    "previewSha256": "631c478c4586194a85c4e3684ad4c29cfe6cc98dbdbaeae3a3617e91c4e4b1d3",
+    "manualMaterialMutationRemoved": true,
+    "httpOverrideOnlyOriginalDwarfUrl": true,
+    "nextWindowRequired": true
+  }
+}

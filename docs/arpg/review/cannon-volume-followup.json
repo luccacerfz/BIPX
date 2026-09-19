@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-09-19T01:51:24.065298+00:00",
+  "scope": "Root independently inspected three original A/B controlled native frames; not gameplay or full playback.",
+  "sourceReport": "output/playwright/2026-09-19T01-48-59-166Z-cannon-vfx-prototype/cannon-report.json",
+  "promote": false,
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T01-48-59-166Z-cannon-vfx-prototype/cannon-vfx-prototype-high-0.52.png",
+      "sha256": "e7af37cae848ff83eaa9a1fea9539e7a1350a9151afed8d1fcca18609d7407ae"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-48-59-166Z-cannon-vfx-prototype/cannon-vfx-prototype-high-0.86.png",
+      "sha256": "6994a5c9a5afeec30469637020d04838a0a6577013e6ba7ad36e500b81ced8ae"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-48-59-166Z-cannon-vfx-prototype/cannon-vfx-prototype-high-1.25.png",
+      "sha256": "f40700361cb3379cc9bfd5d5a8d681ef211a723ff67bd2a9836e7e1fa7ad203f"
+    }
+  ],
+  "observations": [
+    "Flight now has continuous turbulent plume instead of periodic diamond marks.",
+    "Impact at .86 and1.25s retains a regular orange dome/cap outline; not yet a convincing explosive fire silhouette.",
+    "Actors remain visible in these individual frames; whole sequence/multiple bursts must retain the existing readability gate."
+  ]
+}

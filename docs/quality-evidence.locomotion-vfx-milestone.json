@@ -1,0 +1,173 @@
+{
+  "candidate": {
+    "description": "BIPX locomotion and elemental milestone22:57UTC before independent sole-contact correction. Evaluate observed progress and known defects; NOT final release.",
+    "capturedAt": "2026-09-18T22:57:26.312Z",
+    "sourceInMotionDuringCapture": false,
+    "laterEditsInProgress": true,
+    "sourceManifest": "output/qa/locomotion-vfx-milestone-20260918/source-manifest.json",
+    "sourceManifestSha256": "968f985f80ee1d8c5638381f5818c584777d68d56d61fefc8af086286933749a"
+  },
+  "dimensions": {
+    "game_design": {
+      "coverage": "partial",
+      "observations": [
+        "Aldric retains sword only and Lyra rifle only. Current real UI/key input test covers eight1.8-second movement phases per class, including simultaneous attack; warrior produced zero player projectiles and one natural kill was visible in captured frame. This is bounded automation, not a human design review.",
+        "Base movement speed was changed from11 to6.5 world metres/second to better match the available Mixamo gait; max speed upgrade1.4 gives9.1. Natural pacing, balance against accelerating runners and sustained difficulty at the new speed have not yet been reviewed.",
+        "Foot dust is emitted at recorded contact anchors instead of a fixed0.2-second centre-of-character timer. Contact classifier is still imperfect as independent sole findings show."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-game.json",
+        "src/main.js"
+      ]
+    },
+    "animation": {
+      "coverage": "partial",
+      "observations": [
+        "Actual directional Mixamo clips were recovered from local assemblies. Lower-body continuous gait and upper-body attack/weapon preservation were added. Actual rendered world velocity is sampled after bounds and remote interpolation; teleport resets anchors.",
+        "All eight real keyboard phases per character passed the narrow controller diagnostics; source did not change during either run. Most selected toe-anchor plantedP95 drift was below0.00005m/s; Aldric diagonal reached0.1495539m/s, marginal against a predeclared0.15 threshold. This alone is NOT no-sliding proof.",
+        "Independent actual deformed foot-surface probes (>75%foot/toe weighting; same vertex within4cm of ground on adjacent support frames) contradict the tiny bone-marker drift: Aldric P90 surface drift0.333–0.889m/s; Lyra0.465–1.234m/s. Minimum soleY reached−0.0326m for Aldric and−0.1079m for Lyra. These defects are unresolved in this captured milestone.",
+        "Orc received distinct0.70-second Mixamo Run, preserved old GLB and six clips, no Walk overcranking as Run. A preliminary Orc contact solver also fixed only a selected marker; broader near-ground surface drift remains unresolved. Walker/Lich/Brute artistic rework and full remote contact review remain pending.",
+        "Root inspected four native game screenshots: models remain finite, swords/shield and rifle visible during forward/side/backward movement and attacks; these game-camera stills cannot certify subtle sole sliding or full deformation. Close playback review and true contact corrections are ongoing.",
+        "Subsequent source-stable close native fixture of this milestone exposed a severe Lyra waist/cloth stretch during moving rifle attack. Root directly compared dwarf-after-backward.png with the before image: torso remains at old world pose while pelvis advances, stretching connecting skin horizontally. The layering is REJECTED; preserving torso/hips and solving legs independently is now being developed. No native deformation approval."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-warrior.json",
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-dwarf.json",
+        "output/qa/locomotion-vfx-milestone-20260918/hero-surface-before-correction.json",
+        "docs/enemy-locomotion.md",
+        "output/playwright/hero-locomotion-first-native/report.json"
+      ]
+    },
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "Inspected actual1440x900 cemetery frames of both classes: teal night ground, stone paths, graves, warm lanterns and imported trees. Camera-corridor dither cutaway reveals player and selected nearby enemies through canopy. Weapon/character silhouettes remain visible in inspected stills.",
+        "Tree cutaway texture is visibly stippled; quiet-scene captures do not prove dense horde/mobile readability. Boss labels and mixed asset styles have not been given a complete perceptual review for this milestone.",
+        "Close native review exposes severe Lyra waist/cloth distortion during moving attack, not visible enough in the distant game stills. This candidate cannot be accepted visually."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-warrior-backward-attack.png",
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-dwarf-strafe-left-attack.png"
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "Actual upstream MIT algorithms adapted from pinned HandCast3431252 and Linear8c377c8: faceted crystals/fracture/snowflake SDF, differential void halo, Voronoi toxic etching/bubbles, helical trail ribbons. Existing Samurai effects remain separately integrated. This is selective integration, not both full catalogues.",
+        "Preceding source-bound native BIPX integration22:54 passed three existing AI releases, trails and confirmed swept collision impacts, preserved sword/rifle triggers, high/medium/low forwarding and reduced motion. No browser or shader error. Targets were debug placed and health increased: diagnostic fixture, not natural spawning.",
+        "Root compared actual impact images and removed large legacy explosion spheres that obscured player and specific effects. First toxic ground stain was hidden by raised rune portal. A short hollow contact splash was then added; current22:56 native fixture compiles all shader branches cleanly, but its fresh in-game portal capture is still pending for this milestone.",
+        "Current isolated native VFX fixture has maximum3draws and bounded pools, resource geometry8before/8after200emissions/5afterdispose. CPU checks include identical50strip instances over16m at30/60/144fps. Isolated fixture is not game-performance evidence.",
+        "Authoritative network projectile trails are integrated; explicit network cast/impact events are absent. Snapshot expiry/removal does not fake a collision. Applicable-family coverage, dense combat and physical devices remain incomplete."
+      ],
+      "evidence": [
+        "docs/vfx-elemental-integration.md",
+        "output/playwright/2026-09-18T22-54-13-593Z-verify-vfx/vfx-integration.json",
+        "output/playwright/2026-09-18T22-56-03-848Z-elemental-vfx/verification.json"
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Keyboard movement and aimed attacks execute concurrently. Native screenshot shows an actual warrior kill; rifle shots and muzzle/trails visible. Sword remains exclusive to warrior. Target-aware natural60-second-perclass run at new speed remains pending; human feel, weight and fatigue are not established."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-game.json"
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "Both character choices were selected through actual menu controls and entered gameplay; HUD shows health,wave,XP,class weapon and keyboard hints. At1440x900 inspected frames show visible pause/audio buttons and scoreboard. Full current ranking/login/upgrades/death/restart and compact layouts have not been rerun for this milestone."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-warrior.json",
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-dwarf.json"
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "No physical iOS/Android current-candidate evidence. Desktop captures and quality-mode forwarding do not establish touch usability or phone frame time."
+      ],
+      "evidence": []
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "No current-candidate listening review or captured audio assessment. Existing audio runtime was not independently scored by this work."
+      ],
+      "evidence": []
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "Chrome WebGL2 ANGLE Metal AppleM5Pro used for native runs. Current isolated elemental fixture498frames,p95~16.8ms; this does not measure complete game performance. Added continuous pose drivers/contact correction need sustained natural game and dense horde measurement, especially mobile."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-56-03-848Z-elemental-vfx/verification.json"
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Root wired interpolated world velocity and yaw-before-pose ordering for remote character controllers. This change is source inspected only; new directional clips/contact changes have not been proven across two current browser clients. Network VFX impact authority is still missing."
+      ],
+      "evidence": [
+        "src/main.js"
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "The eight locomotion scenarios used real keyboard aimI/movementWASD/Space firing and stopped correctly. Elemental quality and reduced-motion state forward correctly; native low/reduced fixture retains identities and caps output. Full focus/contrast/zoom/noncolor verification and physical controls remain pending."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-game.json",
+        "output/playwright/2026-09-18T22-56-03-848Z-elemental-vfx/verification.json"
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "Current captured milestone has clean real browser logs for two classes and stable source hashes per movement run. Sampler collision/pause/teleport/recycling CPU test passed; actual enemy collision functions passed27checks. Those scoped checks do not establish all suites or long-run stability.",
+        "Failed directional animation fetch now drops rejected cache entry for recovery. More source changes are in progress after the milestone; this evaluation must stay bound to captured source, not automatically approve later iterations."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-warrior.json",
+        "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-dwarf.json",
+        "output/playwright/2026-09-18T22-54-13-317Z-enemy-projectiles/enemy-projectiles.json"
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "Real keyboard8phases perclass: controller diagnostics only",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-18T22-57-07-094Z-verify-locomotion-game/locomotion-game.json"
+    },
+    {
+      "name": "Native elemental fixture shaders/lifecycle",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-18T22-56-03-848Z-elemental-vfx/verification.json"
+    },
+    {
+      "name": "Independent skin-surface contact acceptance",
+      "status": "failed",
+      "evidence": "output/qa/locomotion-vfx-milestone-20260918/hero-surface-before-correction.json"
+    },
+    {
+      "name": "Close native moving-attack deformation review",
+      "status": "failed",
+      "evidence": "output/playwright/hero-locomotion-first-native/dwarf-after-backward.png"
+    }
+  ],
+  "openDefects": [
+    "Severe Lyra waist/cloth stretch in moving-attack layered candidate; candidate rejected and being corrected.",
+    "Actual deformed soles still slide despite anchored bone marker; Lyra sole penetration reaches10.8cm.",
+    "Aldric real-input diagonal selected-anchorP95.14955m/s is marginal.",
+    "Full network contact presentation and new remote gait QA pending.",
+    "Fresh gameplay verification of latest toxic splash on raised portal pending.",
+    "Natural balance/performance at6.5m/s, dense combat, long play, audio listening and physical mobile absent.",
+    "Remaining VFX families, Lich/Brute refinement and broad game-design review incomplete."
+  ]
+}

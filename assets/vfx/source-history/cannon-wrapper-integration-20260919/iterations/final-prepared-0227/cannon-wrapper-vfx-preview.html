@@ -1,0 +1,97 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><base href="/"><link rel="icon" href="data:,"><title>BIPX · Canhão volumétrico A/B isolado</title>
+<style>html,body{margin:0;overflow:hidden;background:#10212b;color:#e7e2f2;font:13px system-ui}header{position:fixed;top:18px;left:20px;right:20px;display:flex;pointer-events:none}header div{width:50%;padding:10px;background:#07151cc9;box-sizing:border-box}strong{display:block;font-size:17px;margin-bottom:4px}footer{position:fixed;bottom:16px;left:20px;background:#07151cd9;padding:9px;pointer-events:none}#panels{display:flex}#panels canvas{display:block;width:50vw;height:100vh}header{z-index:1}footer{z-index:1}</style>
+<header><div><strong>ANTES · canhão runtime congelado</strong>Mesmos assets, trajeto, contato e raio 3.4 m</div><div><strong>STAGING · wrapper fogo + Horizon</strong>Depth único + gelo · sem promoção</div></header><footer id="label"></footer>
+<div id="panels"><canvas id="left"></canvas><canvas id="right"></canvas></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {createCemetery} from '../src/render/cemetery.js';
+import {getEnvironmentLayout,getEnvironmentColliders} from '../src/render/environment-layout.js';
+import {loadAssetDressing} from '../src/render/asset-dressing.js';
+import {loadPlayableCharacter} from '../src/assets/playable-characters.js';
+import {loadMonsterLibrary} from '../src/assets/monster-library.js';
+import {CANNON_FRAGMENT as originalCannonFragment} from '../src/vfx-cannon-staged/cannon-diagnostic-original.js';
+import {createClassSkillVfx as createStagedClassSkillVfx} from '../src/vfx-cannon-staged/class-skill-vfx.js';
+import {createClassSkillVfx} from '../src/vfx/class-skill-vfx.js';
+import {shareEnvironmentCutawayDepth} from '../src/render/environment-cutaway.js';
+import {createCinematicPipeline} from '../src/render/cinematic-pipeline.js';
+const width=innerWidth/2,height=innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(width,height);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;renderer.localClippingEnabled=true;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const panels=['left','right'].map(id=>{const c=document.getElementById(id);c.width=width;c.height=height;return c.getContext('2d',{alpha:false});});
+const pipeline=createCinematicPipeline({THREE,renderer,adaptDepthMaterial:shareEnvironmentCutawayDepth});
+
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x172c34);scene.fog=new THREE.FogExp2(0x172c34,.012);scene.add(new THREE.HemisphereLight(0xa4cddc,0x233d3a,2.2));const moon=new THREE.DirectionalLight(0xb6dcf2,3.8);moon.position.set(-20,36,18);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{near:1,far:95,left:-55,right:55,top:55,bottom:-55});moon.shadow.bias=-.0005;scene.add(moon);
+const cemetery=createCemetery({THREE,scene}),ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),cemetery.groundMaterial);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const trees=getEnvironmentLayout().legacy.filter(c=>c.id.startsWith('tree')).map(c=>new THREE.Vector3(c.x,0,c.z));const world=await loadAssetDressing({THREE,scene,trees,lanterns:cemetery.lanternPositions});for(const p of cemetery.lanternPlaceholders)p.visible=false;
+const heroGroup=new THREE.Group();heroGroup.position.set(-2,0,5);scene.add(heroGroup);const hero=await loadPlayableCharacter('dwarf',{THREE,parent:heroGroup});
+const playerLight=new THREE.PointLight(0xffe2ab,5.2,24);playerLight.position.set(-2,4.5,5);scene.add(playerLight);
+const library=await loadMonsterLibrary({THREE});const actors=[];
+for(const [x,z]of [[-2,-4],[-4.5,-5.6],[.5,-2.6],[-1.2,-7.1]]){const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);actors.push({group,visual:library.create('zombie',{parent:group,height:2.55})});}
+const camera=new THREE.PerspectiveCamera(48,(innerWidth/2)/innerHeight,.1,220);camera.position.set(-2,17,22);camera.lookAt(-2,1.2,-.6);
+const baselineRoot=new THREE.Group();scene.add(baselineRoot);const baseline=createClassSkillVfx({THREE,scene:baselineRoot,quality:'high'});
+const candidateRoot=new THREE.Group();scene.add(candidateRoot);const staged=createStagedClassSkillVfx({THREE,scene:candidateRoot});const candidate={...staged,getStats:()=>staged.getStats().cannon};
+const aim=new THREE.Vector3(0,0,-1),muzzle=new THREE.Vector3(),releaseOrigin=new THREE.Vector3(),target=new THREE.Vector3(-2,1.2,-4),previousPoint=new THREE.Vector3();
+const observedDirection=hero.getMuzzleDirection();heroGroup.rotation.y+=Math.atan2(aim.x,aim.z)-Math.atan2(observedDirection.x,observedDirection.z);
+let debugExclude=[],miss=false;
+const diagnostic={active:false,volume:true,embers:true};
+let currentCannonFragment,currentEmberFragment;candidateRoot.getObjectByName('CannonVolumetricPool').traverse(m=>{if(m.isInstancedMesh)currentEmberFragment=m.material.fragmentShader;});candidateRoot.traverse(m=>{if(m.material?.name==='CannonReferenceRaymarch')currentCannonFragment=m.material.fragmentShader;});
+const normalDepth=candidate.setSceneDepth;candidate.setSceneDepth=frame=>{const ok=normalDepth(frame);if(diagnostic.active)candidateRoot.getObjectByName('CannonVolumetricPool').traverse(m=>{if(!diagnostic.volume&&m.material?.name==='CannonReferenceRaymarch')m.visible=false;if(m.isInstancedMesh)m.visible=diagnostic.embers&&m.count>0;});return ok;};
+const originalPrepare=candidate.prepareSceneDepth;candidate.prepareSceneDepth=camera=>{const request=originalPrepare(camera);return {...request,excludeRoots:[...request.excludeRoots,...debugExclude]};};
+let time=0,quality='high',reduced=false,playing=false,released=false,impacted=false,drawCost={},impactTime=.7,castCount=1;
+const emit=p=>{for(const v of [baseline,candidate])v.emit({skillId:'dwarf_explosive_cannon',castId:'cannon-0',direction:aim,radius:3.4,groundY:0,impactAt:.3,...p});};
+function renderSide(side,effect=true,copy=false){if(diagnostic.active&&side===0)for(const name of ['SamuraiCombatVFX','ElementalVfx']){const g=baselineRoot.getObjectByName(name);if(g)g.visible=false;}baselineRoot.visible=effect&&side===0;candidateRoot.visible=effect&&side===1;pipeline.render(scene,camera,0,candidateRoot.visible?candidate:baselineRoot.visible?baseline:null);drawCost={...renderer.info.render};if(copy)panels[side].drawImage(renderer.domElement,0,0);}
+function phase(){return time<.3?'cast / antecipação':time<.39?'release / muzzle':time<impactTime?'travel / voo':time<impactTime+.18?'impact / expansão':time<impactTime+1.2?'impact / dissipação':'decay / brasas';}
+function render(effect=true){for(let side=0;side<2;side++)renderSide(side,effect,true);document.querySelector('#label').textContent=`STAGING isolado · assets/câmera reais · HDR${quality==='high'?' + bloom':''} · ${phase()} · t=${time.toFixed(2)} s · preparo .30 s / voo 22 m/s / raio 3.4 m · ${quality}${reduced?' / reduced':''}`;}
+function moveActors(){for(const [i,a]of actors.entries()){const o=[[0,0],[-2.5,-1.6],[2.5,1.4],[.8,-3.1]][i];a.group.position.set(target.x+o[0],0,target.z+o[1]);}}
+function step(dt,draw=true){
+ time+=dt;hero.update(dt,{speed:0,grounded:true});heroGroup.updateMatrixWorld(true);for(const a of actors)a.visual.update(dt,{speed:0});
+ baseline.update(dt);candidate.update(dt);
+ if(time>=.3&&!released){released=true;hero.muzzle.getWorldPosition(releaseOrigin);previousPoint.copy(releaseOrigin);target.copy(releaseOrigin).addScaledVector(aim,8.8);moveActors();emit({phase:'release',origin:heroGroup.position,emitter:releaseOrigin});}
+ if(released&&!impacted){const p=releaseOrigin.clone().lerp(target,Math.max(0,Math.min(1,(time-.3)/.4)));emit({phase:'travel',origin:previousPoint,target:p,terminal:time>=impactTime});previousPoint.copy(p);if(time>=impactTime){impacted=true;if(!miss)emit({phase:'impact',target,contactId:'detonation'});}}
+ world.update(heroGroup.position,true,actors.map(a=>({health:1,mesh:a.group,radius:.6})),[],[]);if(draw)render();
+}
+function sample(t,q='high',rm=false){playing=false;quality=q;reduced=rm;castCount=1;pipeline.setQuality(q);pipeline.setReducedMotion(rm);time=0;released=false;impacted=false;for(const v of [baseline,candidate]){v.reset();v.setQuality(q);v.setReducedMotion(rm);}for(let i=0;i<90;i++)hero.update(1/60,{speed:0,grounded:true});hero.cast({skillId:'dwarf_explosive_cannon',duration:.72,impactAt:.30});hero.update(0,{speed:0});heroGroup.updateMatrixWorld(true);hero.muzzle.getWorldPosition(muzzle);emit({phase:'cast',origin:heroGroup.position,emitter:muzzle});for(let i=0;i<t-1e-7;i+=1/60)step(Math.min(1/60,t-i),false);step(0);return stats();}
+function stats(){return {time,phase:phase(),quality,reduced,castCount,impactTime,releaseOrigin:releaseOrigin.toArray(),target:target.toArray(),baseline:baseline.getStats(),candidate:candidate.getStats(),wrapper:staged.getStats(),pipeline:pipeline.getStats(),world:world.stats,memory:{...renderer.info.memory},render:drawCost,glError:renderer.getContext().getError()};}
+function pixels(){const data=new Uint8Array(width*height*4);renderer.getContext().readPixels(0,0,width,height,renderer.getContext().RGBA,renderer.getContext().UNSIGNED_BYTE,data);return data;}
+function audit(fireOnly=false){const fire=candidateRoot.getObjectByName('CannonVolumetricPool');const visibility=fire.visible;if(fireOnly)fire.visible=false;renderSide(1,fireOnly);const before=pixels();fire.visible=visibility;renderSide(1,true);const after=pixels();render();const result=[];for(const [index,a]of actors.entries()){const p=a.group.position.clone().add(new THREE.Vector3(0,1.7,0)).project(camera),cx=Math.round((p.x*.5+.5)*width),cy=Math.round((p.y*.5+.5)*height);let count=0,preserved=0;for(let y=cy-5;y<=cy+5;y++)for(let x=cx-5;x<=cx+5;x++){if(x<0||x>=width||y<0||y>=height)continue;const i=(y*width+x)*4,delta=Math.abs(before[i]-after[i])+Math.abs(before[i+1]-after[i+1])+Math.abs(before[i+2]-after[i+2]);count++;if(delta<65)preserved++;}result.push({index,preservedFraction:count?preserved/count:null,pixels:count});}return result;}
+function bursts(count=4,q='high',rm=false){sample(0,q,rm);baseline.reset();candidate.reset();time=impactTime+.14;released=true;impacted=true;castCount=count;for(let i=0;i<count;i++){const at=new THREE.Vector3(target.x+(i%2)*3.7-1.85,target.y,target.z+Math.floor(i/2)*3.7-1.85);for(const v of [baseline,candidate])v.emit({skillId:'dwarf_explosive_cannon',castId:`burst-${i}`,phase:'impact',target:at,direction:aim,radius:3.4,groundY:0});}baseline.update(.14);candidate.update(.14);render();return stats();}
+
+function combine(count=1,q='high',rm=false){
+ if(count===1)sample(.86,q,rm);else bursts(count,q,rm);
+ const state={fields:[{id:'fixture-gravity',position:{x:target.x,y:0,z:target.z},remaining:3.2,duration:5,radius:5}],statuses:actors.map((a,i)=>({id:`zombie-${i}`,position:a.group.position,freezeRemaining:2.4,height:2.55,radius:.6}))};
+ for(const v of [baseline,candidate]){v.syncState(state);v.update(0);}
+ world.update(heroGroup.position,true,actors.map(a=>({health:1,mesh:a.group,radius:.6})),[],[{id:'fixture-gravity',x:target.x,z:target.z,radius:5}]);render();return stats();
+}
+function auditContext(){const fire=candidateRoot.getObjectByName('CannonVolumetricPool');fire.visible=false;const result=audit();fire.visible=true;render();return result;}
+function startDiagnosis(){diagnostic.active=false;pipeline.setDiagnosticBloomScale(1);for(const [q,rm,times]of [['high',false,[.52,.74,.86,1.25,1.8]],['low',true,[.52,1.25]]])for(const t of times)sample(t,q,rm);combine(1);diagnostic.active=true;document.querySelector('header div:first-child strong').textContent='CONTEXTO · gravidade + gelo';document.querySelector('header div:last-child strong').textContent='DIAGNÓSTICO · fogo no mesmo frame';return stats();}
+function diagnose(mask,volume,embers,bloom){diagnostic.volume=volume;diagnostic.embers=embers;pipeline.setDiagnosticBloomScale(bloom?1:0);candidateRoot.traverse(m=>{if(m.material?.name==='CannonReferenceRaymarch'){const shader=mask==='original'?originalCannonFragment:currentCannonFragment;if(shader!==m.material.fragmentShader){m.material.fragmentShader=shader;m.material.needsUpdate=true;}}});candidateRoot.getObjectByName('CannonVolumetricPool').traverse(m=>{if(m.isInstancedMesh){const shader=mask==='original'?currentEmberFragment.replace('1.-.999*smoothstep(.75,1.25,world.y/world.w-vData.z)','1.-.98*smoothstep(.85,1.55,world.y/world.w-vData.z)'):currentEmberFragment;if(shader!==m.material.fragmentShader){m.material.fragmentShader=shader;m.material.needsUpdate=true;}}});render();render();const result={mask,volume,embers,bloom,stats:stats(),occlusion:audit(),context:auditContext(),camera:camera.position.toArray(),actors:actors.map(a=>a.group.position.toArray())};document.querySelector('#label').textContent=`DIAGNÓSTICO isolado · t=.86 constante · máscara ${mask} · volume ${volume} · brasas ${embers} · bloom ${bloom} · mesmos alvos/ROIs/gate65%`;return result;}
+function sharedDepth(){const textures=new Set();let consumers=0;candidateRoot.traverse(m=>{const t=m.material?.uniforms?.uSceneDepth?.value;if(t){textures.add(t);consumers++;}});return {textures:textures.size,consumers,...staged.getStats().sceneDepth};}
+function lifecycle(){
+ combine(4);const before=staged.getStats();for(let i=0;i<10;i++)step(0);const paused=staged.getStats();
+ camera.lookAt(0,17,1000);render();const away=stats();camera.lookAt(-2,1.2,-.6);render();const back=stats();
+ const memory={...renderer.info.memory};for(let i=0;i<20;i++)combine(4,i%2?'high':'low',!!(i%2));const afterMemory={...renderer.info.memory};
+ for(let i=0;i<25;i++){for(const v of [baseline,candidate])v.update(.1);}render();const fireExpired=stats();
+ for(const v of [baseline,candidate]){v.syncState({});v.update(0);}render();const expiry=stats();
+ combine(4);for(const v of [baseline,candidate])v.reset();render();const reset=stats();
+ const missImpactBefore=staged.getStats().events.dwarf_explosive_cannon.impact;miss=true;sample(1.4);miss=false;const missed=stats();
+ return {before,paused,away,back,memory,afterMemory,fireExpired,expiry,reset,missed,missImpactBefore};
+}
+function wall(){
+ const w=getEnvironmentColliders().find(p=>p.id==='ruined-wall-0');sample(0);for(const v of [baseline,candidate])v.reset();
+ const normal=new THREE.Vector3(Math.sin(w.yaw),0,Math.cos(w.yaw));target.set(w.x,1.2,w.z).addScaledVector(normal,-w.halfZ-.12);
+ heroGroup.position.copy(target).addScaledVector(normal,8);heroGroup.position.y=0;camera.position.set(w.x-2,17,w.z+22);camera.lookAt(w.x,1.2,w.z);moveActors();
+ world.update(heroGroup.position,false,[],[],[]);time=.86;for(const v of [baseline,candidate]){v.emit({skillId:'dwarf_explosive_cannon',castId:'wall-contact',phase:'impact',target,direction:aim,radius:3.4,groundY:0});v.update(.15);}
+ render();const normalStats=stats(),safe=pixels();debugExclude=[world.group];renderSide(1);const unsafe=pixels();debugExclude=[];render();let changed=0;for(let i=0;i<safe.length;i+=4)if(Math.abs(safe[i]-unsafe[i])+Math.abs(safe[i+1]-unsafe[i+1])+Math.abs(safe[i+2]-unsafe[i+2])>15)changed++;
+ return {contact:'Supplied target behind actual ruined wall; controlled fixture, no collision authority',collider:w,stats:normalStats,depthOcclusionChangedPixels:changed};
+}
+function center(){heroGroup.position.set(-2,0,5);camera.position.set(-2,17,22);camera.lookAt(-2,1.2,-.6);}
+async function measureCost(){
+ center();const gl=renderer.getContext(),ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'),cases=[];
+ for(const [q,rm]of [['high',false],['low',true]])for(const [kind,count]of [['baseline',4],['candidate',1],['candidate',4]]){
+  combine(count,q,rm);const cpu=[],gpu=[];let disjoint=false;
+  for(let i=0;i<24;i++){await new Promise(requestAnimationFrame);const query=ext?gl.createQuery():null;if(query)gl.beginQuery(ext.TIME_ELAPSED_EXT,query);const start=performance.now();renderSide(kind==='baseline'?0:1);cpu.push(performance.now()-start);if(query){gl.endQuery(ext.TIME_ELAPSED_EXT);while(!gl.getQueryParameter(query,gl.QUERY_RESULT_AVAILABLE))await new Promise(requestAnimationFrame);const bad=gl.getParameter(ext.GPU_DISJOINT_EXT);disjoint||=bad;if(!bad)gpu.push(gl.getQueryParameter(query,gl.QUERY_RESULT)/1e6);gl.deleteQuery(query);}}
+  const summarize=a=>{a=a.slice(6).sort((a,b)=>a-b);return {samples:a.length,p50:a[Math.floor(a.length*.5)]??null,p95:a[Math.floor(a.length*.95)]??null,max:a.at(-1)??null};};cases.push({quality:q,reduced:rm,kind,fireBursts:count,gravityFields:1,frozen:4,cpuSubmissionMs:summarize(cpu),gpuElapsedMs:summarize(gpu),gpuDisjoint:disjoint,pipeline:pipeline.getStats(),shared:sharedDepth()});
+ }return {resolution:[width,height],timerQueryAvailable:!!ext,method:'24 queries/case; 6 warmups excluded; whole HDR/depth frame, no panel copies; coexistence with real assets',cases};
+}
+window.cannonVfxPrototype={ready:true,sample,step,stats,audit,bursts,combine,sharedDepth,auditContext,startDiagnosis,diagnose,lifecycle,wall,center,measureCost,play(q='high',rm=false){sample(0,q,rm);playing=true;},stop(){playing=false;},dispose(){baseline.dispose();candidate.dispose();render(false);pipeline.dispose();return {baseline:baseline.getStats(),candidate:candidate.getStats()};}};
+sample(.86);let previous=performance.now();function tick(now){const dt=Math.min(.05,(now-previous)/1000);previous=now;if(playing){step(dt);if(time>=3.1)playing=false;}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script></html>

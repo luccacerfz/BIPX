@@ -1,0 +1,88 @@
+{
+  "source": "/Users/luccacerf/Projetos/Assets/Characters/OrcPeasantMiner/Source/OrcPeasantMiner_Animation_Master.blend",
+  "sourceSha256Before": "2ffef792604e40ffa584c6208cdc371e8fb79af60a2ed4e2e44072c907e87a7b",
+  "sourceSha256After": "2ffef792604e40ffa584c6208cdc371e8fb79af60a2ed4e2e44072c907e87a7b",
+  "sourcePreserved": true,
+  "export": "assets/models/orc-peon.glb",
+  "sha256": "f183383155b0a763f46039a93bf048604a5a1f95529a3b4b9b6511b5767c846d",
+  "bytes": 2442932,
+  "blender": "5.2.0 LTS",
+  "rigBones": 41,
+  "bodyVertices": 13823,
+  "weaponVertices": 1396,
+  "clips": {
+    "Idle": {
+      "frames": [
+        1.0,
+        369.0
+      ],
+      "fps": 24,
+      "duration": 15.333333333333334,
+      "maximumFloorCorrectionMeters": 0.02928619357943535
+    },
+    "Walk": {
+      "frames": [
+        1.0,
+        57.0
+      ],
+      "fps": 24,
+      "duration": 2.3333333333333335,
+      "maximumFloorCorrectionMeters": 0.05008208650350571
+    },
+    "Attack": {
+      "frames": [
+        1.0,
+        29.0
+      ],
+      "fps": 24,
+      "duration": 1.1666666666666667,
+      "maximumFloorCorrectionMeters": 0.0390831892490387
+    },
+    "Hit": {
+      "frames": [
+        1.0,
+        9.0
+      ],
+      "fps": 24,
+      "duration": 0.3333333333333333,
+      "maximumFloorCorrectionMeters": 0.03195274892449379
+    },
+    "Death": {
+      "frames": [
+        1.0,
+        31.0
+      ],
+      "fps": 24,
+      "duration": 1.25,
+      "maximumFloorCorrectionMeters": 0.20985285091400147
+    },
+    "Mine": {
+      "frames": [
+        1.0,
+        25.0
+      ],
+      "fps": 24,
+      "duration": 1.0,
+      "maximumFloorCorrectionMeters": 0.03992404314875603
+    }
+  },
+  "textures": [
+    {
+      "name": "OrcPeasantMiner_Tripo_Animations_basecolor",
+      "original": [
+        2048,
+        2048
+      ],
+      "runtime": [
+        1024,
+        1024
+      ]
+    }
+  ],
+  "bakedShapeKeys": {
+    "Basis": 1.0,
+    "R_Hand_SickleGrip": 1.0
+  },
+  "weaponParentBone": "R_Hand",
+  "method": "Separate runtime scene with copied native rig and actions, authored hand grip shape baked into copied body, native bone-parented sickle socket preserved."
+}

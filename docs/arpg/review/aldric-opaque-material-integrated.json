@@ -1,0 +1,19 @@
+{
+  "at": "2026-09-19T05:01:28.879540+00:00",
+  "scope": "Root read promotion receipt and handoff; prior native A/B selection remains source of visual/depth decision",
+  "receiptSha256": "58398ceaaa9e65e25d90c07f8dce1bca2bcc6691406fb605006683757e238e9f",
+  "promotedAt": "2026-09-19T04:51:17.291987+00:00",
+  "changed": [
+    "assets/models/aldric-hero.glb"
+  ],
+  "http": {
+    "status": 200,
+    "mime": "model/gltf-binary",
+    "sha256": "5c1903a064decbcee1d018df4f6ee595e826640a0ccb9b40538efe5aef70f996"
+  },
+  "sameServerPID": true,
+  "sameLedger": true,
+  "followingChunksByteIdentical": true,
+  "historyRetained": true,
+  "locomotionApproval": false
+}

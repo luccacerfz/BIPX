@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><base href="/"><link rel="icon" href="data:,"><title>Environment fixture — not gameplay</title>
+<style>html,body{margin:0;background:#0c1720;overflow:hidden}aside{position:fixed;left:18px;top:18px;color:#d6e3e2;font:14px system-ui;padding:10px;background:#08151cce}</style>
+<aside>ENVIRONMENT REVIEW · synthetic fixture · static imported geometry / contact cores</aside>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {createCemetery} from '../src/render/cemetery.js';
+import {loadAssetDressing} from '../src/render/asset-dressing.js';
+import {createWorldAtmosphere} from '../src/render/atmosphere.js';
+import {getEnvironmentLayout,getEnvironmentColliders} from '../src/render/environment-layout.js';
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x13232c);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,200);
+scene.add(new THREE.HemisphereLight(0x98cde0,0x484c3e,2));
+const moon=new THREE.DirectionalLight(0xd6e4f3,3);moon.position.set(-20,36,18);scene.add(moon);
+const cemetery=createCemetery({THREE,scene});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),cemetery.groundMaterial);ground.rotation.x=-Math.PI/2;scene.add(ground);
+const layout=getEnvironmentLayout();
+const trees=layout.legacy.filter(c=>c.id.startsWith('tree')).map(c=>new THREE.Vector3(c.x,0,c.z));
+const world=await loadAssetDressing({THREE,scene,trees,lanterns:cemetery.lanternPositions});
+for(const p of cemetery.lanternPlaceholders)p.visible=false;
+const atmosphere=createWorldAtmosphere({THREE,moon});scene.children.forEach(c=>atmosphere.patchObject(c));
+const contacts=new THREE.Group();scene.add(contacts);contacts.visible=false;
+const material=new THREE.MeshBasicMaterial({color:0xffaa22,wireframe:true,depthTest:false,transparent:true,opacity:.8});
+for(const c of getEnvironmentColliders()){
+ if(c.id.startsWith('headstone'))continue; // Main-owned headstones absent in this isolated fixture.
+ const mesh=new THREE.Mesh(c.shape==='circle'?new THREE.CylinderGeometry(c.radius,c.radius,c.maxY-c.minY,24):new THREE.BoxGeometry(c.halfX*2,c.maxY-c.minY,c.halfZ*2),material);
+ mesh.position.set(c.x,(c.minY+c.maxY)/2,c.z);mesh.rotation.y=c.yaw||0;contacts.add(mesh);
+}
+const views={overview:{eye:[40,48,55],target:[0,0,-6]},court:{eye:[-24,16,8],target:[-10,1,-10]},north:{eye:[17,20,-22],target:[0,3,-43]},east:{eye:[32,18,36],target:[19,1,19]}};
+function render(view='overview',bounds=false){const v=views[view];camera.position.fromArray(v.eye);camera.lookAt(...v.target);contacts.visible=bounds;world.update(new THREE.Vector3(),false);renderer.render(scene,camera)}
+window.environmentReview={ready:true,render,stats:world.stats,THREE,scene,camera,renderer,world,contacts};render();
+</script></html>

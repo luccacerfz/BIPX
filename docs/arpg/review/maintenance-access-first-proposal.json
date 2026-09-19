@@ -1,0 +1,110 @@
+{
+  "reviewedAt": "2026-09-19T03:33:57.019133+00:00",
+  "reports": [
+    {
+      "path": "output/environment/maintenance-access-v1/2026-09-19T03-28-54-584Z-baseline-full-inverse.json",
+      "sha256": "b5623f8a1ead71097fad423b8743583eb64d7759e1a532ad676688975a5f1cc8"
+    },
+    {
+      "path": "output/environment/maintenance-access-v1/2026-09-19T03-29-59-954Z-candidate-full-inverse.json",
+      "sha256": "67042c4fe8ccc0f9fe08dd752c2473b31d7ba43c1cac88823ad40921a91eb50d"
+    }
+  ],
+  "groups": [
+    {
+      "variant": "before",
+      "caller": "client",
+      "type": "zombie",
+      "count": 18,
+      "hit": 0,
+      "firstHitRange": null
+    },
+    {
+      "variant": "before",
+      "caller": "client",
+      "type": "bloodCow",
+      "count": 18,
+      "hit": 0,
+      "firstHitRange": null
+    },
+    {
+      "variant": "before",
+      "caller": "server",
+      "type": "zombie",
+      "count": 18,
+      "hit": 0,
+      "firstHitRange": null
+    },
+    {
+      "variant": "before",
+      "caller": "server",
+      "type": "bloodCow",
+      "count": 18,
+      "hit": 1,
+      "firstHitRange": [
+        0.30000000000000004,
+        0.30000000000000004
+      ]
+    },
+    {
+      "variant": "candidate",
+      "caller": "client",
+      "type": "zombie",
+      "count": 18,
+      "hit": 18,
+      "firstHitRange": [
+        1.7000000000000002,
+        6.3500000000000005
+      ]
+    },
+    {
+      "variant": "candidate",
+      "caller": "client",
+      "type": "bloodCow",
+      "count": 18,
+      "hit": 0,
+      "firstHitRange": null
+    },
+    {
+      "variant": "candidate",
+      "caller": "server",
+      "type": "zombie",
+      "count": 18,
+      "hit": 18,
+      "firstHitRange": [
+        1.7000000000000002,
+        6.3500000000000005
+      ]
+    },
+    {
+      "variant": "candidate",
+      "caller": "server",
+      "type": "bloodCow",
+      "count": 18,
+      "hit": 0,
+      "firstHitRange": null
+    }
+  ],
+  "lostBossCounterexample": {
+    "actualStart": {
+      "x": 12.999156710361104,
+      "z": 11.936954817748697
+    },
+    "finalLOS": {
+      "t": 0.453983501609878,
+      "normal": {
+        "x": -0.20731847869060557,
+        "z": -0.9782735038798777
+      },
+      "colliderId": "barrel-2",
+      "x": 15.693023664995648,
+      "z": 12.99521087199798,
+      "y": 0.9
+    },
+    "shots": 0,
+    "firstHit": null,
+    "maxVisited": 768
+  },
+  "decision": "Walker approach improves; retain proposal until meaningful boss threat/approach and native art reviewed. Barrel2 now blocks previously clear boss ray.",
+  "runtimePromotedByRoot": false
+}

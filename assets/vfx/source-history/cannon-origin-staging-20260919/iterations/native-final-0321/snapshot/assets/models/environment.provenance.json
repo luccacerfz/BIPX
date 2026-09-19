@@ -1,0 +1,186 @@
+[
+  {
+    "name": "cedar-tree",
+    "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/13_tree_tripo_v31_8k.glb",
+    "sourceSha256Before": "41dc4b39b730bfe663d441ea0eb30a9709cf4cb6172313db1fc00f03ab708ead",
+    "sourceSha256After": "41dc4b39b730bfe663d441ea0eb30a9709cf4cb6172313db1fc00f03ab708ead",
+    "sourcePreserved": true,
+    "bytes": 333808,
+    "sha256": "1dda3a076d56ae6327ec1d41ab0b3cf322310abc8ed3b68e7d94c922f0c66e50",
+    "sourceFaces": 497592,
+    "runtimeFaces": 6500,
+    "textures": [
+      {
+        "name": "13_tree_tripo_v31_8k_basecolor.jpg",
+        "source": [
+          8192,
+          8192
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "13_tree_tripo_v31_8k_normal.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "13_tree_tripo_v31_8k_rm.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      }
+    ]
+  },
+  {
+    "name": "lantern-post",
+    "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/10_lantern_post_tripo_v31_8k.glb",
+    "sourceSha256Before": "1d8c504f74b8cf6ae8f3ade71c338ce18d5e760f3ac859fcb7204b8a814e095d",
+    "sourceSha256After": "1d8c504f74b8cf6ae8f3ade71c338ce18d5e760f3ac859fcb7204b8a814e095d",
+    "sourcePreserved": true,
+    "bytes": 457084,
+    "sha256": "a798d132f940a3cbe52aaffa3e2b313dfc498442cc40f4927e8fbe132d092f84",
+    "sourceFaces": 487696,
+    "runtimeFaces": 6500,
+    "textures": [
+      {
+        "name": "10_lantern_post_tripo_v31_8k_basecolor.jpg",
+        "source": [
+          8192,
+          8192
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "10_lantern_post_tripo_v31_8k_normal.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "10_lantern_post_tripo_v31_8k_rm.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      }
+    ]
+  },
+  {
+    "name": "rune-portal",
+    "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/20_rune_portal_tripo_v31_8k.glb",
+    "sourceSha256Before": "cc8e8ab4cfc8a25f4c55c6a91831549b77bf044f03501bc369026d23a21e0bfa",
+    "sourceSha256After": "cc8e8ab4cfc8a25f4c55c6a91831549b77bf044f03501bc369026d23a21e0bfa",
+    "sourcePreserved": true,
+    "bytes": 581560,
+    "sha256": "a57abdd975277e06199550da56d26b7438e953f905b8ba5b5e094f2935978475",
+    "sourceFaces": 476117,
+    "runtimeFaces": 6499,
+    "textures": [
+      {
+        "name": "20_rune_portal_tripo_v31_8k_basecolor.jpg",
+        "source": [
+          8192,
+          8192
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "20_rune_portal_tripo_v31_8k_normal.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "20_rune_portal_tripo_v31_8k_rm.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ruined-wall",
+    "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/02_wall_tripo_v31_8k.glb",
+    "sourceSha256Before": "24687ad140fce8ff0cd64102144f7d1d897c64ca63c4714d1e009819717e4b34",
+    "sourceSha256After": "24687ad140fce8ff0cd64102144f7d1d897c64ca63c4714d1e009819717e4b34",
+    "sourcePreserved": true,
+    "bytes": 517644,
+    "sha256": "d78c11f97ae684670a673fcd6a24ade3753b2c8a41093ef0766147fbca276f1e",
+    "sourceFaces": 469365,
+    "runtimeFaces": 6499,
+    "textures": [
+      {
+        "name": "02_wall_tripo_v31_8k_basecolor.jpg",
+        "source": [
+          8192,
+          8192
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "02_wall_tripo_v31_8k_normal.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "name": "02_wall_tripo_v31_8k_rm.jpg",
+        "source": [
+          4096,
+          4096
+        ],
+        "runtime": [
+          1024,
+          1024
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "scope": "Historical initial six skills; includes unfinished body adjustment before v2. Not acceptance of v2.",
+  "sources": {
+    "src/vfx/class-skill-vfx.js": "4f9f8a013275af97aea0684a492b6b4209904bcb581753d72c6b7d1a189ae87d",
+    "src/vfx/class-skill-bodies.js": "abc6dd71ebc6f685875a7dca75d0bcfd7c4ccb21c9f68fcc9d08571abae04856",
+    "src/vfx/elemental-vfx.js": "ebf9718be642c5073ccb89aed6af119acc3206dd25ca142d2219aed89103608b",
+    "src/vfx/elemental-shaders.js": "9968e592fddfee6a527bedd4116a389511dadff2186571070e02d4604eed9248",
+    "tools/class-skill-vfx-cpu.mjs": "46e962f802a7f05baa7d6ec94de956ad0e2555ac8a5e57885dce299c795fd789",
+    "tools/class-skill-vfx-preview.html": "c5e964f6b3e4292fbb70f9cde9427a6726bc512b440e5e03985bb4c9d4e13cd0",
+    "tools/class-skill-vfx-native.mjs": "32748b2cffca30fa2b6e241a73ee54ca38b90294b3a835742d9a9086ae5b2526",
+    "docs/arpg/vfx-handoff.md": "466e8950897fae80f106d53573f21b560fbcbc86f6f3b1dbe2e08c723cf23244"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-09-19T01:19:06.658824+00:00",
+  "scope": "Root inspected original synthetic state board and two native browser gameplay screenshots with candidate CSS injected only in QA. Not yet production artwork.",
+  "artDirectionSelected": true,
+  "productionPromoted": false,
+  "requiresOptimizedDerivatives": true,
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T01-14-13-538Z-ui-arpg-art-candidate/art-state-board.png",
+      "sha256": "c39a7b407d518832bee3e454d46307e255049c1d004690d24e8d291e69624329"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-14-13-538Z-ui-arpg-art-candidate/art-candidate-dwarf-ready.png",
+      "sha256": "44c2b7ee08767e7642cbf70097c697c0324518bc80a795dcb75a25838e7e52a1"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-14-13-538Z-ui-arpg-art-candidate/art-candidate-warrior-cooldown.png",
+      "sha256": "9d5bae209117c477709a92dea43622997f9e40ddb69e44a86f7b22f3311c89c3"
+    }
+  ]
+}

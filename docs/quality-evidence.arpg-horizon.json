@@ -1,0 +1,298 @@
+{
+  "candidate": {
+    "description": "Six-skill v2 with experimental Horizon/nebula real scene depth/cutaway, painted-v3 HUD, local locomotion release-continuity fix and disconnect audio lifecycle fix. AAA goal remains incomplete.",
+    "capturedAt": "2026-09-19T01:45:53.780397+00:00",
+    "sourceManifest": "output/qa/arpg-horizon-integrated-20260919/source-manifest.json",
+    "sourceManifestSha256": "fc1cd4584a87acad45b3b3d62c7c42ea2868248d5c595e8c60ec6d288167f7cb",
+    "sourceFiles": 213,
+    "sourceInMotionDuringCapture": false,
+    "sourceBoundReports": 18,
+    "provenance": "output/qa/arpg-horizon-integrated-20260919/evidence-provenance.json",
+    "previousRealJef": "output/qa/arpg-v2-integrated-20260919/jef.json"
+  },
+  "dimensions": {
+    "game_design": {
+      "coverage": "partial",
+      "observations": [
+        "Six canonical v2 skills remain actual shared browser/Node gameplay: timed damage/speed buff, swept lethal dash, shield charge/stun, explosive fire cannon, area freezing shot and fixed five-second gravity pull. Exactly three active skills per class plus sword/rifle basics.",
+        "Shield1.2/frost.8/gravity.6 base damage preserve living control victims in opening waves. Current natural-input combos measured2living stunned targets and3dash cut deaths; dwarf high2living frozen/pulled targets then2kills, low/reduced3then3kills. No spawned targets, health/resource/XP manipulation.",
+        "Core/protocol13groups and actual-input timelines12casts passed. Duration, complete valid-area targets, boss resistance, one death/reward and authority are tested separately in synthetic CPU/server cases.",
+        "Target-aware automation is not human balance or feel approval; wave pacing, sustained build choices and varied encounters remain incomplete."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-32-57-940Z-quality-suite/suite.json",
+        "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T01-41-10-684Z-verify-natural-runs/natural-runs.json",
+        "docs/arpg/combat-v2-contract.md"
+      ]
+    },
+    "animation": {
+      "coverage": "partial",
+      "observations": [
+        "Promoted hero-locomotion07952bfc from the Animation owner. Its isolated evidence preserves material-sole witness continuity at release with bounded residual decay, reducing three measured Aldric strafe release jumps13.46cm to1.04–1.09mm at120Hz, with no additional reach-limit failures over18cast comparisons. This is a local improvement, not universal no-slide.",
+        "Final runtime12stationary/moving casts passed. Actual remote keyboard strafe/stop sampled188frames per class with finite feet and sampler positions matching interpolated meshes. Actual post-collision wall hold reaches Idle and zero measured Z jitter in final six samples for both; tangential slide resumes gait. These tests do not measure full deformed sole drift.",
+        "acceptedNoSliding remains false: support drift and start/turn peaks, fast backward1.722m/s mismatch, reach.093m and slight penetration remain. Prior high cast reach error.15391m is not claimed fixed. Bone/contact flags do not override material-sole evidence.",
+        "Corpse e37398db remains promoted with connected arms, dark caps and falling/tumbling two rigid pieces. Earlier suspended hand rejection and bounded repair remain historical; no anatomical ragdoll/all-poses acceptance. Mixamo dwarf gestures reuse a rifle take and cry has no mouth articulation."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T01-39-04-801Z-verify-arpg-network/arpg-network.json",
+        "output/playwright/2026-09-19T01-40-30-052Z-physics-gameplay/physics-gameplay.json",
+        "docs/arpg/review/locomotion-v3-local-followup.md",
+        "docs/arpg/animation-handoff.md",
+        "docs/arpg/animation-cut-v3-handoff.md"
+      ]
+    },
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "Combat directly inspected final-candidate actual gameplay high/low PNGs and controlled tree/ruin/eight-field fixtures. Dark Horizon center, bright rim and purple volume have substantially clearer identity/presence. Current painted icons are distinct; cemetery paths, trees, gravestones and lanterns remain coherent.",
+        "Single-field captures retain visible heroes/enemies and radius. Eight fields overlap into a large bright region; upper-body attenuation helps but lower bodies and visual hierarchy still compete. Visible canopy dithering remains. No universal silhouette or AAA approval.",
+        "Stills do not supply continuous artistic playback or physical-mobile review. No visual assessment is attributed to JEF.",
+        "Independent Root review of six original actual-game01:35/01:39PNGs agrees core/nebula/HUD improved, but cry still depends on thin geometric arcs, cannon core remains small/periodic, corpse halves are difficult to distinguish in the horde and freeze transition requires continuous playback. No family receives artistic10; tool audio input unavailable, no listening took place."
+      ],
+      "evidence": [
+        "output/qa/arpg-horizon-integrated-20260919/native-observations.json",
+        "docs/arpg/vfx-gravity-integration.md",
+        "docs/arpg/gui-handoff.md",
+        "docs/arpg/review/integrated-art-followup.md"
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "Horizon/nebula is integrated experimentally into the actual HDR pipeline. VFX prepares visible fields immediately before render, consumes same-frame RGBA-packed depth at full internal viewport resolution and borrows it. One shared prepass for1/4/8fields, zero without visible fields; bounded8slots with essential marker fallback beyond that.",
+        "Final source-bound9/9native fixture proves no-field/offscreen invalidation, multiple fields, cached allocations, pause/expiry/reset/dispose, resize/near/far/reduced contract and strict renderer/occluder restoration including injected exceptions. Environment-specific shared discard matches color/depth pixels with0mismatches/65536 in four instanced cutaway/clipping cases.",
+        "Owner final poolfaa591e5 fixes camera-away/back without simulation ticks. Separate component-bound final native gate minimum torso preservation87.603% against unchanged65% threshold; previous1:21failed28.10% result preserved. Height-based upper-geometry attenuation is not actor-ID masking or proof for every pose.",
+        "Actual input combos in high/low-reduced prove every visible gravity frame has valid depth and exactly one prepass, with live Environment adapter. Per-frame persistent rendered origins and sword travel emitter remain. Samurai/HandCast/Linear MIT source adaptations preserved; complete catalogue/dense continuous visual approval remains incomplete.",
+        "Independent Root still review retains specific cry/cannon/cut/freeze readability deficiencies, despite passing functional tests. Cannon refinement is staging only."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-34-32-179Z-verify-scene-depth/scene-depth-report.json",
+        "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T01-31-45-844Z-verify-skill-presentation/skill-presentation.json",
+        "docs/arpg/vfx-gravity-integration.md",
+        "output/qa/vfx-gravity-horizon-integrated-20260919.json",
+        "docs/arpg/review/integrated-art-followup.json"
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Real menu/keyboard/pointer flows exercise basics and six skills stopped/moving, living controls followed by damage, wall-blocked dash/charge and tangential slide. Both60second natural runs include actual damage, kills, XP, upgrades and skill use; source-bound results are attached.",
+        "Controller and presentation functionality pass the bounded scenarios. Human judgment of weight, responsiveness, long-session fatigue and impaired-link timing remains pending."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T01-40-30-052Z-physics-gameplay/physics-gameplay.json",
+        "output/playwright/2026-09-19T01-41-10-684Z-verify-natural-runs/natural-runs.json"
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "Painted-v3 promotion changes only six256px WebP assets(total143958bytes), one stylesheet and index link/class. Full-resolution masters preserved. Existing actual-state two-orb HUD, three skills/basic weapon and input ownership unchanged.",
+        "GUI owner component-bound32/32native checks passed before final animation promotion; those checks are not mislabeled as the entire current runtime. Final actual gameplay PNGs show all six painted icons, readable cooldown/cost and real buff time. Real keyboard casts and upgrade/death/restart flows exercised where observed in current natural runs.",
+        "Prior touch/tooltip/keyboard/accessibility checks remain historical/component evidence. Full physical-device/end-to-end accessibility and dense-combat hierarchy review remain incomplete."
+      ],
+      "evidence": [
+        "docs/arpg/gui-handoff.md",
+        "output/playwright/2026-09-19T01-27-26-370Z-ui-arpg-painted-verify/painted-integrated.json",
+        "output/qa/arpg-horizon-integrated-20260919/native-observations.json",
+        "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T01-41-10-684Z-verify-natural-runs/natural-runs.json"
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "Low/reduced current desktop gameplay preserves essential field, projectile and control states. GUI owner has browser emulation portrait/landscape/touch evidence with>=44px targets.",
+        "No current-candidate physical iOS/Android gameplay, thermal or touch-latency proof. Desktop emulation is explicitly insufficient."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json",
+        "docs/arpg/gui-handoff.md"
+      ]
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "Exact owner disconnect patch applied as checked hunks to current main; no stale proposed-main replacement. Socket close clears presentation/loops, does not reset authority resource/cooldown/sequence, and resumes only new snapshots; removed snapshot cancels without false collapse.",
+        "Final current-runtime actual two-client WebAudio test23/23sourceStable: war cry and gravity via real keys, actual socket close, loops stop on owner/peer, no replay or false collapse, identity/resource/cooldown/sequence preserved. Actual presentation CPU6/6 additionally tests150suspended frame calls without VFX/audio/authority mutation.",
+        "Original28ElevenLabs cue assets/provenance and component PCM/peak/mute evidence preserved. No perceptual listening acceptance: signal/loop lifecycle cannot establish mix, distinctness, spatial feel or fatigue."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json",
+        "output/playwright/2026-09-19T01-31-45-844Z-verify-skill-presentation/skill-presentation.json",
+        "docs/arpg/sfx-handoff.md",
+        "output/playwright/2026-09-19T01-23-35-639Z-audio-disconnect-lifecycle/disconnect-lifecycle.json"
+      ]
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "Predeclared desktop budget unchanged average>=57FPS and p95<=20ms. Actual Chrome1440x900 ANGLE Metal AppleM5Pro,60seconds/class, GPU serialized; screenshots/upgrades/deaths included, no artificial stress/HP/XP/spawn changes. Raw long frames are preserved.",
+        "Final natural warrior: 8550frames/60.1262s, average142.1843FPS, p958.300ms, p998.700ms, worst48.600ms, frames>50ms=0, longtasks=0. Coverage: {'actualKillsObserved': True, 'maxKillsInOneLife': 24, 'maxWave': 1, 'maxLevel': 3, 'actualXpObserved': True, 'upgrades': 'observed', 'death': 'observed naturally', 'restart': 'observed after natural death', 'humanFeelReview': 'pending', 'physicalMobile': False, 'skillIds': ['warrior_war_cry', 'warrior_cleaving_dash', 'warrior_shield_charge']}.",
+        "Final natural dwarf: 8481frames/60.1675s, average140.9399FPS, p958.400ms, p9913.900ms, worst27.800ms, frames>50ms=0, longtasks=0. Coverage: {'actualKillsObserved': True, 'maxKillsInOneLife': 78, 'maxWave': 2, 'maxLevel': 7, 'actualXpObserved': True, 'upgrades': 'observed', 'death': 'not observed', 'restart': 'not observed', 'humanFeelReview': 'pending', 'physicalMobile': False, 'skillIds': ['dwarf_explosive_cannon', 'dwarf_frost_shot', 'dwarf_gravity_shot']}.",
+        "Separate native1280x720controlled fixture GPU timer14cases,24validqueries/case after6warmups,0disjoint: full pipeline high0/1/4/8fields p95=4.290125/5.194041/6.327749/6.023416ms; low/reduced=3.359124/4.516375/6.636208/7.249375ms. Depth median.497708–.569083ms, one60drawprepass,17adaptedmeshes. Sequential/DVFS nonmonotonic results are not marginal savings or gameplayFPS.",
+        "Physical mobile, thermal/long soak, level16/dense extreme horde and simultaneous corpse budget remain unproved. Staged Physics crowd cost400actors is material and not included in these runtime figures."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-41-10-684Z-verify-natural-runs/natural-runs.json",
+        "output/playwright/2026-09-19T01-34-32-179Z-verify-scene-depth/scene-depth-report.json",
+        "docs/arpg/physics-crowd-candidate.md"
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Final real-browser test confirms six accepted casts exactly once with identical payloads in two clients, shared authoritative tick19monsters, same identity/sequence3/resource38.45after reconnect and third latejoin3players/23monsters. Basic attacks preserved. Only transport close is injected.",
+        "Current remote strafe/stop and actual two-client audio cancellation supplement the network proof. Server fixtures separately prove authoritative area controls/boss resistance/expiry and field pull/latejoin.",
+        "Full browser death/wipe, impaired links, long concurrent soak and detailed perceptual remote-contact timing remain incomplete."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-39-04-801Z-verify-arpg-network/arpg-network.json",
+        "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json",
+        "output/playwright/2026-09-19T01-32-57-940Z-quality-suite/suite.json"
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "Keyboard skills and movement, existing focus/input/upgrade precedence, labeled HUD and essential low/reduced signals retained. Three active slots consume real snapshots.",
+        "Complete contrast/zoom/screen-reader and physical assistive-device review absent. No blanket accessibility acceptance."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json",
+        "docs/arpg/gui-handoff.md"
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "Final 213-file runtime/assets manifest compared against18full source-bearing reports: all hashes equal and sources stable in each run. Selected CPU/protocol13/13passed with runtime and verification tools unchanged during that suite. Network verifier later added finite remote motion checks; no claim that every tool stayed unchanged across all times.",
+        "History preserved:00:39suite FAILED12/13 with progressionHP200vs160 before WebSocket delivery. Harness fixed to await both IPC-authoritative and received160HP without weakening anti-forgery. Current01:32suite13/13is a new result, not relabeling failure.",
+        "New depth state/lifecycle, camera-cache and audio-disconnect defects have specific regressions.5173 remains live, local-onlySupabase disabled and ranking byte-preserved. No commit/reset/production deployment.",
+        "Known runtime Physics compression under crowd pressure/dt100ms remains unresolved in this candidate. Owner isolated16CPU/120bodycandidate is reserved for later promotion; zero-overlap claims from staging do not apply here. Full-soak/device recovery remains incomplete."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T01-32-57-940Z-quality-suite/suite.json",
+        "output/playwright/2026-09-19T01-34-32-179Z-verify-scene-depth/scene-depth-report.json",
+        "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json",
+        "output/qa/arpg-horizon-integrated-20260919/evidence-provenance.json",
+        "docs/arpg/physics-crowd-candidate.md"
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "suite",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-32-57-940Z-quality-suite/suite.json"
+    },
+    {
+      "name": "depth",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-34-32-179Z-verify-scene-depth/scene-depth-report.json"
+    },
+    {
+      "name": "combos",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json"
+    },
+    {
+      "name": "browser",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json"
+    },
+    {
+      "name": "network",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-39-04-801Z-verify-arpg-network/arpg-network.json"
+    },
+    {
+      "name": "physics",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-40-30-052Z-physics-gameplay/physics-gameplay.json"
+    },
+    {
+      "name": "audio",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json"
+    },
+    {
+      "name": "presentation",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-31-45-844Z-verify-skill-presentation/skill-presentation.json"
+    },
+    {
+      "name": "natural",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T01-41-10-684Z-verify-natural-runs/natural-runs.json"
+    },
+    {
+      "name": "Full material-sole no-slide acceptance",
+      "status": "failed",
+      "evidence": "docs/arpg/review/locomotion-v3-local-followup.md"
+    }
+  ],
+  "openDefects": [
+    "No-slide remains false: material-sole support/transition drift, fast backward mismatch/reach and small penetration. Release-continuity fix is limited.",
+    "Current runtime crowd compression can displace controlled actors under pressure/dt100ms. Proposed continuous-body sweep/index remains isolated pending integration and performance proof.",
+    "Eight Horizon fields still crowd visual hierarchy; height attenuation is not universal actor mask. Cannon organic mass staging is not promoted. No dense continuous art/AAA approval.",
+    "Corpse is two stylized rigid pieces; all poses/seams/grip/weight not approved. Lich explicit profile/cast and Brute motion remain staged/rejected work.",
+    "Physical iOS/Android, thermal/long soak, high-level dense horde and extreme corpse performance absent.",
+    "Audio lifecycle/signal proven but perceptual listening/mix/fatigue acceptance absent.",
+    "Human design/combat feel, full accessibility, browser wipe/impaired network and long-session coverage remain incomplete."
+  ],
+  "historicalFailures": [
+    {
+      "name": "Source-stable CPU/protocol suite00:39:46",
+      "status": "failed",
+      "passedGroups": 12,
+      "totalGroups": 13,
+      "evidence": "output/playwright/2026-09-19T00-39-46-885Z-quality-suite/suite.json",
+      "followup": "output/playwright/2026-09-19T00-41-20-708Z-verify-progression-authority/progression-authority.json",
+      "cause": "Harness read client state immediately after private IPC instead of awaiting the real WebSocket health update. Server/client health requirements remain160.",
+      "fullSuiteFollowup": "output/playwright/2026-09-19T00-46-57-235Z-quality-suite/suite.json",
+      "postCorpseFullSuiteFollowup": "output/playwright/2026-09-19T00-54-45-126Z-quality-suite/suite.json"
+    },
+    {
+      "name": "First low/reduced natural combo attempt",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T00-29-31-433Z-verify-arpg-combos/arpg-combos.json",
+      "followup": "output/playwright/2026-09-19T00-33-10-376Z-verify-arpg-combos/arpg-combos.json",
+      "cause": "Harness retargeted nearest enemy between skills; cannon legitimately missed the moving target. Repeated with same natural target tracked, no gameplay mutation."
+    },
+    {
+      "name": "First v3 floating detached hand",
+      "status": "artistic_rejection",
+      "evidence": "docs/arpg/review/v3-cut-followup.md",
+      "followup": "docs/arpg/animation-cut-v3-handoff.md",
+      "finalNative": "output/playwright/arpg-animation-cut-v3-arms-final/report.json",
+      "scope": "Specific hand-region issue repaired and checked; not AAA blanket acceptance."
+    },
+    {
+      "name": "Horizon first multicampo torso gate",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T01-21-21-154Z-gravity-vfx-integration/integration-report.json",
+      "cause": "Torso3preservation28.10%below unchanged65%gate",
+      "followup": "output/playwright/2026-09-19T01-26-48-130Z-gravity-vfx-integration/integration-report.json"
+    },
+    {
+      "name": "Depth initial restoration harness",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T01-18-22-299Z-verify-scene-depth/scene-depth-report.json",
+      "cause": "Harness incorrectly required VFX root visibility unchanged after invalidated depth; corrected only explicit excluded-VFX root comparison, occluder/renderer comparisons retained."
+    },
+    {
+      "name": "Disconnect persistent audio reproduced14.2seconds",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T01-23-35-639Z-audio-disconnect-lifecycle/disconnect-lifecycle.json",
+      "followup": "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json"
+    }
+  ]
+}

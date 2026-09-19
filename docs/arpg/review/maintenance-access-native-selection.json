@@ -1,0 +1,28 @@
+{
+  "reviewedAt": "2026-09-19T03:48:16.373197+00:00",
+  "manifest": "output/environment/maintenance-access-v1/selection-manifest.json",
+  "manifestSha256": "1995a5275631332abbf3dc4014968428191955730b5b9841a015a2f567bf3dfb",
+  "inspectedOriginals": [
+    {
+      "path": "output/playwright/environment-maintenance-access-v1/access-baseline-overview.png",
+      "sha256": "dbbdf4706199534b55c7b00430be0077e7777794d4554f5180d5a4a1543017e2"
+    },
+    {
+      "path": "output/playwright/environment-maintenance-access-v1/access-candidate-overview.png",
+      "sha256": "bd4d2d483c667d01a316d29bcd3be148b80e92d51a8047246a20a00e9796f013"
+    },
+    {
+      "path": "output/playwright/environment-maintenance-access-v1/access-baseline-pocket.png",
+      "sha256": "266b752dad269ee38a9e3f1502e07fe1ec012e149fe59071657d9388e023a1c3"
+    },
+    {
+      "path": "output/playwright/environment-maintenance-access-v1/access-candidate-pocket.png",
+      "sha256": "b635254676577f60d1149232215c230c867b9ee68e18f54903f7c3ead58a5d07"
+    }
+  ],
+  "layoutSelectedForArt": "9e45b0c2ddb41e125c225e35083d7ed308fc8151357f8b7fbf845196b6371d40",
+  "artFinding": "Moved barrel joins upper supply grouping and opens a visually readable west approach; beam moves away from player. Same surface direction, lighting and prop identity preserved.",
+  "gameplayGate": "Walker approach and server west shot restored in controlled CPU; offline BloodCow18/18 still no threat. Physics tasked to distinguish physical melee pose/corridor from navigation failure before further layout change.",
+  "runtimePromotedByRoot": false,
+  "nativeScope": "Four stills of static controlled actors, not gameplay or motion review."
+}

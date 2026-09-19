@@ -1,0 +1,62 @@
+{
+  "scope": "CPU retarget and source preservation, visual review pending",
+  "original": "assets/models/orc-peon.glb",
+  "originalSha256": "f183383155b0a763f46039a93bf048604a5a1f95529a3b4b9b6511b5767c846d",
+  "source": "assets/models/orc-peon-source/mixamo-walking.glb",
+  "sourceSha256": "29a0b5fedafa493183cf1b44dc0bd55fee3770169305e450ab18d1b1db03a4c5",
+  "output": "assets/models/orc-peon-source/orc-peon-walk-v2.glb",
+  "outputSha256": "dd59a12746895b10162ab91035e86441a9cf27ffe03a84713ed9a9d128447b39",
+  "checks": {
+    "originalPreserved": true,
+    "binaryPrefixPreserved": true,
+    "rigSkinGeometryMaterialsPreserved": true,
+    "oldClipsPreserved": true,
+    "unitQuaternions": true,
+    "finite": true,
+    "realDonorTranslation": true,
+    "runFootExcursion": true
+  },
+  "ratio": 0.44277830026697085,
+  "displacement": [
+    1.5599653124809265e-8,
+    -2.2898351326183786e-7,
+    1.704268330586306
+  ],
+  "motion": {
+    "version": 2,
+    "source": "Local Mixamo Action Adventure Walking/Running, direct deform-leg alignment",
+    "walkSpeed": 0.7302707011263028,
+    "walkStride": 0.7546130346158325,
+    "walkCycleSeconds": 1.0333333015441895,
+    "retargetedRoles": [
+      "Walk"
+    ],
+    "contactProbes": [
+      1287,
+      1290,
+      3479,
+      4662,
+      5628,
+      7520,
+      7854,
+      9470,
+      11730,
+      13820,
+      14684,
+      16544,
+      18841,
+      18919,
+      20182,
+      20662,
+      25618,
+      26339,
+      29376,
+      29484,
+      29500,
+      29539,
+      29542
+    ],
+    "walkFloorLift": 0.07910539306696068
+  },
+  "maxNormError": 2.220446049250313e-16
+}

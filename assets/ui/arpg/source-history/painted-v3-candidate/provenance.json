@@ -1,0 +1,44 @@
+{
+  "candidate": "painted-v3",
+  "provider": "built-in image_gen",
+  "generated": true,
+  "usage": "Original fantasy skill artwork; isolated, not promoted into runtime",
+  "assets": [
+    {
+      "id": "war-cry",
+      "prompt": "Create one ORIGINAL square skill icon for a premium dark fantasy action RPG UI. Painted 3D volume and crisp hand-painted material planes, NOT wireframe, NOT outlined line art, NOT a flat logo. Must remain unmistakable when reduced to 48 or 64 pixels. One dominant silhouette occupies 80% of the square, bold light/shadow masses, very sparse secondary details. Cinematic top-left rim light, deep colored shadows, bright focal plane. Full-bleed near-black colored background, no border/frame, no letters, no numbers, no text, no watermark. Do not copy any existing franchise or recognizable artwork. Export a single square image. Amber WAR CRY: a strong armored warrior bust in three-quarter profile, face tilted up with mouth open in a mighty roar, chest and shoulder plates forming a broad base. Golden amber pressure rays radiate from the head and chest. Big lit cheek/jaw/shoulder planes, sculptural bronze and gold, solid readable human bust, dark warm umber background. Avoid hair filigree and tiny anatomy. A graphic warm triangular bust silhouette plus broad curved shout radiation.",
+      "source": "/Users/luccacerf/.codex/generated_images/01a0b6d0-b42c-7261-94a5-c32f5eb6e15b/exec-3a37d59e-f62c-4ba9-960b-c8f0b8a89880.png",
+      "destination": "originals/war-cry.png"
+    },
+    {
+      "id": "cleaving-dash",
+      "prompt": "Create one ORIGINAL square skill icon for a premium dark fantasy action RPG UI. Painted 3D volume and crisp hand-painted material planes, NOT wireframe, NOT outlined line art, NOT a flat logo. Must remain unmistakable when reduced to 48 or 64 pixels. One dominant silhouette occupies 80% of the square, bold light/shadow masses, very sparse secondary details. Cinematic top-left rim light, deep colored shadows, bright focal plane. Full-bleed near-black colored background, no border/frame, no letters, no numbers, no text, no watermark. Do not copy any existing franchise or recognizable artwork. Export a single square image. CLEAVING DASH: one very large heavy silver sword blade slashing diagonally from bottom left to top right, with a broad teal-white crescent sweep behind it and forceful horizontal motion streaks. Blade has distinct bevel facets and brilliant top edge, dark steel underside, chunky dark leather hilt lower left, small brass crossguard. Dynamic clean diagonal silhouette on deep petrol black. No character or shield.",
+      "source": "/Users/luccacerf/.codex/generated_images/01a0b6d0-b42c-7261-94a5-c32f5eb6e15b/exec-8f999b95-68bc-4a11-81f2-3058d5d2262f.png",
+      "destination": "originals/cleaving-dash.png"
+    },
+    {
+      "id": "shield-charge",
+      "prompt": "Create one ORIGINAL square skill icon for a premium dark fantasy action RPG UI. Painted 3D volume and crisp hand-painted material planes, NOT wireframe, NOT outlined line art, NOT a flat logo. Must remain unmistakable when reduced to 48 or 64 pixels. One dominant silhouette occupies 80% of the square, bold light/shadow masses, very sparse secondary details. Cinematic top-left rim light, deep colored shadows, bright focal plane. Full-bleed near-black colored background, no border/frame, no letters, no numbers, no text, no watermark. Do not copy any existing franchise or recognizable artwork. Export a single square image. SHIELD CHARGE: one massive thick steel kite shield thrust forward in three-quarter perspective, slightly tilted, broad proud curved front face, dark steel-blue face, wide aged brass rim, a raised central steel boss, bright cool top-left edge and warm lower rim. Bold wedge shape occupies almost entire tile. A few broad pale blue impact rays behind upper edge suggest unstoppable weight. No sword, no character, no ornamental letters or heraldic logo.",
+      "source": "/Users/luccacerf/.codex/generated_images/01a0b6d0-b42c-7261-94a5-c32f5eb6e15b/exec-06a28fac-ed2a-40f1-943b-d4ffcf877861.png",
+      "destination": "originals/shield-charge.png"
+    },
+    {
+      "id": "explosive-cannon",
+      "prompt": "Create one ORIGINAL square skill icon for a premium dark fantasy action RPG UI. Painted 3D volume and crisp hand-painted material planes, NOT wireframe, NOT outlined line art, NOT a flat logo. Must remain unmistakable when reduced to 48 or 64 pixels. One dominant silhouette occupies 80% of the square, bold light/shadow masses, very sparse secondary details. Cinematic top-left rim light, deep colored shadows, bright focal plane. Full-bleed near-black colored background, no border/frame, no letters, no numbers, no text, no watermark. Do not copy any existing franchise or recognizable artwork. Export a single square image. EXPLOSIVE FIRE CANNON: one massive short dark iron cannon barrel in three-quarter perspective pointing toward upper right, angled from lower left. Very large circular muzzle with red-hot inner bore, thick bronze rim, a brilliant orange-white blast and rolling flame plume emerging to upper right. Chunky iron forms with orange bounced light, blazing fire focal mass, high contrast against black umber. No wheels, no character, no rifle. Big cannon silhouette clearly different from a sword.",
+      "source": "/Users/luccacerf/.codex/generated_images/01a0b6d0-b42c-7261-94a5-c32f5eb6e15b/exec-cf3915dc-a466-4739-8ec0-15c242813bb0.png",
+      "destination": "originals/explosive-cannon.png"
+    },
+    {
+      "id": "frost-shot",
+      "prompt": "Create one ORIGINAL square skill icon for a premium dark fantasy action RPG UI. Painted 3D volume and crisp hand-painted material planes, NOT wireframe, NOT outlined line art, NOT a flat logo. Must remain unmistakable when reduced to 48 or 64 pixels. One dominant silhouette occupies 80% of the square, bold light/shadow masses, very sparse secondary details. Cinematic top-left rim light, deep colored shadows, bright focal plane. Full-bleed near-black colored background, no border/frame, no letters, no numbers, no text, no watermark. Do not copy any existing franchise or recognizable artwork. Export a single square image. FROST SHOT: a single large faceted cyan ice lance/crystal projectile thrusting diagonally upward right, brilliant white-cyan lit crystalline planes, deep ultramarine shadow planes, a frozen mist crescent below and a few large shard shapes behind. Thick three-dimensional ice crystal with solid silhouette, small contained light bloom. Dark navy background. No weapon or character, no snowflake glyph, no text, no intricate wireframe.",
+      "source": "/Users/luccacerf/.codex/generated_images/01a0b6d0-b42c-7261-94a5-c32f5eb6e15b/exec-ff0dd89e-cc26-46ef-af2f-c2660d6ef663.png",
+      "destination": "originals/frost-shot.png"
+    },
+    {
+      "id": "gravity-shot",
+      "prompt": "Create one ORIGINAL square skill icon for a premium dark fantasy action RPG UI. Painted 3D volume and crisp hand-painted material planes, NOT wireframe, NOT outlined line art, NOT a flat logo. Must remain unmistakable when reduced to 48 or 64 pixels. One dominant silhouette occupies 80% of the square, bold light/shadow masses, very sparse secondary details. Cinematic top-left rim light, deep colored shadows, bright focal plane. Full-bleed near-black colored background, no border/frame, no letters, no numbers, no text, no watermark. Do not copy any existing franchise or recognizable artwork. Export a single square image. GRAVITY CORE: a dark spherical singularity with glossy purple-black volume and brilliant violet rim at center, encircled by a thick luminous lavender accretion disk seen at a strong diagonal angle. Two or three large stone fragments are visibly pulled toward the core along curved arcs. Strong circular focal silhouette distinct from flame/crystal/sword/shield. Purple radiance, bright white-lilac edge, deep indigo black background, controlled bloom, no occult symbols or lettering.",
+      "source": "/Users/luccacerf/.codex/generated_images/01a0b6d0-b42c-7261-94a5-c32f5eb6e15b/exec-1294ca0f-1f56-459b-806c-52aa8cabb12f.png",
+      "destination": "originals/gravity-shot.png"
+    }
+  ]
+}

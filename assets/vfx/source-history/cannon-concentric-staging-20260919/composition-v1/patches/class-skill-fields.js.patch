@@ -1,0 +1,9 @@
+--- a/src/vfx/class-skill-fields.js
++++ b/src/vfx/class-skill-fields.js
+@@ -161,5 +161,5 @@
+   function reset() { for (const record of records) retire(record,false);for(const m of motions)m.until=0;time=0;arrays.aState.fill(0);geometry.instanceCount=0;mesh.visible=false;ice.reset();volumes.reset();gravity.reset();frozenCrystals=0;gravityDebris=0; }
+   function dispose(){if(disposed)return;reset();ice.dispose();volumes.dispose();gravity.dispose();group.removeFromParent();geometry.dispose();material.dispose();disposed=true;}
+   function getStats(){const counts=[0,0,0,0];for(const r of records)if(r.id!==null)counts[r.kind]++;return {buffs:counts[0],frozen:counts[1],stunned:counts[2],fields:counts[3],capacity,rejected,dropped,drawCalls:(mesh.visible?1:0)+ice.getStats().drawCalls+volumes.getStats().drawCalls+gravity.getStats().drawCalls,freezeCrystals:frozenCrystals,gravityDebris,volumes:volumes.getStats(),gravity:gravity.getStats(),disposed};}
+-  return { syncState, event, update, reset, dispose, getStats, setMotion, endMotion, prepareSceneDepth, setSceneDepth:gravity.setSceneDepth };
++  return { getCompositionDescriptors:gravity.getCompositionDescriptors, syncState, event, update, reset, dispose, getStats, setMotion, endMotion, prepareSceneDepth, setSceneDepth:gravity.setSceneDepth };
+ }

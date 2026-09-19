@@ -1,0 +1,37 @@
+{
+  "at": "2026-09-19T05:46:40.766652+00:00",
+  "scope": "Same8field frozen scene, gas/Horizon/particles/all, before-after bloom contribution with identical high filmic finishing; no rawHDRclaim",
+  "authorization": "Root05:42; docs/arpg/review/cannon-depth-focal-followup.md",
+  "candidateSourcesUnchanged": true,
+  "runtimeEdited": false,
+  "toolHashes": {
+    "tools/cannon-depth-composition-vfx-preview.html": "a4e1f3fdc4245293ef7345cc7e0ba6e608a27e604ada46bfcf4f8cc759b7c753",
+    "tools/cannon-depth-composition-vfx-native.mjs": "701bf7bd123f06567423086b561f921e02ba4145f72a982735c7bd1180aeac0c"
+  },
+  "syntaxChecks": 2,
+  "gpuStarted": false,
+  "cases": {
+    "fieldCount": 8,
+    "age": 0.1505,
+    "quality": "high",
+    "layers": [
+      "gas",
+      "horizon",
+      "particles",
+      "all"
+    ],
+    "bloomTerm": [
+      0,
+      0.24
+    ],
+    "monsterROIs": [
+      1,
+      2
+    ],
+    "preservedPixelsRequired": 79,
+    "images": 2
+  },
+  "depth": "Read actual materials and121world-depth samples per monster +real body draw counters per layer, no manual material edits",
+  "constraint": "Only adjust accumulation after cause confirmed; preserve gate65, no global bloom removal, no live edits",
+  "nextOrder": "Animationv11 then Environmentcanopy; warcryart2 receives own short art slot, not deferred behind a global suite"
+}

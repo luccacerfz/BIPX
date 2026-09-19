@@ -1,0 +1,67 @@
+{
+  "kind": "direct_visual_observations_without_scores",
+  "candidateSuite": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/suite.json",
+  "coverage": "partial; five current actual browser captures inspected at original image resolution. Synthetic dense placement is explicitly identified; no physical device or complete temporal playback claim.",
+  "reviewedImages": [
+    {
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/landscape-touch-experience-playing.png",
+      "sha256": "c2bf656d9ce8b2980d46d66d4601f57d7de5c08b75192cd1a97187ddd3177933",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/compact-touch-experience-login.png",
+      "sha256": "4885e55e4b30a4d2b8b4666d3abcb85ce37e8a40eae420c7c09142dd43453c8f",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/compact-touch-experience-simultaneous-touch-move-fire.png",
+      "sha256": "abb28e873997a29781a75d92757a57fe72c6a2a3a722f4bdc3d1fff46155b8be",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior-natural-60s.png",
+      "sha256": "76f566f2890f131f4ca903a4ce8e142d3bc77d4cf8426fd1f47452f003c70610",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-npcs/npc-desktop-bounded-horde.png",
+      "sha256": "f9ff57fee63b9d86a3cecac3410da198d197f53237c01416d11216a2ad3bc8dd",
+      "syntheticFixture": true
+    }
+  ],
+  "observations": [
+    "874x402 landscape gameplay now shows the full LVL1 text under the sword skill icon, unlike the18:06 baseline. Main health/score, pause/sound and both touch controls are visible. Camera covers a larger arena region; whether small targets remain readable on physical mobile is pending.",
+    "390x844 character selection displays both model portraits, role/weapon labels, selection text, name field and both mode buttons legibly. Full-page desktop capture does not establish physical mobile keyboard behavior.",
+    "The actual simultaneous touch movement/firing portrait capture shows Lyra, muzzle glow and narrow white tracer; the remote Walker silhouette is small and soft. Canvas detail remains visibly softer than DOM text. Cyan portal and dark tree canopies remain strong visual elements.",
+    "Aldric natural60s capture shows imported Walkers surrounding the player, kill/pickup rewards, aim/lock rings and visible sword action. The top HUD duplicates Solo as Solo Solo; a floating Lâmina encantada +40% damage label appears truncated/small in the native capture.",
+    "The synthetic bounded-horde capture replaces the previous tan/green/purple cylindrical far proxies with textured character silhouettes matching Walker/Brute/Lich/Orc shapes. Dense rows contain repeated static poses, and tree canopy dither still obscures or visually complicates groups near the player. This fixture grants a legacy loadout/level16 and seeds stationary formations; those HUD icons are not natural warrior abilities."
+  ],
+  "openVisualFindings": [
+    {
+      "id": "mobile-canvas-sharpness",
+      "status": "observed-quality-limitation",
+      "severity": "review-required",
+      "evidence": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-experience/compact-touch-experience-simultaneous-touch-move-fire.png"
+    },
+    {
+      "id": "solo-label-duplicated",
+      "status": "observed",
+      "severity": "minor",
+      "evidence": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior-natural-60s.png"
+    },
+    {
+      "id": "floating-drop-label-truncation",
+      "status": "observed-review-required",
+      "severity": "minor",
+      "evidence": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior-natural-60s.png"
+    },
+    {
+      "id": "dense-tree-occlusion-and-static-lod-poses",
+      "status": "observed-quality-limitation",
+      "severity": "review-required",
+      "evidence": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-npcs/npc-desktop-bounded-horde.png"
+    }
+  ],
+  "scoresAssigned": false,
+  "physicalDevice": false
+}

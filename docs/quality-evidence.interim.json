@@ -1,0 +1,2856 @@
+{
+  "candidate": {
+    "description": "BIPX intermediate upgraded candidate; active development, not a final immutable release",
+    "capturedAt": "2026-09-18T16:58:39.948036+00:00",
+    "sourceInMotion": true,
+    "sourceHashes": {
+      "index.html": "4a05abeea1f853e8296499eb499d454bc2a69c1b89f12675bd9b775a9ab24900",
+      "package-lock.json": "0f669753b8463fa1ed226a272e806f8c11ffe64f708a59290b5424487f4905f0",
+      "package.json": "496ba1c966553e5ece32d491112ddff4a7473aa57748980efcb911a4018b91c3",
+      "server.mjs": "c46a7cf0d67d275f59cb4a7c45f54c5e993c6ff855d43dec8b8f032c0e1d0672",
+      "src/audio/sample-bank.js": "2e088ec63b17b5535e11e4030a657f7dcbd02ae1d22a92efd5526630bc5162f0",
+      "src/config/defaults.js": "2aa6d92a6651c79f0485616b3e54e7f02b51a926ff29647dddaf69019b31b38b",
+      "src/config/index.js": "3d98f5d2552b688ba68a9ce9f118dac1a855c525123aade300bb77d16bc87ff0",
+      "src/config/runtime.js": "78aff61a3999b22368cd5617ead0ad9dda1cd61db0ba63610640554e1425a048",
+      "src/config/schema.js": "3b142592a4e9a2bbaf62a1a547c1255cd2d3367dd87b104c5069e9ba03a77433",
+      "src/config/targets.js": "85531003181eef9c8b99d1b8ad387f27a91543e6cf8fa5b7b54e1b20ba3bcb9a",
+      "src/editor/index.js": "c75a6a7cadf4b314610b903595eba64081c82fa4c329a0a016aa6984863d0b28",
+      "src/main.js": "a82ec25422db947c14a9cbcf0db15a2bb5f35efaf27d2ab36775daa17bceb08a",
+      "src/render/cemetery.js": "feed25dee34d47bb1ba7f56677a4519eee6dde4fe1e0862f198d02f70d9dcbdc",
+      "src/render/cinematic-pipeline.js": "a8762c74b13f8de430ed3063acd3c3f9daf0860df429e3d68ae9c6eb65c024ec",
+      "src/render/preferences.js": "a9f45b16493f4be36f0021f4fbe1a47011feb74b22fb012aaf3f93dcdb7f6669",
+      "src/ui/presentation.js": "2a21697efc2215941bbf53d8164db67888ca7a46fdb618907412bdef31adcf57",
+      "src/vfx/combat-vfx.js": "f356b843392b90725a89c51042468f61b520dbe0222517131355bb81d40c09f1",
+      "src/vfx/leaves.js": "f0589d52364951e86df30f2df927ebf07f32aab8b84d5dded289a23ee30c178b",
+      "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+      "src/vfx/soul-echoes.js": "0354bd99c72c0d18bab193c4f29ae11f64e590bf0bc18ff5b5da4b66a90b547f",
+      "src/vfx/target-markers.js": "b0de5d7806006f6d17797616c31fa70e4696bf11761d285593f1407ef01697f1",
+      "src/vfx/weapon-fire.js": "bf2b3e454888e6ba7bab9e5a74446dcbc9cd511d9c0be91c074168681a3e200b",
+      "styles.css": "71bae503ab41545169191229d9f4e37f3522241bbfc2e2a9c76945415af04c98"
+    },
+    "interpretation": "Evidence from different intermediate source revisions is explicitly historical and cannot combine into final-candidate approval."
+  },
+  "dimensions": {
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "Independent QA visually inspected native menu, desktop gameplay and compact mobile gameplay screenshots from real browser capture.",
+        "Teal/charcoal environment and warm gold interface are cohesive; main-menu typography and hierarchy are deliberate and legible.",
+        "Environment visibly repeats simple cone-shaped trees, cross slabs and grave slabs. The avatar is visibly blocky. These remain obvious simplified/placeholder-quality forms relative to the requested AAA goal.",
+        "Compact mobile screenshot shows noticeably pixelated/soft 3D geometry under a crisp DOM overlay. Early-play screenshots are sparse and do not demonstrate dense-combat composition.",
+        "No sustained complete-play video review, animation quality review or physical-device visual review was completed."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience-menu.png",
+          "sha256": "7034b487573b00b783235abd64cf080e833afdb3db831a3d531d5f23b7b16091"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience-playing.png",
+          "sha256": "bb7605613242a33c0898f5a695864c902a1d0a98e4d66e6072f5cc2af76663d1"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/compact-touch-experience-playing.png",
+          "sha256": "bf27a5abb20da422d3d5f12bc0598f2256aad4a4fea0741ce0f27478266d4e68"
+        }
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "New real-time combat VFX module and custom HDR/composite pipeline exist; source API exposes counters and bounded particle/glyph/beam pools.",
+        "Weapon-family integration test was created but has not yet run for this snapshot.",
+        "VFX author reports 21 emit types, instanced pools, surface-sampled flame and heat, flame volume, leaves, targeting rings and silhouette echoes; these are source/author reports and have not all been independently verified in gameplay.",
+        "Upstream exact rig/physical fist animation and flight feature parity are not established. A complete verified effect-source mapping and temporal visual evaluation are still pending."
+      ],
+      "evidence": [
+        {
+          "path": "src/vfx/combat-vfx.js",
+          "sha256": "f356b843392b90725a89c51042468f61b520dbe0222517131355bb81d40c09f1"
+        },
+        {
+          "path": "src/render/cinematic-pipeline.js",
+          "sha256": "a8762c74b13f8de430ed3063acd3c3f9daf0860df429e3d68ae9c6eb65c024ec"
+        }
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Natural keyboard movement plus pointer firing changed player position and produced projectiles in desktop browser.",
+        "Actual browser touch events successfully moved and fired simultaneously in portrait and landscape. Movement stopped after touch release.",
+        "These short scenarios did not establish all weapon responsiveness, animation recovery, boss telegraph clarity, difficulty curve, or sustained combat feel."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience.json",
+          "sha256": "0e180fb2fc3e4728829107fdf81db6d3edd945405e5cd69a9b8519b0ac72f4a8"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/compact-touch-experience.json",
+          "sha256": "d74a65f8e0bfbd9c2913f8af1b00dad7d5befe2933b6bb3552ddd10124a270ac"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/landscape-touch-experience.json",
+          "sha256": "56c5c556597882dae2a6c7d0b5056674d419f2ebc13f23ccefd8da609e13e640"
+        }
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "All three natural experience scenarios passed main menu, help, options, ranking, login/start, actual movement/fire, mute, quality/reduced-motion preference persistence after reload, and solo pause/resume.",
+        "Pause froze survivalTime; closing options resumed simulation. No horizontal overflow was detected.",
+        "Desktop and touch portrait/landscape menus/HUD were captured. Death/restart, upgrade flow and exhaustive keyboard focus review remain pending in the updated interface."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/experience-summary.json",
+          "sha256": "04b7094134cfc75bd6d58e59b949dd7a38c0fcde3959846515b89ae36fbbaba2"
+        }
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "390x844 portrait and874x402 landscape browser emulation used hasTouch and isMobile true, actual CDP touch drag and simultaneous firing; both passed.",
+        "No physical iOS or Android hardware test exists. Thermal behavior, OS keyboard, interruptions and Safari/Android differences remain unverified.",
+        "Native compact-mobile screenshot shows noticeable 3D pixelation; UI remains crisp."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/compact-touch-experience.json",
+          "sha256": "d74a65f8e0bfbd9c2913f8af1b00dad7d5befe2933b6bb3552ddd10124a270ac"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/landscape-touch-experience.json",
+          "sha256": "56c5c556597882dae2a6c7d0b5056674d419f2ebc13f23ccefd8da609e13e640"
+        }
+      ]
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "User gestures unlocked the Web Audio context into running state and visible sound toggle changed mute state in three real browser scenarios.",
+        "Current verified audio is synthesized. User-authorized ElevenLabs effects are being generated, but no generated audio is verified as integrated at this evidence point.",
+        "No audio-output recording or listening review, clipping measurement, sustained mix review or spatial-cue judgment was performed. Context running is not audible-quality proof."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience.json",
+          "sha256": "0e180fb2fc3e4728829107fdf81db6d3edd945405e5cd69a9b8519b0ac72f4a8"
+        }
+      ]
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "Historical90-zombie stress on pinned headless Chromium153.0.8010.12 used SwiftShader software renderer: sampled25.9fps desktop,39.4fps mobile viewport; p95 50.1ms/33.4ms.",
+        "Historical equivalent stress on installed Chrome153.0.8010.48 with Apple M5 Pro ANGLE Metal GPU: desktop144fps p95 7.7ms; mobile viewport141.8fps p95 7.7ms with2 frames over50ms, worst111.1ms.",
+        "Both historical performance suites failed strict diagnostics because the UI module was still being written; this has since been resolved for the experience suite, but stress suites must be rerun.",
+        "Current three-second natural experience samples are short observations, not sustained/per-device performance qualification. Level16 final stress and physical mobile hardware remain unverified."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-51-39-195Z-verify-performance/desktop.json",
+          "sha256": "c3e43eea664a969e96b2787bae97384a99744463818210a8cbee9190237b60eb"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-51-39-195Z-verify-performance/mobile.json",
+          "sha256": "d4ab1216773c29eaa3a66bc9baa8a461a1f0c7fe020b2df8efb13a713ee1339b"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-50-01-706Z-verify-performance/desktop.json",
+          "sha256": "51070d85221cb8184deb38be4f71c5cbbc973906ccb6973492addad98f9cabf2"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-50-01-706Z-verify-performance/mobile.json",
+          "sha256": "2d0188862cbbeff8b12661c9d9579cd06b37af09fbd7bbb0a4815e1f51eaf5fd"
+        }
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Existing protocol smoke harness covers shared monster IDs, attack reward, late join and room wipe, but has not been rerun for the current candidate in this QA pass.",
+        "A new two-real-browser suite covers natural replicated input, identical authoritative monster snapshots, disconnect and fresh rejoin; it is written but not executed yet.",
+        "Reconnect with resumed identity, packet-loss behavior, simultaneous browser death/wipe, competitive abuse and prolonged sessions remain unverified."
+      ],
+      "evidence": [
+        {
+          "path": "tools/verify-multiplayer-world.mjs",
+          "sha256": "2570d665b548d32cc203c79bbdb62aee09b4f62f4290ccc4233cb56a8f8c2aea"
+        },
+        {
+          "path": "tools/verify-multiplayer-browser.mjs",
+          "sha256": "eae4f5d31564db6f7fcce5a49243f5d44eb1adb330e354bcd188631161d3176a"
+        }
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "UI includes semantic controls, help, canvas fallback, visible contrast option, motion reduction and browser zoom restriction removal.",
+        "Reduced-motion preference reached runtime and persisted across reload; actual suppression of all dynamic effects is not independently visually reviewed.",
+        "Keyboard-only focus walkthrough, measured contrast, zoom layouts, screen-reader behavior and non-color cue coverage remain pending."
+      ],
+      "evidence": [
+        {
+          "path": "index.html",
+          "sha256": "4a05abeea1f853e8296499eb499d454bc2a69c1b89f12675bd9b775a9ab24900"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience-settings.png",
+          "sha256": "744af88798c621a9303ae1cf487f61fad70a7cc63e4ea0cdb6e30433bf7d33a5"
+        }
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "All three completed natural experience runs recorded no page errors, console errors, failed requests or HTTP errors and no source changes within each scenario.",
+        "HTTP probes passed public files, protected env/git/server/tools/docs/output paths, encoded traversal, malformed URI400, GET/HEAD and invalid POST405; response bodies were discarded.",
+        "Broad combat suite previously stopped at a renamed leaderboard column assertion; semantic test updated from Level to Level-or-Nivel but full rerun pending.",
+        "Not all automated suites currently pass on the same immutable candidate; long play, repeated restart and final asset/audio lifecycle validation remain pending."
+      ],
+      "evidence": [
+        {
+          "path": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience.json",
+          "sha256": "0e180fb2fc3e4728829107fdf81db6d3edd945405e5cd69a9b8519b0ac72f4a8"
+        },
+        {
+          "path": "output/playwright/2026-09-18T16-48-28-519Z-verify-http/http.json",
+          "sha256": "de1351276fb6fcebd0839461dee33dc6754f3b118b5bfa6bf112e012fb5572ae"
+        }
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "experience-desktop",
+      "status": "passed",
+      "artifact": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/desktop-experience.json"
+    },
+    {
+      "name": "experience-touch-portrait",
+      "status": "passed",
+      "artifact": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/compact-touch-experience.json"
+    },
+    {
+      "name": "experience-touch-landscape",
+      "status": "passed",
+      "artifact": "output/playwright/2026-09-18T16-55-51-307Z-verify-experience/landscape-touch-experience.json"
+    },
+    {
+      "name": "http-security",
+      "status": "passed",
+      "artifact": "output/playwright/2026-09-18T16-48-28-519Z-verify-http/http.json"
+    },
+    {
+      "name": "combat-regression-current",
+      "status": "pending"
+    },
+    {
+      "name": "vfx-integration-current",
+      "status": "pending"
+    },
+    {
+      "name": "performance-final",
+      "status": "pending"
+    },
+    {
+      "name": "level16-final",
+      "status": "pending"
+    },
+    {
+      "name": "mobile-stress-final",
+      "status": "pending"
+    },
+    {
+      "name": "multiplayer-protocol-current",
+      "status": "pending"
+    },
+    {
+      "name": "multiplayer-real-browser-current",
+      "status": "pending"
+    }
+  ],
+  "openDefects": [
+    "Visual art still uses obvious repeated simple geometry and blocky avatar relative to requested AAA quality.",
+    "Mobile 3D rendering visibly pixelated in inspected screenshot.",
+    "Complete upstream VFX applicability/parity and final gameplay coverage not established.",
+    "Physical iOS/Android, final audio listening, long-play reliability and complete accessibility review absent.",
+    "Final immutable candidate and all automated suites passing together not established."
+  ],
+  "directReviews": {
+    "visual": "partial screenshot inspection only, details above",
+    "audio": "pending",
+    "physicalMobile": "pending",
+    "independentReviewer": "QA Codex agent; not Jev; no numerical quality score assigned"
+  },
+  "measurements": {
+    "naturalExperience": [
+      {
+        "scenario": "desktop-experience",
+        "assertions": "passed",
+        "sourceChangedDuringRun": false,
+        "browser": "153.0.8010.48",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+          "vendor": "Google Inc. (Apple)"
+        },
+        "measurements": {
+          "scenario": "desktop-experience",
+          "initial": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 1,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 0,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 1
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 34,
+            "spawnInterval": 0.654,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 0.76,
+            "player": {
+              "name": "QA Desktop",
+              "x": 0,
+              "z": 0
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 426,
+                "kills": 41,
+                "wave": 2,
+                "level": 3,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Desktop",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 398
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Desktop",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "activeInput": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 2,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 2
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 33,
+            "spawnInterval": 0.651,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.39,
+            "player": {
+              "name": "QA Desktop",
+              "x": 0,
+              "z": -4.201
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 426,
+                "kills": 41,
+                "wave": 2,
+                "level": 3,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Desktop",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 398
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Desktop",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "paused": {
+            "state": "playing",
+            "paused": true,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 3,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.648,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 2.08,
+            "player": {
+              "name": "QA Desktop",
+              "x": 0,
+              "z": -6.568
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 426,
+                "kills": 41,
+                "wave": 2,
+                "level": 3,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Desktop",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 398
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Desktop",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "afterPause": {
+            "state": "playing",
+            "paused": true,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 3,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.648,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 2.08,
+            "player": {
+              "name": "QA Desktop",
+              "x": 0,
+              "z": -6.568
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 426,
+                "kills": 41,
+                "wave": 2,
+                "level": 3,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Desktop",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 398
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Desktop",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "resumed": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 4,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 4
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 31,
+            "spawnInterval": 0.646,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 2.39,
+            "player": {
+              "name": "QA Desktop",
+              "x": 0,
+              "z": -6.568
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 426,
+                "kills": 41,
+                "wave": 2,
+                "level": 3,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Desktop",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 398
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Desktop",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "audio": {
+            "supported": true,
+            "muted": false,
+            "unlocked": true,
+            "contextState": "running",
+            "activeVoices": 0,
+            "musicActive": true,
+            "masterVolume": 0.72,
+            "groups": {
+              "music": 0.62,
+              "player": 0.82,
+              "weapons": 0.72,
+              "monsters": 0.52,
+              "bosses": 0.88,
+              "ui": 0.72,
+              "drops": 0.82,
+              "xp": 0.48
+            },
+            "lastEvent": "musicPulse"
+          },
+          "frameSample": {
+            "frames": 433,
+            "durationMs": 3000.4,
+            "averageFps": 144,
+            "frameTimeP95Ms": 7.7,
+            "frameTimeP99Ms": 7.8,
+            "worstFrameMs": 7.9,
+            "framesOver50Ms": 0,
+            "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+          },
+          "physicalDevice": false,
+          "audioListeningReview": "pending"
+        }
+      },
+      {
+        "scenario": "compact-touch-experience",
+        "assertions": "passed",
+        "sourceChangedDuringRun": false,
+        "browser": "153.0.8010.48",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+          "vendor": "Google Inc. (Apple)"
+        },
+        "measurements": {
+          "scenario": "compact-touch-experience",
+          "initial": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 1,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 0,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 1
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 34,
+            "spawnInterval": 0.654,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 0.75,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": 0
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              },
+              {
+                "rank": 3,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "QA Desktop",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 4,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "activeInput": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 2,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 2
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 33,
+            "spawnInterval": 0.651,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.26,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -2.628
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              },
+              {
+                "rank": 3,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "QA Desktop",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 4,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "paused": {
+            "state": "playing",
+            "paused": true,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 3,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.649,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.81,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -3.192
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              },
+              {
+                "rank": 3,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "QA Desktop",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 4,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "afterPause": {
+            "state": "playing",
+            "paused": true,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 3,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.649,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.81,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -3.192
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              },
+              {
+                "rank": 3,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "QA Desktop",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 4,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "resumed": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 3,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.647,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 2.11,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -3.192
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Desktop",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              },
+              {
+                "rank": 3,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "QA Desktop",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 4,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "audio": {
+            "supported": true,
+            "muted": false,
+            "unlocked": true,
+            "contextState": "running",
+            "activeVoices": 0,
+            "musicActive": true,
+            "masterVolume": 0.72,
+            "groups": {
+              "music": 0.62,
+              "player": 0.82,
+              "weapons": 0.72,
+              "monsters": 0.52,
+              "bosses": 0.88,
+              "ui": 0.72,
+              "drops": 0.82,
+              "xp": 0.48
+            },
+            "lastEvent": "musicPulse"
+          },
+          "frameSample": {
+            "frames": 433,
+            "durationMs": 2999.6,
+            "averageFps": 144,
+            "frameTimeP95Ms": 7.7,
+            "frameTimeP99Ms": 7.8,
+            "worstFrameMs": 7.8,
+            "framesOver50Ms": 0,
+            "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+          },
+          "physicalDevice": false,
+          "audioListeningReview": "pending"
+        }
+      },
+      {
+        "scenario": "landscape-touch-experience",
+        "assertions": "passed",
+        "sourceChangedDuringRun": false,
+        "browser": "153.0.8010.48",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+          "vendor": "Google Inc. (Apple)"
+        },
+        "measurements": {
+          "scenario": "landscape-touch-experience",
+          "initial": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 1,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 0,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 1
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 34,
+            "spawnInterval": 0.654,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 0.75,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": 0
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "activeInput": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 2,
+            "damageNumbers": 0,
+            "damageNumberDetails": [],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 2
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 33,
+            "spawnInterval": 0.651,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.25,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -2.798
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "paused": {
+            "state": "playing",
+            "paused": true,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 1,
+            "damageNumberDetails": [
+              {
+                "amount": 2,
+                "crit": false,
+                "variant": "enemy"
+              }
+            ],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.649,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.77,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -3.34
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "afterPause": {
+            "state": "playing",
+            "paused": true,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 1,
+            "damageNumberDetails": [
+              {
+                "amount": 2,
+                "crit": false,
+                "variant": "enemy"
+              }
+            ],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.649,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 1.77,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -3.34
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "resumed": {
+            "state": "playing",
+            "paused": false,
+            "health": 200,
+            "maxHealth": 200,
+            "score": 0,
+            "kills": 0,
+            "wave": 1,
+            "level": 1,
+            "bestLevel": 1,
+            "xp": 0,
+            "xpToNext": 18,
+            "xpGems": 0,
+            "pendingUpgradeChoices": [],
+            "zombies": 3,
+            "damageNumbers": 1,
+            "damageNumberDetails": [
+              {
+                "amount": 2,
+                "crit": false,
+                "variant": "enemy"
+              }
+            ],
+            "traps": 0,
+            "trapDetails": [],
+            "bullets": 2,
+            "enemyProjectiles": 0,
+            "enemyProjectileDetails": [],
+            "powerups": 0,
+            "powerupDetails": [],
+            "monsters": {
+              "zombie": 3
+            },
+            "elites": {},
+            "bossLabels": {},
+            "statuses": {
+              "burning": 0,
+              "frozen": 0
+            },
+            "pendingZombies": 32,
+            "spawnInterval": 0.648,
+            "weapon": "pistol",
+            "weaponTimer": 0,
+            "build": [],
+            "autoWeapons": {
+              "guardianBlade": 0,
+              "orbitOrb": 0,
+              "sealRain": 0
+            },
+            "perks": {},
+            "evolvedWeapons": {},
+            "pendingUpgradeSource": "level",
+            "pendingUpgradeRarities": [],
+            "rarityPity": 0,
+            "revives": 0,
+            "upgradeStats": {
+              "damageMultiplier": 2,
+              "cooldownMultiplier": 1,
+              "areaMultiplier": 1,
+              "speedMultiplier": 1,
+              "pickupRadius": 2.35,
+              "projectileBonus": 0,
+              "effectiveAreaMultiplier": 1,
+              "effectiveProjectileBonus": 0,
+              "damageReduction": 0,
+              "critChance": 0
+            },
+            "survivalTime": 2.07,
+            "player": {
+              "name": "QA Touch",
+              "x": 0,
+              "z": -3.34
+            },
+            "serverWorld": {
+              "active": false,
+              "seq": 0,
+              "monsters": [],
+              "projectiles": []
+            },
+            "liveScoreboard": [
+              {
+                "rank": 1,
+                "name": "Cacador",
+                "score": 474,
+                "kills": 45,
+                "wave": 2,
+                "level": 4,
+                "isLocal": false
+              },
+              {
+                "rank": 2,
+                "name": "QA Touch",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": true
+              },
+              {
+                "rank": 3,
+                "name": "UI Test",
+                "score": 0,
+                "kills": 0,
+                "wave": 1,
+                "level": 1,
+                "isLocal": false
+              }
+            ],
+            "multiplayer": {
+              "connected": false,
+              "id": null,
+              "players": [
+                {
+                  "name": "QA Touch",
+                  "health": 200,
+                  "score": 0
+                }
+              ],
+              "leaderboard": {
+                "source": "/api/leaderboard",
+                "status": "ready",
+                "totalPlayers": 1,
+                "players": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "bestScore": 426
+                  }
+                ],
+                "livePlayers": [
+                  {
+                    "rank": 1,
+                    "name": "Cacador",
+                    "score": 474
+                  },
+                  {
+                    "rank": 2,
+                    "name": "UI Test",
+                    "score": 0
+                  },
+                  {
+                    "rank": 3,
+                    "name": "QA Touch",
+                    "score": 0
+                  }
+                ]
+              },
+              "room": "cemiterio",
+              "remotePlayers": 0,
+              "status": "Solo"
+            }
+          },
+          "audio": {
+            "supported": true,
+            "muted": false,
+            "unlocked": true,
+            "contextState": "running",
+            "activeVoices": 0,
+            "musicActive": true,
+            "masterVolume": 0.72,
+            "groups": {
+              "music": 0.62,
+              "player": 0.82,
+              "weapons": 0.72,
+              "monsters": 0.52,
+              "bosses": 0.88,
+              "ui": 0.72,
+              "drops": 0.82,
+              "xp": 0.48
+            },
+            "lastEvent": "musicPulse"
+          },
+          "frameSample": {
+            "frames": 433,
+            "durationMs": 2999.7,
+            "averageFps": 144,
+            "frameTimeP95Ms": 7.8,
+            "frameTimeP99Ms": 7.8,
+            "worstFrameMs": 7.9,
+            "framesOver50Ms": 0,
+            "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+          },
+          "physicalDevice": false,
+          "audioListeningReview": "pending"
+        }
+      }
+    ],
+    "historicalPerformance": [
+      {
+        "environment": "software",
+        "scenario": "desktop",
+        "browser": "153.0.8010.12",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+          "vendor": "Google Inc. (Google)"
+        },
+        "fpsAverage": 25.6,
+        "sample": {
+          "frames": 312,
+          "durationMs": 12016.2,
+          "averageFps": 25.9,
+          "frameTimeP95Ms": 50.1,
+          "frameTimeP99Ms": 50.1,
+          "worstFrameMs": 383.3,
+          "framesOver50Ms": 16,
+          "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+        },
+        "drawCalls": 85,
+        "quality": "low",
+        "assertions": "failed",
+        "failure": "Missing src/ui/presentation.js at this historical capture; file subsequently supplied and experience diagnostics clean.",
+        "sourceHashes": {
+          "index.html": "53af488eb11abe1cab73383143bca9d9ce0585af808327e3de7a595aab977157",
+          "package-lock.json": "0f669753b8463fa1ed226a272e806f8c11ffe64f708a59290b5424487f4905f0",
+          "package.json": "2cd9bb8fcafd9b6f41d525beb67aa5240867fb63c44656705ccefe3473bcf4c5",
+          "server.mjs": "c46a7cf0d67d275f59cb4a7c45f54c5e993c6ff855d43dec8b8f032c0e1d0672",
+          "src/config/defaults.js": "2aa6d92a6651c79f0485616b3e54e7f02b51a926ff29647dddaf69019b31b38b",
+          "src/config/index.js": "3d98f5d2552b688ba68a9ce9f118dac1a855c525123aade300bb77d16bc87ff0",
+          "src/config/runtime.js": "78aff61a3999b22368cd5617ead0ad9dda1cd61db0ba63610640554e1425a048",
+          "src/config/schema.js": "3b142592a4e9a2bbaf62a1a547c1255cd2d3367dd87b104c5069e9ba03a77433",
+          "src/config/targets.js": "85531003181eef9c8b99d1b8ad387f27a91543e6cf8fa5b7b54e1b20ba3bcb9a",
+          "src/editor/index.js": "c75a6a7cadf4b314610b903595eba64081c82fa4c329a0a016aa6984863d0b28",
+          "src/editor/layout.css": "ffb32bc93356364297cba577683750cb34738a327620afe29436c77295b000ca",
+          "src/main.js": "1edace4a15aa7a66cae6644e5496b8d173796b000362cbb3aac1919547bc511e",
+          "src/render/cemetery.js": "e7b647a1282cd4ae791ea3579afad3fd64e5332ecc39f34ab7a019fc2cebf500",
+          "src/render/cinematic-pipeline.js": "28a6ab15d795497a386e4eb472045a14b7912d667e65a751ae3774d59f6eab44",
+          "src/render/preferences.js": "a9f45b16493f4be36f0021f4fbe1a47011feb74b22fb012aaf3f93dcdb7f6669",
+          "src/vfx/combat-vfx.js": "346575f061751f3459f1af659e9b50cd8522965cfac559cda97929f3aefa1cb9",
+          "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+          "src/vfx/weapon-fire.js": "b6f8f74fa3276354e4a8cfc5fc26aaf4f67287c0286b523212d8e5f40b500e28",
+          "styles.css": "3c23c551f4e13c8efd72aea9d7f1566087a1fcab8b685fd693d63dcb8f0ce3c1"
+        }
+      },
+      {
+        "environment": "software",
+        "scenario": "mobile",
+        "browser": "153.0.8010.12",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+          "vendor": "Google Inc. (Google)"
+        },
+        "fpsAverage": 39,
+        "sample": {
+          "frames": 475,
+          "durationMs": 12016.3,
+          "averageFps": 39.4,
+          "frameTimeP95Ms": 33.4,
+          "frameTimeP99Ms": 33.4,
+          "worstFrameMs": 33.5,
+          "framesOver50Ms": 0,
+          "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+        },
+        "drawCalls": 78,
+        "quality": "low",
+        "assertions": "failed",
+        "failure": "Missing src/ui/presentation.js at this historical capture; file subsequently supplied and experience diagnostics clean.",
+        "sourceHashes": {
+          "index.html": "53af488eb11abe1cab73383143bca9d9ce0585af808327e3de7a595aab977157",
+          "package-lock.json": "0f669753b8463fa1ed226a272e806f8c11ffe64f708a59290b5424487f4905f0",
+          "package.json": "2cd9bb8fcafd9b6f41d525beb67aa5240867fb63c44656705ccefe3473bcf4c5",
+          "server.mjs": "c46a7cf0d67d275f59cb4a7c45f54c5e993c6ff855d43dec8b8f032c0e1d0672",
+          "src/config/defaults.js": "2aa6d92a6651c79f0485616b3e54e7f02b51a926ff29647dddaf69019b31b38b",
+          "src/config/index.js": "3d98f5d2552b688ba68a9ce9f118dac1a855c525123aade300bb77d16bc87ff0",
+          "src/config/runtime.js": "78aff61a3999b22368cd5617ead0ad9dda1cd61db0ba63610640554e1425a048",
+          "src/config/schema.js": "3b142592a4e9a2bbaf62a1a547c1255cd2d3367dd87b104c5069e9ba03a77433",
+          "src/config/targets.js": "85531003181eef9c8b99d1b8ad387f27a91543e6cf8fa5b7b54e1b20ba3bcb9a",
+          "src/editor/index.js": "c75a6a7cadf4b314610b903595eba64081c82fa4c329a0a016aa6984863d0b28",
+          "src/editor/layout.css": "ffb32bc93356364297cba577683750cb34738a327620afe29436c77295b000ca",
+          "src/main.js": "1edace4a15aa7a66cae6644e5496b8d173796b000362cbb3aac1919547bc511e",
+          "src/render/cemetery.js": "e7b647a1282cd4ae791ea3579afad3fd64e5332ecc39f34ab7a019fc2cebf500",
+          "src/render/cinematic-pipeline.js": "28a6ab15d795497a386e4eb472045a14b7912d667e65a751ae3774d59f6eab44",
+          "src/render/preferences.js": "a9f45b16493f4be36f0021f4fbe1a47011feb74b22fb012aaf3f93dcdb7f6669",
+          "src/vfx/combat-vfx.js": "346575f061751f3459f1af659e9b50cd8522965cfac559cda97929f3aefa1cb9",
+          "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+          "src/vfx/weapon-fire.js": "b6f8f74fa3276354e4a8cfc5fc26aaf4f67287c0286b523212d8e5f40b500e28",
+          "styles.css": "3c23c551f4e13c8efd72aea9d7f1566087a1fcab8b685fd693d63dcb8f0ce3c1"
+        }
+      },
+      {
+        "environment": "hardware",
+        "scenario": "desktop",
+        "browser": "153.0.8010.48",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+          "vendor": "Google Inc. (Apple)"
+        },
+        "fpsAverage": 144,
+        "sample": {
+          "frames": 1729,
+          "durationMs": 12001.5,
+          "averageFps": 144,
+          "frameTimeP95Ms": 7.7,
+          "frameTimeP99Ms": 7.8,
+          "worstFrameMs": 7.9,
+          "framesOver50Ms": 0,
+          "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+        },
+        "drawCalls": 504,
+        "quality": "high",
+        "assertions": "failed",
+        "failure": "Missing src/ui/presentation.js at this historical capture; file subsequently supplied and experience diagnostics clean.",
+        "sourceHashes": {
+          "index.html": "53af488eb11abe1cab73383143bca9d9ce0585af808327e3de7a595aab977157",
+          "package-lock.json": "0f669753b8463fa1ed226a272e806f8c11ffe64f708a59290b5424487f4905f0",
+          "package.json": "2cd9bb8fcafd9b6f41d525beb67aa5240867fb63c44656705ccefe3473bcf4c5",
+          "server.mjs": "c46a7cf0d67d275f59cb4a7c45f54c5e993c6ff855d43dec8b8f032c0e1d0672",
+          "src/config/defaults.js": "2aa6d92a6651c79f0485616b3e54e7f02b51a926ff29647dddaf69019b31b38b",
+          "src/config/index.js": "3d98f5d2552b688ba68a9ce9f118dac1a855c525123aade300bb77d16bc87ff0",
+          "src/config/runtime.js": "78aff61a3999b22368cd5617ead0ad9dda1cd61db0ba63610640554e1425a048",
+          "src/config/schema.js": "3b142592a4e9a2bbaf62a1a547c1255cd2d3367dd87b104c5069e9ba03a77433",
+          "src/config/targets.js": "85531003181eef9c8b99d1b8ad387f27a91543e6cf8fa5b7b54e1b20ba3bcb9a",
+          "src/editor/index.js": "c75a6a7cadf4b314610b903595eba64081c82fa4c329a0a016aa6984863d0b28",
+          "src/editor/layout.css": "ffb32bc93356364297cba577683750cb34738a327620afe29436c77295b000ca",
+          "src/main.js": "ad824c0923099d51c5c7709e1a71b9c5a9f1686906254478ce561aaa1e4b90b5",
+          "src/render/cemetery.js": "e7b647a1282cd4ae791ea3579afad3fd64e5332ecc39f34ab7a019fc2cebf500",
+          "src/render/cinematic-pipeline.js": "28a6ab15d795497a386e4eb472045a14b7912d667e65a751ae3774d59f6eab44",
+          "src/render/preferences.js": "a9f45b16493f4be36f0021f4fbe1a47011feb74b22fb012aaf3f93dcdb7f6669",
+          "src/vfx/combat-vfx.js": "a6e4b1cdc408fab3b28cb5aedab861736b9af298aff734718fcd308c85efb48e",
+          "src/vfx/leaves.js": "f0589d52364951e86df30f2df927ebf07f32aab8b84d5dded289a23ee30c178b",
+          "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+          "src/vfx/target-markers.js": "e2a552e269c2f6181e961f855418b19f3c0196c91d3504e72d82fef55dde0924",
+          "src/vfx/weapon-fire.js": "b6f8f74fa3276354e4a8cfc5fc26aaf4f67287c0286b523212d8e5f40b500e28",
+          "styles.css": "3c23c551f4e13c8efd72aea9d7f1566087a1fcab8b685fd693d63dcb8f0ce3c1"
+        }
+      },
+      {
+        "environment": "hardware",
+        "scenario": "mobile",
+        "browser": "153.0.8010.48",
+        "graphics": {
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+          "vendor": "Google Inc. (Apple)"
+        },
+        "fpsAverage": 144.1,
+        "sample": {
+          "frames": 1703,
+          "durationMs": 12001.6,
+          "averageFps": 141.8,
+          "frameTimeP95Ms": 7.7,
+          "frameTimeP99Ms": 7.8,
+          "worstFrameMs": 111.1,
+          "framesOver50Ms": 2,
+          "environmentLimit": "Chromium on this host; viewport emulation is not physical mobile hardware evidence"
+        },
+        "drawCalls": 100,
+        "quality": "medium",
+        "assertions": "failed",
+        "failure": "Missing src/ui/presentation.js at this historical capture; file subsequently supplied and experience diagnostics clean.",
+        "sourceHashes": {
+          "index.html": "53af488eb11abe1cab73383143bca9d9ce0585af808327e3de7a595aab977157",
+          "package-lock.json": "0f669753b8463fa1ed226a272e806f8c11ffe64f708a59290b5424487f4905f0",
+          "package.json": "2cd9bb8fcafd9b6f41d525beb67aa5240867fb63c44656705ccefe3473bcf4c5",
+          "server.mjs": "c46a7cf0d67d275f59cb4a7c45f54c5e993c6ff855d43dec8b8f032c0e1d0672",
+          "src/config/defaults.js": "2aa6d92a6651c79f0485616b3e54e7f02b51a926ff29647dddaf69019b31b38b",
+          "src/config/index.js": "3d98f5d2552b688ba68a9ce9f118dac1a855c525123aade300bb77d16bc87ff0",
+          "src/config/runtime.js": "78aff61a3999b22368cd5617ead0ad9dda1cd61db0ba63610640554e1425a048",
+          "src/config/schema.js": "3b142592a4e9a2bbaf62a1a547c1255cd2d3367dd87b104c5069e9ba03a77433",
+          "src/config/targets.js": "85531003181eef9c8b99d1b8ad387f27a91543e6cf8fa5b7b54e1b20ba3bcb9a",
+          "src/editor/index.js": "c75a6a7cadf4b314610b903595eba64081c82fa4c329a0a016aa6984863d0b28",
+          "src/editor/layout.css": "ffb32bc93356364297cba577683750cb34738a327620afe29436c77295b000ca",
+          "src/main.js": "ad824c0923099d51c5c7709e1a71b9c5a9f1686906254478ce561aaa1e4b90b5",
+          "src/render/cemetery.js": "e7b647a1282cd4ae791ea3579afad3fd64e5332ecc39f34ab7a019fc2cebf500",
+          "src/render/cinematic-pipeline.js": "28a6ab15d795497a386e4eb472045a14b7912d667e65a751ae3774d59f6eab44",
+          "src/render/preferences.js": "a9f45b16493f4be36f0021f4fbe1a47011feb74b22fb012aaf3f93dcdb7f6669",
+          "src/vfx/combat-vfx.js": "a6e4b1cdc408fab3b28cb5aedab861736b9af298aff734718fcd308c85efb48e",
+          "src/vfx/leaves.js": "f0589d52364951e86df30f2df927ebf07f32aab8b84d5dded289a23ee30c178b",
+          "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+          "src/vfx/target-markers.js": "e2a552e269c2f6181e961f855418b19f3c0196c91d3504e72d82fef55dde0924",
+          "src/vfx/weapon-fire.js": "b6f8f74fa3276354e4a8cfc5fc26aaf4f67287c0286b523212d8e5f40b500e28",
+          "styles.css": "3c23c551f4e13c8efd72aea9d7f1566087a1fcab8b685fd693d63dcb8f0ce3c1"
+        }
+      }
+    ]
+  }
+}

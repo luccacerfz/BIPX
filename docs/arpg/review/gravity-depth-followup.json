@@ -1,0 +1,26 @@
+{
+  "observedAt": "2026-09-19T01:28:58.276074+00:00",
+  "scope": "Five original controlled native PNGs independently inspected. Not gameplay or full motion/performance approval.",
+  "images": [
+    {
+      "path": "output/playwright/environment-depth-cutaway-v1/environment-depth-cutaway-canopy.png",
+      "sha256": "92eadc69765829bcfd54e17967a52a1d8dd8a2ae4533855a668d9ee6c9f04f69"
+    },
+    {
+      "path": "output/playwright/environment-depth-cutaway-v1/environment-depth-cutaway-wall.png",
+      "sha256": "1dcf1e0c20147f431300ed1a860b9f3137093ea68a7159fc20959779634b05a0"
+    },
+    {
+      "path": "output/playwright/environment-depth-cutaway-v1/environment-depth-cutaway-actor.png",
+      "sha256": "893ccad2b1cb30b222ad216bc2f5cdba97d19c5de355a7bd33af0b59412cead7"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-23-55-190Z-gravity-vfx-integration/gravity-vfx-integration-high-1.8.png",
+      "sha256": "214b96c3c9b39b6fa06100f2743b7427c5a95dd7fe4c1ac95861bc1c47794108"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-23-55-190Z-gravity-vfx-integration/gravity-vfx-integration-fields-8.png",
+      "sha256": "d59fe806350f4043b29653616ba9046b30213763a80d5bfb0caebeb3bb4d3c57"
+    }
+  ]
+}

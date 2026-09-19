@@ -1,0 +1,17 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Walker attack phase · fixture</title>
+<style>body{margin:0;background:#162329;color:#ddd9ce;font:15px system-ui}canvas{display:block}#title{position:absolute;left:24px;top:22px}#labels{position:absolute;bottom:26px;display:flex;justify-content:space-around;width:100%;font-size:19px}</style>
+<div id="title">Walker · recorte de ataque em0,88s · fixture, não gameplay<br><span id="phase"></span></div><div id="labels"><span>EXECUÇÃO CONTÍNUA</span><span>ENTRADA NO POOL NESSA FASE</span></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {loadMonsterLibrary} from '../src/assets/monster-library.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#162329');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(33,innerWidth/innerHeight,.1,100);camera.position.set(0,3.4,-10);camera.lookAt(0,1.3,0);
+scene.add(new THREE.HemisphereLight(0xc5ddec,0x473a2a,2));for(const [c,i,x,y,z]of[[0xffd3aa,3,-4,6,-4],[0x71bfe9,2,4,5,3]]){const l=new THREE.DirectionalLight(c,i);l.position.set(x,y,z);scene.add(l);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x27373f,roughness:1}));floor.rotation.x=-Math.PI/2;scene.add(floor);const grid=new THREE.GridHelper(30,30,0x76878f,0x40515c);grid.position.y=.001;scene.add(grid);
+const library=await loadMonsterLibrary({THREE}),actors=[1.7,-1.7].map(x=>{const a=library.create('zombie',{parent:scene,height:2.55});a.root.position.x=x;return a;});
+const duration=.88,impactPhase=.523;
+function sample(phase){for(const a of actors)a.reset();actors[0].attack({id:1,duration,impactPhase});let t=phase*duration;while(t>1e-10){const dt=Math.min(1/120,t);actors[0].update(dt);t-=dt;}actors[1].syncAttack({id:1,phase,duration,impactPhase});document.querySelector('#phase').textContent=`Fase ${(phase*100).toFixed(1)}% · impacto52,3% · recorte fonte0,333–1,667s`;renderer.render(scene,camera);}
+let playing=false,elapsed=0,last=performance.now(),cycle=1;window.phaseReview={ready:true,THREE,scene,renderer,camera,library,actors,sample,play(value=true){playing=value;elapsed=0;cycle=1;for(const a of actors){a.reset();a.attack({id:cycle,duration,impactPhase});}}};sample(0);
+function frame(now){const dt=Math.min(.1,(now-last)/1000);last=now;if(playing){elapsed+=dt;if(elapsed>=1.05){elapsed-=1.05;cycle++;for(const a of actors)a.attack({id:cycle,duration,impactPhase});}for(const a of actors)a.update(dt);document.querySelector('#phase').textContent=`Playback0,88s · ${Math.round((actors[0].stats.attack?.normalizedTime||0)*100)}% · recuperação/cooldown no ciclo1,05s`;renderer.render(scene,camera);}requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script></html>

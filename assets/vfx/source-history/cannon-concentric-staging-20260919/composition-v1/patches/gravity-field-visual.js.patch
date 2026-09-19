@@ -1,0 +1,9 @@
+--- a/src/vfx/gravity-field-visual.js
++++ b/src/vfx/gravity-field-visual.js
+@@ -53,5 +53,5 @@
+   }
+   function reset(){remaining=0;group.visible=false;}
+   function dispose(){if(disposed)return;reset();group.removeFromParent();group.traverse(m=>{if(m.isMesh){m.material.dispose();if(m.isInstancedMesh)m.dispose();}});disposed=true;}
+-  return {group,set,setSceneDepth,setViewProjectionInverse,update,reset,dispose,setRenderOrder(order){horizon.renderOrder=order;nebula.renderOrder=order+1;debris.renderOrder=order+2;sparks.renderOrder=order+3;},getStats:()=>({reference:'Horizon + AstralNebula original GLSL',radius,duration,remaining,time,reduced,quality,center:group.position.toArray(),growth,collapse,coreRadius:horizonUniforms.uHorizon.value,nebulaRadius:nebulaUniforms.uRadius.value,nebulaSteps:nebulaUniforms.uSteps.value,depthReady,depthEncoding:'RGBADepthPacking',drawCalls:group.visible?(depthReady?4:3):0,debris:positions.map(p=>({...p})),disposed})};
++  return {getCompositionDescriptor:()=>({center:nebulaUniforms.uCentre.value.toArray(),radius:nebulaUniforms.uRadius.value,hole:nebulaUniforms.uHole.value,time:nebulaUniforms.uTime.value,fade:nebulaUniforms.uFade.value,drain:nebulaUniforms.uDrain.value,opacity:nebulaUniforms.uOpacity.value,groundY:nebulaUniforms.uGroundY.value}),group,set,setSceneDepth,setViewProjectionInverse,update,reset,dispose,setRenderOrder(order){horizon.renderOrder=order;nebula.renderOrder=order+1;debris.renderOrder=order+2;sparks.renderOrder=order+3;},getStats:()=>({reference:'Horizon + AstralNebula original GLSL',radius,duration,remaining,time,reduced,quality,center:group.position.toArray(),growth,collapse,coreRadius:horizonUniforms.uHorizon.value,nebulaRadius:nebulaUniforms.uRadius.value,nebulaSteps:nebulaUniforms.uSteps.value,depthReady,depthEncoding:'RGBADepthPacking',drawCalls:group.visible?(depthReady?4:3):0,debris:positions.map(p=>({...p})),disposed})};
+ }

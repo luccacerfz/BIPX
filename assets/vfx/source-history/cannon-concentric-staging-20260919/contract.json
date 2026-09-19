@@ -1,0 +1,73 @@
+{
+  "sourceVideo": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-high.webm",
+  "impact": {
+    "skillId": "dwarf_explosive_cannon",
+    "castId": "334ad7b2-7a3e-4cfb-b7db-5463ef0103a6:3",
+    "phase": "impact",
+    "origin": {
+      "x": 0,
+      "y": 1.05,
+      "z": 0
+    },
+    "direction": {
+      "x": -0.9982346275504007,
+      "y": 0,
+      "z": -0.059393841089064196
+    },
+    "target": {
+      "x": -2.2491773360753187,
+      "y": 1.05,
+      "z": -0.13382352965233857
+    },
+    "duration": 0.72,
+    "impactAt": 0.3,
+    "travelDuration": 1,
+    "radius": 3.4,
+    "groundY": 0.04,
+    "contactId": "area",
+    "actorId": null,
+    "local": true,
+    "time": 8.661400000095382
+  },
+  "gravity": {
+    "skillId": "dwarf_gravity_shot",
+    "castId": "334ad7b2-7a3e-4cfb-b7db-5463ef0103a6:1",
+    "status": "gravity",
+    "x": -2.5736706819682187,
+    "y": 0.08,
+    "z": -0.11734983241507602,
+    "radius": 5,
+    "remaining": 3.0116000001430474,
+    "duration": 5,
+    "origin": {
+      "x": -2.5736706819682187,
+      "y": 1.05,
+      "z": -0.11734983241507602
+    },
+    "refresh": 0.01630000019073488
+  },
+  "actors": [
+    {
+      "id": 1,
+      "x": -3.3441416293193624,
+      "z": -0.23895771305893357,
+      "health": 2.2441120000028616,
+      "freeze": 2.1001000001430508,
+      "stun": 0,
+      "pull": 9.99999999999994e-05
+    },
+    {
+      "id": 2,
+      "x": -2.6222311635205915,
+      "z": -1.62186959722589,
+      "health": 3.457444000000954,
+      "freeze": 2.1001000001430508,
+      "stun": 0,
+      "pull": 9.99999999999994e-05
+    }
+  ],
+  "actorSourceSimulationTime": 8.64,
+  "poseLimit": "Full bone/corpse poses and camera matrix were not recorded. Controlled frozen real-asset poses and steady ARPG camera are identical across variants, not a pixel-exact replay of WebM.",
+  "clockAtPeak": 8.794299999952331,
+  "impactAgeAtPeak": 0.15050000000000097
+}

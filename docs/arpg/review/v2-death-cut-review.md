@@ -1,0 +1,9 @@
+# Corte v2 — revisão independente
+
+Root inspecionou PNGs orcPeon-cut, zombie-cut e caster-cut em output/playwright/arpg-animation-enemy-v2. Report: nativeRenderPassed=true, sourceStable=true, errors=[]. Fixture de assets, não morte real em partida/rede. Três PNGs e report têm hashes no manifesto junto deste documento.
+
+A separação horizontal está visível nos três modelos. No Orc, a abertura da cintura revela interior oco; Walker mostra também mãos/antebraços cortados no mesmo plano. Isso comprova efeito geométrico visível, mas não acabamento AAA. A inspeção do controlador enemy-death-cut confirma que partes só se afastam e sobem/descem uma pequena fração da altura até .55s, depois permanecem nessa pose até fade1.65s. Não há arco de queda/tombamento ao chão. Stills não provam o playback; essa observação temporal vem do código, não do vídeo.
+
+Próxima iteração Animation: preservar mesh/rig originals e orçamento de corpos; acrescentar queda curta com peso, rotação coerente com golpe e término acima do chão. Evitar torso suspenso fixo. Fechar discretamente superfícies abertas de forma estilizada (sem necessidade de detalhes anatômicos) ou esconder a abertura com tratamento controlado de borda/desintegração. Medir limite inferior dos dois fragmentos; não enterrar a metade inferior. Capturar três instantes + playback e death-only em gameplay integrado. Nenhuma nova recompensa/dano por apresentação. Guardar atual como antes.
+
+Os três gestos hero de grito/escudo/canhão também foram inspecionados em arpg-animation-skills-v2: identidades de peito aberto, escudo frontal e mira rifle legíveis nos frames. Não constituem prova de sincronização nova .38/.28/.30s nem de contato/locomoção durante deslocamento. A captura observada ainda exibia tempos antigos em overlay; a próxima prova precisa refletir export e controller finais.

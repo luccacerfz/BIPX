@@ -1,0 +1,51 @@
+{
+  "reviewedAt": "2026-09-19T03:26:47.053181+00:00",
+  "report": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-report.json",
+  "reportSha256": "eeb858feb188c441c1696a82e279cf56407e76e61b8b730eaeaa194355da8aca",
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-standing-0.300.png",
+      "sha256": "edc3c85e2f6e98d73c4f9d8c9156d359f523bfe82a76af9fe43142e6687ac602"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-standing-0.400.png",
+      "sha256": "ba16367894b88449b5d8e70bb3dbea0c5a0aded5e8583379c83cb393ef891cbc"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-moving-0.400.png",
+      "sha256": "e864e189300149cb392280cc2cf8db2566007c65358faa77ea35ba5678118de1"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-thin-corner-10hz-0.5.png",
+      "sha256": "5ec4ad3f51be584d94d852fe7d3c0ed8a3ed778933deaa5205bc2dcf09a23b9a"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-thin-corner-10hz-0.6.png",
+      "sha256": "15b5a263106c78221c114abe9ecb807d615675408b740589945fc9868d553ded"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-wall-through-contact.png",
+      "sha256": "e363f10f120019858155c26c0fe642fc210daa7bfd89883a27a341b289eb3dad"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-coexist-high.png",
+      "sha256": "8ce6a07bdaed3f7d5e18ba92a0181aa551815550e178455a7e50afa3abb16859"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-21-25-047Z-cannon-origin-vfx-native/cannon-origin-vfx-native-coexist-low-reduced.png",
+      "sha256": "b0c7d5f34d4a83c90c72ce4aad6e91df3ce8364a7f3c4872cc318975f2850a47"
+    }
+  ],
+  "reportPassed": true,
+  "contractPassed": true,
+  "applicationStableAtCapture": true,
+  "stagingStableAtCapture": true,
+  "torsoMinimum": 0.8925619834710744,
+  "decision": "Accept local direction and bounded integration of eight proposed VFX files plus Combat callback; current input gameplay/integrated evidence and JEF remain required.",
+  "limits": [
+    "Synthetic literal core/adapter scene, not gameplay by input or network.",
+    "Root reviewed eight stills, not continuous video.",
+    "Previous different fixed scene has only 65.289 percent retained silhouette minimum; current 89.256 percent does not replace it.",
+    "Native capture is not current full-pipeline performance measurement or AAA approval."
+  ]
+}

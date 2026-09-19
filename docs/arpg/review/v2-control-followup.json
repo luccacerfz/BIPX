@@ -1,0 +1,82 @@
+{
+  "createdAt": "2026-09-19T00:26:30.393013+00:00",
+  "scope": "Read-only analysis of recorded native solo data; frozen runtime copy, not global acceptance",
+  "accepted": false,
+  "checkoutMatchedAtEnd": false,
+  "results": [
+    {
+      "skill": "warrior_shield_charge",
+      "damageCoefficient": 1.2,
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "targets": [
+        {
+          "targetId": 1,
+          "samples": 43,
+          "observedStatusMs": 2097.300000190735,
+          "aliveThroughout": true,
+          "pausedInAllRenderedSamples": true,
+          "animationTimeRange": 0.0,
+          "cumulativeXZ": 1.1214146608206048
+        }
+      ],
+      "finalVfxStates": {
+        "buffs": 0,
+        "frozen": 0,
+        "stunned": 0,
+        "fields": 0,
+        "capacity": 256,
+        "rejected": 0,
+        "dropped": 0,
+        "drawCalls": 0,
+        "freezeCrystals": 0,
+        "disposed": false
+      }
+    },
+    {
+      "skill": "dwarf_frost_shot",
+      "damageCoefficient": 0.8,
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "targets": [
+        {
+          "targetId": 1,
+          "samples": 60,
+          "observedStatusMs": 2941.7999999523163,
+          "aliveThroughout": true,
+          "pausedInAllRenderedSamples": true,
+          "animationTimeRange": 0.0,
+          "cumulativeXZ": 0.09904710900927803
+        },
+        {
+          "targetId": 2,
+          "samples": 60,
+          "observedStatusMs": 2941.7999999523163,
+          "aliveThroughout": true,
+          "pausedInAllRenderedSamples": true,
+          "animationTimeRange": 0.0,
+          "cumulativeXZ": 1.8135037235974016
+        }
+      ],
+      "finalVfxStates": {
+        "buffs": 0,
+        "frozen": 0,
+        "stunned": 0,
+        "fields": 0,
+        "capacity": 256,
+        "rejected": 0,
+        "dropped": 0,
+        "drawCalls": 0,
+        "freezeCrystals": 0,
+        "disposed": false
+      }
+    }
+  ],
+  "sha256": {
+    "output/playwright/2026-09-19T00-23-50-859Z-skill-timeline-browser/timeline-index.json": "b3298a72dab84dad0767b5d4f2d307869ade79365b786aabe15747e8cd352e19",
+    "output/playwright/2026-09-19T00-23-50-859Z-skill-timeline-browser/warrior_shield_charge.webm": "f7466a75c1eb26dd7ef3bc99ca1383ed251d4d16819ba890039e53846e1fe53a",
+    "output/playwright/2026-09-19T00-23-50-859Z-skill-timeline-browser/dwarf_frost_shot.webm": "5d66d693b1d8aaf2d98da8f0485f48897a35c031caa80c5018589156df4d67b5",
+    "output/playwright/2026-09-19T00-23-50-859Z-skill-timeline-browser/timeline-warrior_shield_charge-phase-impact.png": "ada3bdc9e0b9368cf16fd2dc55089ae1a7df58125ae720e752f914723722f4e3",
+    "output/playwright/2026-09-19T00-23-50-859Z-skill-timeline-browser/timeline-dwarf_frost_shot-phase-impact.png": "289e0be37c5ad709cc03a3713eebb5a4782db70e8ce52fa7062ff164f0b5bc9b"
+  }
+}

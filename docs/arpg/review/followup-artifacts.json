@@ -1,0 +1,17 @@
+{
+  "createdAt": "2026-09-18T23:55:56.102513+00:00",
+  "accepted": false,
+  "scope": "Independent review, evidence by file; source stability only for the run that contains its manifest",
+  "sha256": {
+    "docs/arpg/review/sole-contact-audit.mjs": "6fe78303143662bf5f428a83c752739f9accb549861abf10a521df662ccd0bf6",
+    "docs/arpg/review/pursuit-audit.mjs": "15215308ffddf3714932b51d469ab9e36a89222b399060b9001db70d43311588",
+    "output/qa/arpg-root-review/2026-09-18T23-47-41-281Z-sole-contact.json": "1797f475828b3fc1216b6730ec2f1d22e5dc3676854c91d6a46f13170f5c3e89",
+    "output/qa/arpg-root-review/2026-09-18T23-50-39-854Z-pursuit.json": "b2d407caf2f7d1741f39caa72faa64f1ca13536efb1ea88b89ad1190780ece40",
+    "output/playwright/2026-09-18T23-47-29-673Z-ui-arpg-verify/gui-fixture.json": "9480d9670d2309759acc762e9a6e9d3a4e82a719be7a8834ab1542fb6d58984b",
+    "output/playwright/2026-09-18T23-47-29-673Z-ui-arpg-verify/gui-fixture-warrior-desktop.png": "6b324ec06955d600404b6a19990d6c513e2f3daeb0c26ffdf8c8e1dca81bb32d",
+    "output/playwright/2026-09-18T23-47-29-673Z-ui-arpg-verify/gui-fixture-mobile-375x667.png": "52484cf50b6452c4355dbea596072b2ab4e9bab1fe6108c52bbf07d501c36745",
+    "output/playwright/environment-candidate-v1-20260918/environment-warrior-route-3.png": "3eb50a8a9daa308f64f80560e23a30473754f73d3f54508d7b4c15732f977179",
+    "output/playwright/environment-candidate-v1-20260918/environment-dwarf-route-5.png": "bd654366d0ab2e005eb0ffb497eb2d4396e945c7c9c3a21c10593f5221af185c",
+    "output/playwright/arpg-animation-skills-v1/dwarf_incendiary_burst-release.png": "6bad15c5f879f1d5787d548172779df7a9df8c181d65ef10901f2fbdcf03cb42"
+  }
+}

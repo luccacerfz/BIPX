@@ -1,0 +1,14 @@
+{
+  "source": "/Users/luccacerf/Projetos/Assets/Characters/Arthas/Animations/Mixamo_ActionAdventure/running.fbx",
+  "sourceSha256": "ea8e2853fb708296ff93c6c59f3a2ebecfa263a3d4bde6f663db57f85c78d360",
+  "sourcePreserved": true,
+  "output": "assets/models/orc-peon-source/mixamo-running.glb",
+  "outputSha256": "a1d6e22716edba3672e3afc5052516ea22875fe69cffd2a945e8c6b0f527c957",
+  "frames": [
+    1.0,
+    22.0
+  ],
+  "fps": 30,
+  "bones": 65,
+  "blender": "5.2.0 LTS"
+}

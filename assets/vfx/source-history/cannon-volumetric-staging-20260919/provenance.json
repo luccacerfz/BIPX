@@ -1,0 +1,77 @@
+{
+  "createdAt": "2026-09-19T01:37:46.911608+00:00",
+  "scope": "Isolated staging; no runtime promotion",
+  "sources": {
+    "originals/handcast/LICENSE": {
+      "sha256": "fa655f413edefb7d5416d743714e4cdd7899134b2fb4003732b2ef9eecac4fd4",
+      "commit": "3431252f7ad88059681d4b9b6484cb7483f7d0d6",
+      "upstreamPath": "LICENSE"
+    },
+    "originals/handcast/src/archive/materials/VolumetricFireMaterial.js": {
+      "sha256": "cc364beab78a4edc4e550baa901b03793b4c868f4b4ed3277f29b688b5d64dba",
+      "commit": "3431252f7ad88059681d4b9b6484cb7483f7d0d6",
+      "upstreamPath": "src/archive/materials/VolumetricFireMaterial.js"
+    },
+    "originals/handcast/src/archive/abilities/FireAbility.js": {
+      "sha256": "3d956f509bd5b5dd0a3852f08b4956de48b2680a1e2106039deb641af7936adc",
+      "commit": "3431252f7ad88059681d4b9b6484cb7483f7d0d6",
+      "upstreamPath": "src/archive/abilities/FireAbility.js"
+    },
+    "originals/handcast/src/shaders/lib/noise.glsl.js": {
+      "sha256": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+      "commit": "3431252f7ad88059681d4b9b6484cb7483f7d0d6",
+      "upstreamPath": "src/shaders/lib/noise.glsl.js"
+    },
+    "originals/handcast/src/shaders/lib/common.glsl.js": {
+      "sha256": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+      "commit": "3431252f7ad88059681d4b9b6484cb7483f7d0d6",
+      "upstreamPath": "src/shaders/lib/common.glsl.js"
+    },
+    "originals/linear/LICENSE": {
+      "sha256": "fa655f413edefb7d5416d743714e4cdd7899134b2fb4003732b2ef9eecac4fd4",
+      "commit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+      "upstreamPath": "LICENSE"
+    },
+    "originals/linear/src/archive/materials/VolumetricFireMaterial.js": {
+      "sha256": "cc364beab78a4edc4e550baa901b03793b4c868f4b4ed3277f29b688b5d64dba",
+      "commit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+      "upstreamPath": "src/archive/materials/VolumetricFireMaterial.js"
+    },
+    "originals/linear/src/archive/abilities/FireAbility.js": {
+      "sha256": "3d956f509bd5b5dd0a3852f08b4956de48b2680a1e2106039deb641af7936adc",
+      "commit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+      "upstreamPath": "src/archive/abilities/FireAbility.js"
+    },
+    "originals/linear/src/shaders/lib/noise.glsl.js": {
+      "sha256": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+      "commit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+      "upstreamPath": "src/shaders/lib/noise.glsl.js"
+    },
+    "originals/linear/src/shaders/lib/common.glsl.js": {
+      "sha256": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+      "commit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+      "upstreamPath": "src/shaders/lib/common.glsl.js"
+    },
+    "originals/samurai/LICENSE": {
+      "sha256": "fa655f413edefb7d5416d743714e4cdd7899134b2fb4003732b2ef9eecac4fd4",
+      "commit": "496862cda55bfba3be6d02eec5aee3ca808a31a3",
+      "upstreamPath": "LICENSE"
+    },
+    "originals/samurai/src/shaders/lib/blackbody.glsl.js": {
+      "sha256": "6570394ae1e8d0099af2924f46336341be990e7b35baf262c978a25f44b0e8ca",
+      "commit": "496862cda55bfba3be6d02eec5aee3ca808a31a3",
+      "upstreamPath": "src/shaders/lib/blackbody.glsl.js"
+    },
+    "originals/samurai/src/vfx/VolumetricFireMaterial.js": {
+      "sha256": "938cae590c596a910a93c4c224238ac5250685b1841c55f97efc89fb4c4593ae",
+      "commit": "496862cda55bfba3be6d02eec5aee3ca808a31a3",
+      "upstreamPath": "src/vfx/VolumetricFireMaterial.js"
+    }
+  },
+  "adaptations": [
+    "Original GLSL retained as FIRE_VERTEX/FIRE_FRAGMENT; derived CANNON_FRAGMENT adds authoritative blast radius and depth-based high-silhouette protection",
+    "Blackbody/radiance from Samurai used by fire volume/core/embers",
+    "FireAbility radius profile and padded billboard proxy hull reused in standalone event-driven controller",
+    "No source demo trajectory, scene manager, camera shake, full-screen flash or damage authority copied"
+  ]
+}

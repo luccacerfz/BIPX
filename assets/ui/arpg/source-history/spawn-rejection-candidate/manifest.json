@@ -1,0 +1,91 @@
+{
+  "preparedAt": "2026-09-19T02:31:04.544376+00:00",
+  "promoted": false,
+  "runtimeUnchanged": {
+    "index.html": true,
+    "styles.css": true,
+    "src/main.js": true,
+    "src/ui/arpg-hud.js": true,
+    "src/ui/arpg-painted.css": true,
+    "src/ui/presentation.js": true
+  },
+  "checks": 30,
+  "normalContrast": 7.447693043721966,
+  "hoverContrast": 9.911545488349486,
+  "originalEvidence": {
+    "file": "output/playwright/2026-09-19T02-13-10-153Z-verify-player-spawn-browser/spawn-rejected-no-free-space.png",
+    "sha256": "e369fcd20b079f8414bf32038e1da846a147bf8f282fdf5d4c81fc1dc1fe15d3"
+  },
+  "artifacts": [
+    {
+      "file": "assets/ui/arpg/source-history/spawn-rejection-candidate/candidate.css",
+      "bytes": 810,
+      "sha256": "6d88a4d2ef337830da67c3af7af4770c75ed482430d99919b66d904984a97cfd"
+    },
+    {
+      "file": "assets/ui/arpg/source-history/spawn-rejection-candidate/fixture.html",
+      "bytes": 17655,
+      "sha256": "2ad93cbd05106234c1130700d572fb5edada56b66f3f01aef8b0ce3b285ff638"
+    },
+    {
+      "file": "assets/ui/arpg/source-history/spawn-rejection-candidate/source-baseline.json",
+      "bytes": 759,
+      "sha256": "59904d0d5ddea056c793925ed72857016ae0d2e44245a60f370170294936a144"
+    },
+    {
+      "file": "tools/ui-spawn-rejection-candidate.mjs",
+      "bytes": 6105,
+      "sha256": "47fcff727e3fbe2b1895f6de51377db3320bbdccba9a43be654806c510383d52"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/desktop-before-top.png",
+      "bytes": 342147,
+      "sha256": "c8fd943bb9ba7c6abe0827c06436ae12d72d4fc9a9070474975500ac9e49584b"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/desktop-proposal-focus.png",
+      "bytes": 306329,
+      "sha256": "c561fb19401a50d9e2782b4b8c56eb1f0ca7bc20aed0b90398f61cffd6667aca"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/desktop-proposal-top.png",
+      "bytes": 305771,
+      "sha256": "700a7b0b217d293712993565674ee3cc0b755205607dba47536b397f65555089"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/landscape-proposal-focus.png",
+      "bytes": 110077,
+      "sha256": "a523a9585750237eaa48f6b01c44b3d219f9f53bac9e9e30b1ec5d1dcf3d542d"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/landscape-proposal-top.png",
+      "bytes": 109929,
+      "sha256": "f1e87987c470b8c0e872b8b1d7130b7ea53d4a531b9a4ee5e37f3573379c5df0"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/portrait-proposal-focus.png",
+      "bytes": 153279,
+      "sha256": "6f5427b27c4a181c3b5d2960e65571df6f8ed53f038b035d9649d48d3f20d685"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/portrait-proposal-top.png",
+      "bytes": 152866,
+      "sha256": "c0c3544a30a2523e011af505fba9c5d324aa4b32d43484f4eeb6d84691841714"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/small-proposal-focus.png",
+      "bytes": 94644,
+      "sha256": "b110f6130182d04efdef537da54eb3e3fdbc4249151b7f3acdc9e41c59cba575"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/small-proposal-top.png",
+      "bytes": 110645,
+      "sha256": "b39fcf123d21df612435a5b167f3da100f9115d9d9837ee3fd320a5c69b7b8ba"
+    },
+    {
+      "file": "output/playwright/2026-09-19T02-29-08-966Z-ui-spawn-rejection-candidate/spawn-ui-proposal.json",
+      "bytes": 77870,
+      "sha256": "def8ccac75a2413783734ca3d4f3929243d9c3f6cd5c60dd0575bedcaa46e592"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "promotedAt": "2026-09-19T01:27:26.088612+00:00",
+  "coordination": "Combat explicit window01:25 UTC; docs/arpg/combat-depth-integration.md",
+  "runtime": [
+    {
+      "file": "index.html",
+      "bytes": 16110,
+      "sha256": "f3f909164742d1d79303fbc914b343d20d19585ced0fb198150912854bf8474c"
+    },
+    {
+      "file": "src/ui/arpg-painted.css",
+      "bytes": 2898,
+      "sha256": "537f3fd238ad02faa20f2e81cd2c99dfb960e569646ed3701086b95acb84da5c"
+    },
+    {
+      "file": "assets/ui/arpg/painted-v3/explosive-cannon.webp",
+      "bytes": 21070,
+      "sha256": "1010eca1746aadf3e7a3cabbd95d9f58d27f59e878ab899f96ec6983a8bac125"
+    },
+    {
+      "file": "assets/ui/arpg/painted-v3/shield-charge.webp",
+      "bytes": 28096,
+      "sha256": "19123c512ea7dc675b2fc6d501eb6799b0da26a0d103d3df50e32af697e7a635"
+    },
+    {
+      "file": "assets/ui/arpg/painted-v3/frost-shot.webp",
+      "bytes": 21684,
+      "sha256": "7776b5e4a0f6a6461a0fd68a176dcec5e142f640d5b6eb64f1964b60ac039bd7"
+    },
+    {
+      "file": "assets/ui/arpg/painted-v3/gravity-shot.webp",
+      "bytes": 24658,
+      "sha256": "7dfc8c7610c48092420a66829282008692f61dca60c7f84a33f67ad94ab98a6e"
+    },
+    {
+      "file": "assets/ui/arpg/painted-v3/cleaving-dash.webp",
+      "bytes": 23786,
+      "sha256": "ca62d73d3259090d0a48657e2e654f3ceeecb10ca15a035fb3b564c4eff7be95"
+    },
+    {
+      "file": "assets/ui/arpg/painted-v3/war-cry.webp",
+      "bytes": 24664,
+      "sha256": "603b122f57bdc9d8934f0c083df6de6560726f0f8613917c48227d1935cff52d"
+    }
+  ]
+}

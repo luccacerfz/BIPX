@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-09-19T00:59:56.487Z",
+  "checks": [
+    {
+      "quality": "high",
+      "reducedMotion": false,
+      "frames": 301,
+      "passed": true
+    },
+    {
+      "quality": "low",
+      "reducedMotion": true,
+      "frames": 301,
+      "passed": true
+    }
+  ],
+  "pause": true,
+  "dispose": true,
+  "runtimeHashes": {
+    "src/vfx/ELEMENTAL-LICENSE.txt": "957923044a1ede06d8ef968ff55bd1ddbdff8090fbbdcc45e388d039d83ef8b2",
+    "src/vfx/SAMURAI-LICENSE.txt": "fa655f413edefb7d5416d743714e4cdd7899134b2fb4003732b2ef9eecac4fd4",
+    "src/vfx/class-skill-bodies.js": "ac1b1ec4c1e41b7e12a7fccdde13eb442362dd02d09fceaded42e1702c048330",
+    "src/vfx/class-skill-fields.js": "3f99a1dbc97df4eb030436acae68ba88147f94de084ea421b4c3b764a17700f1",
+    "src/vfx/class-skill-vfx.js": "1aed7dec557be3752fc9530656caa1a56ecb107ad21db7ed30352a2e6eff9a52",
+    "src/vfx/class-skill-volumes.js": "434cb84e0eb2217dd2cbb34436a4d28fc58457d1b79faa58d529e433b2e5afcf",
+    "src/vfx/combat-vfx.js": "55d05901ed7f6fd730828eb467d1aaf52e758a94e2c81a7d00bd0dce588f9efa",
+    "src/vfx/elemental-geometry.js": "ae27257b094f07b97090a92994fde5952ea3f1179351a04ed5eb264211bdeea8",
+    "src/vfx/elemental-projectiles.js": "5ae41cf01fe1baef2c91e0e43c5fd3dd4ae65b30aed541c0d9c93d5b981f311b",
+    "src/vfx/elemental-shaders.js": "7e5768f5f2b2954f367081ddc4df4a7150ce786a3b6a53729d7ee2ab16071d4d",
+    "src/vfx/elemental-source-glsl.js": "42df3a841216a089265d2e3dba50e8b3f816e7f997692b96677edf3f6aa05c15",
+    "src/vfx/elemental-vfx.js": "ebf9718be642c5073ccb89aed6af119acc3206dd25ca142d2219aed89103608b",
+    "src/vfx/hazard-vfx.js": "b160cf67f1cc16eba82b869535ba12a2c136e7bf21097e2d5ec7c7fe0471a39a",
+    "src/vfx/leaves.js": "f0589d52364951e86df30f2df927ebf07f32aab8b84d5dded289a23ee30c178b",
+    "src/vfx/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+    "src/vfx/soul-echoes.js": "04b354800a1d7560ffd9f2e4e1d89d0b49ecec1bdf2c2f19bb1f7323d9e63cc7",
+    "src/vfx/target-markers.js": "b0de5d7806006f6d17797616c31fa70e4696bf11761d285593f1407ef01697f1",
+    "src/vfx/weapon-fire.js": "bf2b3e454888e6ba7bab9e5a74446dcbc9cd511d9c0be91c074168681a3e200b",
+    "vendor/three/three.module.js": "a97ec6852978949b7941c070b81292b842473a37549222353fa0a70c18d7285a"
+  }
+}

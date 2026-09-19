@@ -1,0 +1,18 @@
+{
+  "at": "2026-09-19T05:10:14.718802+00:00",
+  "files": {
+    "cannon-source-glsl.js": "7662f0d6e84c06ca8091f71015c5edc08a7721b66061f11bde43de360c5d7f6c",
+    "cannon-vfx.js": "9b15e4123f7dc5fd9d6aee47b06c045a23daebdf2dc93a1e8ce01eb55635eb44",
+    "class-skill-fields.js": "7c9bc9eb2b4f6a1f8301c6cd52e9c6ac5e7e40aed39bd12c984c854a578b443f",
+    "class-skill-vfx.js": "5f218c69051e5abcb95030ae2b33de406def904360dc8f07e956af6e9970265a",
+    "gravity-composition-glsl.js": "abcb7d83f2d0ac165e80fa742cdde98559ef848350f6bab6812627811187ee83",
+    "gravity-field-pool.js": "2b1ff7acacc08152eb4644559e4de44a79474f97cb7e9ede0aedc87c47f6b6e6",
+    "gravity-field-visual.js": "711e133ca0e8585fe2fd2c7142fe1ee5736660bf0d75afb82edc1f83ede06cff"
+  },
+  "patchSha256": "51014afb429702e49dec6bd8d95881ab88225b40cb79ea5b97cd905e4d9e6651",
+  "appliedOnlyTemporaryCopy": true,
+  "exactPatchedHashes": true,
+  "rootSelection": "docs/arpg/review/cannon-depth-composition-selection.md",
+  "gpuRun": false,
+  "nextWindowRequired": true
+}

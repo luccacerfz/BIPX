@@ -1,0 +1,41 @@
+{
+  "reviewedAt": "2026-09-19T04:13:50.383616+00:00",
+  "reviewer": "Root",
+  "decision": "selected for bounded owner promotion after source-freeze coordination with Combat and VFX",
+  "candidate": "output/gui-compact-recovery-v1/candidate.css",
+  "candidateSHA256": "00e53e45b8606e6ebdea29b70ad84a19067c83fbd754a2ef396c718c9cb390f8",
+  "candidateBytes": 545,
+  "imagesActuallyViewed": [
+    {
+      "file": "output/gui-compact-recovery-v1/evidence/2026-09-19T04-03-45-927Z/before-320x568.png",
+      "sha256": "4db4f64da6558d12424adc13a614001331d0dd2fbd9cf4c796593b00ed2fa1cc"
+    },
+    {
+      "file": "output/gui-compact-recovery-v1/evidence/2026-09-19T04-03-45-927Z/candidate-320x568.png",
+      "sha256": "0383b5ba8a56f49f5593e98eac308c8c798682ec1059823ee583e5bc9d4fe1fa"
+    },
+    {
+      "file": "output/gui-compact-recovery-v1/evidence/2026-09-19T04-03-45-927Z/candidate-focus-character-warrior-320x568.png",
+      "sha256": "b4aa5f08b1d505087fe15f65966c65b5fd9454d19add2b449e9b6c5d791b1aab"
+    },
+    {
+      "file": "output/gui-compact-recovery-v1/evidence/2026-09-19T04-03-45-927Z/candidate-back-focus-320x568.png",
+      "sha256": "ee988cdd1ba3f57a34d2b23d9e89eccb6a1f9deb5693c30b7da6e756e7ee7bf4"
+    }
+  ],
+  "nativeChecks": 35,
+  "nativePassed": true,
+  "errors": [],
+  "sourceManifestCount": 222,
+  "findings": [
+    "Baseline loses rejection reason and sound overlaps card.",
+    "Candidate keeps reason and retry visible together.",
+    "Focused warrior card and Back remain unobscured; original DOM preserved.",
+    "Sticky reason overlaps upper portraits when retry focused, but scrolling and native keyboard reveal all selection content. Accepted compact recovery tradeoff."
+  ],
+  "limits": [
+    "Root viewed these four originals only; other viewport equality and actual runStarted are report evidence.",
+    "Not physical device, virtual keyboard, screen reader, zoom or global accessibility approval.",
+    "No runtime file edited by Root."
+  ]
+}

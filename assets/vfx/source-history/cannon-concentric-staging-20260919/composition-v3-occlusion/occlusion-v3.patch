@@ -1,0 +1,69 @@
+--- a/gravity-field-pool.js
++++ b/gravity-field-pool.js
+@@ -9,7 +9,7 @@
+   const slots=Array.from({length:capacity},()=>({id:null,generation:-1,record:null,visual:createGravityFieldVisual(THREE,group,resources)}));
+   for(const slot of slots)slot.visual.reset();
+   const frustum=new THREE.Frustum(),matrix=new THREE.Matrix4(),inverse=new THREE.Matrix4(),sphere=new THREE.Sphere(),world=new THREE.Vector3();
+-  const apertures=Array.from({length:capacity},()=>({aperture:new THREE.Vector4(),fade:0})),viewCenter=new THREE.Vector3();
++  const apertures=Array.from({length:capacity},()=>({aperture:new THREE.Vector4(),fade:0,depth:1})),viewCenter=new THREE.Vector3();
+   const states=[],eligible=[],selectedIds=new Set(),distances=new WeakMap();
+   let generation=0,disposed=false,reduced=false,quality='high',visibleFields=0,overflow=0,prepared=false,depthValid=false,near=0,far=0;
+   function invalidate(){prepared=false;depthValid=false;for(const s of slots)s.visual.setSceneDepth(null);}
+@@ -44,7 +44,7 @@
+       const visual=slots.find(s=>s.id===eligible[i].id).visual,h=visual.getHorizonDescriptor();
+       viewCenter.copy(h.center).applyMatrix4(camera.matrixWorldInverse);viewCenter.z+=h.nudge;
+       const z=Math.max(.000001,-viewCenter.z),px=camera.projectionMatrix.elements[0],py=camera.projectionMatrix.elements[5];
+-      peers[i].aperture.set(.5+.5*(px*viewCenter.x/z-camera.projectionMatrix.elements[8]),.5+.5*(py*viewCenter.y/z-camera.projectionMatrix.elements[9]),.5*px*h.size/z,.5*py*h.size/z);peers[i].fade=viewCenter.z<0?h.fade:0;
++      peers[i].aperture.set(.5+.5*(px*viewCenter.x/z-camera.projectionMatrix.elements[8]),.5+.5*(py*viewCenter.y/z-camera.projectionMatrix.elements[9]),.5*px*h.size/z,.5*py*h.size/z);peers[i].fade=viewCenter.z<0?h.fade:0;peers[i].depth=.5+.5*(camera.projectionMatrix.elements[10]*viewCenter.z+camera.projectionMatrix.elements[14])/z;
+     }
+     for(let i=0;i<visibleFields;i++)slots.find(s=>s.id===eligible[i].id).visual.setOverlapApertures(peers,i);
+     prepared=true;near=camera.near;far=camera.far;
+--- a/gravity-field-visual.js
++++ b/gravity-field-visual.js
+@@ -6,7 +6,7 @@
+   const group=new THREE.Group();group.name='GravityHorizonField';scene.add(group);
+   const values=o=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,{value:v}]));
+   const common={transparent:true,depthWrite:false,blending:THREE.NormalBlending,premultipliedAlpha:true,toneMapped:false};
+-  const horizonUniforms=values({uOverlapCount:0,uOverlapIndex:0,uOverlapAperture:Array.from({length:8},()=>new THREE.Vector4()),uOverlapFade:new Float32Array(8),uDepthReady:0,uInverseViewProjection:new THREE.Matrix4(),uGroundY:0,uSceneDepth:null,uResolution:new THREE.Vector2(1,1),uTime:0,uSize:3.1,uNudge:0,uHorizon:.8,uRingWidth:.052,uRingGlow:9,uBeam:.75,uBeamPhase:.5,uHalo:1.35,uHaloFalloff:2.4,uWind:2.4,uSpin:.3,uFilament:.7,uFilamentScale:2.2,uChurn:0,uSeed:7,uFade:1,uOpacity:1,uColorPhoton:new THREE.Color('#ffe9b8'),uColorHalo:new THREE.Color('#c98cff'),uColorCool:new THREE.Color('#3a1c72'),uGlobalGlow:1});
++  const horizonUniforms=values({uOverlapCount:0,uOverlapIndex:0,uOverlapAperture:Array.from({length:8},()=>new THREE.Vector4()),uOverlapFade:new Float32Array(8),uOverlapDepth:new Float32Array(8),uDepthReady:0,uInverseViewProjection:new THREE.Matrix4(),uGroundY:0,uSceneDepth:null,uResolution:new THREE.Vector2(1,1),uTime:0,uSize:3.1,uNudge:0,uHorizon:.8,uRingWidth:.052,uRingGlow:9,uBeam:.75,uBeamPhase:.5,uHalo:1.35,uHaloFalloff:2.4,uWind:2.4,uSpin:.3,uFilament:.7,uFilamentScale:2.2,uChurn:0,uSeed:7,uFade:1,uOpacity:1,uColorPhoton:new THREE.Color('#ffe9b8'),uColorHalo:new THREE.Color('#c98cff'),uColorCool:new THREE.Color('#3a1c72'),uGlobalGlow:1});
+   const horizonMaterial=new THREE.ShaderMaterial({...common,depthTest:true,side:THREE.DoubleSide,uniforms:horizonUniforms,vertexShader:BILLBOARD_VERTEX,fragmentShader:GRAVITY_HORIZON_FRAGMENT});
+   const horizon=new THREE.Mesh(resources.horizon,horizonMaterial);horizon.frustumCulled=false;horizon.renderOrder=20;group.add(horizon);
+   const nebulaUniforms=values({uDepthReady:0,uInverseViewProjection:new THREE.Matrix4(),uGroundY:0,uTime:0,uCentre:new THREE.Vector3(),uRadius:4.8,uHole:.8,uSteps:34,uDensity:2.4,uAbsorb:.5,uEmissive:1.8,uScale:.58,uDetail:2.3,uFilament:.62,uThreshold:.5,uCavity:.32,uEdge:.7,uFlatten:.22,uArms:3,uArmSharp:1.5,uArmWeight:.68,uWind:2.4,uTwist:1.6,uSpin:.2,uRise:.35,uSpikes:9,uSpikeSharp:9,uSpikeReach:.95,uSpikeGlow:.7,uHeatFalloff:2.1,uBeam:.3,uChurn:0,uDrain:0,uSeed:7,uFade:1,uOpacity:1,uColorEdge:new THREE.Color(.12,.018,.42),uColorBody:new THREE.Color(.48,.08,1.2),uColorHot:new THREE.Color(1,.58,.18),uColorCore:new THREE.Color(1,.96,.82),uResolution:new THREE.Vector2(1,1),uSceneDepth:null,uCameraNear:.1,uCameraFar:220,uGlobalGlow:1});
+@@ -54,6 +54,6 @@
+   function reset(){horizonUniforms.uOverlapCount.value=0;remaining=0;group.visible=false;}
+   function dispose(){if(disposed)return;reset();group.removeFromParent();group.traverse(m=>{if(m.isMesh){m.material.dispose();if(m.isInstancedMesh)m.dispose();}});disposed=true;}
+   return {getHorizonDescriptor:()=>({center:nebulaUniforms.uCentre.value,size:horizonUniforms.uSize.value,nudge:horizonUniforms.uNudge.value,fade:horizonUniforms.uFade.value*horizonUniforms.uOpacity.value}),
+-    setOverlapApertures(apertures,index){horizonUniforms.uOverlapCount.value=apertures.length;horizonUniforms.uOverlapIndex.value=index;for(let i=0;i<apertures.length;i++){horizonUniforms.uOverlapAperture.value[i].copy(apertures[i].aperture);horizonUniforms.uOverlapFade.value[i]=apertures[i].fade;}},
++    setOverlapApertures(apertures,index){horizonUniforms.uOverlapCount.value=apertures.length;horizonUniforms.uOverlapIndex.value=index;for(let i=0;i<apertures.length;i++){horizonUniforms.uOverlapAperture.value[i].copy(apertures[i].aperture);horizonUniforms.uOverlapFade.value[i]=apertures[i].fade;horizonUniforms.uOverlapDepth.value[i]=apertures[i].depth;}},
+     getCompositionDescriptor:()=>({center:nebulaUniforms.uCentre.value.toArray(),radius:nebulaUniforms.uRadius.value,hole:nebulaUniforms.uHole.value,time:nebulaUniforms.uTime.value,fade:nebulaUniforms.uFade.value,drain:nebulaUniforms.uDrain.value,opacity:nebulaUniforms.uOpacity.value,groundY:nebulaUniforms.uGroundY.value}),group,set,setSceneDepth,setViewProjectionInverse,update,reset,dispose,setRenderOrder(order){horizon.renderOrder=order;nebula.renderOrder=order+1;debris.renderOrder=order+2;sparks.renderOrder=order+3;},getStats:()=>({reference:'Horizon + AstralNebula original GLSL',overlapCount:horizonUniforms.uOverlapCount.value,radius,duration,remaining,time,reduced,quality,center:group.position.toArray(),growth,collapse,coreRadius:horizonUniforms.uHorizon.value,nebulaRadius:nebulaUniforms.uRadius.value,nebulaSteps:nebulaUniforms.uSteps.value,depthReady,depthEncoding:'RGBADepthPacking',drawCalls:group.visible?(depthReady?4:3):0,debris:positions.map(p=>({...p})),disposed})};
+ }
+--- a/gravity-horizon-source.js
++++ b/gravity-horizon-source.js
+@@ -490,12 +490,16 @@
+   uniform int uOverlapIndex;
+   uniform vec4 uOverlapAperture[8];
+   uniform float uOverlapFade[8];
+-  vec4 gravityOverlapCoverage(vec4 rgba, vec2 uv) {
+-    if (uOverlapCount <= 1 || rgba.a < .00001) return rgba;
++  uniform float uOverlapDepth[8];
++  vec4 gravityOverlapCoverage(vec4 rgba, vec2 uv, float sceneDepth) {
++    if (uDepthReady < .5 || uOverlapCount <= 1 || rgba.a < .00001) return rgba;
+     float layers = 1.;
+     for (int i = 0; i < 8; i++) {
+       if (i >= uOverlapCount) break;
+       if (i == uOverlapIndex) continue;
++      // The billboard has constant projected depth. Ignore peers rejected by
++      // the same opaque scene depth at this pixel, including shared cutaway.
++      if (uOverlapDepth[i] > sceneDepth + .0000001) continue;
+       vec4 aperture = uOverlapAperture[i];
+       float r = length((uv - aperture.xy) / max(aperture.zw, vec2(.000001)));
+       layers += (1. - smoothstep(.7, 1., r)) * uOverlapFade[i];
+@@ -515,7 +519,7 @@
+     `vec2 uv = gl_FragCoord.xy / uResolution;
+     float sceneDepth = uDepthReady > .5 ? unpackRGBAToDepth(texture2D(uSceneDepth, uv)) : 1.;
+     float protect = gravitySilhouetteFade(uv, sceneDepth);
+-    gl_FragColor = gravityOverlapCoverage(vec4(color * (1.0 - shadow), alpha) * protect, uv);`);
++    gl_FragColor = gravityOverlapCoverage(vec4(color * (1.0 - shadow), alpha) * protect, uv, sceneDepth);`);
+ export const GRAVITY_NEBULA_FRAGMENT = NEBULA_FRAGMENT
+   .replace('void main() {', `${silhouetteGLSL}\nvoid main() {`)
+   .replace('gl_FragColor = vec4(acc, alpha);',

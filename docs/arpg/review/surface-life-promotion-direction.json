@@ -1,0 +1,19 @@
+{
+  "at": "2026-09-19T04:18:29.337273+00:00",
+  "decision": "authorize owner promotion of three already-selected visual modules only, after coordinating source freeze with Combat/VFX",
+  "selection": "docs/arpg/review/environment-surface-selection.json",
+  "manifest": "output/environment/surface-life-v1/selection-manifest.json",
+  "scope": [
+    "src/render/asset-dressing.js",
+    "src/render/cemetery.js",
+    "src/render/environment-composition-ground.js"
+  ],
+  "excludedFromThisBatch": [
+    "layout changes9e45/a5f4",
+    "navigation changes",
+    "main/server",
+    "characters/VFX/HUD"
+  ],
+  "validation": "Preserve previous hashes; verify exact selected files and live HTTP; CPU preservation of collider/layout/navigation/budgets. One focal native integrated review only if coordinated, no repeat of broad suites.",
+  "reason": "Selected surface art is independently reviewable and does not depend on unresolved boss terminal pursuit. Physical placement candidate stays staged."
+}

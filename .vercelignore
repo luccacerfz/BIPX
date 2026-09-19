@@ -1,0 +1,18 @@
+# Static site only: the multiplayer server, tooling, evidence and docs are never published.
+server.mjs
+package.json
+package-lock.json
+render.yaml
+README.md
+.env*
+.data
+node_modules
+tools
+docs
+output
+*.mp4
+assets/**/source-history
+assets/models/monsters/source/mixamo/README.source.md
+assets/ui/portraits/capture.mjs
+assets/ui/portraits/verify.mjs
+src/config/README.md

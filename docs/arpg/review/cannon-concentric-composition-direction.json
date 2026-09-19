@@ -1,0 +1,16 @@
+{
+  "reviewedAt": "2026-09-19T03:55:27.030825+00:00",
+  "ownerReport": "output/qa/vfx-cannon-integrated-peak-20260919/review.json",
+  "sha256": "abdbc0c9b9ae0ecc779d17f3a51e2be86b2fb6b476275ff2d70b1093514f1ce2",
+  "separationMeters": 0.32491124054029624,
+  "pauseBlastAge": 0.3,
+  "decision": "Bounded staging A/B of composition/order authorized after Combat GPU window. Root confirms visual finding from prior seven independently inspected frames; static order remains a hypothesis.",
+  "preserve": [
+    "actor silhouette mask and65percent gate",
+    "single opaque depth pass",
+    "authority/event/timing/radius3.4",
+    "global color/bloom intensity",
+    "existing runtime source"
+  ],
+  "runtimePatchAuthorized": false
+}

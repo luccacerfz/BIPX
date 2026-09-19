@@ -1,0 +1,133 @@
+{
+  "createdAt": "2026-09-19T03:08:12.234Z",
+  "status": "CPU_ACCEPTED_NATIVE_PENDING_NOT_PROMOTED",
+  "promoted": false,
+  "scope": "Optional origin bridge and wrapper integration staging only; callback/runtime integration belongs to Combat.",
+  "changes": [
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-defaults.js",
+      "destination": "src/vfx/cannon-defaults.js",
+      "sha256": "010fbff04a43c19c2ec172c8d5bf0f35f13c6e5d816b4534202b521fd0f5187a",
+      "currentRuntimeSha256": null
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-origin-bridge.js",
+      "destination": "src/vfx/cannon-origin-bridge.js",
+      "sha256": "a71d583140ebb1fb70ace60ced2bd1cd6dd253901a97a92a519b1148fcd6c2ed",
+      "currentRuntimeSha256": null
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-source-glsl.js",
+      "destination": "src/vfx/cannon-source-glsl.js",
+      "sha256": "5bd8cbcf8442e5fda9215ea3b2a18712dbb1e2bbdae0c717e4c130fb9fdc6d9d",
+      "currentRuntimeSha256": null
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-vfx.js",
+      "destination": "src/vfx/cannon-vfx.js",
+      "sha256": "a95365067dd5dfa35c479a4ffe1c613878970134d3b08b2e87477e5afce40087",
+      "currentRuntimeSha256": null
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/class-skill-vfx.js",
+      "destination": "src/vfx/class-skill-vfx.js",
+      "sha256": "d7a22587826b5d8e8ff9a37ce757c55199e1395a2b9f77af27de0272f9dafd55",
+      "currentRuntimeSha256": "400afd2637bc1f3e74c6b83854dc6693d7c94aea856933160712c1e88d12cdda"
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/fire-blackbody.glsl.js",
+      "destination": "src/vfx/fire-blackbody.glsl.js",
+      "sha256": "6570394ae1e8d0099af2924f46336341be990e7b35baf262c978a25f44b0e8ca",
+      "currentRuntimeSha256": null
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/fire-common.glsl.js",
+      "destination": "src/vfx/fire-common.glsl.js",
+      "sha256": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+      "currentRuntimeSha256": null
+    },
+    {
+      "source": "assets/vfx/source-history/cannon-origin-staging-20260919/fire-noise.glsl.js",
+      "destination": "src/vfx/fire-noise.glsl.js",
+      "sha256": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+      "currentRuntimeSha256": null
+    }
+  ],
+  "stagingHashes": {
+    "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-defaults.js": "010fbff04a43c19c2ec172c8d5bf0f35f13c6e5d816b4534202b521fd0f5187a",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-origin-bridge.js": "a71d583140ebb1fb70ace60ced2bd1cd6dd253901a97a92a519b1148fcd6c2ed",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-source-glsl.js": "5bd8cbcf8442e5fda9215ea3b2a18712dbb1e2bbdae0c717e4c130fb9fdc6d9d",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/cannon-vfx.js": "a95365067dd5dfa35c479a4ffe1c613878970134d3b08b2e87477e5afce40087",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/class-skill-bodies.js": "ac1b1ec4c1e41b7e12a7fccdde13eb442362dd02d09fceaded42e1702c048330",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/class-skill-fields.js": "0b1c56a9a5657f8dd452240a017a891c6d92c773949a819cb0fc98cc4deae406",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/class-skill-vfx.js": "d7a22587826b5d8e8ff9a37ce757c55199e1395a2b9f77af27de0272f9dafd55",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/class-skill-volumes.js": "434cb84e0eb2217dd2cbb34436a4d28fc58457d1b79faa58d529e433b2e5afcf",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/combat-vfx.js": "55d05901ed7f6fd730828eb467d1aaf52e758a94e2c81a7d00bd0dce588f9efa",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/elemental-geometry.js": "ae27257b094f07b97090a92994fde5952ea3f1179351a04ed5eb264211bdeea8",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/elemental-projectiles.js": "5ae41cf01fe1baef2c91e0e43c5fd3dd4ae65b30aed541c0d9c93d5b981f311b",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/elemental-shaders.js": "7e5768f5f2b2954f367081ddc4df4a7150ce786a3b6a53729d7ee2ab16071d4d",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/elemental-source-glsl.js": "42df3a841216a089265d2e3dba50e8b3f816e7f997692b96677edf3f6aa05c15",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/elemental-vfx.js": "ebf9718be642c5073ccb89aed6af119acc3206dd25ca142d2219aed89103608b",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/fire-blackbody.glsl.js": "6570394ae1e8d0099af2924f46336341be990e7b35baf262c978a25f44b0e8ca",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/fire-common.glsl.js": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/fire-noise.glsl.js": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/gravity-common.glsl.js": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/gravity-field-pool.js": "faa591e5c6dde6627fd9b053376e909c8c40b549d6abe531aa08fcb44deab7f4",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/gravity-field-visual.js": "8535c2b282adf5f91a48ef458206715e1c1f90eb45c851f4f5b546dd84097e2c",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/gravity-horizon-source.js": "67bd78f8c900cb8ac9af51b1acf3fd386a8234e6d32a24a1e4c34d67929b826d",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/gravity-noise.glsl.js": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/hazard-vfx.js": "b160cf67f1cc16eba82b869535ba12a2c136e7bf21097e2d5ec7c7fe0471a39a",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/leaves.js": "f0589d52364951e86df30f2df927ebf07f32aab8b84d5dded289a23ee30c178b",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/shaders.js": "109ce9d9cf0bf684e50cabd2ecceee843adba0a4e019b06fcba40f0f245030db",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/soul-echoes.js": "04b354800a1d7560ffd9f2e4e1d89d0b49ecec1bdf2c2f19bb1f7323d9e63cc7",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/target-markers.js": "b0de5d7806006f6d17797616c31fa70e4696bf11761d285593f1407ef01697f1",
+    "assets/vfx/source-history/cannon-origin-staging-20260919/weapon-fire.js": "bf2b3e454888e6ba7bab9e5a74446dcbc9cd511d9c0be91c074168681a3e200b",
+    "tools/cannon-origin-vfx-cpu.mjs": "9351b400ca73fcc46abae22be4fdef4f73b0ae7402a0a0a55b3e22f08ffbbd4e",
+    "tools/cannon-origin-vfx-sweep.mjs": "052a30b34b3b6e437cca37fe6bffc95e26dbe4805ab14cd8c9636a0049aa42ac",
+    "tools/cannon-origin-vfx-native.mjs": "84c2a2eb95a551432895340bc16343833c96a716bb47fc575c53689631ad883d",
+    "tools/cannon-origin-vfx-preview.html": "3a4357ab1952122a543cde6dec940a33436e0826090d280ce978e462cd700763"
+  },
+  "runtimeHorizonHashesStillMatch": true,
+  "runtimeHorizonFileCount": 21,
+  "selectedCompositionStageStillMatches": true,
+  "cpu": {
+    "file": "output/qa/cannon-origin-vfx-2026-09-19T03-04-34-489Z-cpu.json",
+    "cases": 52,
+    "sourceStable": true
+  },
+  "independentAudit": {
+    "file": "output/qa/arpg-root-review/2026-09-19T03-04-34-556Z-cannon-bridge-contact.json",
+    "sourceStable": true,
+    "visualSegmentsClear": true,
+    "allLastNonterminalAtAuthority": true,
+    "maximumInitialOffset": 1.5874654009514026
+  },
+  "native": {
+    "status": "PREPARED_NOT_RUN",
+    "command": "node tools/cannon-origin-vfx-native.mjs",
+    "window": "Require explicit Physics density143 release AND final main hash published by Combat in docs/arpg/combat-cannon-visual-contract.md after role=status ordering correction; then verify hash and acquire atomic GPU lock. An absent lock alone does not open the window. No runtime promotion or queue retry.",
+    "pending": [
+      "Animated socket/native core+literal adapter stand/move",
+      "Discontinuity resetTrail/40ms hide at thin corner and near target",
+      "High/low/reduced body",
+      "Combined torso65 gate and single shared depth",
+      "Original PNG/playback review; no gameplay claim"
+    ],
+    "finalMainHashFromCombat": null
+  },
+  "integration": {
+    "constructor": "createClassSkillVfx({...,sweepVisual})",
+    "callback": "sweepVisual(from,to,.32,{skillId,castId,authorityY:1.05,phase}) -> null | {t}",
+    "authority": "unchanged",
+    "bridgeBreak": "clear trail, endpoint=authority, hide body/flight40ms; no impact event",
+    "depth": "existing one shared packed-depth consumer; no pipeline edit"
+  },
+  "archive": "assets/vfx/source-history/cannon-origin-staging-20260919/iterations/cpu-final-0304",
+  "artifactHashes": {
+    "output/qa/cannon-origin-vfx-2026-09-19T03-04-34-489Z-cpu.json": "d8e914a5c246fb92e033f5f7c068087b15dc3257ac793f3b69853f28f3b791b3",
+    "output/qa/arpg-root-review/2026-09-19T03-04-34-556Z-cannon-bridge-contact.json": "b0b1629b48f9ed62b91b7ade30c524e4120bb3c899374257f96b3357129cdbd0",
+    "output/qa/arpg-root-review/2026-09-19T03-03-25-075Z-cannon-bridge-contact.json": "59445b703c97dfa887cc8afcbb4ce169d4592873be9d36733837d21ba60444ce",
+    "output/qa/arpg-root-review/2026-09-19T02-51-12-406Z-cannon-bridge-contact.json": "7f6c86fcfac88263ce9c94baca95c0150347ac158844901f3fa66cdb659cc386",
+    "output/qa/arpg-root-review/2026-09-19T02-58-32-434Z-cannon-bridge-contact.json": "438aa5885a295a370257da4cb5eb5909c8168b4e0881eeebcc7b69a34df30ddf"
+  }
+}

@@ -1,0 +1,240 @@
+{
+  "candidateSuite": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/suite.json",
+  "sourceHashes": {
+    "src/main.js": "579f0bb35ec48f040da669830609531c0ea2a56ac65993ff5d5e7d0b16fd427b",
+    "server.mjs": "deb4d89fed0454beda52d35d12e00e5f23868cf7f2adaaabfd4359e8f244ef83"
+  },
+  "scope": "Observed failures outside or below existing test pass budgets. Test suite pass cannot dismiss these records. No rating assigned.",
+  "authorityAudit": {
+    "scope": "Read-only production source; real isolated HTTP/WebSocket server; disposable leaderboard; no browser or GPU.",
+    "sourceSha256": "deb4d89fed0454beda52d35d12e00e5f23868cf7f2adaaabfd4359e8f244ef83",
+    "cases": [
+      {
+        "name": "Zero-XP player may claim level999 and arbitrary build",
+        "state": {
+          "x": 4,
+          "z": 0,
+          "rotation": 0,
+          "aimX": 0,
+          "aimZ": -1,
+          "health": 200,
+          "maxHealth": 200,
+          "score": 0,
+          "kills": 0,
+          "xpTotal": 0,
+          "wave": 1,
+          "level": 999,
+          "bestLevel": 999,
+          "build": [
+            "Fake max upgrade"
+          ],
+          "runId": "2536c9d3-64a7-47fe-8135-e5866059e475",
+          "stateVersion": 1,
+          "character": "dwarf",
+          "weapon": "pistol",
+          "shooting": false,
+          "state": "playing"
+        }
+      },
+      {
+        "name": "Current revision without earned upgrades may triple maxHP and heal to600",
+        "state": {
+          "x": 4,
+          "z": 0,
+          "rotation": 0,
+          "aimX": 0,
+          "aimZ": -1,
+          "health": 600,
+          "maxHealth": 600,
+          "score": 0,
+          "kills": 0,
+          "xpTotal": 0,
+          "wave": 1,
+          "level": 999,
+          "bestLevel": 999,
+          "build": [],
+          "runId": "2536c9d3-64a7-47fe-8135-e5866059e475",
+          "stateVersion": 2,
+          "character": "dwarf",
+          "weapon": "pistol",
+          "shooting": false,
+          "state": "playing"
+        }
+      },
+      {
+        "name": "Fresh level1 zero-XP run accepts maximum damage/cadence/area/projectiles",
+        "initial": {
+          "level": 1,
+          "xp": 0
+        },
+        "acceptedAttack": {
+          "kind": "pistol",
+          "weapon": "pistol",
+          "x": -17.607,
+          "z": 24.84,
+          "aimX": 1,
+          "aimZ": 0,
+          "damageMultiplier": 8,
+          "cooldownMultiplier": 0.48,
+          "areaMultiplier": 5,
+          "projectileBonus": 6
+        },
+        "observedDamage": 16
+      },
+      {
+        "name": "Unauthenticated solo session submission injects and replays cumulative leaderboard totals",
+        "record": {
+          "name": "SyntheticLedgerA",
+          "bestScore": 123456,
+          "bestKills": 654,
+          "bestWave": 99,
+          "bestLevel": 999,
+          "bestBuild": [],
+          "gamesPlayed": 2,
+          "totalScore": 246912,
+          "totalKills": 1308,
+          "totalPlayMs": 2,
+          "lastScore": 123456,
+          "lastKills": 654,
+          "lastWave": 99,
+          "lastLevel": 999,
+          "lastBuild": [],
+          "firstSeenAt": "2026-09-18T19:08:48.507Z",
+          "lastSeenAt": "2026-09-18T19:08:48.510Z"
+        }
+      }
+    ],
+    "completed": true,
+    "stderr": "",
+    "sourceUnchanged": true
+  },
+  "enemyProjectileAudit": {
+    "scope": "Isolated CPU execution of extracted production updateServerProjectiles; stubbed damage sink. Not gameplay/network proof.",
+    "sourceSha256": "deb4d89fed0454beda52d35d12e00e5f23868cf7f2adaaabfd4359e8f244ef83",
+    "stepSeconds": 0.05,
+    "from": {
+      "x": -0.55,
+      "z": 1
+    },
+    "to": {
+      "x": 0.55,
+      "z": 1
+    },
+    "player": {
+      "x": 0,
+      "z": 0
+    },
+    "combinedRadius": 1.06,
+    "expectedContactFraction": 0.1803928030682371,
+    "actualDamageEvents": [],
+    "projectileStillAlive": true,
+    "knownDefect": "Enemy projectile only tests endpoint; a grazing crossing is missed."
+  },
+  "naturalLongFrames": [
+    {
+      "character": "warrior",
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-warrior.json",
+      "sha256": "76e84e4d11e9cb32d6cc4262b0b8ba1a92708d5b492a67c6c3bf25f51c74d42a",
+      "slowFrames": [
+        {
+          "elapsedMs": 58547.7,
+          "frameMs": 83.29999999999563,
+          "startPerformanceMs": 60081.4,
+          "endPerformanceMs": 60164.7,
+          "overlappingCaptures": [],
+          "overlappingLongTasks": [
+            {
+              "startTime": 60082.299999952316,
+              "duration": 98,
+              "name": "self"
+            }
+          ]
+        },
+        {
+          "elapsedMs": 62064.2,
+          "frameMs": 183.29999999999563,
+          "startPerformanceMs": 63497.9,
+          "endPerformanceMs": 63681.2,
+          "overlappingCaptures": [],
+          "overlappingLongTasks": [
+            {
+              "startTime": 63499.89999985695,
+              "duration": 191,
+              "name": "self"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Every observed >50ms frame overlaps a main-thread longtask and none overlaps a recorded screenshot interval. These observations do not identify the internal function, GC, shader work or other cause; a separate diagnostic trace is planned."
+    },
+    {
+      "character": "dwarf",
+      "path": "output/playwright/2026-09-18T19-08-58-555Z-quality-suite/verify-natural/natural-dwarf.json",
+      "sha256": "014545703e322768aec551af20521878249f75706e6361a20f6886935c0085e3",
+      "slowFrames": [
+        {
+          "elapsedMs": 36298.600000000006,
+          "frameMs": 83.30000000000291,
+          "startPerformanceMs": 37786.0,
+          "endPerformanceMs": 37869.3,
+          "overlappingCaptures": [],
+          "overlappingLongTasks": [
+            {
+              "startTime": 37787.39999985695,
+              "duration": 82,
+              "name": "self"
+            }
+          ]
+        },
+        {
+          "elapsedMs": 40848.4,
+          "frameMs": 183.29999999999563,
+          "startPerformanceMs": 42235.8,
+          "endPerformanceMs": 42419.1,
+          "overlappingCaptures": [],
+          "overlappingLongTasks": [
+            {
+              "startTime": 42237.39999985695,
+              "duration": 188,
+              "name": "self"
+            }
+          ]
+        },
+        {
+          "elapsedMs": 42115.100000000006,
+          "frameMs": 50.10000000000582,
+          "startPerformanceMs": 43635.7,
+          "endPerformanceMs": 43685.8,
+          "overlappingCaptures": [],
+          "overlappingLongTasks": [
+            {
+              "startTime": 43637.299999952316,
+              "duration": 64,
+              "name": "self"
+            }
+          ]
+        },
+        {
+          "elapsedMs": 98529.5,
+          "frameMs": 116.69999999999709,
+          "startPerformanceMs": 99983.5,
+          "endPerformanceMs": 100100.2,
+          "overlappingCaptures": [],
+          "overlappingLongTasks": [
+            {
+              "startTime": 99985.59999990463,
+              "duration": 115,
+              "name": "self"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Every observed >50ms frame overlaps a main-thread longtask and none overlaps a recorded screenshot interval. These observations do not identify the internal function, GC, shader work or other cause; a separate diagnostic trace is planned."
+    }
+  ],
+  "historicalPause": {
+    "status": "open-not-reproduced",
+    "evidence": "docs/quality-natural-20260918.json",
+    "detail": "Unexpected pause in earlier natural Lyra run has unknown cause; current successful runs do not prove resolution."
+  }
+}

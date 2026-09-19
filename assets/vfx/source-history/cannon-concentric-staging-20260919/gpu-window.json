@@ -1,0 +1,55 @@
+{
+  "authorized": true,
+  "at": "2026-09-19T04:02:57.308367+00:00",
+  "authorization": "Root explicit focal A/B after Combat; warcry after Combat/Brute/Environment. All release notices observed.",
+  "evidence": [
+    {
+      "path": "docs/arpg/combat-handoff.md",
+      "sha256": "1deb2fb41b5d4ff058cf7529a4d2c0acd5bf50eb1f49baeda44b6ffdafa0ff0a",
+      "notice": [
+        "# Combat \u2014 canh\u00e3o + contacts912c + limpeza de morte",
+        "",
+        "**Integrado e congelado:** main **afc7d5ac**, contacts **912c00fe**, oito arquivos VFX aprovados, layout143/navigation911e0. [222fontes finais](../../output/qa/arpg-cannon-density-checkpoint-20260919/source-manifest.json). Nenhuma promo\u00e7\u00e3o Brute/GUI/Environment/Animation/Lich neste lote.",
+        "",
+        "Jogar **http://localhost:5173/?offline=1** \u2014 servidorPID75665/HTTP200, Supabase desligado, ranking7f580798 preservado. WASD/setas, mouse/IJKL, Espa\u00e7o/ataque b\u00e1sico,1/2/3skills, HUD/toque, Escop\u00e7\u00f5es. Recarregar para receber a corre\u00e7\u00e3o final de main.",
+        "",
+        "[Entrega, recibos e gates completos](combat-cannon-density-integration.md). Backend6grupos e spawn4checks PASS; input2classes parado/movendo4cen\u00e1rios; combos3; parede3proj\u00e9teis; rede6skills/reconnect/latejoin; natural60s por classe; lifecycle6fases e miss22m PASS em seus escopos. **N\u00e3o \u00e9 suiteglobal13/13 nem AAA.**",
+        "",
+        "Natural03:44: warrior28kills/lvl4/P958.3ms, morte/restart naturais; dwarf59kills/lvl6/P957.7ms, pico180.4ms e fuga WASD no jardim. N\u00e3o fecha o caso hist\u00f3rico0XP/P9520.9 na manuten\u00e7\u00e3o. Natural/input/rede/combos usam main7bde570f; finalafc7d5ac muda somente cancelamento/reset em `endGame()`. [Proveni\u00eancia17reports](../../output/qa/arpg-cannon-density-checkpoint-20260919/evidence-provenance.json):14 anteriores e3 finais, relacionados pelo diff expl\u00edcito, n\u00e3o hash id\u00eantico.",
+        ""
+      ]
+    },
+    {
+      "path": "docs/arpg/brute-motion-v4.md",
+      "sha256": "66aa5cddc7b3b719b7edcbabe969c0693bf80988ae5d0edf6c5ca6c5fb262aec",
+      "notice": [
+        "> **GPU BRUTE LIBERADA \u2014 2026-09-19T03:58:46.181609+00:00**. Quatro playbacks RAF (frontal.55s e2.5s \u00d73/4 eARPG),14PNG e v\u00eddeo capturados; zero erros, fontes est\u00e1veis. Browser/servidor ef\u00eameros pr\u00f3prios encerrados, lock/token removido. **Nenhuma pr\u00f3xima captura Brute prevista. Root confirmou agora GUI compact focal como pr\u00f3xima janela; Combat/GUI ser\u00e3o avisados.** Revis\u00e3o art\u00edstica dos artefatos existentes em CPU em andamento, sem promo\u00e7\u00e3o. [Report](../../output/brute-motion-v4/native-2026-09-19T03-58-17-886Z/report.json).",
+        "",
+        "# Brute v4 \u2014 frontal selecionado para revis\u00e3o, somente staging",
+        "",
+        "Root confirmou a sele\u00e7\u00e3o CPU do **frontal `71db9823`** para uma revis\u00e3o nativa curta; **Swipe rejeitado** por postura baixa/tor\u00e7\u00e3o, preservado sem ampliar matriz. Isso ainda n\u00e3o aprova o frontal como substituto nem autoriza promo\u00e7\u00e3o. [Sele\u00e7\u00e3o CPU](../../output/brute-motion-v4/cpu-artistic-selection.json), [revis\u00e3o Root](review/brute-v4-cpu-selection.json).",
+        "",
+        "Ownership SFX exclusivo de `output/brute-motion-v4/`, `tools/brute-motion-review*` e deste handoff. Animation avisado pelo thread `01a0b6d0-ae7e-7713-81f2-072f6181c374`: sem her\u00f3is/runtime/Walker/Lich. Lich visual+FSM40 congelados; [90 refer\u00eancias preservadas, oito grupos CPU](../../output/brute-motion-v4/cpu-verification-2026-09-19T03-32-49-037Z.json). Nenhum main/server/autoridade/\u00e1udio/GLB runtime alterado por esta frente;5173 preservado.",
+        "",
+        "**Fila GPU:** frontal preparado para3/4+ARPG, perfil.55s em tempo real primeiro e fonte2.5s separadamente. Espera fechar o lote Combat canh\u00e3o+contacts/VFX/Environment/density; lock livre sozinho n\u00e3o libera a fila. Nenhuma reserva Brute at\u00e9 esta atualiza\u00e7\u00e3o. Runner exige recibo `gpu-window.json` com evid\u00eancia real do encerramento, depois `mkdir` at\u00f4mico/token pr\u00f3prio. N\u00e3o repetir60s/global.",
+        ""
+      ]
+    },
+    {
+      "path": "docs/arpg/environment-handoff.md",
+      "sha256": "f3f0b432e3f40c59ee593a8ec7f61ed175d0b6ec196e79ccb1bb03a0934c7703",
+      "notice": [
+        "# Environment & Assets \u2014 depth/cutaway promovido e dispon\u00edvel",
+        "",
+        "## Manuten\u00e7\u00e3o9e45 \u2014 dire\u00e7\u00e3o art\u00edstica local aceita; boss ainda aberto",
+        "",
+        "Root reviu os quatro originais e selecionou a dire\u00e7\u00e3o em [review/maintenance-access-native-selection.json](review/maintenance-access-native-selection.json). Sem promo\u00e7\u00e3o, novo render ou movimenta\u00e7\u00e3o adicional de props. Snapshot9e45/290a/nav911/main455 congelado para diagn\u00f3stico bounded Physics de pose/corredor f\u00edsico versus grid/arrivalRadius do BloodCow offline. Surface-life selecionado preservado. Environment sem CPU/GPU e sem edi\u00e7\u00e3o runtime durante freeze canh\u00e3o; pr\u00f3ximos ajustes geom\u00e9tricos somente ap\u00f3s causa separada, sem mudan\u00e7a de corpos/ataques/budget.",
+        "",
+        "## Manuten\u00e7\u00e3o9e45 \u2014 staging congelado, GPU pr\u00f3pria liberada03:34:53UTC",
+        "",
+        "[Proposta/hashes/limites](environment-maintenance-access.md) \u00b7 [manifesto](../../output/environment/maintenance-access-v1/selection-manifest.json). Dois placements visuais+colliders,143s\u00f3lidos preservados. Baseline72 reproduz integralmente Physics; final9e45 d\u00e1 melee/LOS a18/18walkers por caller e preserva \u00fanico tiro serverBloodCow.30s. SoloBloodCow continua0/18; n\u00e3o declarar amea\u00e7a universal ou aprova\u00e7\u00e3o de gameplay. A tentativae598 que bloqueou esse tiro est\u00e1 preservada/rejeitada. Entrada/sa\u00edda player e tr\u00eas tracks locais passaram, sem mudar corpos/callers/budget. Dois pares nativos fonte est\u00e1vel/zeroerro, com Surface-life selecionado id\u00eantico nos dois lados; quatro PNGs revisados e or\u00e7amento id\u00eantico. Physics informado uma vez para revis\u00e3o do hash final. Nenhuma promo\u00e7\u00e3o/runtime/GPU adicional prevista; aguarda sele\u00e7\u00e3o e gates integrados atuais.",
+        ""
+      ]
+    }
+  ]
+}

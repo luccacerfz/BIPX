@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><base href="/"><link rel="icon" href="data:,"><title>Environment skill-area fixture</title>
+<style>html,body{margin:0;background:#10212b;overflow:hidden}aside{position:fixed;left:16px;top:16px;color:white;background:#07151ce6;padding:10px;font:14px system-ui}</style>
+<aside id="caption">Synthetic area proxy — occlusion fixture, not skill gameplay or final VFX</aside>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {createCemetery} from '../src/render/cemetery.js';
+import {getEnvironmentLayout} from '../src/render/environment-layout.js';
+import {createWorldAtmosphere} from '../src/render/atmosphere.js';
+import {getClassSkill} from '../src/combat/class-skills.mjs';
+import {createCollisionWorld,moveActor} from '../src/physics/contacts.mjs';
+import {getEnvironmentColliders,ENVIRONMENT_GROUND} from '../src/render/environment-layout.js';
+const collisionWorld=createCollisionWorld({colliders:getEnvironmentColliders(),bounds:ENVIRONMENT_GROUND});
+const params=new URLSearchParams(location.search),before=params.has('before'),actual=params.has('actual');
+const {loadAssetDressing}=await import(before?'../src/render/asset-dressing-before-v2.js':'../src/render/asset-dressing.js');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x13232c);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,200);camera.position.set(0,23,29);camera.lookAt(3,0,-6);
+scene.add(new THREE.HemisphereLight(0x98cde0,0x484c3e,2));const moon=new THREE.DirectionalLight(0xd6e4f3,3);moon.position.set(-20,36,18);scene.add(moon);
+const cemetery=createCemetery({THREE,scene});const ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),cemetery.groundMaterial);ground.rotation.x=-Math.PI/2;scene.add(ground);
+const trees=getEnvironmentLayout().legacy.filter(c=>c.id.startsWith('tree')).map(c=>new THREE.Vector3(c.x,0,c.z));
+const world=await loadAssetDressing({THREE,scene,trees,lanterns:cemetery.lanternPositions});for(const p of cemetery.lanternPlaceholders)p.visible=false;
+const atmosphere=createWorldAtmosphere({THREE,moon});scene.children.forEach(o=>atmosphere.patchObject(o));
+const material=new THREE.MeshBasicMaterial({color:0xff7a22,toneMapped:false});
+const ring=new THREE.Mesh(new THREE.RingGeometry(4.38,4.5,96),material);ring.rotation.x=-Math.PI/2;ring.position.set(9,.16,-10);scene.add(ring);
+const core=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),material);core.position.set(9,.45,-10);scene.add(core);
+const marker=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,1.5,12),new THREE.MeshBasicMaterial({color:0xffffff}));marker.position.set(0,.75,0);scene.add(marker);
+const vfx=actual?(await import('../src/vfx/class-skill-vfx.js')).createClassSkillVfx({THREE,scene,quality:'high'}):null;
+const colors={dwarf_explosive_cannon:0xff7a22,dwarf_frost_shot:0x73ddff,dwarf_gravity_shot:0xca70ff};
+const horde=Array.from({length:20},(_,i)=>({health:1,radius:.6,mesh:{position:new THREE.Vector3(-12+i*.3,0,5)}}));
+function render({skillId='dwarf_gravity_shot',active=true,remaining=2,origin=false,paused=false,quality='high',reducedMotion=false}={}){
+ const position=origin?{x:0,y:0,z:0}:{x:9,y:0,z:-7};
+ const radius=getClassSkill(skillId)?.radius??4.5;
+ const contact=moveActor(collisionWorld,{...position,radius:.64,height:2},{x:0,z:0});
+ if(contact.blocked||contact.unresolved)throw Error('Fixture center overlaps visible solid');
+ ring.scale.setScalar(radius/4.5);
+ ring.position.set(position.x,.16,position.z);core.position.set(position.x,.45,position.z);material.color.set(colors[skillId]);
+ if(vfx){
+  ring.visible=core.visible=false;vfx.reset();vfx.setQuality(quality);vfx.setReducedMotion(reducedMotion);
+  const common={skillId,castId:'environment-fixture',origin:{x:0,y:1.2,z:0},target:{...position,y:.18},direction:{x:.67,y:0,z:-.74},radius,groundY:.14};
+  vfx.emit({...common,phase:'cast'});vfx.emit({...common,phase:'release'});vfx.emit({...common,phase:'impact',contactId:'ground'});
+  if(skillId==='dwarf_gravity_shot'&&active&&remaining>0)vfx.syncState({fields:[{id:'field-fixture',position,radius,remaining,duration:5}]});
+  if(skillId==='dwarf_frost_shot'&&active&&remaining>0)vfx.syncState({statuses:[{id:'frozen-fixture',position,radius:.7,freezeRemaining:remaining,duration:3}]});
+  for(let i=0;i<(skillId==='dwarf_gravity_shot'?90:18);i++)vfx.update(1/120);
+ }
+ const area=skillId==='dwarf_gravity_shot'?{castId:'field-fixture',skillId,...position,radius,remaining}:{id:'field-fixture',skillId,position,radius,remaining};
+ const areas=active?[area]:[];
+ world.update(new THREE.Vector3(),!paused,horde,[],areas);renderer.render(scene,camera);
+ document.querySelector('#caption').textContent=`Synthetic ${actual?'actual VFX':'area proxy'} · ${skillId} · ${before?'before':'v2'} · focus ${world.stats.skillAreaFocusCount??0} · ${quality}${reducedMotion?'/reduced':''} · not gameplay`;
+ return {area:{skillId,position,radius,contactFree:!contact.blocked},vfx:vfx?.getStats(),stats:world.stats,render:{...renderer.info.render},memory:{...renderer.info.memory}};
+}
+window.environmentSkillReview={ready:true,render,renderer,world,scene,camera};render();
+</script></html>

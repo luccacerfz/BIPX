@@ -1,0 +1,41 @@
+{
+  "at": "2026-09-19T03:10:47.483821+00:00",
+  "sourceReport": "output/playwright/2026-09-19T03-06-52-504Z-verify-player-spawn-browser/spawn-rejected.json",
+  "sourceReportSha256": "eaa199c11d69b910c227136a0db9fbb817e4d1960143da95d3ebe68122d1a6c4",
+  "assertions": "passed",
+  "sourceStable": true,
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T03-06-52-504Z-verify-player-spawn-browser/spawn-rejected-no-free-space-1280x800.png",
+      "sha256": "bf1180a055e301c0c5367d459c418409321850e3300cc9b8648b755afb4ea70b",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-06-52-504Z-verify-player-spawn-browser/spawn-rejected-no-free-space-393x852.png",
+      "sha256": "6afd5eafd46b5f7f5d69723dd65ee6ef728f875d41fc4c6eb77646f9e78b07a5",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-06-52-504Z-verify-player-spawn-browser/spawn-rejected-no-free-space-320x568.png",
+      "sha256": "6743a25660d75051ad15323523c7e995737761b0b91275051c2f61508090432c",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-06-52-504Z-verify-player-spawn-browser/spawn-rejected-no-free-space-852x393.png",
+      "sha256": "7b8043ca7cbe6bd13cce50419c3c4ddb0f08cfd39d81ecf0004e7e3fed418791",
+      "viewedOriginal": true
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-06-52-504Z-verify-player-spawn-browser/spawn-rejected-retry-playing.png",
+      "sha256": "7e87a6d3b8b8e49718b19db5fe808731f213794834458af379d8c86a2eebf8c6",
+      "viewedOriginal": true
+    }
+  ],
+  "sourceHashes": {
+    "src/main.js": "455addd3b7d9b22e82852ca74426327f8f9748b65f50d0c4d9c15cf6a8a11af4",
+    "styles.css": "8ede8bb92ae3a92e3a8b5d80e4d3701bf2c49e7b6e562b732286f4d5ed015fc0"
+  },
+  "localRecoveryAccepted": true,
+  "scope": "Real browser/server rejection and retry with synthetic no-free-spawn blocker; responsive sizes emulated, not physical mobile or screen-reader test.",
+  "globalUIApproval": false
+}

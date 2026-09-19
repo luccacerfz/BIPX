@@ -1,0 +1,17 @@
+{
+  "createdAt": "2026-09-19T03:36:24.871642+00:00",
+  "stageOnly": true,
+  "skillId": "warrior_war_cry",
+  "historicalViewedReference": {
+    "path": "output/playwright/2026-09-19T00-38-12-562Z-class-skill-vfx-v2/warrior_war_cry-state-low-reduced.png",
+    "sha256": "b944c4975e1a5db0a18895a193dfe64cd1d8f7ad8261df353ccc5ac69c60a4bb",
+    "scope": "Historical synthetic isolated VFX; not current Aldric gameplay or high-quality-mode judgement."
+  },
+  "direction": [
+    "Verify current real Aldric ARPG baseline first.",
+    "Concentrated anticipation, short powerful pressure/dust release, lower intensity eight-second buff aura, readable termination.",
+    "Preserve authority and current six-skill timing, reduce motion handling, enemy silhouette visibility, pooled bounded cost."
+  ],
+  "owner": "Existing Astra VFX after cannon integration support",
+  "runtimePromotionAuthorized": false
+}

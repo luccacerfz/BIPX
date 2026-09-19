@@ -1,0 +1,668 @@
+{
+  "candidate": {
+    "description": "Eight owner-promoted cannon modules plus Combat visual sweep and contacts912c. Final main-only endGame cleanup follows the reproduced lifecycle failure. GUI role-order fix is already integrated. Full AAA goal remains incomplete.",
+    "capturedAt": "2026-09-19T03:59:51.973031+00:00",
+    "sourceManifest": "output/qa/arpg-cannon-density-checkpoint-20260919/source-manifest.json",
+    "sourceManifestSha256": "9e08e72d0e2665c8844342021a5277a08351aa90669308e856aab7ee1b94eee0",
+    "sourceFiles": 222,
+    "sourceInMotionDuringCapture": false,
+    "allReportsSameSource": false,
+    "provenance": "output/qa/arpg-cannon-density-checkpoint-20260919/evidence-provenance.json",
+    "changedRuntimeFiles": [
+      "src/main.js",
+      "src/physics/contacts.mjs",
+      "src/vfx/cannon-defaults.js",
+      "src/vfx/cannon-origin-bridge.js",
+      "src/vfx/cannon-source-glsl.js",
+      "src/vfx/cannon-vfx.js",
+      "src/vfx/class-skill-vfx.js",
+      "src/vfx/fire-blackbody.glsl.js",
+      "src/vfx/fire-common.glsl.js",
+      "src/vfx/fire-noise.glsl.js"
+    ],
+    "previousRealJef": "output/qa/arpg-environment-integrated-20260919/jef.json"
+  },
+  "dimensions": {
+    "game_design": {
+      "coverage": "partial",
+      "observations": [
+        "Six canonical v2 active skills plus class basic attacks remain actual authority, not visual renames; all six cast through real GUI keyboard input standing/moving and network. Resource/cooldown gates retained.",
+        "Natural high/low combos observe living stun/freeze targets before follow-up kills, confirmed dash death/cut events, gravity pull and cannon AoE. Layout143 and bodies unchanged; optimized contacts912c retains exact narrow phase and ordering.",
+        "Current empty-world miss fixture uses real key input and reaches authoritative22m detonation, zero victims/score. Crypt wall fixture blocks all three dwarf projectiles and AoE LOS."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-43-09-782Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T03-51-00-869Z-verify-arpg-cannon-miss/cannon-miss-summary.json",
+        "output/playwright/2026-09-19T03-43-53-287Z-verify-arpg-layout-gameplay/layout-dwarf.json"
+      ]
+    },
+    "animation": {
+      "coverage": "partial",
+      "observations": [
+        "Animation runtime remains07952. Real standing/moving casts and remote interpolated strafe/stop are exercised; this is not sole-contact acceptance.",
+        "No-slide remainsfalse. Root sees dash halves still visually hard to distinguish in the current horde. Backwardv6/v7 and explicit Lich profile/cast remain staging, not promoted."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-43-09-782Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T03-42-09-201Z-verify-arpg-network/arpg-network.json",
+        "docs/arpg/animation-backward-v6-native-ab.md",
+        "docs/arpg/review/locomotion-v3-local-followup.md"
+      ]
+    },
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "Eight exact VFX files promoted by owner after localized native direction acceptance. Cannon alone now has orange mass/bright thermal core, weapon-connected start and flame trail; actual-input still images support this bounded observation.",
+        "Combat decoded existing gameplay videos around release/impact in high and low/reduced. Close cannon+gravity overlap remains visually dominated by purple core/nebula; selected warm-color peaks partly capture enemy hit/blood. These frames do not grant integrated fire-explosion artistic approval.",
+        "Environment143/Horizon/paintedHUD unchanged. Cry thin/geometric; cuts difficult to read; canopy dither/repetitive assets and Lich presentation remain unfinished. NoAAA or continuous playback approval."
+      ],
+      "evidence": [
+        "output/qa/arpg-cannon-density-checkpoint-20260919/native-observations.json",
+        "docs/arpg/review/cannon-origin-native-followup.md",
+        "docs/arpg/review/integrated-art-followup.md"
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "Combat sweepVisual queries actual3D and canonicalY1.05 solids plus eligible live bodies; only visual path changes. Damage/origin1.05/contact remains core. Eight promoted hashes and baseline archived, Horizon preserved.",
+        "Current actual-input combos: high130fire frames/128shared depth frames; low144/142. Callback/socket valid, explosion at confirmed contact, one same-frame shared depth for fire+gravity, pause held visual clock and expiration cleared slots.",
+        "Lifecycle failure retained cannon after death: corrected only endGame ordering/reset. Final instrumented6cycles cast/travel/impact twice yields zero slots after death/restart and no new GPU UUIDs after first full phase sequence.",
+        "Staging native minimum89.256% applies to that scene only; historical65.289% with0.289pp margin remains. Natural overlap fire readability is still open, not inferred from technicalPASS."
+      ],
+      "evidence": [
+        "output/qa/vfx-cannon-origin-promoted-20260919.json",
+        "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/arpg-combos.json",
+        "output/qa/arpg-cannon-density-checkpoint-20260919/gpu-allocation-analysis.json",
+        "output/qa/arpg-cannon-density-checkpoint-20260919/native-observations.json"
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Bothclasses use real keyboard/mouse input, combos, damage/control/kill sequences and imported gestures; wall contacts preserve target behindcrypt. Automated target selection is not human feel approval.",
+        "Natural60swarrior max28kills/lvl4 with naturaldeath/restart; dwarf59kills/lvl6/wave2. Dwarf keyboardescape triggered once at(-11.65,-6.359), then movement/progression resumed; differentgarden location, not historic maintenance(18.933,14.268) reproduction.",
+        "No listening or continuous-playback review, cut weight and fire/field hierarchy remain unresolved."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-44-45-312Z-verify-natural-runs/natural-runs.json",
+        "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/arpg-combos.json",
+        "output/qa/arpg-cannon-density-checkpoint-20260919/native-observations.json"
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "Two orbs, three painted class icons and cooldown/resource labels derive real snapshots and remain readable in inspected normal-health desktopframes. Input uses GUI events, not duplicate main key listeners.",
+        "Localized prior GUI rejection/retry/back/reopen4viewports passed; role=status now precedes text mutation with original attribute restoration preserved. No repeat of identical visuals; source evolution explicitly recorded.",
+        "No complete mobile/touch/zoom or assistive-tech acceptance; fixture1000000HP overflow is declared separately from real200HP."
+      ],
+      "evidence": [
+        "docs/arpg/combat-spawn-ui-integration.md",
+        "output/qa/arpg-cannon-density-checkpoint-20260919/native-observations.json",
+        "output/playwright/2026-09-19T03-43-09-782Z-verify-arpg-browser/arpg-browser.json"
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "Low/reduced desktop combo passed with same-frame shared depth and controls. It is not physicalmobile.",
+        "Portrait320/landscape GUI history is viewport evidence only; no real mobile GPU thermal/input/network/long-session proof for cannon912c candidate."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-low.json",
+        "docs/arpg/review/gui-recovery-integrated.md"
+      ]
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "SFX runtime and generated ElevenLabs assets unchanged; prior23/23SFX CPU/WebAudio is historical module evidence, not new listening.",
+        "No actual listening review: audio input tool unavailable. Death resets samplebank already present; new visual cleanup does not establish mix/occlusion/spatial quality."
+      ],
+      "evidence": [
+        "docs/arpg/sfx-handoff.md",
+        "docs/arpg/review/integrated-art-followup.md"
+      ]
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "Natural pre-cleanup main7bde570f with contacts912c/newcannon,60s each: warrior142.635FPS/P958.3ms/P998.6/worst41.8; dwarf140.818FPS/P957.7/P9913.9/worst180.4 and one180mslongtask. Includes captures/upgrades/restarts, no hidden exclusion; local desktop only. Both declared57FPS/P95<=20gates passed.",
+        "Density staged A/B143 accepted:400baselineframeP9521.0ms vs candidatefree9.8ms; CPU17.5->5.9free, matched6.9ms exactstates/dt. This is an earlier short fixture, not current natural400FPS or mobile.",
+        "Original natural dwarf0XP and P9520.9 remain historical unresolved-case evidence. New route success does not establish causal fix. New main delta only death cleanup; broad timings not falsely relabeled exactfinalhash.",
+        "GPU UUID cold phase uploads explained; repeated same sequence adds0UUID and holds93geometries44textures. No long soak."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-44-45-312Z-verify-natural-runs/natural-runs.json",
+        "docs/arpg/review/crowd-density-native-followup.md",
+        "output/qa/arpg-cannon-density-checkpoint-20260919/gpu-allocation-analysis.json",
+        "docs/arpg/combat-environment-findings.md",
+        "docs/arpg/review/cannon-density-natural-followup.json"
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Current integration before cleanup: six backend groupspassed, real two-client browser6skills+latejoin/reconnect, same worldtick, replicated casts once, remote cannon socket/callback/contact verified.",
+        "Spawn4checks real isolatedWebSocket+declaredsyntheticoccupied bodies verify latejoin/restart/freejointxz, own-exclusion/boss, impossible-spawnatomicreject and reconnect identity/run/resource/CDsequence. Backenddependenciesmatchfinal; no server change in cleanup.",
+        "Browser network report main predates endGamecleanup, explicitly linked not samehash. No degradednetwork/production/concurrentlongsoak proof."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-33-53-276Z-quality-suite/suite.json",
+        "output/qa/arpg-crowd-integrated-20260919/2026-09-19T03-33-54-357Z/player-spawn.json",
+        "output/playwright/2026-09-19T03-42-09-201Z-verify-arpg-network/arpg-network.json",
+        "output/qa/arpg-cannon-density-checkpoint-20260919/evidence-provenance.json"
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "Actual keyboard modal traversal and tabblurpause/resume passed in final lifecycle; GUIroleorder beforetext restored correctly.",
+        "Reduced-motion preserves essential cannon/field presentation ondesktop. No screen-readerannouncement, physicaltouch, completecontrast/colorblind orzoom audit."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T03-53-59-014Z-verify-lifecycle/lifecycle-keyboard.json",
+        "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-low.json",
+        "docs/arpg/combat-spawn-ui-integration.md"
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "All captures retained stable application sources. Seventeen full-source reports are explicitly related:14 use pre-cleanup main7bde570f,3 use finalmain afc7d5ac. The exact endGame-only diff and final focal validation are recorded; this is not a claim of17 identical-source reports.",
+        "Death leak-style stale presentation reproduced03:44; fixed cancellation ordering and wrapperreset, native6cycles clearsall.03:47resourcegatefailedacrossdifferentcoldphases; preserved, followed by repeatedfullphaseUUIDtrace with strictzeroaddedUUID.03:48miss harness failed mouse lane; fixedrealkeyboardaim,22mfixturepasses.",
+        "Server5173PID75665/HTTP200, sameisolatedoptions and rankingSHA7f580798preserved. No global13/13claim; old00:39progressionsuite12/13failure preserved. Longsoak/device/remainingart+navigation/sole requirements pending."
+      ],
+      "evidence": [
+        "output/qa/arpg-cannon-density-checkpoint-20260919/evidence-provenance.json",
+        "output/playwright/2026-09-19T03-53-59-014Z-verify-lifecycle/lifecycle-keyboard.json",
+        "output/playwright/2026-09-19T03-51-00-869Z-verify-arpg-cannon-miss/cannon-miss-summary.json",
+        "output/qa/arpg-cannon-density-integrated-20260919/local-server-restart.json",
+        "docs/arpg/review/cannon-lifecycle-followup.md"
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "backend6selected",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-33-53-276Z-quality-suite/suite.json",
+      "scope": "Precleanup222; samebackend/coredependenciesfinal."
+    },
+    {
+      "name": "spawn4checks",
+      "status": "passed",
+      "evidence": "output/qa/arpg-crowd-integrated-20260919/2026-09-19T03-33-54-357Z/player-spawn.json",
+      "scope": "ActualisolatedWS plus controlledbodyfixtures; currentscopeddependencies."
+    },
+    {
+      "name": "input4scenarios",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-43-09-782Z-verify-arpg-browser/arpg-browser.json",
+      "scope": "Realinput,2classesstand/move,precleanup."
+    },
+    {
+      "name": "combos3scenarios",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/arpg-combos.json",
+      "scope": "NaturalNPC+actualinput high/low,precleanup."
+    },
+    {
+      "name": "network6skills",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-42-09-201Z-verify-arpg-network/arpg-network.json",
+      "scope": "Actualclientsreconnectlatejoinremotepresentation,precleanup."
+    },
+    {
+      "name": "crypt3projectiles",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-43-53-287Z-verify-arpg-layout-gameplay/layout-dwarf.json",
+      "scope": "DeclaredHP/placementfixture+realkeys,precleanup."
+    },
+    {
+      "name": "natural2x60seconds",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-44-45-312Z-verify-natural-runs/natural-runs.json",
+      "scope": "Naturalworldrealinput,precleanup; budgetsunchanged."
+    },
+    {
+      "name": "cannonlifecycle6phases",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-53-59-014Z-verify-lifecycle/lifecycle-keyboard.json",
+      "scope": "Finalruntime,forceddeathfixture/read-onlyinstrumentedThreeallocationcounters."
+    },
+    {
+      "name": "rangemiss22m",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T03-51-00-869Z-verify-arpg-cannon-miss/cannon-miss-summary.json",
+      "scope": "Finalruntime,emptyworldfixture+realkeyboard,sourceprefixunchanged."
+    }
+  ],
+  "measurements": {
+    "backend": {
+      "groups": 6,
+      "passed": true,
+      "path": "output/playwright/2026-09-19T03-33-53-276Z-quality-suite/suite.json"
+    },
+    "spawn": {
+      "checks": 4,
+      "passed": true,
+      "path": "output/qa/arpg-crowd-integrated-20260919/2026-09-19T03-33-54-357Z/player-spawn.json"
+    },
+    "combos": [
+      {
+        "class": "warrior",
+        "quality": "high",
+        "passed": true,
+        "cannonIntegration": null
+      },
+      {
+        "class": "dwarf",
+        "quality": "high",
+        "passed": true,
+        "cannonIntegration": {
+          "castId": "334ad7b2-7a3e-4cfb-b7db-5463ef0103a6:3",
+          "observedFrames": 130,
+          "sharedDepthFrames": 128,
+          "impact": {
+            "skillId": "dwarf_explosive_cannon",
+            "castId": "334ad7b2-7a3e-4cfb-b7db-5463ef0103a6:3",
+            "phase": "impact",
+            "origin": {
+              "x": 0,
+              "y": 1.05,
+              "z": 0
+            },
+            "direction": {
+              "x": -0.9982346275504007,
+              "y": 0,
+              "z": -0.059393841089064196
+            },
+            "target": {
+              "x": -2.2491773360753187,
+              "y": 1.05,
+              "z": -0.13382352965233857
+            },
+            "duration": 0.72,
+            "impactAt": 0.3,
+            "travelDuration": 1,
+            "radius": 3.4,
+            "groundY": 0.04,
+            "contactId": "area",
+            "actorId": null,
+            "local": true,
+            "time": 8.661400000095382
+          }
+        }
+      },
+      {
+        "class": "dwarf",
+        "quality": "low",
+        "passed": true,
+        "cannonIntegration": {
+          "castId": "117f83ec-399c-4d8c-99a0-fcb353e81e0e:3",
+          "observedFrames": 144,
+          "sharedDepthFrames": 142,
+          "impact": {
+            "skillId": "dwarf_explosive_cannon",
+            "castId": "117f83ec-399c-4d8c-99a0-fcb353e81e0e:3",
+            "phase": "impact",
+            "origin": {
+              "x": 0,
+              "y": 1.05,
+              "z": 0
+            },
+            "direction": {
+              "x": 0.5802258813802493,
+              "y": 0,
+              "z": -0.8144556013537588
+            },
+            "target": {
+              "x": 1.3437819949992937,
+              "y": 1.05,
+              "z": -1.8862494899779532
+            },
+            "duration": 0.72,
+            "impactAt": 0.3,
+            "travelDuration": 1,
+            "radius": 3.4,
+            "groundY": 0.04,
+            "contactId": "area",
+            "actorId": null,
+            "local": true,
+            "time": 11.39759999990463
+          }
+        }
+      }
+    ],
+    "network": {
+      "passed": true,
+      "casts": [
+        {
+          "id": "ece700d3-4703-4493-83c7-0363cd8596ce",
+          "slot": 0,
+          "skillId": "warrior_war_cry",
+          "castId": "8f1a55b0-cd34-437a-8585-adf63e5cf28d:1",
+          "peerConfirmed": true
+        },
+        {
+          "id": "ece700d3-4703-4493-83c7-0363cd8596ce",
+          "slot": 1,
+          "skillId": "warrior_cleaving_dash",
+          "castId": "8f1a55b0-cd34-437a-8585-adf63e5cf28d:2",
+          "peerConfirmed": true
+        },
+        {
+          "id": "ece700d3-4703-4493-83c7-0363cd8596ce",
+          "slot": 2,
+          "skillId": "warrior_shield_charge",
+          "castId": "8f1a55b0-cd34-437a-8585-adf63e5cf28d:3",
+          "peerConfirmed": true
+        },
+        {
+          "id": "60f52406-a081-4069-bf07-1a58bf556fee",
+          "slot": 0,
+          "skillId": "dwarf_explosive_cannon",
+          "castId": "e4972701-dfa2-4b4a-b87d-79c877b6aff2:1",
+          "peerConfirmed": true
+        },
+        {
+          "id": "60f52406-a081-4069-bf07-1a58bf556fee",
+          "slot": 1,
+          "skillId": "dwarf_frost_shot",
+          "castId": "e4972701-dfa2-4b4a-b87d-79c877b6aff2:2",
+          "peerConfirmed": true
+        },
+        {
+          "id": "60f52406-a081-4069-bf07-1a58bf556fee",
+          "slot": 2,
+          "skillId": "dwarf_gravity_shot",
+          "castId": "e4972701-dfa2-4b4a-b87d-79c877b6aff2:3",
+          "peerConfirmed": true
+        }
+      ],
+      "reconnect": {
+        "sameId": true,
+        "sequence": 3,
+        "resource": 40.2500000000002
+      },
+      "lateJoin": {
+        "players": 3,
+        "monsters": 24
+      },
+      "remoteCannonCallback": true
+    },
+    "natural": {
+      "warrior": {
+        "coverage": {
+          "actualKillsObserved": true,
+          "maxKillsInOneLife": 28,
+          "maxWave": 1,
+          "maxLevel": 4,
+          "actualXpObserved": true,
+          "upgrades": "observed",
+          "death": "observed naturally",
+          "restart": "observed after natural death",
+          "humanFeelReview": "pending",
+          "physicalMobile": false,
+          "skillIds": [
+            "warrior_war_cry",
+            "warrior_cleaving_dash",
+            "warrior_shield_charge"
+          ]
+        },
+        "frameSample": {
+          "frames": 8584,
+          "firstFramePerformanceMs": 1368.6,
+          "durationMs": 60174.4,
+          "averageFps": 142.63540641867638,
+          "p95Ms": 8.299999999999272,
+          "p99Ms": 8.60000000000582,
+          "worstMs": 41.80000000000109,
+          "framesOver50Ms": 0,
+          "slowFrames": [],
+          "mainThreadLongTasks": [],
+          "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+        },
+        "escapes": []
+      },
+      "dwarf": {
+        "coverage": {
+          "actualKillsObserved": true,
+          "maxKillsInOneLife": 59,
+          "maxWave": 2,
+          "maxLevel": 6,
+          "actualXpObserved": true,
+          "upgrades": "observed",
+          "death": "not observed",
+          "restart": "not observed",
+          "humanFeelReview": "pending",
+          "physicalMobile": false,
+          "skillIds": [
+            "dwarf_explosive_cannon",
+            "dwarf_frost_shot",
+            "dwarf_gravity_shot"
+          ]
+        },
+        "frameSample": {
+          "frames": 8457,
+          "firstFramePerformanceMs": 1265.6,
+          "durationMs": 60049.200000000004,
+          "averageFps": 140.81786268593086,
+          "p95Ms": 7.69999999999709,
+          "p99Ms": 13.900000000000546,
+          "worstMs": 180.40000000000146,
+          "framesOver50Ms": 1,
+          "slowFrames": [
+            {
+              "elapsedMs": 53756.700000000004,
+              "frameMs": 180.40000000000146
+            }
+          ],
+          "mainThreadLongTasks": [
+            {
+              "startTime": 54847.09999990463,
+              "duration": 180,
+              "name": "self"
+            }
+          ],
+          "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+        },
+        "escapes": [
+          {
+            "elapsedMs": 40684,
+            "from": {
+              "name": "QA Natural dwarf",
+              "x": -11.65,
+              "z": -6.359,
+              "aimX": 0,
+              "aimZ": -1
+            },
+            "waypoints": [
+              {
+                "x": -12.951,
+                "z": -4.968
+              },
+              {
+                "x": -11.933,
+                "z": -4.091
+              },
+              {
+                "x": -10.922,
+                "z": -5.003
+              },
+              {
+                "x": -9.477,
+                "z": -5.003
+              },
+              {
+                "x": -8.088,
+                "z": -5.003
+              },
+              {
+                "x": -6.849,
+                "z": -5.003
+              },
+              {
+                "x": -8.24,
+                "z": -5.003
+              },
+              {
+                "x": -9.628,
+                "z": -5.003
+              },
+              {
+                "x": -11.072,
+                "z": -5.003
+              },
+              {
+                "x": -12.463,
+                "z": -5.003
+              },
+              {
+                "x": -13.758,
+                "z": -5.017
+              },
+              {
+                "x": -12.445,
+                "z": -5.029
+              }
+            ],
+            "method": "Real WASD retraces previously observed positions; no world writes or teleport."
+          }
+        ]
+      }
+    },
+    "lifecycle": {
+      "passed": true,
+      "cycles": 6,
+      "phases": [
+        "cast",
+        "travel",
+        "impact",
+        "cast",
+        "travel",
+        "impact"
+      ],
+      "counts": {
+        "observed": true,
+        "counts": [
+          {
+            "geometries": 89,
+            "textures": 43
+          },
+          {
+            "geometries": 91,
+            "textures": 43
+          },
+          {
+            "geometries": 93,
+            "textures": 44
+          },
+          {
+            "geometries": 93,
+            "textures": 44
+          },
+          {
+            "geometries": 93,
+            "textures": 44
+          },
+          {
+            "geometries": 93,
+            "textures": 44
+          }
+        ],
+        "warmIndex": 2,
+        "repeatedPhases": [
+          "cast",
+          "travel",
+          "impact"
+        ]
+      },
+      "uuidDeltas": [
+        {
+          "phase": "cycle-4-cast",
+          "geometries": [],
+          "textures": []
+        },
+        {
+          "phase": "cycle-5-travel",
+          "geometries": [],
+          "textures": []
+        },
+        {
+          "phase": "cycle-6-impact",
+          "geometries": [],
+          "textures": []
+        }
+      ],
+      "instrumentation": {
+        "scope": "Read-only instrumentation at all Three GPU geometry/texture memory increments/decrements. Same renderer allocation/disposal statements; no product files changed.",
+        "sourceSha256": "a97ec6852978949b7941c070b81292b842473a37549222353fa0a70c18d7285a",
+        "servedSha256": "5d8fe341ac52f9537345f9162ee6969c8d1020bfc0ff80ca32a8beeead8f69b9",
+        "anchors": {
+          "geometryAdd": 1,
+          "geometryRemove": 1,
+          "textureAdd": 3,
+          "textureRemove": 2
+        }
+      }
+    },
+    "miss": {
+      "passed": true,
+      "impact": {
+        "skillId": "dwarf_explosive_cannon",
+        "castId": "119610c5-220f-49c5-a2d5-dd72830a7f65:1",
+        "phase": "impact",
+        "origin": {
+          "x": 0,
+          "y": 1.05,
+          "z": 0
+        },
+        "direction": {
+          "x": 0.7071067811865475,
+          "y": 0,
+          "z": 0.7071067811865475
+        },
+        "target": {
+          "x": 15.556349186104043,
+          "y": 1.05,
+          "z": 15.556349186104043
+        },
+        "duration": 0.72,
+        "impactAt": 0.3,
+        "travelDuration": 1,
+        "radius": 3.4,
+        "groundY": 0.04,
+        "contactId": "area",
+        "actorId": null,
+        "local": true,
+        "time": 1.5043999998569468
+      },
+      "targets": 0,
+      "kills": 0,
+      "score": 0
+    }
+  },
+  "openDefects": [
+    "Natural close cannon+gravity overlap lacks accepted explosion hierarchy; stageddirection notAAA.",
+    "No-slidefalse and corpsehalves/cry/Lich artistic and integration gaps.",
+    "Historic maintenancecamping/no-route and0XP/P9520.9case not causally closed; currentdwarf180.4msoutlier retained.",
+    "No actualaudio listening, physicalmobile, screenreader, adverse-network orlongsoak acceptance."
+  ],
+  "historicalFailuresPreserved": [
+    "output/playwright/2026-09-19T03-44-25-890Z-verify-lifecycle/lifecycle-keyboard.json",
+    "output/playwright/2026-09-19T03-47-25-037Z-verify-lifecycle/lifecycle-keyboard.json",
+    "output/playwright/2026-09-19T03-48-48-273Z-verify-arpg-cannon-miss/cannon-miss-summary.json",
+    "output/playwright/2026-09-19T02-49-37-647Z-verify-natural-runs/natural-dwarf.json"
+  ],
+  "reviewLimitations": [
+    "JEF receives written observations only and cannot inspect the referenced image, audio or video files.",
+    "Technical PASS does not establish artistic AAA quality.",
+    "Earlier pre-cleanup reports are retained as history, not rewritten or claimed to be byte-identical to the final candidate.",
+    "Physical CUA remains blocked by the existing macOS login request; no repeated user question and no physical-device proof."
+  ],
+  "fullGoalComplete": false
+}

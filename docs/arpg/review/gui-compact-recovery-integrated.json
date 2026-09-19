@@ -1,0 +1,15 @@
+{
+  "reviewedAt": "2026-09-19T04:21:26.186583+00:00",
+  "reviewer": "Root",
+  "decision": "accept scoped integration",
+  "qaReport": "output/gui-compact-recovery-v1/promotion/2026-09-19T04-16-58-373Z/promotion-qa.json",
+  "qaPassed": true,
+  "checks": 9,
+  "errors": [],
+  "runtimeMainSha256": "afc7d5acd1a5fbe33b03367acf93aec5e404d7aa720e7869bf9c9c6a0f76d7b1",
+  "runtimeStylesSha256": "385f8f9a101fdb55b2fffd0cc3b77b2613782789b9237bd39beacadbda9d3ab3",
+  "httpStylesExact": true,
+  "imageActuallyViewed": "output/gui-compact-recovery-v1/promotion/2026-09-19T04-16-58-373Z/integrated-rejected-320x568.png",
+  "findings": "Integrated320 preserves the selected layout: reason and retry together, sound control clear of form. Exact baseline prefix plus545approved bytes.",
+  "limits": "Physical/mobile keyboard/accessibility beyond native emulated focal scenario pending; JEF04:00 predates this CSS."
+}

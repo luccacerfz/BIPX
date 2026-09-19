@@ -1,0 +1,55 @@
+{
+  "at": "2026-09-19T05:16:53.079440+00:00",
+  "rootSelection": "docs/arpg/review/cannon-depth-composition-selection.md",
+  "candidateFrozen": true,
+  "candidateFiles": {
+    "cannon-source-glsl.js": "7662f0d6e84c06ca8091f71015c5edc08a7721b66061f11bde43de360c5d7f6c",
+    "cannon-vfx.js": "9b15e4123f7dc5fd9d6aee47b06c045a23daebdf2dc93a1e8ce01eb55635eb44",
+    "class-skill-fields.js": "7c9bc9eb2b4f6a1f8301c6cd52e9c6ac5e7e40aed39bd12c984c854a578b443f",
+    "class-skill-vfx.js": "5f218c69051e5abcb95030ae2b33de406def904360dc8f07e956af6e9970265a",
+    "gravity-composition-glsl.js": "abcb7d83f2d0ac165e80fa742cdde98559ef848350f6bab6812627811187ee83",
+    "gravity-field-pool.js": "2b1ff7acacc08152eb4644559e4de44a79474f97cb7e9ede0aedc87c47f6b6e6",
+    "gravity-field-visual.js": "711e133ca0e8585fe2fd2c7142fe1ee5736660bf0d75afb82edc1f83ede06cff"
+  },
+  "runtimeVfxUnchanged": true,
+  "dwarfOriginalUnchanged": true,
+  "cpuLifecycle": "cpu-lifecycle-2026-09-19T05-12-31-743Z.json",
+  "minimalPatchSha256": "51014afb429702e49dec6bd8d95881ab88225b40cb79ea5b97cd905e4d9e6651",
+  "exactDwarfCandidateSha256": "dc0867dacd22b04e42475a686fffe808ad8c7e66e9889b2a182eb4393eb5378e",
+  "toolHashes": {
+    "cannon-depth-composition-vfx-native.mjs": "1de2721342defd6154b7a1b3acb2758a2825a33e1be4a26b1617c7444e1635c5",
+    "cannon-depth-composition-vfx-preview.html": "7f86765fce12173dd7bd7d292a4685deed9fd933de93b5c24544fe381051e45e",
+    "cannon-composition-vfx-cpu.mjs": "db4257391674477c06a83f790255ebde79685bd67cec46946c9f84c7a57e8c0e"
+  },
+  "nativePending": false,
+  "nativeScope": {
+    "fields": [
+      1,
+      8
+    ],
+    "quality": "high",
+    "resolution": [
+      1440,
+      900
+    ],
+    "age": 0.1505,
+    "warmupPerVariant": 8,
+    "samplesPerVariant": 24,
+    "timer": "EXT_disjoint_timer_query_webgl2 or unavailable explicitly",
+    "images": "two contextual originals, not four-age matrix",
+    "loader": "HTTP override only, no manual clone/mutation",
+    "lifecycle": [
+      "pause",
+      "8 visible",
+      "cull0",
+      "return1",
+      "reset0",
+      "naturalExpiry0"
+    ]
+  },
+  "gpuWindowAuthorized": false,
+  "coordination": "Focal completed05:37; Animationv11 explicitly released, Environmentcanopy after Animation. Historical GUI/Combat waits closed.",
+  "focalResult": "output/playwright/2026-09-19T05-37-28-168Z-cannon-depth-composition-vfx/review.json",
+  "gate65Passed": false,
+  "promotionReady": false
+}

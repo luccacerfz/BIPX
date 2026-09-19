@@ -1,0 +1,11 @@
+--- a/src/vfx/class-skill-vfx.js
++++ b/src/vfx/class-skill-vfx.js
+@@ -206,7 +206,7 @@
+   function setQuality(value){if(disposed)return;cannon.setQuality(value);level=Object.hasOwn(QUALITY,value)?value:'medium';for(let i=QUALITY[level].casts;i<records.length;i++)clear(records[i]);if(ownCombat)combat.setQuality(level);if(ownElemental)elemental.setQuality(level);}
+   function setReducedMotion(value){if(disposed)return;reduced=Boolean(value);cannon.setReducedMotion(reduced);if(ownCombat)combat.setReducedMotion(reduced);if(ownElemental)elemental.setReducedMotion(reduced);}
+   function prepareSceneDepth(camera){
+-    const gravity=fields.prepareSceneDepth(camera),fire=cannon.prepareSceneDepth(camera);
++    const gravity=fields.prepareSceneDepth(camera);cannon.setGravityComposition(fields.getCompositionDescriptors());const fire=cannon.prepareSceneDepth(camera);
+     Object.assign(depthState,{required:gravity.required||fire.required,gravityFields:gravity.visibleFields,fireCasts:fire.visibleFields});
+     return {required:depthState.required,visibleFields:gravity.visibleFields+fire.visibleFields,gravityFields:gravity.visibleFields,fireCasts:fire.visibleFields,excludeRoots:[...new Set([...gravity.excludeRoots,...fire.excludeRoots])]};
+   }

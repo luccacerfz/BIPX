@@ -1,0 +1,20 @@
+--- a/src/vfx/cannon-source-glsl.js
++++ b/src/vfx/cannon-source-glsl.js
+@@ -1,3 +1,4 @@
++import {gravityCompositionGLSL} from './gravity-composition-glsl.js';
+ // HandCast/Linear pinned VolumetricFireMaterial GLSL, MIT originals in ./originals.
+ import {noiseGLSL} from './fire-noise.glsl.js';
+ import {commonGLSL} from './fire-common.glsl.js';
+@@ -41,3 +42,12 @@
+    float height=world.y/world.w-uGroundY;
+    float keep=packed<.99999?1.-.999*smoothstep(.75,1.25,height):1.;
+    gl_FragColor=vec4(color*keep,alpha*keep);`);
++
++// Only the staged shader inserts fire at its extinction-weighted representative depth.
++export const COMPOSED_CANNON_FRAGMENT=CANNON_FRAGMENT
++ .replace('if (i >= 3) ridge','if (float(i) >= max(1.,uOctaves-2.)) ridge')
++ .replace('void main() {',gravityCompositionGLSL+'\nvoid main() {')
++ .replace('t1 = min(t1, tScene);','t1 = min(t1, tScene); t1=gravityCoreLimit(ro,rd,t1);')
++ .replace('float transmittance = 1.0;','float transmittance = 1.0; float fireMoment=0.,fireWeight=0.;')
++ .replace('transmittance *= exp(-d * uSoot * mix(1.0, uCoreClarity, heat * heat) * stepSize);',`float absorb=1.-exp(-d*uSoot*mix(1.,uCoreClarity,heat*heat)*stepSize);fireMoment+=t*absorb*transmittance;fireWeight+=absorb*transmittance;transmittance*=1.-absorb;`)
++ .replace('gl_FragColor=vec4(color*keep,alpha*keep);',`vec3 gasFront;float gasT;gravityPrefix(ro,rd,fireWeight>.00001?fireMoment/fireWeight:t0,packed<.99999?world.y/world.w:-1e5,gasFront,gasT);color=color*gasT+gasFront*alpha;gl_FragColor=vec4(color*keep,alpha*keep);`);

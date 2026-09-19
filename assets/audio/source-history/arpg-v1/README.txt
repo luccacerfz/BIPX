@@ -1,0 +1,1 @@
+Historical v1 runtime/profile/verifier source snapshot. Not loaded by browser. Preserved before authorized six-skill v2 migration on 2026-09-18. Provider audio originals remain at their original paths.

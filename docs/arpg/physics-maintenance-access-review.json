@@ -1,0 +1,488 @@
+{
+  "reviewedAt": "2026-09-19T03:32:10.710932+00:00",
+  "scope": "Independent read-only review of existing Environment CPU reports; no new simulation or GPU/performance work",
+  "files": {
+    "original72": {
+      "path": "output/physics/navigation-pocket-143-20260919/2026-09-19T03-07-29-945Z-inverse.json",
+      "sha256": "81e2af4c1b50ccda87b804e43e5114e7ab423bb58f1c22b88be38485fef4ff95"
+    },
+    "baseline72": {
+      "path": "output/environment/maintenance-access-v1/2026-09-19T03-28-54-584Z-baseline-full-inverse.json",
+      "sha256": "b5623f8a1ead71097fad423b8743583eb64d7759e1a532ad676688975a5f1cc8"
+    },
+    "candidate72": {
+      "path": "output/environment/maintenance-access-v1/2026-09-19T03-29-59-954Z-candidate-full-inverse.json",
+      "sha256": "67042c4fe8ccc0f9fe08dd752c2473b31d7ba43c1cac88823ad40921a91eb50d"
+    },
+    "candidateLayout": {
+      "path": "output/environment/maintenance-access-v1/candidate/src/render/environment-layout.js",
+      "sha256": "e598121ef38dec0f6d91ec7836806cd6800a94f1f3c95752b57263922e2e6e83"
+    },
+    "baselineLayout": {
+      "path": "output/environment/maintenance-access-v1/baseline/src/render/environment-layout.js",
+      "sha256": "8e756fe4022c7916074220d44c0ff605aa8fdc9d80fdf6c61d8a03fb475fc8a7"
+    },
+    "harness": {
+      "path": "output/environment/maintenance-access-v1/inverse.mjs",
+      "sha256": "35088c1816d4db1ca57d5b4c8bed871f174928e8a32c743c48d6a660cfb7857d"
+    },
+    "provenance": {
+      "path": "output/environment/maintenance-access-v1/caller-provenance.json",
+      "sha256": "9037da9f293dc9b0127abd9eedf99736aa00902a4f461b4b0f95347f4da51064"
+    }
+  },
+  "baselineExactlyReproducesOriginal72": true,
+  "sameCallersAndTransitiveImports": true,
+  "same72EffectiveStarts": true,
+  "summaries": {
+    "baseline": {
+      "client/zombie": {
+        "cases": 18,
+        "hitCases": 0,
+        "firstHitRange": null,
+        "maxVisited": 768
+      },
+      "client/bloodCow": {
+        "cases": 18,
+        "hitCases": 0,
+        "firstHitRange": null,
+        "maxVisited": 768
+      },
+      "server/zombie": {
+        "cases": 18,
+        "hitCases": 0,
+        "firstHitRange": null,
+        "maxVisited": 768
+      },
+      "server/bloodCow": {
+        "cases": 18,
+        "hitCases": 1,
+        "firstHitRange": [
+          0.30000000000000004,
+          0.30000000000000004
+        ],
+        "maxVisited": 768
+      }
+    },
+    "candidate": {
+      "client/zombie": {
+        "cases": 18,
+        "hitCases": 18,
+        "firstHitRange": [
+          1.7000000000000002,
+          6.3500000000000005
+        ],
+        "maxVisited": 155
+      },
+      "client/bloodCow": {
+        "cases": 18,
+        "hitCases": 0,
+        "firstHitRange": null,
+        "maxVisited": 768
+      },
+      "server/zombie": {
+        "cases": 18,
+        "hitCases": 18,
+        "firstHitRange": [
+          1.7000000000000002,
+          6.3500000000000005
+        ],
+        "maxVisited": 155
+      },
+      "server/bloodCow": {
+        "cases": 18,
+        "hitCases": 0,
+        "firstHitRange": null,
+        "maxVisited": 768
+      }
+    }
+  },
+  "causalCases": {
+    "baseline": [
+      {
+        "caller": "client",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-north",
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "actual": {
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 6.365897995066307,
+        "finalLOS": {
+          "t": 0.6459981787004554,
+          "normal": {
+            "x": 0.5706818926422736,
+            "z": -0.8211712229555006
+          },
+          "colliderId": "barrel-0",
+          "x": 18.094471856603413,
+          "z": 12.176275648954963,
+          "y": 0.9
+        }
+      },
+      {
+        "caller": "server",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-north",
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "actual": {
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 6.365897995066307,
+        "finalLOS": {
+          "t": 0.6459981787004554,
+          "normal": {
+            "x": 0.5706818926422736,
+            "z": -0.8211712229555006
+          },
+          "colliderId": "barrel-0",
+          "x": 18.094471856603413,
+          "z": 12.176275648954963,
+          "y": 0.9
+        }
+      },
+      {
+        "caller": "client",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-south",
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "actual": {
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 3.7013665198285697,
+        "finalLOS": {
+          "t": 0.23614211881316388,
+          "normal": {
+            "x": -0.09983341664682815,
+            "z": 0.9950041652780257
+          },
+          "colliderId": "burial-rail-3",
+          "x": 17.41172542635117,
+          "z": 16.651159808544417,
+          "y": 0.9
+        }
+      },
+      {
+        "caller": "server",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-south",
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "actual": {
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 3.7013665198285697,
+        "finalLOS": {
+          "t": 0.23614211881316388,
+          "normal": {
+            "x": -0.09983341664682815,
+            "z": 0.9950041652780257
+          },
+          "colliderId": "burial-rail-3",
+          "x": 17.41172542635117,
+          "z": 16.651159808544417,
+          "y": 0.9
+        }
+      },
+      {
+        "caller": "client",
+        "type": "bloodCow",
+        "requested": {
+          "id": "ring6-deg180",
+          "x": 12.933,
+          "z": 14.268
+        },
+        "actual": {
+          "x": 12.999156710361104,
+          "z": 11.936954817748697
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 6.375285705573481,
+        "finalLOS": null
+      },
+      {
+        "caller": "server",
+        "type": "bloodCow",
+        "requested": {
+          "id": "ring6-deg180",
+          "x": 12.933,
+          "z": 14.268
+        },
+        "actual": {
+          "x": 12.999156710361104,
+          "z": 11.936954817748697
+        },
+        "firstHit": 0.30000000000000004,
+        "firstKind": "projectile",
+        "shots": 1,
+        "hits": [
+          {
+            "time": 0.30000000000000004,
+            "kind": "projectile",
+            "origin": {
+              "x": 12.999156710361104,
+              "z": 11.936954817748697
+            },
+            "distance": 6.375285705573481,
+            "los": null
+          }
+        ],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 6.375285705573481,
+        "finalLOS": null
+      }
+    ],
+    "candidate": [
+      {
+        "caller": "client",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-north",
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "actual": {
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "firstHit": 3.4000000000000004,
+        "firstKind": "melee",
+        "shots": 0,
+        "hits": [
+          {
+            "time": 3.4000000000000004,
+            "kind": "melee",
+            "origin": {
+              "x": 17.0743568570089,
+              "z": 14.932588932726729
+            },
+            "distance": 1.9738877330007096,
+            "los": null
+          }
+        ],
+        "maxVisited": 30,
+        "maxStep": 0.16500000000000375,
+        "finalDistance": 1.9738877330007096,
+        "finalLOS": null
+      },
+      {
+        "caller": "server",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-north",
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "actual": {
+          "x": 16.56428861789936,
+          "z": 8.359204549834535
+        },
+        "firstHit": 3.4000000000000004,
+        "firstKind": "melee",
+        "shots": 0,
+        "hits": [
+          {
+            "time": 3.4000000000000004,
+            "kind": "melee",
+            "origin": {
+              "x": 17.0743568570089,
+              "z": 14.932588932726729
+            },
+            "distance": 1.9738877330007096,
+            "los": null
+          }
+        ],
+        "maxVisited": 30,
+        "maxStep": 0.16500000000000375,
+        "finalDistance": 1.9738877330007096,
+        "finalLOS": null
+      },
+      {
+        "caller": "client",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-south",
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "actual": {
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "firstHit": 2.6,
+        "firstKind": "melee",
+        "shots": 0,
+        "hits": [
+          {
+            "time": 2.6,
+            "kind": "melee",
+            "origin": {
+              "x": 17.28064306993305,
+              "z": 15.204225031669932
+            },
+            "distance": 1.8991579013514492,
+            "los": null
+          }
+        ],
+        "maxVisited": 15,
+        "maxStep": 0.1650000000000018,
+        "finalDistance": 1.8991579013514492,
+        "finalLOS": null
+      },
+      {
+        "caller": "server",
+        "type": "zombie",
+        "requested": {
+          "id": "captured-south",
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "actual": {
+          "x": 16.941432443892353,
+          "z": 17.38789948292686
+        },
+        "firstHit": 2.6500000000000004,
+        "firstKind": "melee",
+        "shots": 0,
+        "hits": [
+          {
+            "time": 2.6500000000000004,
+            "kind": "melee",
+            "origin": {
+              "x": 17.28064306993305,
+              "z": 15.204225031669932
+            },
+            "distance": 1.8991579013514492,
+            "los": null
+          }
+        ],
+        "maxVisited": 15,
+        "maxStep": 0.1650000000000018,
+        "finalDistance": 1.8991579013514492,
+        "finalLOS": null
+      },
+      {
+        "caller": "client",
+        "type": "bloodCow",
+        "requested": {
+          "id": "ring6-deg180",
+          "x": 12.933,
+          "z": 14.268
+        },
+        "actual": {
+          "x": 12.999156710361104,
+          "z": 11.936954817748697
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 6.375285705573481,
+        "finalLOS": {
+          "t": 0.453983501609878,
+          "normal": {
+            "x": -0.20731847869060557,
+            "z": -0.9782735038798777
+          },
+          "colliderId": "barrel-2",
+          "x": 15.693023664995648,
+          "z": 12.99521087199798,
+          "y": 0.9
+        }
+      },
+      {
+        "caller": "server",
+        "type": "bloodCow",
+        "requested": {
+          "id": "ring6-deg180",
+          "x": 12.933,
+          "z": 14.268
+        },
+        "actual": {
+          "x": 12.999156710361104,
+          "z": 11.936954817748697
+        },
+        "firstHit": null,
+        "firstKind": null,
+        "shots": 0,
+        "hits": [],
+        "maxVisited": 768,
+        "maxStep": 0,
+        "finalDistance": 6.375285705573481,
+        "finalLOS": {
+          "t": 0.453983501609878,
+          "normal": {
+            "x": -0.20731847869060557,
+            "z": -0.9782735038798777
+          },
+          "colliderId": "barrel-2",
+          "x": 15.693023664995648,
+          "z": 12.99521087199798,
+          "y": 0.9
+        }
+      }
+    ]
+  },
+  "observations": [
+    "Candidate two-prop relocation produces real melee hits for all 18 walker approaches in both callers.",
+    "Original server Blood Cow west projectile threat is lost: moved barrel-2 blocks LOS; candidate has no Blood Cow hit in the 18 tested approaches per caller.",
+    "This is not proof that every continuous boss approach is impossible."
+  ],
+  "decision": "Walker approach improved in bounded CPU evidence; boss-threat criterion and player comfort remain pending. No Environment promotion authorized by Physics.",
+  "pending": [
+    "Environment selection or explicit alternative boss threat witness",
+    "Comfortable player route and minimum clearance",
+    "Visual review and current-runtime integration gate by owners"
+  ],
+  "communicationReceipts": [
+    "01a0b7b5-abdf-7401-86d1-f7152caf2ede",
+    "01a0b7b7-be4c-7462-b3ab-31ae0709db3a"
+  ]
+}

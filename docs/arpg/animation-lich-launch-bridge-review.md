@@ -1,0 +1,13 @@
+# Lich — revisão pontual Animation da ponte de lançamento
+
+Revisão em leitura após fechar v12. Pedido Combat `msg_c3cca583730d`, candidato [232fontes](../../output/lich-cast-launch-bridge-v1/candidate-manifest.json). **Sem bloqueio encontrado no contrato Animation do recorte revisado; não é autorização de promoção ou aprovação artística global.** Nenhum fonte de Combat/runtime editado e nenhuma captura/teste repetido.
+
+Conferidos disco, manifesto e hashes do [native06:12](../../output/lich-cast-launch-bridge-v1/native/2026-09-19T06-12-14-320Z/native.json): main174725d4, solver94e751a9, presenterba672d2b. Loaderde4376a2 e poolf11e5277 coincidem com a revisão Animation anterior; não houve alteração de perfil, marker.597142857/L_Hand, rig ou take nesta ponte.
+
+Lidos o diff inteiro de main, solver e presenter. A amostra de emitter continua no marker antes de reaplicar a idade visual final. Release aceito gera um token recente consumido uma vez por réplica nova; snapshot puro não registra token. Projeção visual temporária é restaurada emfinally; simulação/colisão/impacto conservam suas coordenadas. Remover o caster não apaga um projétil já liberado. Cleanup/disconnect limpam apresentação, sem disparar novo impacto ou replay.
+
+O sweep usa sólidos na altura visual e na altura autoritativa, ignora o próprio caster e inclui corpos elegíveis. Falha encerra a ponte e troca a identidade da trilha. A convergência por distância depende da posição lógica continuar avançando; não é extensão do marker nem mudança de dano/clock. Parede, snapshot-first, terminal e restauração ao throw têm os11checks CPU reportados pelo dono, vinculados ao main174725d4; não são nova prova nativa de parede.
+
+Inspecionei os três PNGs originais do native: `Lich-view-A-launch-0.png`, `Lich-view-A-launch-7.png`, `Lich-view-B-launch-0.png`. No primeiro close a esfera alcança a mão esquerda, resolvendo a separação grosseira observada antes; no7 aparece afastada com rastro. ARPG mostra saída junto ao caster, mas não permite avaliar dedos. A esfera opaca lisa, encaixe fino e qualidade de pose/peso continuam limites artísticos. Não houve revisão contínua do vídeo. O report mede primeirobody/flash0m nos dois clientes, com intervalo45.8/45.9ms; isso vale para o arranjo claro capturado.
+
+**Próxima integração pertence a Combat:** aplicar somente o rebase mínimo da placaGUI posterior e manter recibo próprio dessa nova fonte. Não reatribuir os232hashes/captura atuais ao futuro candidato nem copiar main/server antigos. Runtime Animation07952 e stagingv12c402b5ac continuam separados; SFX mantém Brute exclusivo.

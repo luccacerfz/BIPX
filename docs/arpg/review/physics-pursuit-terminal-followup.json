@@ -1,0 +1,20 @@
+{
+  "at": "2026-09-19T04:42:14.877243+00:00",
+  "reviewer": "Root",
+  "decision": "select optional attack-region API and BloodCow adapter for bounded native integration verification; no live promotion yet",
+  "navigationCandidate": "e46cc63f5964aabd2ecd737a5ceaef8911863a2e081ad1563f01a4761a77b98d",
+  "layoutRequired": "a5f46359e489f154618230bc66620a9c0598d0c4dc26a41386b87e700957a010",
+  "filesReviewed": [
+    "docs/arpg/physics-pursuit-terminal.md",
+    "output/physics/pursuit-terminal-20260919/navigation-attack-region.patch",
+    "output/physics/pursuit-terminal-20260919/main-bloodcow-adapter.patch"
+  ],
+  "findings": [
+    "No maintenance coordinates in algorithm; local region reflects existing offline melee radius/LOS.",
+    "Preserves no-option behavior and validates body sweeps/terminal LOS.",
+    "Caller evidence north3.50s/south7.35s versus baseline30s no movement, unchanged body/speed/range.",
+    "Worst additional planning cost is bounded but not measured natively; region terminal failure remains safe.",
+    "Server melee policy remains separate; no implied multiplayer fix."
+  ],
+  "next": "Coordinate native isolated full-game integration on current baseline plus a5f4/nav/minimal adapter; fixed starts and player movement, negative LOS/collision and a small worst-planning-cost case. No72/density400 rerun or general suite."
+}

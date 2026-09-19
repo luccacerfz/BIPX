@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "temporaryCopy": "/var/folders/1x/471qxk3n6cq4qvwp6rl8wwdm0000gn/T/bipx-overlap-patch-rekbika_",
+  "patchAppliesExactly": true,
+  "changedFiles": [
+    "gravity-field-pool.js",
+    "gravity-field-visual.js",
+    "gravity-horizon-source.js"
+  ],
+  "runtimeEdited": false
+}

@@ -1,0 +1,76 @@
+{
+  "observedAt": "2026-09-19T01:05:08.327446+00:00",
+  "scope": "Independent visual inspection of four original controlled HDR A/B PNGs, not gameplay or full playback.",
+  "experimentalIntegrationRecommended": true,
+  "aaaApproved": false,
+  "promotedAtReview": false,
+  "sourceStable": true,
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T01-00-39-181Z-gravity-vfx-prototype/gravity-vfx-prototype-high-1.8.png",
+      "sha256": "080785e0e40897097bd3080c4d64613802d70e2ffd2805f660253dfce861e59f"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-00-39-181Z-gravity-vfx-prototype/gravity-vfx-prototype-low-reduced-1.8.png",
+      "sha256": "9281dcb3b7502f5b0b996aedde4160ca64851a054704bd6c2f9abeb7415e8bbe"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-00-39-181Z-gravity-vfx-prototype/gravity-vfx-prototype-high-3.6.png",
+      "sha256": "dae4d7de16b012752f14358afa085a75a0c7ea23ce52813cf9f02e684e70c01b"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-00-39-181Z-gravity-vfx-prototype/gravity-vfx-prototype-high-4.8.png",
+      "sha256": "abd921aa5c906d9a0930c9e22a0d5ca6b50d279bb6e8029e3631696de9721380"
+    }
+  ],
+  "gpuCaseSummary": [
+    {
+      "quality": "high",
+      "reduced": false,
+      "kind": "baseline",
+      "p50": 4.032708,
+      "p95": 4.7265,
+      "samples": 36
+    },
+    {
+      "quality": "high",
+      "reduced": false,
+      "kind": "candidate",
+      "p50": 5.383374,
+      "p95": 6.218291,
+      "samples": 36
+    },
+    {
+      "quality": "high",
+      "reduced": false,
+      "kind": "depth-only",
+      "p50": 0.673458,
+      "p95": 0.770916,
+      "samples": 36
+    },
+    {
+      "quality": "low",
+      "reduced": true,
+      "kind": "baseline",
+      "p50": 2.831416,
+      "p95": 3.3055,
+      "samples": 36
+    },
+    {
+      "quality": "low",
+      "reduced": true,
+      "kind": "candidate",
+      "p50": 3.820041,
+      "p95": 4.836749,
+      "samples": 36
+    },
+    {
+      "quality": "low",
+      "reduced": true,
+      "kind": "depth-only",
+      "p50": 0.680999,
+      "p95": 0.79025,
+      "samples": 36
+    }
+  ]
+}

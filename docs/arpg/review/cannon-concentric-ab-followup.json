@@ -1,0 +1,26 @@
+{
+  "at": "2026-09-19T04:35:56.437368+00:00",
+  "reviewer": "Root",
+  "decision": "reject fixed renderOrder variant; authorize staged depth-aware composition and independent gas actor-readability correction",
+  "imagesActuallyViewed": [
+    {
+      "file": "output/playwright/2026-09-19T04-04-44-230Z-cannon-concentric-vfx/high-0.1505.png",
+      "sha256": "6608c73c15b559d148da1e1b41bfa4e10a768aef8223a380c2f87cfffeac091b"
+    },
+    {
+      "file": "output/playwright/2026-09-19T04-04-44-230Z-cannon-concentric-vfx/low-reduced-0.1505.png",
+      "sha256": "8f6ba3ca3dd9904ce67f8e9bd06369caf222af58c86e2093e3a6495c85d185d4"
+    }
+  ],
+  "observations": [
+    "Fire alone is a clear warm mass; current combo largely hides it.",
+    "Fire-after-field redraw restores orange but fills black core, losing spatial relationship.",
+    "Lyra is veiled by purple contribution even in gravity-only panel.",
+    "Low fire has a conspicuous red planar-looking shape; identify whether intended contribution or sampling artifact before final artistic acceptance."
+  ],
+  "reportedGate": "Lyra26.446–38.017% in high/low controlled field/combined scenes; threshold65 preserved. Not exact replay of sourceWebM.",
+  "materialAudit": "Corrected node mapping: DwarfBody uses mesh1/material1 BLEND with wholly opaque texture; DwarfRifle uses mesh0/material0 OPAQUE. Earlier prose reversed roles; see dwarf-opaque-material-audit.md.",
+  "next": "Bounded field descriptors/front-back composition in VFX copy, one shared depth, actor readability retained; coordinate shared API with Combat. No pipeline/main/runtime mutation or broad suite before focal visual selection.",
+  "materialAuditHistoricalIncorrect": "Aldric metadata defect does not explain dwarf torso: dwarf body isOPAQUE. Dwarf rifle material1 isBLEND with opaque texture; inventoried, unmodified.",
+  "materialAuditCorrectionAt": "2026-09-19T05:03:33.885188+00:00"
+}

@@ -1,0 +1,27 @@
+{
+  "observedAt": "2026-09-19T01:10:20.897157+00:00",
+  "deliveries": [
+    {
+      "agent": "Combat",
+      "providerSessionId": "01a0b6ce-ab1e-7012-9a5b-add00d2b8032",
+      "messagePrefix": "Complemento concreto da integração Horizon",
+      "userMessageObservedAt": "2026-09-19T01:08:45.304Z",
+      "deliveredToSession": true
+    },
+    {
+      "agent": "VFX",
+      "providerSessionId": "01a0b6d0-aafb-7770-a123-2c4f53df343f",
+      "messagePrefix": "Root complemento depth:",
+      "userMessageObservedAt": "2026-09-19T01:07:18.639Z",
+      "deliveredToSession": true
+    },
+    {
+      "agent": "Environment",
+      "providerSessionId": "01a0b6d0-b187-7f03-98f0-2e03358f085f",
+      "messagePrefix": "Root achou integração depth/cutaway",
+      "userMessageObservedAt": "2026-09-19T01:06:47.188Z",
+      "deliveredToSession": true
+    }
+  ],
+  "note": "Orca stalled receipts were not retried; session user records distinguish actual delivery from CLI status."
+}

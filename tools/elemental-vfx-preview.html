@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BIPX — elemental VFX synthetic fixture</title>
+<style>html,body{margin:0;background:#0e1520;color:#dce8ee;font:14px system-ui;height:100%;overflow:hidden}canvas{display:block;width:100%;height:100%}aside{position:fixed;left:20px;top:16px;padding:12px 16px;background:#0d1521d9;border:1px solid #416679;border-radius:8px;pointer-events:none}b{color:#b1e7ff}small{display:block;color:#97a9b6;margin-top:5px}</style>
+<canvas id="canvas"></canvas><aside><b>GLACIAL · VOID · TOXIC</b><small>Fixture sintética — não é gameplay. Eventos de lançamento, rastro e contato.</small><small>1: High · 2: Low · R: movimento reduzido · Espaço: pausa</small></aside>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import { createElementalVfx } from '../src/vfx/elemental-vfx.js';
+const canvas=document.querySelector('canvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x101b27);scene.fog=new THREE.FogExp2(0x101b27,.025);
+const camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.1,100);camera.position.set(9,10,15);camera.lookAt(0,.6,0);
+const hemi=new THREE.HemisphereLight(0xc7eaff,0x382d24,2);scene.add(hemi);
+const moon=new THREE.DirectionalLight(0x84adc9,3);moon.position.set(-8,11,-5);scene.add(moon);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshStandardMaterial({color:0x293235,roughness:.86}));ground.rotation.x=-Math.PI/2;scene.add(ground);
+const grid=new THREE.GridHelper(40,40,0x45646c,0x334246);grid.position.y=.01;scene.add(grid);
+for(const x of [-4,0,4]){const target=new THREE.Mesh(new THREE.CylinderGeometry(.33,.55,1.4,8),new THREE.MeshStandardMaterial({color:0x536478,roughness:.7}));target.position.set(x,.7,-1.5);scene.add(target);}
+const vfx=createElementalVfx({THREE,scene,quality:'high'});
+let paused=false,reduced=false,time=0,prior=performance.now(),cycle=-1;
+const actors=['glacial','void','toxic'].map((kind,i)=>({kind,x:(i-1)*4,position:new THREE.Vector3(),previous:new THREE.Vector3(),key:{},alive:false}));
+const dir=new THREE.Vector3(0,0,-1);
+function tick(dt){
+  time+=dt;
+  const c=Math.floor(time/2.7), phase=time%2.7;
+  if(c!==cycle){cycle=c;for(const a of actors){a.key={};a.position.set(a.x,1.35,4);a.previous.copy(a.position);a.alive=true;vfx.emit(a.kind+'Cast',a.position,{direction:dir,radius:.65});}}
+  for(const a of actors){
+    if(!a.alive)continue;
+    a.previous.copy(a.position);a.position.z=4-Math.min(phase,1.1)*5;
+    vfx.emitTrail(a.kind,a.previous,a.position,{key:a.key,radius:.7});
+    if(phase>=1.1){a.alive=false;vfx.emit(a.kind+'Impact',a.position,{direction:dir,radius:1.7});}
+  }
+  vfx.update(dt);renderer.render(scene,camera);
+}
+function frame(now){const dt=Math.min(.05,(now-prior)/1000);prior=now;if(!paused)tick(dt);else renderer.render(scene,camera);requestAnimationFrame(frame);}
+requestAnimationFrame(frame);
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
+addEventListener('keydown',e=>{if(e.code==='Space'){paused=!paused;e.preventDefault();}if(e.key==='1')vfx.setQuality('high');if(e.key==='2')vfx.setQuality('low');if(e.key.toLowerCase()==='r'){reduced=!reduced;vfx.setReducedMotion(reduced);}});
+window.elementalFixture={vfx,renderer,scene,camera,tick,pause:(v=true)=>paused=v,
+  reset(){time=0;cycle=-1;vfx.reset();},
+  capturePhase(seconds){paused=true;time=0;cycle=-1;vfx.reset();for(let t=0;t<seconds;t+=1/60)tick(Math.min(1/60,seconds-t));renderer.render(scene,camera);return vfx.getStats();},
+  emitAll(){for(const a of actors){vfx.emit(a.kind+'Impact',{x:a.x,y:1.35,z:0},{radius:1.7});}vfx.update(0);renderer.render(scene,camera);return vfx.getStats();},
+  diagnostics(){return {stats:vfx.getStats(),renderer:renderer.info,glError:renderer.getContext().getError()};}};
+</script></html>

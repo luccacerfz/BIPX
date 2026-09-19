@@ -1,0 +1,15 @@
+{
+  "sourceExportSHA256": "e11eadb8b428ad46332b0f70bc2db3459628775b65cbb101886cd46fdcd643b0",
+  "currentRuntimeSHA256": "dc0867dacd22b04e42475a686fffe808ad8c7e66e9889b2a182eb4393eb5378e",
+  "originalGLB": "assets/models/source-history/dwarf-opaque-20260919/dwarf-rifleman.glb",
+  "originalProvenance": "assets/models/source-history/dwarf-opaque-20260919/dwarf-rifleman.provenance.json",
+  "exportProvenanceUnmodified": true,
+  "postExportTool": "tools/animation-dwarf-opaque-metadata.py",
+  "toolSHA256": "aa70baff31faba2d21e217212f30c47c6be063f00b30a05a2c11d885a4dc67ab",
+  "change": "Only materials[1].alphaMode BLEND to OPAQUE; all other JSON and following BIN chunks identical",
+  "audit": "docs/arpg/review/dwarf-opaque-material-audit.md",
+  "selection": "docs/arpg/review/cannon-depth-focal-followup.md",
+  "receipt": "output/arpg-animation/dwarf-opaque-promotion/receipt.json",
+  "nativeExactGLB": "output/playwright/2026-09-19T05-37-28-168Z-cannon-depth-composition-vfx/report.json",
+  "futureExportRule": "Export only to an isolated candidate. Apply this reviewed post-export step to the exact known source and check its selected hash. New source hashes require fresh material/alpha/rig/clip audit. Never overwrite runtime with legacy export or erase original provenance."
+}

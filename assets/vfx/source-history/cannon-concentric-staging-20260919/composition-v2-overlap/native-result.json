@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-19T06:06:27.879714+00:00",
+  "report": "output/playwright/2026-09-19T06-03-50-695Z-cannon-depth-composition-vfx/report.json",
+  "reportSha256": "7550f21fe3c890bc283409d93a2bf1739d0024d5b1216f7f6d70b827b96461ab",
+  "review": "output/playwright/2026-09-19T06-03-50-695Z-cannon-depth-composition-vfx/visual-review.json",
+  "technicalPassed": true,
+  "focalGatePassed": true,
+  "artisticAccepted": false,
+  "promoted": false,
+  "gpuReleased": true
+}

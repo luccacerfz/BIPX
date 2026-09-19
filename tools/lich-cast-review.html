@@ -1,0 +1,75 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Lich cast staging</title>
+<style>body{margin:0;background:#17232d;color:#e1e7ef;font:15px system-ui}canvas{display:block}#info{position:absolute;top:18px;left:22px;white-space:pre;pointer-events:none}#tag{position:absolute;bottom:18px;left:22px;color:#a7c0cf}</style>
+<div id="info">Carregando staging</div><div id="tag">FIXTURE · Lich GLB original + gesto Mixamo · Sem projétil/autoridade · Socket verde = L_Hand</div>
+<script type="module">
+import * as THREE from '/vendor/three/three.module.js';
+import { loadMonsterLibrary } from '/output/lich-cast-v1/monster-library-staged.js';
+import { LICH_CAST_PROFILE as profile } from '/output/lich-cast-v1/lich-cast-profile.js';
+const cpu = new URLSearchParams(location.search).has('cpu');
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#17232d');
+const library = await loadMonsterLibrary({THREE});
+const actor = library.create('lich',{parent:scene});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshStandardMaterial({color:'#314147',roughness:1}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const grid = new THREE.GridHelper(60,60,0x70828a,0x3e535c);grid.position.y=.002;scene.add(grid);
+scene.add(new THREE.HemisphereLight(0xcce7ff,0x4a3930,2.4));
+for(const [color,power,x,y,z] of [[0xffe1b8,3,3,6,-4],[0x7ed7ff,2,-4,4,4]]){const light=new THREE.DirectionalLight(color,power);light.position.set(x,y,z);scene.add(light);}
+const camera = new THREE.PerspectiveCamera(36,innerWidth/innerHeight,.1,120);
+const marker = new THREE.Mesh(new THREE.SphereGeometry(.035,12,8),new THREE.MeshBasicMaterial({color:0x52ffb7,depthTest:false}));marker.renderOrder=9;scene.add(marker);
+let renderer=null;
+if(!cpu){renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.append(renderer.domElement);}
+const point = name => actor.model.getObjectByName(name).getWorldPosition(new THREE.Vector3()).toArray();
+function snapshot(full=false){
+ actor.root.updateMatrixWorld(true);actor.model.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.update();});
+ const data={stats:structuredClone(actor.stats),socket:point(profile.socketName),rightHand:point('R_Hand'),hip:point('Hip'),head:point('Head')};
+ if(full){const box=new THREE.Box3();let nonFinite=0,vertices=0,minY=Infinity;const v=new THREE.Vector3();actor.model.traverse(o=>{if(!o.isMesh)return;for(let i=0;i<o.geometry.attributes.position.count;i++){o.getVertexPosition(i,v).applyMatrix4(o.matrixWorld);if(!v.toArray().every(Number.isFinite))nonFinite++;box.expandByPoint(v);minY=Math.min(minY,v.y);vertices++;}});Object.assign(data,{vertices,nonFinite,minY,bounds:{min:box.min.toArray(),max:box.max.toArray(),size:box.getSize(new THREE.Vector3()).toArray()}});}
+ return data;
+}
+let view='close',mode='idle',elapsed=0,cancelAt=null,frames=[],raf=0,last=0,playing=false,serial=0;
+function render(){actor.root.updateMatrixWorld(true);marker.position.fromArray(point(profile.socketName));renderer?.render(scene,camera);document.querySelector('#info').textContent=`STAGING LICH · ${view} · ${mode}\ncast ${elapsed.toFixed(3)} / ${profile.duration.toFixed(2)} s · release ${profile.releaseAt.toFixed(6)} s\n${actor.stats.currentClip} · ${actor.stats.attack?.cancelReason||''}`;}
+function setView(next){view=next;actor.root.rotation.y=next==='arpg'?Math.PI:0;if(next==='arpg'){camera.fov=48;camera.position.set(0,17,20);camera.lookAt(0,0,0);}else{camera.fov=36;camera.position.set(3.8,2.9,-6.2);camera.lookAt(0,1.45,0);}camera.updateProjectionMatrix();render();}
+function seek(time){playing=false;cancelAnimationFrame(raf);actor.reset();actor.cast({castId:`seek:${++serial}`,sequence:serial,elapsed:Math.min(time,profile.duration-1e-6)});actor.update(0,{});elapsed=time;mode='POSE AMOSTRADA';render();return snapshot(true);}
+function play(next='full'){
+ playing=false;cancelAnimationFrame(raf);actor.reset();frames=[];elapsed=-.35;mode=`PLAYBACK ${next}`;cancelAt=next==='cancel-before'?.32:next==='cancel-after'?.72:null;last=performance.now();playing=true;let started=false,cancelled=false;
+ function frame(now){if(!playing)return;const dt=Math.min(.05,(now-last)/1000);last=now;elapsed+=dt;if(elapsed>=0&&!started){actor.cast({castId:`play:${++serial}`,sequence:serial});started=true;}if(started&&!cancelled&&cancelAt!==null&&elapsed>=cancelAt){actor.cancelCast('fixture-cancel');cancelled=true;}const control=next==='freeze-before'?'freezeTimer':next==='stun-after'?'stunTimer':null;const controlAt=next==='freeze-before'?.32:.72;actor.update(dt,control&&elapsed>=controlAt&&elapsed<controlAt+.35?{[control]:.35}:{});render();frames.push({wallTime:now,elapsed,...snapshot(false)});if(elapsed<1.6)raf=requestAnimationFrame(frame);else playing=false;}
+ raf=requestAnimationFrame(frame);
+}
+async function cpuChecks(){
+ const checks=[],samples=[];const check=(ok,name)=>{if(!ok)throw Error(name);checks.push(name);};
+ const lich=library.stats.prototypes.lich,walker=library.stats.prototypes.zombie;
+ check(Math.abs(lich.clips[3].duration-profile.sourceDuration)<1e-6,'Lich keeps full1.1666666s Attack');
+ check(lich.attackWindow.from===0&&Math.abs(lich.attackWindow.to-profile.sourceDuration)<1e-6,'Lich bypasses Walker slice explicitly');
+ check(walker.attackWindow.from===1/3&&walker.attackWindow.to===5/3,'Walker profile/slice unchanged');
+ check(library.stats.prototypes.brute.castProfile===null,'Brute receives no Lich profile');
+ check(actor.castSocket?.name==='L_Hand','L_Hand resolves to an actual rig bone');
+ actor.reset();check(actor.cast({castId:'cpu:1',sequence:1}), 'First visual cast accepted');
+ check(!actor.cast({castId:'cpu:1',sequence:1}), 'Duplicate visual cast rejected');
+ for(let i=0;i<=180;i++){actor.update(i?1/120:0,{});const s=snapshot(true);samples.push({time:i/120,...s});check(s.nonFinite===0&&s.bounds.size.every(v=>v>0&&v<8),`Finite skinned geometry sample${i}`);}
+ check(actor.stats.currentClip==='Idle'&&!actor.stats.attack.active,'Complete visual cast recovers to Idle');
+ for(const phase of [.2,.55,.8])for(const control of ['freezeTimer','stunTimer']){
+  actor.reset();actor.cast({castId:'control',sequence:2,elapsed:phase*profile.duration});actor.update(.016,{[control]:1});
+  check(!actor.stats.attack.active&&actor.stats.attack.cancelled,`${control} cancels at phase${phase}`);
+  actor.update(.1,{});check(!actor.cast({castId:'control',sequence:2,elapsed:phase*profile.duration+.1}),`${control} thaw does not restart cancelled identity`);
+ }
+ actor.reset();actor.cast({castId:'late',sequence:3,elapsed:profile.releaseAt});
+ check(Math.abs(actor.stats.attack.clipTime-profile.sourceReleaseAt)<1e-5,'Release maps to source phase19/35 without double retiming');
+ const release=snapshot(true);actor.update(.1,{paused:true});check(actor.stats.attack.elapsed===profile.releaseAt,'Visual pause holds elapsed');
+ actor.update(.01,{dead:true});check(actor.stats.dead&&!actor.stats.attack.active,'Death cancels visual cast');
+ actor.reset();actor.cast({castId:'old',sequence:4});actor.cancelCast('removal');check(!actor.cast({castId:'old',sequence:4}),'Removal cancellation does not resume');
+ actor.reset();actor.cast({castId:'remote',sequence:5,ageMs:400});check(Math.abs(actor.stats.attack.elapsed-.4)<1e-9,'Remote ageMs starts at its current pose');
+ actor.update(.1,{attack:{id:'remote',sequence:5,elapsed:.7}});check(Math.abs(actor.stats.attack.elapsed-.7)<1e-9,'Snapshot elapsed is not advanced twice');
+ check(!actor.cast({castId:'remote',sequence:5,elapsed:.5})&&actor.stats.attack.startCount===1,'Stale remote phase does not replay windup');
+ actor.update(2,{});check(Math.abs(actor.stats.attack.elapsed-.8)<1e-9,'Long render delta is capped for visual prediction only');
+ actor.update(0,{attack:{id:'remote',sequence:5,elapsed:1.1,active:false}});check(!actor.stats.attack.active&&actor.stats.currentClip==='Idle','Authoritative end resynchronizes after a long render delta');
+ check(!actor.cast({castId:'remote',sequence:5,elapsed:.9}),'Completed remote identity cannot restart');
+ for(const t of [profile.releaseAt-1e-6,profile.releaseAt,profile.releaseAt+1e-6]){actor.reset();actor.cast({castId:'boundary',elapsed:t});check(actor.stats.attack.impactReached===(t>=profile.releaseAt),`Visual release boundary ${t}`);}
+ actor.reset();actor.cast({castId:'stun-reuse'});for(let i=0;i<45;i++)actor.update(1/60,{});actor.update(1/60,{stunTimer:.35});for(let i=0;i<21;i++)actor.update(1/60,{stunTimer:.35});for(let i=0;i<35;i++)actor.update(1/60,{});
+ actor.reset();actor.cast({castId:'zero-seek',elapsed:0});actor.update(0,{});
+ actor.reset();actor.cast({castId:'reused-release',elapsed:profile.releaseAt});actor.update(0,{});
+ check(new THREE.Vector3().fromArray(snapshot().socket).distanceTo(new THREE.Vector3().fromArray(release.socket))<1e-6,'Stun/reset/zero-time seek restores the weighted release pose without T-pose');
+ const maxSize=[0,1,2].map(k=>Math.max(...samples.map(s=>s.bounds.size[k]))),maxFloorCorrection=Math.max(...samples.map(s=>Math.abs(s.stats.floorCorrection)));
+ const profileStats=structuredClone(library.stats);actor.reset();render();
+ return{checks,profile,profileStats,release,samples,maxSize,maxFloorCorrection,scope:'CPU actual staged loader/controllers and skinned vertices; no WebGL/render/artistic approval'};
+}
+setView('close');render();
+window.lichCastReview={ready:true,library,actor,profile,snapshot,seek,setView,play,cpuChecks,get playing(){return playing;},get frames(){return frames;},glInfo(){if(!renderer)return null;const gl=renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');return{renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),error:gl.getError()};}};
+</script></html>

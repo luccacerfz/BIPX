@@ -1,0 +1,18 @@
+{
+  "at": "2026-09-19T06:06:27.879714+00:00",
+  "promoted": false,
+  "approval": "Root review and coordinated window required; do not copy whole folder",
+  "filesRelativeToSrcVfx": {
+    "cannon-source-glsl.js": "7662f0d6e84c06ca8091f71015c5edc08a7721b66061f11bde43de360c5d7f6c",
+    "cannon-vfx.js": "9b15e4123f7dc5fd9d6aee47b06c045a23daebdf2dc93a1e8ce01eb55635eb44",
+    "class-skill-fields.js": "7c9bc9eb2b4f6a1f8301c6cd52e9c6ac5e7e40aed39bd12c984c854a578b443f",
+    "class-skill-vfx.js": "5f218c69051e5abcb95030ae2b33de406def904360dc8f07e956af6e9970265a",
+    "gravity-composition-glsl.js": "abcb7d83f2d0ac165e80fa742cdde98559ef848350f6bab6812627811187ee83",
+    "gravity-field-pool.js": "4c19662a3ac43821c887b6ead9ad653fbeebbfa882f9105238f575031907d86c",
+    "gravity-field-visual.js": "bf29f10de6b4a1e4d968ec9fa77ee652e56d2262f6b2616dd54e5c0904cecbe8",
+    "gravity-horizon-source.js": "9ea6675f03233b2a8d6f055cf84ab01e8f119da47627779b33affee2afdc1090"
+  },
+  "api": "Existing prepareSceneDepth/setSceneDepth only; no main or pipeline callback. Internal getHorizonDescriptor/setOverlapApertures and overlapCount stats. Shared1prepass, no newRT/draw.",
+  "dependsOn": "Exact OPAQUE actors; composition-v1 parent seven-file patch plus three-file overlap delta, intersecting2 files. Final total8 files.",
+  "runtimeVfxUnchanged": true
+}

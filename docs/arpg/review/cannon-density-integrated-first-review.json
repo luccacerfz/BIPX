@@ -1,0 +1,80 @@
+{
+  "reviewedAt": "2026-09-19T03:39:49.619566+00:00",
+  "sourceManifest": "output/qa/arpg-cannon-density-integrated-20260919/source-manifest.json",
+  "sourceManifestSha256": "456602dba3b0db67c954c2d249fcd7b3b4fa711d396984befcd64712f08a8ccc",
+  "sourceCount": 222,
+  "currentDrift": [],
+  "serverPid": 75665,
+  "servedMainContactsWrapperMatch": true,
+  "reports": [
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-warrior-high.json",
+      "sha256": "1e5bf2ec33ce16814f7f1577e8e44d3dc664104db0a267b0ba8a9759c81b9c2b",
+      "passed": true,
+      "sourceChanged": false,
+      "scope": "Natural enemies and real menu/mouse/keyboard input; no gameplay mutations. Read-only target projection and RAF observations.",
+      "observedCannonFrames": null,
+      "sharedDepthFrames": null,
+      "errors": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "failedRequests": 0,
+        "httpErrors": 0
+      }
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-high.json",
+      "sha256": "4e80d5f730d7c8d99006906f25541ab3b998893fcaf1039839fe675698245b04",
+      "passed": true,
+      "sourceChanged": false,
+      "scope": "Natural enemies and real menu/mouse/keyboard input; no gameplay mutations. Read-only target projection and RAF observations.",
+      "observedCannonFrames": 130,
+      "sharedDepthFrames": 128,
+      "errors": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "failedRequests": 0,
+        "httpErrors": 0
+      }
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-low.json",
+      "sha256": "5737f38aa7c1607497f341997fa8f117f60a428827f2c9b919b2d45f99d524fd",
+      "passed": true,
+      "sourceChanged": false,
+      "scope": "Natural enemies and real menu/mouse/keyboard input; no gameplay mutations. Read-only target projection and RAF observations.",
+      "observedCannonFrames": 144,
+      "sharedDepthFrames": 142,
+      "errors": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "failedRequests": 0,
+        "httpErrors": 0
+      }
+    }
+  ],
+  "inspectedOriginals": [
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-high-cannon-combo.png",
+      "sha256": "8e3473735cd855b59ece47c84f5741bcd80760c1c729c0c956c771f89e8d476b"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-dwarf-low-cannon-combo.png",
+      "sha256": "4527f20ad3cc21a52d2a8c2840576807fa86e8afa9ec4d992777b1d765573ae2"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-warrior-high-living-stunned-targets.png",
+      "sha256": "6b3b51549b047a96337286f5e3683d970275154b35ac0710e9a81d832bc77241"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-warrior-high-confirmed-dash-death.png",
+      "sha256": "8549e526ce8b158b4d5cf5ffe7e9e989390b9106896b81922c9eb120ae352b62"
+    }
+  ],
+  "visualLimits": [
+    "Cannon combo stills occur immediately after confirmed kill; gravity dominates, cannot independently approve peak fire appearance from these PNGs.",
+    "Warrior stun and HUD are legible in selected frames; cut halves remain visually difficult to distinguish.",
+    "Root has not reviewed continuous videos, heard audio, or approved all frames/AAA."
+  ],
+  "next": "Inspect peak-fire frames from existing WebM or already planned focused capture; no whole-suite repetition for this review."
+}

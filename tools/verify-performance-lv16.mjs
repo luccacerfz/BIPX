@@ -1,23 +1,19 @@
-import fs from "node:fs";
-import path from "node:path";
-import { createRequire } from "node:module";
+import { chromium, browserLaunchOptions, waitForRuntimeAssets, attachQualityTelemetry, sampleAnimationFrames } from "./quality-browser.mjs";
 
 const baseUrl = process.argv[2] ?? "http://127.0.0.1:5173/?autoplay=1&offline=1&quality=auto&perf=1";
-const playwrightRoot = findPlaywrightRoot();
-const require = createRequire(import.meta.url);
-const { chromium } = require(playwrightRoot);
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch(browserLaunchOptions);
 
+const results = [];
 try {
-  const desktop = await runStressScenario("desktop-lv16", { width: 1280, height: 720 }, 24);
-  const mobile = await runStressScenario(
-    "iphone17-lv16",
-    { width: 402, height: 874, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
-    42,
-  );
-
-  console.log(JSON.stringify({ ok: true, desktop, mobile }, null, 2));
+  for (const [name, viewport, minFps] of [
+    ["desktop-lv16", { width: 1280, height: 720 }, 24],
+    ["iphone17-lv16", { width: 402, height: 874, deviceScaleFactor: 3, isMobile: true, hasTouch: true }, 42],
+  ]) {
+    try { results.push({ name, ok: true, ...(await runStressScenario(name, viewport, minFps)) }); }
+    catch (error) { results.push({ name, ok: false, error: error.message }); process.exitCode = 1; }
+  }
+  console.log(JSON.stringify({ ok: results.every((result) => result.ok), results }, null, 2));
 } finally {
   await browser.close();
 }
@@ -27,6 +23,8 @@ async function runStressScenario(name, viewport, minFps) {
   const context = await browser.newContext({ viewport: { width, height }, ...contextOptions });
   const page = await context.newPage();
 
+  const telemetry = attachQualityTelemetry(page, name);
+  telemetry.markFixture();
   try {
     const url = new URL(baseUrl);
     url.searchParams.set("autoplay", "1");
@@ -36,11 +34,14 @@ async function runStressScenario(name, viewport, minFps) {
     url.searchParams.set("monsterLod", "1");
 
     await page.goto(url.toString(), { waitUntil: "networkidle" });
+    await waitForRuntimeAssets(page, telemetry);
     await page.waitForTimeout(1400);
     await page.evaluate(() => window.__zombieNightDebug.stressLevel16(360));
     const frameSample = await page.evaluate(sampleAnimationFrames, 12_000);
     const stats = await page.evaluate(() => window.__zombieNightDebug.getPerfStats());
     const state = await page.evaluate(() => window.__zombieNightDebug.getState());
+    telemetry.report.measurements = { frameSample, stats, state };
+    await telemetry.capture("dense-measured");
     const integrity = await page.evaluate(() => window.__zombieNightDebug.getRenderIntegrity());
     const expansionsBeforeRestart = JSON.stringify(stats.poolExpansions);
 
@@ -65,7 +66,9 @@ async function runStressScenario(name, viewport, minFps) {
     assert(expansionsAfterRestart === expansionsBeforeRestart, `${name} pools kept expanding after restart`);
     assert(restartStats.entities.zombies < state.zombies, `${name} restart did not clear stress horde`);
 
+    telemetry.assertClean();
     return {
+      frameSample,
       fpsAverage: stats.fpsAverage,
       sampledFps: frameSample.averageFps,
       quality: stats.quality,
@@ -82,46 +85,15 @@ async function runStressScenario(name, viewport, minFps) {
       poolExpansions: stats.poolExpansions,
       restartEntities: restartStats.entities,
     };
+  } catch (error) {
+    telemetry.fail(error);
+    throw error;
   } finally {
+    await telemetry.save();
     await context.close();
   }
 }
 
-function sampleAnimationFrames(durationMs) {
-  return new Promise((resolve) => {
-    const frames = [];
-    const startedAt = performance.now();
-
-    function tick(timestamp) {
-      frames.push(timestamp);
-      if (timestamp - startedAt >= durationMs) {
-        const elapsedSeconds = Math.max((timestamp - frames[0]) / 1000, 0.001);
-        resolve({
-          frames: frames.length,
-          averageFps: Number((frames.length / elapsedSeconds).toFixed(1)),
-        });
-        return;
-      }
-      requestAnimationFrame(tick);
-    }
-
-    requestAnimationFrame(tick);
-  });
-}
-
-function findPlaywrightRoot() {
-  const paths = process.env.PATH.split(path.delimiter);
-
-  for (const searchPath of paths) {
-    const binaryPath = path.join(searchPath, "playwright");
-
-    if (fs.existsSync(binaryPath)) {
-      return path.dirname(fs.realpathSync(binaryPath));
-    }
-  }
-
-  throw new Error("Playwright binary not found in PATH");
-}
 
 function assert(condition, message) {
   if (!condition) {

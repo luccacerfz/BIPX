@@ -1,0 +1,15 @@
+{
+  "file": "arpg/skillReady.mp3",
+  "prompt": "One very subtle fantasy ability ready notification. A single soft warm glass tick blooming into a tiny clean luminous chime, short gentle decay. Quiet and reassuring, restrained high frequencies, no melody, no repeated notes, no speech, no music, immediate start.",
+  "requestedDurationSeconds": 0.5,
+  "loop": false,
+  "model": "eleven_text_to_sound_v2",
+  "outputFormat": "mp3_44100_128",
+  "promptInfluence": 0.45,
+  "requestId": null,
+  "characterCost": "6",
+  "httpStatus": 200,
+  "generatedAt": "2026-09-18T23:22:59.108Z",
+  "bytes": 8821,
+  "sha256": "3f9422b04f1aa1b9c1e26f384bd22ac024cc55a1483b46a9dc17bdd75a3c7a28"
+}

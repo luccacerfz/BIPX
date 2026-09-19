@@ -1,0 +1,10 @@
+{
+  "at": "2026-09-19T03:17:17.723907+00:00",
+  "source": "/tmp/bipx-caster-motion/README.md",
+  "inspectedImage": "/tmp/bipx-caster-motion/brute/native/attack-54.png",
+  "sha256": "85b49dd92bd1c4bf440b4cd9276b0ef3ea52254f48bb974683930faec3aa743f",
+  "historicalCandidateRejected": true,
+  "reason": "V3 remains excessively crouched with torso/shoulder contortion; low foot drift does not establish acceptable acting.",
+  "next": "Existing Astra SFX assigned isolated Brute v4 support after completing Lich; at most two local unarmed Mixamo takes, preserve source and other clips; no runtime installation.",
+  "goalScope": "Previously explicit Brute rejected-motion replacement; not a new feature."
+}

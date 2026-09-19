@@ -1,0 +1,122 @@
+{
+  "createdAt": "2026-09-18T18:45:49.268Z",
+  "kind": "natural_world_automated_input_observations_without_scores",
+  "mainSha256": "83adc3dd0cae235fa96a816be20c331600f29dbc3012a4449afe75312179325b",
+  "fullSourceDifferencesBetweenSuccessfulReports": [],
+  "scope": "Real UI selection, keyboard movement/aim/Space firing and visible upgrade/restart clicks. Debug APIs read only. No injected game mutation, artificial health/XP/score/enemies or stress flags. Automated target-aware play is not a human combat-feel review. Physical mobile not tested.",
+  "reports": [
+    {
+      "name": "warrior",
+      "path": "output/playwright/2026-09-18T18-36-52-438Z-verify-natural-runs/natural-warrior.json",
+      "sha256": "227d64b353d5c97544c168872d9fb56883bbc8003d2a2d937867db386f85108c",
+      "status": "passed",
+      "sourceChangedDuringRun": false,
+      "finishedAt": "2026-09-18T18:38:34.739Z",
+      "durationMs": 100065,
+      "coverage": {
+        "actualKillsObserved": true,
+        "maxKillsInOneLife": 13,
+        "actualXpObserved": true,
+        "upgrades": "observed",
+        "death": "observed naturally",
+        "restart": "observed after natural death",
+        "humanFeelReview": "pending",
+        "physicalMobile": false
+      },
+      "observedMaxKills": 12,
+      "maxWave": 1,
+      "upgrades": 4,
+      "naturalDeaths": 5,
+      "restarts": 5,
+      "frameSample": {
+        "frames": 14378,
+        "durationMs": 100053.59999999999,
+        "averageFps": 143.69298056241857,
+        "p95Ms": 7.5,
+        "p99Ms": 7.799999999995634,
+        "worstMs": 138.89999999999964,
+        "framesOver50Ms": 1,
+        "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+      },
+      "failure": null
+    },
+    {
+      "name": "failedDwarf",
+      "path": "output/playwright/2026-09-18T18-36-52-438Z-verify-natural-runs/natural-dwarf.json",
+      "sha256": "746609c69144c2b1570e45c305032f9168bbe74b38323e957cd9981fc96b8d99",
+      "status": "failed",
+      "sourceChangedDuringRun": false,
+      "finishedAt": "2026-09-18T18:39:28.511Z",
+      "durationMs": 50153,
+      "coverage": {},
+      "observedMaxKills": 34,
+      "maxWave": 1,
+      "upgrades": 4,
+      "naturalDeaths": 1,
+      "restarts": 1,
+      "frameSample": null,
+      "failure": "AssertionError [ERR_ASSERTION]: Natural run unexpectedly paused\n\ntrue !== false\n\n    at file:///Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/tools/verify-natural-runs.mjs:84:16"
+    },
+    {
+      "name": "dwarf",
+      "path": "output/playwright/2026-09-18T18-42-00-529Z-verify-natural-runs/natural-dwarf.json",
+      "sha256": "0c8682f7c1a48fe6c31872f5f7ef78cb21c4eac04528300ed7f763776516ca3f",
+      "status": "passed",
+      "sourceChangedDuringRun": false,
+      "finishedAt": "2026-09-18T18:43:02.927Z",
+      "durationMs": 60077,
+      "coverage": {
+        "actualKillsObserved": true,
+        "maxKillsInOneLife": 36,
+        "maxWave": 2,
+        "maxLevel": 4,
+        "actualXpObserved": true,
+        "upgrades": "observed",
+        "death": "observed naturally",
+        "restart": "observed after natural death",
+        "humanFeelReview": "pending",
+        "physicalMobile": false
+      },
+      "observedMaxKills": 36,
+      "maxWave": 2,
+      "upgrades": 4,
+      "naturalDeaths": 1,
+      "restarts": 1,
+      "frameSample": {
+        "frames": 8591,
+        "durationMs": 60070.7,
+        "averageFps": 142.99816715969683,
+        "p95Ms": 7.5,
+        "p99Ms": 7.799999999999272,
+        "worstMs": 368.09999999999854,
+        "framesOver50Ms": 1,
+        "slowFrames": [
+          {
+            "elapsedMs": 28934.699999999997,
+            "frameMs": 368.09999999999854
+          }
+        ],
+        "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+      },
+      "failure": null
+    }
+  ],
+  "openFindings": [
+    {
+      "id": "unexpected-natural-pause",
+      "status": "open-not-reproduced",
+      "evidence": "output/playwright/2026-09-18T18-36-52-438Z-verify-natural-runs/natural-dwarf.json",
+      "detail": "First Lyra run stopped around52s when pause dialog was open. Script did not intentionally issue Escape or click pause; this attempt lacked a full event trace, so origin is unknown. A subsequent60s trace-enabled run did not reproduce it. Do not attribute to user or clear based on one passing retry."
+    },
+    {
+      "id": "isolated-long-frames",
+      "status": "open-cause-unassigned",
+      "detail": "Aldric100s has one138.9ms frame; Lyra60s has one368.1ms frame at elapsed28934.7ms. Measurements include video/screenshots/UI. Lyra upgrades were recorded at12918,18227,26512,54388ms and death at40287ms; these timestamps do not establish that the28.9s spike was caused by a screenshot. Around28–32s the sampled enemy count fell6→3→2, with no pool expansions. Future tooling records exact screenshot intervals plus slow-frame times."
+    }
+  ],
+  "interpretation": "Two successful natural runs for the same runtime source, with the failed intervening Lyra attempt retained. This is not a new full-suite pass or an evaluation score. Existing20/20 baseline was a different source.",
+  "frameBudgetHistory": "First run loaded averageFPS>=60. The later >=57 and p95<=20ms desktop budget was declared before final samples were inspected, accounting for60Hz measurement tolerance without rounding results. Both successful measurements exceed either average threshold and have p95=7.5ms.",
+  "physicalMobile": "pending",
+  "humanListeningAndFeel": "pending",
+  "allCriteriaAt10Established": false
+}

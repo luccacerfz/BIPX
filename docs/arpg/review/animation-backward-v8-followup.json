@@ -1,0 +1,15 @@
+{
+  "reviewedAt": "2026-09-19T04:03:58.529361+00:00",
+  "handoff": "docs/arpg/animation-backward-v8-staging.md",
+  "sha256": "50bb7b6e60b11eeea594c067fb33c62a4c7fa9b3815340bbc24d35fae20e0976",
+  "candidate": "45588e137ce116d391f9e8e30da54fe4714ca4e480a9f85ea56a54de91f61500",
+  "decision": "Retain v8; authorize isolated v9 region-of-support orientation/height hypothesis before acquisition, same bounded prefix and all physical samples.",
+  "blockingFindings": [
+    "60Hz supportP90.179939→.763592m/s despite zero reach",
+    "30Hz material vertex39 release frame56 2.892198→6.709820m/s",
+    "Frame108 vertex99 nearly stationary but other supported vertices.763592–.778367m/s from yaw rotation"
+  ],
+  "constraintClarification": "Exact protected torso matrices served as an ablation control, not the final user objective. If fixed-pelvis kinematic incompatibility is proved, a separate physically justified continuous body-support proposal may be considered; no arbitrary global displacement, teleport, altered rig lengths or masked metric.",
+  "runtimePromotionAuthorized": false,
+  "nativeReviewed": false
+}

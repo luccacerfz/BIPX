@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Enemy control and cut fixture</title>
+<style>body{margin:0;background:#263442;color:white;font:16px system-ui}canvas{display:block}#label{position:fixed;left:20px;top:20px;padding:12px;background:#142030dd;white-space:pre}#note{position:fixed;bottom:20px;left:20px;background:#142030dd;padding:10px}</style>
+<div id="label">Loading</div><div id="note">Native asset fixture · freeze/stun and death-only clipping · not gameplay</div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {loadEnemyLibrary} from '../src/assets/enemy-library.js';
+import {loadMonsterLibrary} from '../src/assets/monster-library.js';
+import {createAnimatedEnemies} from '../src/render/animated-enemies.js';
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.localClippingEnabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#263442');scene.add(new THREE.HemisphereLight('#f0f6ff','#4b392c',2.5));
+const sun=new THREE.DirectionalLight('#ffe8c6',3);sun.position.set(5,10,-4);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun,sun.target);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:'#687c83',roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.005;floor.receiveShadow=true;scene.add(floor,new THREE.GridHelper(200,200,'#90a6af','#455c66'));
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.05,200),pool=createAnimatedEnemies({THREE,scene});
+pool.register('orc',await loadEnemyLibrary({THREE}));pool.register('monsters',await loadMonsterLibrary({THREE}));
+let entity,serial=0,dead=false,time=0,playback=1,phase='moving';const center=new THREE.Vector3();
+function configure(type){pool.clear();entity?.mesh.removeFromParent();const mesh=new THREE.Group();mesh.add(new THREE.Mesh(new THREE.BoxGeometry(.7,2,.7),new THREE.MeshStandardMaterial({color:0xff00ff})));scene.add(mesh);entity={id:++serial,type,mesh,renderMode:'detail',radius:.85,freezeTimer:0,stunTimer:0};dead=false;time=0;phase='moving';frame(0);}
+function frame(dt){time+=dt;const held=entity.freezeTimer>0||entity.stunTimer>0;if(!dead&&!held)entity.mesh.position.z-=dt*2.7;pool.update(dead?[]:[entity],{dt,playerPosition:entity.mesh.position,quality:'high'});center.copy(entity.mesh.position);camera.position.copy(center).add(new THREE.Vector3(4.8,3.3,-7.8));camera.lookAt(center.clone().add(new THREE.Vector3(0,1.35,0)));sun.position.copy(center).add(new THREE.Vector3(5,10,-4));sun.target.position.copy(center);sun.target.updateMatrixWorld();renderer.render(scene,camera);document.querySelector('#label').textContent=`${entity.type} · ${phase}\ntime ${time.toFixed(2)} · ${pool.getStats().actors[0]?.currentClip||'cut corpse'}\n${held?'Authoritative status pauses pose':'Native Mixamo / supplied rig'}`;}
+const snapshot=()=>({time,phase,type:entity.type,stats:pool.getStats(),glError:renderer.getContext().getError()});
+window.enemySkillFixture={ready:true,configure,control:kind=>{entity.freezeTimer=kind==='freeze'?2:0;entity.stunTimer=kind==='stun'?2:0;phase=kind||'moving';frame(0);},cut:()=>{pool.remove(entity,{death:true,deathStyle:'cleave',direction:{x:0,z:-1}});entity.mesh.removeFromParent();dead=true;phase='dash death cut';frame(0);},step:(n=1,dt=1/60)=>{for(let i=0;i<n;i++)frame(dt);return snapshot();},play:value=>playback=value,snapshot};
+configure('orcPeon');let previous=performance.now();function tick(now){const dt=Math.min(.05,(now-previous)/1000)*playback;previous=now;if(dt>0)frame(dt);requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script></html>

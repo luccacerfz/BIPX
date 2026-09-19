@@ -1,0 +1,13 @@
+{
+  "reviewedAt": "2026-09-19T00:10:12.447674+00:00",
+  "accepted": false,
+  "files": {
+    "output/playwright/arpg-animation-enemy-v2/orcPeon-cut.png": "74d58a027be08adfc6705c171b4b5641a1920478013b44946155d016f61343d7",
+    "output/playwright/arpg-animation-enemy-v2/zombie-cut.png": "907b89f008e4724dcbb4e754b23a1d16c1b1fb022c436d2ca4ec09105beebb2c",
+    "output/playwright/arpg-animation-enemy-v2/caster-cut.png": "49d5db2ce4dc67f268b87722bf7fa68e526ba9edc4f4b31c5c9a27ddb71d61d7",
+    "output/playwright/arpg-animation-enemy-v2/report.json": "3f46fb5f73b646024c926d915899ec482b9b14ee879113ec66d5ec303e9c3618",
+    "output/playwright/arpg-animation-skills-v2/warrior_war_cry-release.png": "01a4fe5e06ea429d117a7621706a5f6450c592e7f55393d588c1e5f9382dd8bd",
+    "output/playwright/arpg-animation-skills-v2/warrior_shield_charge-release.png": "09f582eff934952f932374bf70dfc916ff995e5895e7df93c3ab1073af0dcc53",
+    "output/playwright/arpg-animation-skills-v2/dwarf_explosive_cannon-release.png": "1a4635aeb6e9359754466928523205fcd8cad096b5d4d8abdf088e582608b844"
+  }
+}

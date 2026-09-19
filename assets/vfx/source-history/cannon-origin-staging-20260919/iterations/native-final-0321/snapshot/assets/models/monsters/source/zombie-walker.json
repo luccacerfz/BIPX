@@ -1,0 +1,52 @@
+{
+  "id": "zombie-walker",
+  "source": "fullbody-retarget-inplace",
+  "note": "HURT nao cabe no mesmo retarget (API max 5 / rejeita HURT no pack). Flinch continua procedural.",
+  "rig": "607c54fb-2780-4ed0-ba2d-0d91e6a0acd5",
+  "retarget": "991b7ecb-5e21-485e-b957-7c6f9b19cada",
+  "anims": [
+    "IDLE",
+    "WALK",
+    "RUN",
+    "SLASH",
+    "FALL"
+  ],
+  "animate_in_place": true,
+  "inspect": {
+    "mb": 1.54,
+    "bones": 41,
+    "clips": [
+      {
+        "i": 0,
+        "name": "NlaTrack",
+        "dur": 15.38,
+        "ch": 39
+      },
+      {
+        "i": 1,
+        "name": "NlaTrack.001",
+        "dur": 2.38,
+        "ch": 40
+      },
+      {
+        "i": 2,
+        "name": "NlaTrack.002",
+        "dur": 1.29,
+        "ch": 39
+      },
+      {
+        "i": 3,
+        "name": "NlaTrack.003",
+        "dur": 6.62,
+        "ch": 40
+      },
+      {
+        "i": 4,
+        "name": "NlaTrack.004",
+        "dur": 3.04,
+        "ch": 40
+      }
+    ]
+  },
+  "created": "2026-07-10T19:13:08.747888+00:00"
+}

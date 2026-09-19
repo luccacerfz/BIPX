@@ -1,0 +1,158 @@
+{
+  "reviewedAt": "2026-09-19T03:53:02.255892+00:00",
+  "rows": [
+    {
+      "report": "output/playwright/2026-09-19T03-44-45-312Z-verify-natural-runs/natural-warrior.json",
+      "sha256": "64e1bd98faac220a0e79f49a760a3d173c104d8e7cf7d2306abb6009a00bc465",
+      "assertions": "passed",
+      "sourceChanged": false,
+      "mainSha256": "7bde570f7ea0eb939a0974de66d11d560bcc8e9fd8def9ceaee8bf3991c4bca6",
+      "durationMs": 60176,
+      "coverage": {
+        "actualKillsObserved": true,
+        "maxKillsInOneLife": 28,
+        "maxWave": 1,
+        "maxLevel": 4,
+        "actualXpObserved": true,
+        "upgrades": "observed",
+        "death": "observed naturally",
+        "restart": "observed after natural death",
+        "humanFeelReview": "pending",
+        "physicalMobile": false,
+        "skillIds": [
+          "warrior_war_cry",
+          "warrior_cleaving_dash",
+          "warrior_shield_charge"
+        ]
+      },
+      "frameSample": {
+        "frames": 8584,
+        "averageFps": 142.63540641867638,
+        "p95Ms": 8.299999999999272,
+        "p99Ms": 8.60000000000582,
+        "worstMs": 41.80000000000109,
+        "framesOver50Ms": 0,
+        "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+      },
+      "escapes": [],
+      "finalState": {
+        "health": 200,
+        "kills": 1,
+        "level": 1,
+        "wave": 1,
+        "xp": 3
+      }
+    },
+    {
+      "report": "output/playwright/2026-09-19T03-44-45-312Z-verify-natural-runs/natural-dwarf.json",
+      "sha256": "c1470c46d6fea03acf3c3cbb492b2980802194edfa0a4d9d76bdcf3664f13bd8",
+      "assertions": "passed",
+      "sourceChanged": false,
+      "mainSha256": "7bde570f7ea0eb939a0974de66d11d560bcc8e9fd8def9ceaee8bf3991c4bca6",
+      "durationMs": 60056,
+      "coverage": {
+        "actualKillsObserved": true,
+        "maxKillsInOneLife": 59,
+        "maxWave": 2,
+        "maxLevel": 6,
+        "actualXpObserved": true,
+        "upgrades": "observed",
+        "death": "not observed",
+        "restart": "not observed",
+        "humanFeelReview": "pending",
+        "physicalMobile": false,
+        "skillIds": [
+          "dwarf_explosive_cannon",
+          "dwarf_frost_shot",
+          "dwarf_gravity_shot"
+        ]
+      },
+      "frameSample": {
+        "frames": 8457,
+        "averageFps": 140.81786268593086,
+        "p95Ms": 7.69999999999709,
+        "p99Ms": 13.900000000000546,
+        "worstMs": 180.40000000000146,
+        "framesOver50Ms": 1,
+        "scope": "Whole natural automation run including screenshots, upgrades, deaths and restarts; not a pure isolated renderer benchmark."
+      },
+      "escapes": [
+        {
+          "elapsedMs": 40684,
+          "from": {
+            "name": "QA Natural dwarf",
+            "x": -11.65,
+            "z": -6.359,
+            "aimX": 0,
+            "aimZ": -1
+          },
+          "waypoints": [
+            {
+              "x": -12.951,
+              "z": -4.968
+            },
+            {
+              "x": -11.933,
+              "z": -4.091
+            },
+            {
+              "x": -10.922,
+              "z": -5.003
+            },
+            {
+              "x": -9.477,
+              "z": -5.003
+            },
+            {
+              "x": -8.088,
+              "z": -5.003
+            },
+            {
+              "x": -6.849,
+              "z": -5.003
+            },
+            {
+              "x": -8.24,
+              "z": -5.003
+            },
+            {
+              "x": -9.628,
+              "z": -5.003
+            },
+            {
+              "x": -11.072,
+              "z": -5.003
+            },
+            {
+              "x": -12.463,
+              "z": -5.003
+            },
+            {
+              "x": -13.758,
+              "z": -5.017
+            },
+            {
+              "x": -12.445,
+              "z": -5.029
+            }
+          ],
+          "method": "Real WASD retraces previously observed positions; no world writes or teleport."
+        }
+      ],
+      "finalState": {
+        "health": 7.935478245664907,
+        "kills": 59,
+        "level": 6,
+        "wave": 2,
+        "xp": 8
+      }
+    }
+  ],
+  "interpretation": [
+    "Current batch input runs passed their60second desktop frame budgets, all six IDs and progression observed.",
+    "Dwarf had one real WASD recovery from garden(-11.65,-6.359), first exercised evidence of harness escape. It is not a correction of the original maintenance refuge.",
+    "Dwarf worst180.4ms frame remains visible despite good P95; no claim of hitch-free soak/mobile.",
+    "Hero no-slide, art/sound feel and physical-device proof remain pending.",
+    "Natural reports must retain their actual main hash when later endGame cleanup changes the runtime."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "observedAt": "2026-09-19T00:52:12.349331+00:00",
+  "referenceCommit": "8c377c886ac2c68b26bc65c8f3507905818b974a",
+  "scope": "Original author reference image and original controlled A/B PNGs inspected individually; not gameplay or AAA approval.",
+  "artifacts": [
+    {
+      "path": "/tmp/bipx-linear-reference/docs/screenshots/astral.jpg",
+      "sha256": "e19c77d42cecfb00c83f6eba679d5eebf6ec6fb4ef18e01f23f54e36c09354a7"
+    },
+    {
+      "path": "output/playwright/2026-09-19T00-45-58-667Z-gravity-vfx-prototype/gravity-vfx-prototype-high-0.35.png",
+      "sha256": "080a63be2a98e347493fd8e769dc84ffe12db09e74be4c79d6340e2615305f8b"
+    },
+    {
+      "path": "output/playwright/2026-09-19T00-45-58-667Z-gravity-vfx-prototype/gravity-vfx-prototype-high-1.8.png",
+      "sha256": "903e63439952167f42ec8fb30e5cc62962f0b2ffe1d6d723c4dac7ab3b042fbf"
+    },
+    {
+      "path": "output/playwright/2026-09-19T00-45-58-667Z-gravity-vfx-prototype/gravity-vfx-prototype-high-3.6.png",
+      "sha256": "245b21697fcc9596f51f054f71a48d31ef421d4f00cc62ff92d2e2378b97acde"
+    },
+    {
+      "path": "output/playwright/2026-09-19T00-45-58-667Z-gravity-vfx-prototype/gravity-vfx-prototype-low-reduced-1.8.png",
+      "sha256": "966baea566c8b434130c83129097a0b1abb87e23a8a9ff47230c23f1d55981da"
+    }
+  ]
+}

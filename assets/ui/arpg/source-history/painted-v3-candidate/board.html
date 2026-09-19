@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BIPX — estudo isolado de ícones pintados</title>
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="./candidate.css">
+  <style>
+    html,body { margin:0; min-height:100%; overflow:auto; background:#0b1117; color:#eee2ca; touch-action:auto; }
+    body { padding:36px 44px 42px; font-family:Avenir,system-ui,sans-serif; }
+    h1 { font-family:Georgia,serif; font-size:32px; font-weight:400; margin:0 0 8px; }
+    p { max-width:940px; color:#b9bec5; font-size:13px; line-height:1.6; margin:0 0 28px; }
+    .gallery { display:grid; grid-template-columns:repeat(6,1fr); gap:22px; margin-bottom:30px; }
+    figure { margin:0; } figure img { width:100%; aspect-ratio:1; display:block; border-radius:4px; border:1px solid #9b7f52; }
+    figcaption { font-family:Georgia,serif; font-size:15px; margin-top:9px; }
+    .matrix { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+    .matrix th { font-weight:500; color:#c7b995; text-align:center; }
+    .matrix thead tr:first-child th { font-size:15px; padding:12px 0; border-top:1px solid #45515d; }
+    .matrix thead tr:last-child th { font-size:10px; padding:0 0 14px; }
+    .matrix tbody td { height:94px; text-align:center; border-top:1px solid #263441; }
+    .matrix tbody th { border-top:1px solid #263441; text-align:left; color:#eee2ca; font-size:14px; padding-right:12px; }
+    .matrix tbody th small { display:block; font-size:10px; color:#9ca7b4; margin-top:5px; }
+    .matrix .arpg-skill { display:inline-block; vertical-align:middle; }
+    .matrix .arpg-skill__art { pointer-events:none; }
+    .matrix td.group-start { border-left:1px solid #45515d; }
+    .footnote { color:#a8b1bd; margin:22px 0 0; font-size:12px; }
+  </style>
+</head>
+<body>
+  <h1>Ícones pintados · candidato isolado</h1>
+  <p>Arte original para as seis skills v2. Prancha de interface com estados sintéticos; não é gameplay. Custos e recargas vêm das definições atuais do core. O jogo ativo não carrega este candidato.</p>
+  <section class="gallery" aria-label="Seis artes propostas"></section>
+  <table class="matrix" aria-label="Comparação de leitura em tamanho real">
+    <colgroup><col style="width:178px"><col span="9"></colgroup>
+    <thead><tr><th></th><th colspan="3">Atual · 48px</th><th colspan="3">Pintado · 64px</th><th colspan="3">Pintado · 48px</th></tr>
+      <tr><th>Habilidade</th><th>Pronta</th><th>Recarga</th><th>Sem recurso</th><th>Pronta</th><th>Recarga</th><th>Sem recurso</th><th>Pronta</th><th>Recarga</th><th>Sem recurso</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="footnote">O tempo sai do centro da silhueta e permanece num apoio escuro. A máscara radial cobre 65% do ciclo nesta comparação. Foco visível, custo e aria-disabled continuam independentes da arte.</p>
+  <script type="module">
+    import { CLASS_SKILLS } from '/src/combat/class-skills.mjs';
+    const art = {warrior_war_cry:['war-cry','fervor'],warrior_cleaving_dash:['cleaving-dash','steel'],warrior_shield_charge:['shield-charge','shield'],dwarf_explosive_cannon:['explosive-cannon','fire'],dwarf_frost_shot:['frost-shot','frost'],dwarf_gravity_shot:['gravity-shot','arcane']};
+    const gallery=document.querySelector('.gallery'), body=document.querySelector('tbody');
+    for(const skill of CLASS_SKILLS){
+      const [icon,element]=art[skill.id];
+      const figure=document.createElement('figure');
+      figure.innerHTML=`<img src="./originals/${icon}.png" alt="${skill.name}"><figcaption>${skill.name}</figcaption>`;gallery.append(figure);
+      const row=document.createElement('tr');row.innerHTML=`<th scope="row">${skill.name}<small>${skill.cost} de recurso · ${skill.cooldown}s de recarga</small></th>`;
+      for(const [candidate,size] of [[false,48],[true,64],[true,48]])for(const state of ['ready','cooldown','resource']){
+        const cell=document.createElement('td');if(candidate)cell.classList.add('arpg-art-v3');if(state==='ready')cell.classList.add('group-start');
+        const timer=state==='cooldown'?`${Math.ceil(skill.cooldown*.65)}s`:state==='resource'?'×':'';
+        cell.innerHTML=`<button class="arpg-skill" data-skill-id="${skill.id}" data-element="${element}" data-state="${state}" data-preview-size="${size}" aria-disabled="${state!=='ready'}" aria-label="${skill.name}: ${state}, custo ${skill.cost}" style="--slot-size:${size}px;--cooldown-angle:${state==='cooldown'?234:0}deg"><kbd class="arpg-skill__key">${skill.slot+1}</kbd><span class="arpg-skill__art"><svg class="arpg-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="/assets/ui/arpg/icons.svg#${icon}"/></svg></span><span class="arpg-skill__mask" aria-hidden="true"></span><span class="arpg-skill__timer" aria-hidden="true">${timer}</span><span class="arpg-skill__cost" aria-hidden="true">${skill.cost}</span></button>`;
+        row.append(cell);
+      }
+      body.append(row);
+    }
+    await Promise.all([...document.images].map(img=>img.decode()));
+    window.artBoardReady=true;
+  </script>
+</body></html>

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "sourcesRoot": "/Users/luccacerf/Projetos/Assets/Environment",
+  "assets": [
+    {
+      "id": "crypt-root-arch",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Tunnel_Map/Exports/Game/Families/09_green_cave/09_green_cave_LOD1.glb",
+      "sourceSha256Before": "c8c612f8a90ccdbdd7a334be4b148cc546b6361091c73476fec9d3eae6d2d897",
+      "sourceSha256After": "c8c612f8a90ccdbdd7a334be4b148cc546b6361091c73476fec9d3eae6d2d897",
+      "sourcePreserved": true,
+      "sourceTriangles": 7669,
+      "runtimeTriangles": 4800,
+      "bytes": 332136,
+      "sha256": "c3a2e6f7b87e63275c1fad921a6ca68092dc3a1571d146f196b0d6de6ee3bf14",
+      "sizeXYZ": [
+        0.9995279312133789,
+        0.5904683186858115,
+        0.765863448381424
+      ],
+      "textures": [
+        {
+          "name": "09_green_cave_tripo_image_33d3a19a_0.001",
+          "source": [
+            2048,
+            2048
+          ],
+          "runtime": [
+            768,
+            768
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crypt-flagstone",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Tunnel_Map/Exports/Game/Families/02_flagstone_module/02_flagstone_module_LOD1.glb",
+      "sourceSha256Before": "00b4646ea63fb302c028428839243e1ffdcdf1a7887c627084f3e4538b71726c",
+      "sourceSha256After": "00b4646ea63fb302c028428839243e1ffdcdf1a7887c627084f3e4538b71726c",
+      "sourcePreserved": true,
+      "sourceTriangles": 3463,
+      "runtimeTriangles": 899,
+      "bytes": 87952,
+      "sha256": "b692a2db3097990772824f38913c8d91ad4a1be6e15c657accf596fc953823d7",
+      "sizeXYZ": [
+        0.996132880449295,
+        0.3365541324019432,
+        0.9982724487781525
+      ],
+      "textures": [
+        {
+          "name": "02_flagstone_module_tripo_image_94fa725a_0.002",
+          "source": [
+            2048,
+            2048
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        }
+      ]
+    }
+  ]
+}

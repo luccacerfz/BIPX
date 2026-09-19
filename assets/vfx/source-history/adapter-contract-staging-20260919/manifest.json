@@ -1,0 +1,9 @@
+{
+  "status": "PROPOSED_NOT_APPLIED",
+  "owner": "Combat",
+  "baselineMainSha256": "455addd3b7d9b22e82852ca74426327f8f9748b65f50d0c4d9c15cf6a8a11af4",
+  "beforeFunctionSha256": "7b13986e0ad326679278baa60a6fc9f3db92dfd7dd7ff55768637b552eb91a3e",
+  "proposedFunctionSha256": "85e67dfcb8039a6879173a371479c30d585a555b7fc3a18ff3379cd9fa43535a",
+  "patchSha256": "afe8931e39024751f8afba5e5795d28f8a25429693e7c53daee0d7de47520ad0",
+  "scope": "Explicit HUD status mapping only; all core fields preserved. Existing VFX timer mapping and clipping already present."
+}

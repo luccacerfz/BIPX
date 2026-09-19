@@ -1,0 +1,10 @@
+{
+  "reviewedAt": "2026-09-18T23:27:03.223079+00:00",
+  "scope": "native stills plus independent CPU diagnostic, not global acceptance",
+  "sha256": {
+    "output/playwright/hero-locomotion-handoff-native/report.json": "2143b2f15e22e3d456180bbc2cc5571a0fe4ec7093e34063719b1d05473265bd",
+    "output/playwright/hero-locomotion-handoff-native/warrior-cycle-contact-sheet.png": "74906ee6d736a521150951469353921835057119c328bd3bf5eac22ba4f321a9",
+    "output/playwright/hero-locomotion-handoff-native/dwarf-cycle-contact-sheet.png": "fcf6a9ef1fe6f4d1413a7a0a65bd536543fc44fe8f385651b1d8e0cf567a7b89",
+    "output/qa/arpg-root-review/2026-09-18T23-25-18-929Z-sole-contact.json": "f969ab5290c806a903a375d294e702748dc9aff5acda981bcbf545788aad581f"
+  }
+}

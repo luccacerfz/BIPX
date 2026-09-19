@@ -1,0 +1,15 @@
+/* Isolated proposal: activate only when Combat marks a rejected start. */
+#message[data-run-start-rejected="true"] #message-copy { color: var(--text); }
+#message[data-run-start-rejected="true"] #play-button {
+  background: #c6aa7c;
+  color: #152027;
+  transition: border-color .18s ease, color .18s ease;
+}
+#message[data-run-start-rejected="true"] #play-button:hover { background: #dec59b; }
+/* The ordinary compact login hides its copy; a rejection must keep its reason. */
+@media (min-width: 681px) and (max-height: 520px) {
+  #message[data-run-start-rejected="true"] .main-menu__login--characters {
+    grid-template-areas: "back name" "title name" "notice notice" "characters buttons" "status buttons";
+  }
+  #message[data-run-start-rejected="true"] #message-copy { display: block; grid-area: notice; }
+}

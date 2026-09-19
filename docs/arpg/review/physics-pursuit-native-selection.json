@@ -1,0 +1,182 @@
+{
+  "at": "2026-09-19T05:01:28.879540+00:00",
+  "reviewer": "Root",
+  "decision": "Accept bounded pursuit candidate for combined Environment integration in a new copy; no live promotion yet",
+  "sources": {
+    "navigation": "e46cc63f5964aabd2ecd737a5ceaef8911863a2e081ad1563f01a4761a77b98d",
+    "layoutIsolated": "a5f46359e489f154618230bc66620a9c0598d0c4dc26a41386b87e700957a010",
+    "layoutCombined": "9f6ebea2041910f829042ec14f177cfb26beee44ebcd9e5f5c11333d0c9c486c"
+  },
+  "read": [
+    "docs/arpg/environment-combined-v1.md",
+    "output/physics/pursuit-native-20260919/receipt.json",
+    "tools/physics-pursuit-native-audit.mjs"
+  ],
+  "originalImagesViewed": [
+    "north-fixed-melee.png",
+    "north-moving-melee.png"
+  ],
+  "evidenceDirectory": "output/playwright/2026-09-19T04-52-58-805Z-physics-pursuit-native",
+  "originalReportPassed": false,
+  "postCaptureAuditPassed": true,
+  "auditInterpretation": "Original speed assertion conflated voluntary displacement with crowd separation. Exact post-capture replay includes the actual contact/step/crowd code; zero replay error, no extra voluntary speed, static validity and continuous swept segments pass. Original report preserved; not a new native rerun.",
+  "cases": [
+    {
+      "name": "north-fixed",
+      "frames": 434,
+      "maxReplayError": 0,
+      "maxVoluntaryExcess": 2.9837243786801082e-15,
+      "maxCrowdCorrection": 0,
+      "maxFinalOverlap": 0,
+      "traceSegments": 408,
+      "hits": [
+        {
+          "at": 2.847199999809271,
+          "amount": 28.105199999999996,
+          "before": 200,
+          "after": 171.8948,
+          "player": {
+            "x": 18.933,
+            "z": 14.268
+          },
+          "bosses": [
+            {
+              "id": 1,
+              "x": 15.846254290443737,
+              "z": 14.222870107369928,
+              "y": 0,
+              "radius": 1.72,
+              "height": 2,
+              "distance": 3.0873598033161467,
+              "clearLos": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "south-fixed",
+      "frames": 990,
+      "maxReplayError": 0,
+      "maxVoluntaryExcess": 2.9698465908722937e-15,
+      "maxCrowdCorrection": 0,
+      "maxFinalOverlap": 0,
+      "traceSegments": 864,
+      "hits": [
+        {
+          "at": 6.667499999999973,
+          "amount": 28.105199999999996,
+          "before": 200,
+          "after": 171.8948,
+          "player": {
+            "x": 18.933,
+            "z": 14.268
+          },
+          "bosses": [
+            {
+              "id": 1,
+              "x": 15.858863438776337,
+              "z": 14.004105480306883,
+              "y": 0,
+              "radius": 1.72,
+              "height": 2,
+              "distance": 3.085799242015258,
+              "clearLos": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "north-moving",
+      "frames": 322,
+      "maxReplayError": 0,
+      "maxVoluntaryExcess": 2.4980018054066022e-15,
+      "maxCrowdCorrection": 0.01927374209108607,
+      "maxFinalOverlap": 0.0010000000000016662,
+      "traceSegments": 348,
+      "hits": [
+        {
+          "at": 1.5070999999046295,
+          "amount": 28.105199999999996,
+          "before": 200,
+          "after": 171.8948,
+          "player": {
+            "x": 16.57259503261413,
+            "z": 13.00791204641895
+          },
+          "bosses": [
+            {
+              "id": 1,
+              "x": 14.040207854310035,
+              "z": 11.301046210083426,
+              "y": 0,
+              "radius": 1.72,
+              "height": 2,
+              "distance": 3.054107522328173,
+              "clearLos": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "forcedFourPlanCost": {
+    "baseline": {
+      "updateMs": {
+        "samples": 28,
+        "p50": 44.09999990463257,
+        "p95": 46.89999985694885,
+        "max": 47.5
+      },
+      "navigationMs": {
+        "samples": 28,
+        "p50": 44,
+        "p95": 46.5,
+        "max": 47.39999985694885
+      },
+      "visited": {
+        "samples": 112,
+        "p50": 768,
+        "p95": 768,
+        "max": 768
+      },
+      "terminalSweeps": {
+        "samples": 112,
+        "p50": 0,
+        "p95": 0,
+        "max": 0
+      }
+    },
+    "candidate": {
+      "updateMs": {
+        "samples": 28,
+        "p50": 4.5,
+        "p95": 5,
+        "max": 5.299999952316284
+      },
+      "navigationMs": {
+        "samples": 28,
+        "p50": 4.300000190734863,
+        "p95": 4.799999952316284,
+        "max": 5.1000001430511475
+      },
+      "visited": {
+        "samples": 112,
+        "p50": 358,
+        "p95": 391,
+        "max": 391
+      },
+      "terminalSweeps": {
+        "samples": 112,
+        "p50": 1,
+        "p95": 10,
+        "max": 10
+      }
+    }
+  },
+  "performanceLimit": "28 measured paired trials per variant after 4 warmups; selected workload only, neither full worst bound nor FPS/soak proof",
+  "combinedEvidence": "Environment eight groups verify exactly two maintenance placements on selected crypt source, 153 colliders, same local paths and two attackRegion routes as a5f4. Requires focused combined actual-game follow-up before promotion.",
+  "acceptedNoSliding": false,
+  "fullGoalComplete": false
+}

@@ -1,0 +1,385 @@
+{
+  "at": "2026-09-19T05:03:17.393611+00:00",
+  "scope": "Bounded staged prototype. Still frames, synthetic controlled poses/contacts except recorded center/age reconstruction. No live integration or continuous gameplay acceptance.",
+  "promoted": false,
+  "artisticAccepted": false,
+  "gpuReleased": true,
+  "nextGpu": "Physics pursuit then Combat Lich",
+  "changedFiles": {
+    "cannon-source-glsl.js": "7662f0d6e84c06ca8091f71015c5edc08a7721b66061f11bde43de360c5d7f6c",
+    "cannon-vfx.js": "9b15e4123f7dc5fd9d6aee47b06c045a23daebdf2dc93a1e8ce01eb55635eb44",
+    "class-skill-fields.js": "7c9bc9eb2b4f6a1f8301c6cd52e9c6ac5e7e40aed39bd12c984c854a578b443f",
+    "class-skill-vfx.js": "5f218c69051e5abcb95030ae2b33de406def904360dc8f07e956af6e9970265a",
+    "gravity-composition-glsl.js": "abcb7d83f2d0ac165e80fa742cdde98559ef848350f6bab6812627811187ee83",
+    "gravity-field-pool.js": "2b1ff7acacc08152eb4644559e4de44a79474f97cb7e9ede0aedc87c47f6b6e6",
+    "gravity-field-visual.js": "711e133ca0e8585fe2fd2c7142fe1ee5736660bf0d75afb82edc1f83ede06cff"
+  },
+  "native": {
+    "initial": {
+      "report": "output/playwright/2026-09-19T04-49-26-637Z-cannon-depth-composition-vfx/report.json",
+      "reportSha256": "2d881ff6ed0c8291c3c52cdeffcbff5bd179eba902ebad191d95e7911cb546b3",
+      "inspectedOriginalPngs": [
+        {
+          "path": "output/playwright/2026-09-19T04-49-26-637Z-cannon-depth-composition-vfx/high-0.1505.png",
+          "sha256": "c5cfa3f3f560291ebf7c4b433e16a0d2c671486a7f994543392691e913f73862"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-49-26-637Z-cannon-depth-composition-vfx/high-0.3.png",
+          "sha256": "6c77b0e6abfdd5d5cebe2c3fdaf729d6fb5a80b9722e372179d328b778a1b69f"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-49-26-637Z-cannon-depth-composition-vfx/high-0.5.png",
+          "sha256": "4ff063d1f64748e06377c7ffbc64be5fa5744cf6b890471ee4930d788c332810"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-49-26-637Z-cannon-depth-composition-vfx/low-contribution-ablation.png",
+          "sha256": "4697c6d7feba2bd8599dd4b64de20d7e823083833e7274b2879063c3cfac5a57"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-49-26-637Z-cannon-depth-composition-vfx/low-reduced-0.1505.png",
+          "sha256": "4217e498c0f3611a0ea3ec1233e39e39797c885464267c13f0aba82a53fb7897"
+        }
+      ]
+    },
+    "layers": {
+      "report": "output/playwright/2026-09-19T04-51-24-622Z-cannon-depth-composition-vfx/report.json",
+      "reportSha256": "ef06ec73b17592b555e6a51be05bfbef644f46567f563f1a413d940357e9a1f3",
+      "inspectedOriginalPngs": [
+        {
+          "path": "output/playwright/2026-09-19T04-51-24-622Z-cannon-depth-composition-vfx/layer-diagnosis.png",
+          "sha256": "6c247a1d97550d1908a27aff45cc427132b36cfaf00629bbc6b1445fce44327e"
+        }
+      ]
+    },
+    "body": {
+      "report": "output/playwright/2026-09-19T04-54-32-239Z-cannon-depth-composition-vfx/report.json",
+      "reportSha256": "b735c8f5ac82e2cc25b27d0a006cc10bd1ff327f62ed7a7dad10d2628c3f557a",
+      "inspectedOriginalPngs": [
+        {
+          "path": "output/playwright/2026-09-19T04-54-32-239Z-cannon-depth-composition-vfx/body-diagnosis-high.png",
+          "sha256": "1bd18da6b69f8606d00e16167f9eb20e30a639ba28d19777ce1f3d2858fb6566"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-54-32-239Z-cannon-depth-composition-vfx/body-diagnosis-low.png",
+          "sha256": "33dbf322b0c2fd3b33c3ecc6e6b67649f9f401dd7942d955cecc7df003fac356"
+        }
+      ]
+    },
+    "final": {
+      "report": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/report.json",
+      "reportSha256": "fdb59f3eb154c050d614f7e19f3a884023a61bbc178e7ea7485fd4ebe1323f99",
+      "inspectedOriginalPngs": [
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/high-0.1505.png",
+          "sha256": "54b14e1671b31fc1ad1425d787f6607a2cb6f1d4c4d7fbd33c11ef12d38b87ab"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/high-0.3.png",
+          "sha256": "fdba59d53cf1d5fd06f364ce629de8165b1193c6a26f84e62a896de05e091cee"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/high-0.5.png",
+          "sha256": "2af473067e193d4332a7d96dd5a82682d5a67ae64b5625993bbff1ecce3c1f4f"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/low-contribution-ablation.png",
+          "sha256": "57b6ca63c6dc0da3d6e15171e6a4aa24f5aad3bef03fc7e634745effcc0c4444"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/low-reduced-0.1505.png",
+          "sha256": "630ba4e37e96f84c72a1b213471535868b31f6dd27c4a2050e3cdb05c6f8feb0"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/synthetic-offset--3.png",
+          "sha256": "88f80be7fa497f44b0eafb37b23347bbdefdc172f14dca8e0b8959722e355cdb"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-57-09-848Z-cannon-depth-composition-vfx/synthetic-offset-3.png",
+          "sha256": "aaf1c99b0bf9f73a0c137df97d5ca11112834283b7e322bd14d326a1fb1afde7"
+        }
+      ]
+    },
+    "controls": {
+      "report": "output/playwright/2026-09-19T04-58-57-038Z-cannon-depth-composition-vfx/report.json",
+      "reportSha256": "cbd3849a64de8dd06b93540629eb9e0e002d357e0a19d9f138463568a325e51e",
+      "inspectedOriginalPngs": [
+        {
+          "path": "output/playwright/2026-09-19T04-58-57-038Z-cannon-depth-composition-vfx/low-contribution-ablation.png",
+          "sha256": "6376580d29d05d8aacd5d92b3f01b1130cd9e0b555c3059d0aa0a7a675bb176c"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-58-57-038Z-cannon-depth-composition-vfx/synthetic-offset--3.png",
+          "sha256": "02c9f74889ee224e744ee200a7c09529bc63f7234cbec6d3887c7016a029904d"
+        },
+        {
+          "path": "output/playwright/2026-09-19T04-58-57-038Z-cannon-depth-composition-vfx/synthetic-offset-3.png",
+          "sha256": "9ae35d8a262fcbfe2a1950d33b74c18db6a6e9eb0003edb7008a4c642941d4a0"
+        }
+      ]
+    }
+  },
+  "actorDiagnosis": {
+    "actualBody": "DwarfBody mesh1 skin0 material1 BLEND, transparent true depthWrite false",
+    "actualRifle": "DwarfRifle mesh0 no skin material0 OPAQUE",
+    "depthMedianYBefore": 0.07319629092573895,
+    "depthMedianYWithBodyOpaque": 1.9256967814440566,
+    "gasOnlySameOriginalReference": {
+      "high": [
+        46,
+        110,
+        121
+      ],
+      "lowReduced": [
+        37,
+        107,
+        121
+      ]
+    },
+    "interpretation": "Array entries are kept before, kept after opaque, total. Strengthening the gas mask added no kept pixels. Original mask restored in final candidate. Body override only in fixture, not GLB/runtime."
+  },
+  "fixedContactGate": {
+    "minimum": 0.65,
+    "samples": [
+      {
+        "file": "high-0.1505.png",
+        "age": 0.1505,
+        "quality": "high",
+        "reduced": false,
+        "before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 119,
+            "preservedFraction": 0.9834710743801653
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "candidate": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ]
+      },
+      {
+        "file": "high-0.3.png",
+        "age": 0.3,
+        "quality": "high",
+        "reduced": false,
+        "before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 120,
+            "preservedFraction": 0.9917355371900827
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "candidate": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ]
+      },
+      {
+        "file": "high-0.5.png",
+        "age": 0.5,
+        "quality": "high",
+        "reduced": false,
+        "before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 118,
+            "preservedFraction": 0.9752066115702479
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "candidate": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ]
+      },
+      {
+        "file": "low-reduced-0.1505.png",
+        "age": 0.1505,
+        "quality": "low",
+        "reduced": true,
+        "before": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ],
+        "candidate": [
+          {
+            "index": 0,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 1,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          },
+          {
+            "index": 2,
+            "pixels": 121,
+            "kept": 121,
+            "preservedFraction": 1
+          }
+        ]
+      }
+    ],
+    "passed": true,
+    "dependency": "Both sides use same OPAQUE body clone, reference image also OPAQUE. Does not overwrite historical original-BLEND gate or 65.289% other scene."
+  },
+  "gpuCost": {
+    "raw": {
+      "available": true,
+      "milliseconds": {
+        "combined-before": [
+          3.132874,
+          3.893041,
+          5.3985,
+          4.817916,
+          5.355749,
+          7.879249,
+          6.727041,
+          3.517999,
+          3.835875,
+          3.962291,
+          5.0915,
+          8.650083
+        ],
+        "combined-after": [
+          6.584249,
+          5.092458,
+          6.250041,
+          4.714041,
+          5.273208,
+          6.086791,
+          7.477875,
+          3.370749,
+          4.026291,
+          5.921833,
+          7.822999,
+          3.48025
+        ]
+      },
+      "scope": "Focal alternating full pipeline,12 valid samples after4 warmups; not FPS or global budget"
+    },
+    "medianMs": {
+      "combined-before": 4.954708,
+      "combined-after": 5.5975205
+    },
+    "limitation": "12 samples each with high variance, one field and one burst at1440x900, complete cinematic pipeline. Not eight-field budget or mobile/FPS approval."
+  },
+  "visualFindings": [
+    "Actor body is clearly readable after body metadata correction; shader intensity change was unnecessary in this ROI.",
+    "Real recorded nearly concentric scene: fire front portions become visible while central black region mostly persists; partial orange overlaps projected black core. Not selected as final artistic resolution.",
+    "Synthetic camera-axis +3m/-3m depth controls: behind remains occluded, front covers core. This is a deliberate presentation geometry probe, not changed authority/contact in game.",
+    "Low red planar mass belongs to fire volume, not embers.3-octave mode never populated ridge previously gated i>=3.Using finest two available octaves removes large red lamina in this frozen pose and preserves hot mass, same16/32steps; high5octaves unchanged.",
+    "First 04:57 low ablation erroneously retained gravity descriptors while hiding the field. It is invalid for ridge attribution.04:58 corrected descriptor count0; final4 fixed-contact captures unaffected.",
+    "Original GH source/licences, global bloom, gas/Horizon shaders, actor masks, field5m/5s, fire3.4m authority unchanged."
+  ],
+  "limitations": [
+    "Representative extinction depth approximates gas/fire mixing; no exact simultaneous overlapping volume solution.",
+    "Impact only measured; muzzle/travel overlap, eight simultaneous fields/fire bursts, pause during render, near-plane/global ordering need later targeted acceptance if direction selected.",
+    "This prototype is frozen for review, not an integration/promotion request. No AAA/playback/gameplay claim."
+  ]
+}

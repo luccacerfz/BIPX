@@ -1,0 +1,51 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Brute v5 authored staging</title>
+<style>body{margin:0;background:#17232c;color:#eee;font:15px system-ui}#info{position:absolute;left:20px;top:16px;white-space:pre}#scope{position:absolute;bottom:15px;left:20px}canvas{display:block}</style>
+<div id="info"></div><div id="scope">FIXTURE · direita autorada1.20s · alvo fixo · sem autoridade/SFX/VFX · runtime intacto</div>
+<script type="module">
+import * as THREE from '/vendor/three/three.module.js';
+import {GLTFLoader} from '/src/assets/vendor/GLTFLoader.js';
+import {copyBruteAttack} from '/output/brute-motion-v5/attack-profile-adapter.mjs';
+const base='/output/brute-motion-v5/candidate-07';
+const data=await fetch(`${base}/report.json`).then(r=>r.json());
+const verification=await fetch(`${base}/verification.json`).then(r=>r.json());
+const profile={id:'brute-upright-right-v5',duration:1.2,impactAt:verification.contact.firstAt};
+const scene=new THREE.Scene();scene.background=new THREE.Color('#17232c');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;document.body.append(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd6e3f5,0x4c392d,2.3));
+for(const[c,p,x,y,z]of [[0xffd3ad,3,-4,6,-4],[0x80c7ff,2,4,5,4]]){const l=new THREE.DirectionalLight(c,p);l.position.set(x,y,z);scene.add(l);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshStandardMaterial({color:0x34444a,roughness:1}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+const grid=new THREE.GridHelper(60,60,0x74878c,0x425b62);grid.position.y=.002;scene.add(grid);
+const camera=new THREE.PerspectiveCamera(34,innerWidth/innerHeight,.1,120),stage=new THREE.Group();scene.add(stage);
+const gltf=await new GLTFLoader().loadAsync(`${base}/brute.glb`),root=new THREE.Group(),model=gltf.scene;root.add(model);stage.add(root);model.rotation.y=Math.PI/2;
+let body;model.traverse(o=>{if(o.isSkinnedMesh){body=o;o.frustumCulled=false;}});
+const mixer=new THREE.AnimationMixer(model),attack=mixer.clipAction(copyBruteAttack(gltf,profile)).setLoop(THREE.LoopOnce,1),idle=mixer.clipAction(gltf.animations[0]);attack.clampWhenFinished=true;
+idle.play();mixer.update(0);model.updateMatrixWorld(true);body.skeleton.update();const bounds=new THREE.Box3().setFromObject(model,true);root.scale.setScalar(3.3/bounds.getSize(new THREE.Vector3()).y);model.position.y=-bounds.min.y;
+const probes=(await fetch('/assets/models/monsters/ground-probes.json').then(r=>r.json())).brute.vertexIndices;
+const p=data.pad,padMaterial=new THREE.MeshStandardMaterial({color:0x387b8b,roughness:.92});
+const pad=new THREE.Mesh(new THREE.BoxGeometry(p.width,p.height,p.depth),padMaterial);pad.position.set(p.centerZ,p.centerY,-p.frontX-p.depth/2);stage.add(pad);
+const outline=new THREE.LineSegments(new THREE.EdgesGeometry(pad.geometry),new THREE.LineBasicMaterial({color:0x92d0db}));pad.add(outline);
+const post=new THREE.Mesh(new THREE.BoxGeometry(.09,p.centerY-p.height/2,.09),new THREE.MeshStandardMaterial({color:0x55656c,roughness:1}));post.position.set(p.centerZ,(p.centerY-p.height/2)/2,-p.frontX-p.depth/2);stage.add(post);
+const witness=new THREE.Mesh(new THREE.SphereGeometry(.012,12,8),new THREE.MeshBasicMaterial({color:0xffdc85}));stage.add(witness);
+let view='threequarter',playing=false,raf=0,frames=[],elapsed=0,label='idle';
+const pt=new THREE.Vector3();
+function ground(){root.updateMatrixWorld(true);body.skeleton.update();const inverse=model.matrixWorld.clone().invert();let minimum=Infinity;for(const i of probes){body.getVertexPosition(i,pt).applyMatrix4(body.matrixWorld).applyMatrix4(inverse);minimum=Math.min(minimum,pt.y);}model.position.y=-minimum;root.updateMatrixWorld(true);body.skeleton.update();}
+function state(){
+ const inverse=stage.matrixWorld.clone().invert(),vertices=[];let depth=-Infinity,hit=null;
+ for(const i of data.handIndices){body.getVertexPosition(i,pt).applyMatrix4(body.matrixWorld).applyMatrix4(inverse);if(Math.abs(pt.y-p.centerY)<=p.height/2&&Math.abs(pt.x-p.centerZ)<=p.width/2&&-pt.z-p.frontX>depth){depth=-pt.z-p.frontX;hit={vertex:i,position:pt.toArray()};}}
+ const bone=n=>model.getObjectByName(n).getWorldPosition(new THREE.Vector3()).applyMatrix4(inverse).toArray();
+ return {elapsed,hip:bone('Hip'),head:bone('Head'),hand:bone('R_Hand'),feet:[bone('L_Foot'),bone('R_Foot')],contactDepth:Number.isFinite(depth)?depth:null,witness:hit,modelY:model.position.y,scale:root.scale.x};
+}
+function render(){ground();const s=state();witness.visible=Boolean(s.witness)&&label!=='PLAYBACK 1x';if(s.witness)witness.position.fromArray(s.witness.position);padMaterial.color.set(s.contactDepth>=0&&s.contactDepth!==null?0x417e64:0x387b8b);renderer.render(scene,camera);document.querySelector('#info').textContent=`BRUTE v5 · ${view} · ${label}\n${elapsed.toFixed(3)} / 1.200s · contato CPU proposto ${profile.impactAt.toFixed(3)}s\nAlvo rigido de fixture; sem dano. Ponto amarelo = vertice testemunha`;return s;}
+function setView(name){view=name;stage.rotation.y=name==='arpg'?Math.PI:0;if(name==='arpg'){camera.fov=48;camera.position.set(0,17,20);camera.lookAt(0,1.2,0);}else{camera.fov=34;camera.position.set(4.6,3.1,-6.7);camera.lookAt(.1,1.45,-.2);}camera.updateProjectionMatrix();render();}
+function seek(time){playing=false;cancelAnimationFrame(raf);elapsed=time;label='POSE AMOSTRADA';mixer.stopAllAction();attack.reset().play();mixer.setTime(time);return render();}
+function play(){
+ playing=false;cancelAnimationFrame(raf);mixer.stopAllAction();idle.reset().play();mixer.update(0);let start=performance.now(),last=start;frames=[];playing=true;label='PLAYBACK 1x';let mode='idle';
+ function frame(now){if(!playing)return;const wallTime=(now-start)/1000,dt=(now-last)/1000;last=now;elapsed=wallTime-.3;
+  if(elapsed>=0&&mode==='idle'){idle.stop();attack.reset().play();mode='attack';}
+  if(mode==='attack'){attack.paused=true;attack.time=Math.min(elapsed,1.2);mixer.update(0);if(elapsed>=1.2){attack.stop();idle.reset().play();mode='recovery';}}
+  if(mode==='recovery'||mode==='idle')mixer.update(dt);
+  const s=render();frames.push({wallTime,dt,mode,...s});if(wallTime<2)raf=requestAnimationFrame(frame);else playing=false;
+ }raf=requestAnimationFrame(frame);
+}
+setView('threequarter');window.bruteReview={ready:true,play,seek,setView,state,get playing(){return playing;},get frames(){return frames;},glInfo(){const gl=renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');return{renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),error:gl.getError()};}};
+</script></html>

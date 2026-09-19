@@ -1,0 +1,214 @@
+{
+  "createdAt": "2026-09-19T00:20:48.901224+00:00",
+  "accepted": false,
+  "scope": "Real solo inputs in two different fixed runtime copies; video frames are decoded originals, not synthesized",
+  "runs": [
+    {
+      "run": "2026-09-19T00-12-04-692Z-skill-timeline-browser",
+      "skill": "warrior_war_cry",
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": false,
+      "phases": [
+        "cast",
+        "release"
+      ],
+      "graphics": null,
+      "endedState": "dead",
+      "failure": null,
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": true
+    },
+    {
+      "run": "2026-09-19T00-12-04-692Z-skill-timeline-browser",
+      "skill": "warrior_cleaving_dash",
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": false,
+      "phases": [
+        "cast",
+        "release",
+        "travel",
+        "impact",
+        "end"
+      ],
+      "graphics": null,
+      "endedState": null,
+      "failure": null,
+      "maxCutEvents": 2,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": false
+    },
+    {
+      "run": "2026-09-19T00-12-04-692Z-skill-timeline-browser",
+      "skill": "warrior_shield_charge",
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": false,
+      "phases": [
+        "cast",
+        "release",
+        "travel",
+        "impact",
+        "end"
+      ],
+      "graphics": null,
+      "endedState": null,
+      "failure": null,
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": false
+    },
+    {
+      "run": "2026-09-19T00-12-04-692Z-skill-timeline-browser",
+      "skill": "dwarf_explosive_cannon",
+      "completed": false,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": false,
+      "phases": null,
+      "graphics": null,
+      "endedState": null,
+      "failure": "AssertionError [ERR_ASSERTION]: Natural run did not have a valid cast opportunity\n\nfalse !== true\n\n    at file:///Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/docs/arpg/review/skill-timeline-browser.mjs:87:14\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at process.processImmediate (node:internal/timers:472:9)",
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": null
+    },
+    {
+      "run": "2026-09-19T00-12-04-692Z-skill-timeline-browser",
+      "skill": "dwarf_frost_shot",
+      "completed": false,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": false,
+      "phases": null,
+      "graphics": null,
+      "endedState": null,
+      "failure": "AssertionError [ERR_ASSERTION]: Natural run did not have a valid cast opportunity\n\nfalse !== true\n\n    at file:///Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/docs/arpg/review/skill-timeline-browser.mjs:87:14",
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": null
+    },
+    {
+      "run": "2026-09-19T00-12-04-692Z-skill-timeline-browser",
+      "skill": "dwarf_gravity_shot",
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": false,
+      "phases": [
+        "cast",
+        "release",
+        "travel",
+        "impact",
+        "end"
+      ],
+      "graphics": null,
+      "endedState": null,
+      "failure": null,
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 3
+      },
+      "buffObserved": false
+    },
+    {
+      "run": "2026-09-19T00-16-48-524Z-skill-timeline-browser",
+      "skill": "dwarf_explosive_cannon",
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": true,
+      "phases": [
+        "cast",
+        "release",
+        "travel",
+        "impact"
+      ],
+      "graphics": {
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)"
+      },
+      "endedState": null,
+      "failure": null,
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": false
+    },
+    {
+      "run": "2026-09-19T00-16-48-524Z-skill-timeline-browser",
+      "skill": "dwarf_frost_shot",
+      "completed": true,
+      "sourceChangedDuringRun": false,
+      "checkoutMatchedAtEnd": true,
+      "phases": [
+        "cast",
+        "release",
+        "travel",
+        "impact"
+      ],
+      "graphics": {
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)"
+      },
+      "endedState": null,
+      "failure": null,
+      "maxCutEvents": 0,
+      "maxStatusTargets": {
+        "freeze": 0,
+        "stun": 0,
+        "pull": 0
+      },
+      "buffObserved": false
+    }
+  ],
+  "sha256": {
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/timeline-index.json": "c7c44023ffc7788b8f4fb3f6a83234b1dfaee7da7f5204e28cc0f0ec0e8436b1",
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/warrior_war_cry.webm": "5b586e909a0d792e85c10ccc0ceb822592784a78ce5111e6ecb4d2ba5f658bd4",
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/warrior_cleaving_dash.webm": "26cd6614a8845451be0f9471b7f86641b5b3d0363594ebc2df5dc89a85d57698",
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/warrior_shield_charge.webm": "7007d32ef4a1f3586745570bbd0e9244c5c9b30a868812d95cba218acab4ad3d",
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/dwarf_explosive_cannon.webm": "314bebec1a5e5aa35674048748d30f064ff3a9f5bcd099d0838f21fcefbbc034",
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/dwarf_frost_shot.webm": "35accb19f507ba2bc7c68bd19ebbb5499d393b3f7d9da030643f1c379b8cf261",
+    "output/playwright/2026-09-19T00-12-04-692Z-skill-timeline-browser/dwarf_gravity_shot.webm": "9806a6ddc31dff0314db7ace146750426847b05148a67be59dd171af8e0414e8",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/timeline-index.json": "2465dc93d27931fc7ef6065666e532865a32698140b711b14d7f14604c383c99",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/dwarf_explosive_cannon.webm": "5a86d0fd938506b4e8ba7996d642c5c8e82a1b8763b0d9c8e1837e833d58c79c",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/dwarf_frost_shot.webm": "5cec72fbb5c7d359a10de46faef8932764a6ff8daa47afe4de9332076e0cc51e",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-03.png": "8e0558db4397bc3cb508b62a3e20ad3562e6dd6aa0bf551308225e3078e911a6",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-01.png": "84ee6710211c93a4ca35c1750a816248975b9f3c26ecb3d64924b7bca535d710",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-02.png": "750da08b54b0d315c565e5b1a31ddc2aa56f6f0a3d2028bdcc9327b2f51f390f",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-03.png": "905b339a955bbdb0d7339943fd674f817add44dd76764527e6cf624a640d5fda",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-02.png": "704cdae1b306f0135baa361408b82f89ab01f7b05a6a98311d2351519d09cdff",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-01.png": "406c074bb2276511e81afb6cc5f362a959527af904cf7276fc2cc4f40659734d",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-05.png": "cb8db67c29e0babeaa3c377b038182c95ec20381d49180a83ea79644d1fecdc7",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-06.png": "657129517236028cb4073c158b6add1967ed3cabd343e2b7bdb604cbabd6d4d8",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-07.png": "c485528122a9795b2cde3dd7de9ea31680167922ffccd76d907be3d6564b64a3",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-04.png": "fb8524e5f42bd5e18273e3ca240a62fab5909a3d88c85d479ce1b92a641ab756",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-06.png": "c018151f59c9bde4826fe344721fa7e4a0f0ca027e685275e3b25e2a6e7ebeb7",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-05.png": "c6c1b0b6b5f784e7a05559e3f8245225d6c9f8f47fce40cb4f2febcc1f96c794",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_explosive_cannon-04.png": "f14f5f522d79cd9f32e543959b1457ce4722b663964fd03a3b16a83350835f82",
+    "output/playwright/2026-09-19T00-16-48-524Z-skill-timeline-browser/video-frames/dwarf_frost_shot-07.png": "7c8547d9791103f744e20751819052045482d9dcb3e34521a0ced4cdaf5c40eb"
+  }
+}

@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {hash} from './brute-motion-review-v6-utils.mjs';
+const name=process.argv[2]||`reproduced-${Date.now()}`;
+assert(/^[a-zA-Z0-9_-]+$/.test(name),'Simple new output name required');
+const out=`output/brute-motion-v7/${name}`;assert(!fs.existsSync(out),'Never overwrite a previous candidate');
+for(const step of ['fit','build'])execFileSync(process.execPath,[`tools/brute-motion-review-v7-${step}.mjs`,name],{stdio:'inherit'});
+const original=JSON.parse(fs.readFileSync('output/brute-motion-v7/candidate-04/clips.json')).results;
+const results=original.map(c=>{const file=`${out}/${c.name}.glb`,sha256=hash(fs.readFileSync(file));assert.equal(sha256,c.sha256,`Reproduction ${c.name}`);return {name:c.name,sha256,byteIdentical:true};});
+fs.writeFileSync(`${out}/reproduction.json`,JSON.stringify({scope:'New CPU build, same endpoints and final arm curves; all12 GLBs identical to reviewed CPU candidate-04',results},null,2)+'\n');
+console.log('12 byte-identical GLBs; native rendering not performed');

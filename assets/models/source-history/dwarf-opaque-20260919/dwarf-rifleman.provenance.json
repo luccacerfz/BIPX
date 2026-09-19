@@ -1,0 +1,100 @@
+{
+  "source": "/Users/luccacerf/Projetos/Assets/Characters/Lyra_Brasswarden/Blender/Lyra_Brasswarden_Rebuilt.blend",
+  "sourceSha256Before": "0ddce2ea3179d56ad8f693b36717e993312fad008d3bbb0e2ee79cc913059f79",
+  "sourceSha256After": "0ddce2ea3179d56ad8f693b36717e993312fad008d3bbb0e2ee79cc913059f79",
+  "sourcePreserved": true,
+  "export": "assets/models/dwarf-rifleman.glb",
+  "sha256": "e11eadb8b428ad46332b0f70bc2db3459628775b65cbb101886cd46fdcd643b0",
+  "bytes": 4532928,
+  "blender": "5.2.0 LTS",
+  "rigBones": 65,
+  "bodyVertices": 13009,
+  "displayName": "Lyra Brasswarden",
+  "deathRetarget": {
+    "source": "/Users/luccacerf/Projetos/Assets/Characters/Aldric_Leonguard/Source/Mixamo/sword and shield death.fbx",
+    "sha256": "9bebdc4b140df74de5dad95a0ff750d71494f95129faac8f02fb84a65f99cb1a",
+    "sourcePreserved": true,
+    "method": "World rotation delta from source rest applied to target rest, target limb lengths retained, root planar motion removed, hip vertical scaled by rest height, support grip constraints evaluated.",
+    "frames": 70,
+    "hipHeightRatio": 0.9394670501606901,
+    "maximumFloorCorrectionMeters": 0.10583773899078369,
+    "supportHandReleaseFrames": [
+      18,
+      32
+    ],
+    "primaryHandRetainsRifle": true
+  },
+  "propVertices": {
+    "DwarfRifle": 4331
+  },
+  "clips": {
+    "Idle": {
+      "frames": 92,
+      "fps": 30,
+      "duration": 3.033333333333333
+    },
+    "Run": {
+      "frames": 23,
+      "fps": 30,
+      "duration": 0.7333333333333333
+    },
+    "Walk": {
+      "frames": 42,
+      "fps": 30,
+      "duration": 1.3666666666666667
+    },
+    "Shoot": {
+      "frames": 9,
+      "fps": 30,
+      "duration": 0.26666666666666666
+    },
+    "Hit": {
+      "frames": 14,
+      "fps": 30,
+      "duration": 0.43333333333333335
+    },
+    "Death": {
+      "frames": 70,
+      "fps": 30,
+      "duration": 2.3
+    }
+  },
+  "textures": [
+    {
+      "name": "Lyra_Rumble_Grenade_Tripo_basecolor.jpg",
+      "sourceSize": [
+        4096,
+        4096
+      ],
+      "runtimeSize": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "name": "steampunk+pistol+3d+model_basecolor.jpg",
+      "sourceSize": [
+        4096,
+        4096
+      ],
+      "runtimeSize": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "name": "tripo_rgb_3337ea2e-878f-466b-9f82-a7f38a18fda0.png",
+      "sourceSize": [
+        4096,
+        4096
+      ],
+      "runtimeSize": [
+        1024,
+        1024
+      ]
+    }
+  ],
+  "method": "Evaluated source deform bones and world-space attached props sampled every frame into separate constrained-free runtime scene. NLA tracks merged by clip name.",
+  "rootMotion": "Planar Mixamo hip translation removed from action copies only. Vertical body weight retained.",
+  "validation": "Export structure proven; visual GLB re-import and browser playback are separate gates."
+}

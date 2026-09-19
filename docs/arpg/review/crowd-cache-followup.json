@@ -1,0 +1,76 @@
+{
+  "observedAt": "2026-09-19T01:48:08.096893+00:00",
+  "scope": "Root static code review and owner CPU reports read; no runtime promotion or independent rerun.",
+  "contactsSha256": "290a3f35b23e00ff86dcb5dad6911c5e8dfbda0b517cba4e7a63a02b69f07a80",
+  "costPath": "output/physics/crowd-optimized-20260919/2026-09-19T01-42-05-550Z-paired-cost.json",
+  "safetyPath": "output/physics/crowd-optimized-20260919/2026-09-19T01-43-54-772Z-optimization-safety.json",
+  "costSourceStable": true,
+  "safetySourceStable": true,
+  "safetyPassed": 6,
+  "safetyFailed": 0,
+  "rows": [
+    {
+      "actors": 10,
+      "hz": 10,
+      "identicalFrames": 180,
+      "baselineP95Ms": 0.23520800000005693,
+      "optimizedP95Ms": 0.16087500000003274
+    },
+    {
+      "actors": 10,
+      "hz": 20,
+      "identicalFrames": 360,
+      "baselineP95Ms": 0.12404099999957907,
+      "optimizedP95Ms": 0.1034589999999298
+    },
+    {
+      "actors": 10,
+      "hz": 60,
+      "identicalFrames": 1080,
+      "baselineP95Ms": 0.07837500000005093,
+      "optimizedP95Ms": 0.08154199999989942
+    },
+    {
+      "actors": 120,
+      "hz": 10,
+      "identicalFrames": 180,
+      "baselineP95Ms": 10.326082999999926,
+      "optimizedP95Ms": 4.298832999999831
+    },
+    {
+      "actors": 120,
+      "hz": 20,
+      "identicalFrames": 360,
+      "baselineP95Ms": 8.646999999999935,
+      "optimizedP95Ms": 4.1380410000001575
+    },
+    {
+      "actors": 120,
+      "hz": 60,
+      "identicalFrames": 1080,
+      "baselineP95Ms": 3.327583999998751,
+      "optimizedP95Ms": 2.121208000000479
+    },
+    {
+      "actors": 400,
+      "hz": 10,
+      "identicalFrames": 180,
+      "baselineP95Ms": 50.942666999999346,
+      "optimizedP95Ms": 21.03741599999921
+    },
+    {
+      "actors": 400,
+      "hz": 20,
+      "identicalFrames": 360,
+      "baselineP95Ms": 28.683791999999812,
+      "optimizedP95Ms": 13.165334000001167
+    },
+    {
+      "actors": 400,
+      "hz": 60,
+      "identicalFrames": 1080,
+      "baselineP95Ms": 12.455999999998312,
+      "optimizedP95Ms": 7.4916250000023865
+    }
+  ]
+}

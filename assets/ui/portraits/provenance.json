@@ -1,0 +1,20 @@
+[
+  {
+    "id": "aldric",
+    "source": "assets/models/aldric-hero.glb",
+    "sourceSha256": "0e5da9d8a667fa44dbccf6c5ae9141f6f3183df555c2ed6781bc87d632327a32",
+    "portraitSha256": "b3b0a45806699198f279efe1bb1fed182bbad201d3187649a1ab34a16c5b18bd",
+    "width": 384,
+    "height": 300,
+    "method": "Native Three.js render of supplied runtime GLB, idle pose, camera reframed for selection portrait. No pixel editing."
+  },
+  {
+    "id": "lyra",
+    "source": "assets/models/dwarf-rifleman.glb",
+    "sourceSha256": "e11eadb8b428ad46332b0f70bc2db3459628775b65cbb101886cd46fdcd643b0",
+    "portraitSha256": "b952390c2d30ad6793add80d9babac906c7867888a5d84c358354f06eaeb4cbf",
+    "width": 384,
+    "height": 300,
+    "method": "Native Three.js render of supplied runtime GLB, idle pose, camera reframed for selection portrait. No pixel editing."
+  }
+]

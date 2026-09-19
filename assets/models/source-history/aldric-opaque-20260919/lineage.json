@@ -1,0 +1,14 @@
+{
+  "sourceExportSHA256": "0e5da9d8a667fa44dbccf6c5ae9141f6f3183df555c2ed6781bc87d632327a32",
+  "currentRuntimeSHA256": "5c1903a064decbcee1d018df4f6ee595e826640a0ccb9b40538efe5aef70f996",
+  "originalGLB": "assets/models/source-history/aldric-opaque-20260919/aldric-hero.glb",
+  "originalProvenance": "assets/models/source-history/aldric-opaque-20260919/aldric-hero.provenance.json",
+  "exportProvenanceUnmodified": true,
+  "postExportTool": "tools/animation-aldric-opaque-metadata.py",
+  "toolSHA256": "d604fadf771864d94cff18f3eaf403f8d1b11962b93daac6958530731edf31aa",
+  "change": "materials[0].alphaMode BLEND to OPAQUE; no other JSON token/BIN/rig/texture/clip change",
+  "audit": "docs/arpg/review/aldric-opaque-material-audit.md",
+  "selection": "docs/arpg/review/aldric-opaque-material-selection.json",
+  "receipt": "output/arpg-animation/aldric-opaque-promotion/receipt.json",
+  "futureExportRule": "Export to an isolated candidate. Apply this audited metadata step after export, verify opaque alpha and unchanged rig/clips/BIN, then coordinate promotion. Never overwrite runtime directly with legacy export or erase original provenance. Unknown source hashes are rejected by the metadata tool and require a new audit."
+}

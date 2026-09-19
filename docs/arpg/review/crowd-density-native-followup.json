@@ -1,0 +1,26 @@
+{
+  "reviewedAt": "2026-09-19T03:24:35.682705+00:00",
+  "report": "output/playwright/2026-09-19T03-09-55-010Z-native/density-native143.json",
+  "reportSha256": "d6130b8418ce4f1eeca3ea48a2d10e90e2e5e13eafbe95cdfb23f3426ff3b448",
+  "sourceStable": true,
+  "sourceCount": 215,
+  "reviewedPatch": "output/physics/crowd-density-20260919/contacts-static-index.patch",
+  "patchSha256": "aed8ced34b7638bbed3be30a1446ad3e1243156f3dd6321c2336c7086a32cc6e",
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T03-09-55-010Z-native/baseline-free-400-final.png",
+      "sha256": "1bb720bb1059eaf7a6b57a105c5dee5c7157ad3d235ef124b3c0a21b32ce846c"
+    },
+    {
+      "path": "output/playwright/2026-09-19T03-09-55-010Z-native/candidate-matched-400-final.png",
+      "sha256": "c072e0dad018f301d8e328cca8755ebc22da5440ff22e5ca6924a4778234a33d"
+    }
+  ],
+  "decision": "Accepted for coordinated integration of contacts912c after active VFX/Environment snapshots finish; no runtime edit by root.",
+  "limits": [
+    "Synthetic short desktop workload; not natural gameplay, mobile, soak, network or AAA approval.",
+    "Matched playback throughput is not real-time natural FPS.",
+    "Original dwarf maintenance camping and P95 failure remain open.",
+    "Main455 snapshot predates only reviewed GUI role-order microdiff."
+  ]
+}

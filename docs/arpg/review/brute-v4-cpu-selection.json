@@ -1,0 +1,26 @@
+{
+  "reviewedAt": "2026-09-19T03:31:56.759197+00:00",
+  "evidence": [
+    {
+      "path": "output/brute-motion-v4/frontal/cpu-pose-strip.png",
+      "sha256": "5077aba0a8ab4bf68379a898259c4f3b9de0e6ac1ffc9c26c4d303ef454d8e85"
+    },
+    {
+      "path": "output/brute-motion-v4/swipe/cpu-pose-strip.png",
+      "sha256": "cd95e4d82414dec9f2f27254dbf89306830b00feeaa1cbddc216d054c428e133"
+    },
+    {
+      "path": "output/brute-motion-v4/attack-profiles.json",
+      "sha256": "5a0b1c00f38d843b371c64de1644cbd323dd65a108e5ffb3fc86582ee8638183"
+    }
+  ],
+  "selection": "Prefer frontal71db for bounded native real-time review; retain swipe preliminary rejection.",
+  "nativeReviewed": false,
+  "authorityChanged": false,
+  "runtimePromotionAuthorized": false,
+  "limits": [
+    "CPU posed mesh sheets without textures are not native playback or gameplay.",
+    "2.5s source compressed to0.55s is4.55x: weight/recovery require actual-speed review.",
+    "Proposed impact0.227s is not synchronized to current immediate authoritative melee damage."
+  ]
+}

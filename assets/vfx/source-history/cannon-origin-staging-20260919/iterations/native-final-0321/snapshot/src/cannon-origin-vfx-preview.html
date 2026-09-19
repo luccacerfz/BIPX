@@ -1,0 +1,78 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><base href="/"><link rel="icon" href="data:,"><title>BIPX · Canhão volumétrico A/B isolado</title>
+<style>html,body{margin:0;overflow:hidden;background:#10212b;color:#e7e2f2;font:13px system-ui}header{position:fixed;top:18px;left:20px;right:20px;display:flex;pointer-events:none}header div{width:50%;padding:10px;background:#07151cc9;box-sizing:border-box}strong{display:block;font-size:17px;margin-bottom:4px}footer{position:fixed;bottom:16px;left:20px;background:#07151cd9;padding:9px;pointer-events:none}#panels{display:flex}#panels canvas{display:block;width:50vw;height:100vh}header{z-index:1}footer{z-index:1}</style>
+<header><div><strong>ANTES · volume aprovado, trajeto core</strong>Core + adapter literais · mesma autoridade</div><div><strong>STAGING · cano → core com sweep</strong>Socket real · sem promoção</div></header><footer id="label"></footer>
+<div id="panels"><canvas id="left"></canvas><canvas id="right"></canvas></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {createCemetery} from '../src/render/cemetery.js';
+import {getEnvironmentLayout,getEnvironmentColliders} from '../src/render/environment-layout.js';
+import {loadAssetDressing} from '../src/render/asset-dressing.js';
+import {loadPlayableCharacter} from '../src/assets/playable-characters.js';
+import {loadMonsterLibrary} from '../src/assets/monster-library.js';
+import {createClassSkillVfx as createOriginVfx} from '../src/vfx-origin-staged/class-skill-vfx.js';
+import {beginSkill,createSkillState,advanceSkills,cancelSkills,getClassSkill} from '../src/combat/class-skills.mjs';
+import {createCollisionWorld,sweepStatic} from '../src/physics/contacts.mjs';
+import {createFixtureVisualSweep} from '../src/cannon-origin-vfx-sweep.mjs';
+import {createLiteralPresenter} from '../src/cannon-adapter-literal.js';
+import {createClassSkillVfx} from '../src/vfx-pre-origin/class-skill-vfx.js';
+import {shareEnvironmentCutawayDepth} from '../src/render/environment-cutaway.js';
+import {createCinematicPipeline} from '../src/render/cinematic-pipeline.js';
+const width=innerWidth/2,height=innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(width,height);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;renderer.localClippingEnabled=true;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const panels=['left','right'].map(id=>{const c=document.getElementById(id);c.width=width;c.height=height;return c.getContext('2d',{alpha:false});});
+const pipeline=createCinematicPipeline({THREE,renderer,adaptDepthMaterial:shareEnvironmentCutawayDepth});
+
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x172c34);scene.fog=new THREE.FogExp2(0x172c34,.012);scene.add(new THREE.HemisphereLight(0xa4cddc,0x233d3a,2.2));const moon=new THREE.DirectionalLight(0xb6dcf2,3.8);moon.position.set(-20,36,18);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{near:1,far:95,left:-55,right:55,top:55,bottom:-55});moon.shadow.bias=-.0005;scene.add(moon);
+const cemetery=createCemetery({THREE,scene}),ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),cemetery.groundMaterial);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const trees=getEnvironmentLayout().legacy.filter(c=>c.id.startsWith('tree')).map(c=>new THREE.Vector3(c.x,0,c.z));const world=await loadAssetDressing({THREE,scene,trees,lanterns:cemetery.lanternPositions});for(const p of cemetery.lanternPlaceholders)p.visible=false;
+const heroGroup=new THREE.Group();heroGroup.position.set(-2,0,5);scene.add(heroGroup);const hero=await loadPlayableCharacter('dwarf',{THREE,parent:heroGroup});
+const playerLight=new THREE.PointLight(0xffe2ab,5.2,24);playerLight.position.set(-2,4.5,5);scene.add(playerLight);
+const library=await loadMonsterLibrary({THREE});const actors=[];
+for(const [x,z]of [[-2,-4],[-4.5,-5.6],[.5,-2.6],[-1.2,-7.1]]){const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);actors.push({group,visual:library.create('zombie',{parent:group,height:2.55})});}
+const camera=new THREE.PerspectiveCamera(48,(innerWidth/2)/innerHeight,.1,220);camera.position.set(-2,17,22);camera.lookAt(-2,1.2,-.6);
+const baselineRoot=new THREE.Group();scene.add(baselineRoot);const baseline=createClassSkillVfx({THREE,scene:baselineRoot,quality:'high'});
+const candidateRoot=new THREE.Group();scene.add(candidateRoot);let targets=[],collisionWorld,visualSweep;
+const candidate=createOriginVfx({THREE,scene:candidateRoot,sweepVisual:(...args)=>visualSweep(...args)});
+const witness={id:'thin-corner-witness',shape:'box',x:-1.62,z:2,halfX:.04,halfZ:.04,minY:0,maxY:3};
+const witnessMesh=new THREE.Mesh(new THREE.BoxGeometry(.08,3,.08),new THREE.MeshStandardMaterial({color:0x586a69,roughness:.85}));witnessMesh.position.set(witness.x,1.5,witness.z);scene.add(witnessMesh);
+const aim=new THREE.Vector3(0,0,-1),initialRotation=heroGroup.rotation.y;
+let state,time=0,trial=0,scenario='standing',quality='high',reduced=false,playing=false,coexist=false,impact=null,release=null,cancelled=false;
+let events=[],samples=[],queries=[],drawCost={};
+const presentation={THREE,getClassSkill,multiplayer:{enabled:false,id:'fixture'},heroVisual:hero,
+ remotePlayers:new Map(),player:{shotCooldown:0},pendingSwordStrike:null,classSkillVfx:{emit(event){baseline.emit(event);candidate.emit(event);}},
+ audioManager:{},paused:false,game:{survivalTime:0},skillSoundTravel:new Set(),skillPresentationHistory:[],getSpatialAudioOptions:()=>({}),isMultiplayerSuspended:()=>false};
+const present=createLiteralPresenter(presentation);
+function emit(event){const raw=JSON.stringify(event);present(event);if(JSON.stringify(event)!==raw)throw new Error('Core event mutated');events.push({time,...structuredClone(event)});if(event.phase==='release')release={time,...structuredClone(event),socket:hero.muzzle.getWorldPosition(new THREE.Vector3()).toArray()};if(event.phase==='impact')impact={time,...structuredClone(event)};}
+function renderSide(side,effect=true,copy=false){baselineRoot.visible=effect&&side===0;candidateRoot.visible=effect&&side===1;pipeline.render(scene,camera,0,side===0&&effect?baseline:side===1&&effect?candidate:null);drawCost={...renderer.info.render};if(copy)panels[side].drawImage(renderer.domElement,0,0);}
+function render(){renderSide(0,true,true);renderSide(1,true,true);document.querySelector('#label').textContent=`FIXTURE core+adapter · ${scenario} · t=${time.toFixed(3)} · ${quality}${reduced?' / reduced':''} · origem autoritativa Y1.05 · raio3.4 · impacto ${impact?impact.time.toFixed(3):'pendente'} · sem gameplay por input`;}
+function persistent(){const age=impact?time-impact.time:0;const snapshot=coexist&&impact?{fields:[{id:'fixture-gravity',position:{x:impact.target.x,y:0,z:impact.target.z},remaining:Math.max(0,5-age),duration:5,radius:5}],statuses:actors.map((a,i)=>({id:`freeze-${i}`,position:a.group.position,freezeRemaining:Math.max(0,3-age),height:2.55,radius:.6}))}:{};baseline.syncState(snapshot);candidate.syncState(snapshot);return snapshot;}
+function step(dt,draw=true){time+=dt;presentation.game.survivalTime=time;
+ if(scenario==='moving')heroGroup.position.x+=2*dt;
+ hero.update(dt,{speed:scenario==='moving'?2:0,grounded:true});heroGroup.updateMatrixWorld(true);for(const a of actors)a.visual.update(coexist&&impact?0:dt,{speed:0});
+ baseline.update(dt);candidate.update(dt);
+ if(scenario==='cancel'&&time>=.4&&!cancelled){cancelSkills(state,emit,'fixture-cancel');cancelled=true;}
+ advanceSkills(state,dt,{actor:heroGroup.position,targets,emit,sweepStatic:(a,b,r,kind)=>sweepStatic(collisionWorld,a,b,r,{kind}),hit(target,effect){target.health-=effect.damage;return false;}});
+ const snapshot=persistent();world.update(heroGroup.position,true,actors.map(a=>({health:100,mesh:a.group,radius:.6})),[],(snapshot.fields??[]).map(f=>({...f,skillId:'dwarf_gravity_shot'})));
+ const cast=candidate.getStats().cannon.casts[0];if(cast)samples.push({time,phase:cast.phase,body:cast.body,visual:cast.position,authority:cast.authorityPosition,bridge:cast.originBridge,trailReset:cast.trailReset,bodyResumeIn:cast.bodyResumeIn});if(draw)render();
+}
+function setup(name='standing',q='high',rm=false,withStates=false){playing=false;scenario=name;quality=q;reduced=rm;coexist=withStates;time=0;impact=release=null;cancelled=false;events=[];samples=[];queries=[];
+ witnessMesh.visible=name==='thin-corner';collisionWorld=createCollisionWorld({colliders:[...getEnvironmentColliders(),...(witnessMesh.visible?[witness]:[])],bounds:{x:0,z:0,radius:55},groundY:0});
+ const query=createFixtureVisualSweep(collisionWorld,()=>targets);visualSweep=(a,b,r,context)=>{const hit=query(a,b,r,context);queries.push({time,from:{...a},to:{...b},radius:r,...context,hit});return hit;};
+ for(const v of [baseline,candidate]){v.reset();v.setQuality(q);v.setReducedMotion(rm);}pipeline.setQuality(q);pipeline.setReducedMotion(rm);
+ heroGroup.position.set(-2,0,5);aim.set(0,0,-1);let center=new THREE.Vector3(-2,0,-4);
+ if(name==='wall-through'||name==='wall-ahead'){const w=getEnvironmentColliders().find(c=>c.id==='ruined-wall-0'),n=new THREE.Vector3(Math.sin(w.yaw),0,Math.cos(w.yaw));heroGroup.position.set(w.x,0,w.z).addScaledVector(n,w.halfZ+(name==='wall-through'?.7:3));aim.copy(n).negate();center.copy(heroGroup.position).addScaledVector(aim,8);}
+ else if(name==='near-target')center.copy(heroGroup.position).addScaledVector(aim,1.35);
+ for(const [i,a]of actors.entries()){const offsets=[[0,0],[-2.5,-1.6],[2.5,1.4],[.8,-3.1]][i];a.group.position.set(center.x+offsets[0],0,center.z+offsets[1]);a.group.visible=!name.startsWith('wall')&&name!=='cancel';}
+ targets=actors.filter(a=>a.group.visible).map((a,i)=>({id:`target-${i}`,x:a.group.position.x,z:a.group.position.z,radius:.6,health:10000,mesh:a.group}));
+ heroGroup.rotation.y=initialRotation;heroGroup.updateMatrixWorld(true);for(let i=0;i<90;i++)hero.update(1/60,{speed:0,grounded:true});const observed=hero.getMuzzleDirection();heroGroup.rotation.y+=Math.atan2(aim.x,aim.z)-Math.atan2(observed.x,observed.z);heroGroup.updateMatrixWorld(true);
+ camera.position.set(heroGroup.position.x,17,heroGroup.position.z+17);camera.lookAt(heroGroup.position.x,1.2,heroGroup.position.z-5.6);
+ state=createSkillState('dwarf');const begin=beginSkill(state,{slot:0,aimX:aim.x,aimZ:aim.z},{x:heroGroup.position.x,z:heroGroup.position.z,runId:`fixture-origin-${++trial}`,damageMultiplier:1,playing:true});if(!begin.ok)throw new Error(begin.reason);emit(begin.event);step(0);return stats();
+}
+function sample(name,t,q='high',rm=false,withStates=false,stepSize=1/60){setup(name,q,rm,withStates);while(time<t-1e-7)step(Math.min(stepSize,t-time),false);render();return stats();}
+function afterImpact(name,age,q='high',rm=false,withStates=false){setup(name,q,rm,withStates);while(!impact&&time<1.6)step(1/60,false);if(!impact)throw new Error('No authority impact');const end=impact.time+age;while(time<end-1e-7)step(Math.min(1/60,end-time),false);render();return stats();}
+function stats(){return {scenario,time,quality,reduced,coexist,release,impact,events,samples,queries,actor:heroGroup.position.toArray(),camera:camera.position.toArray(),targets:targets.map(t=>({id:t.id,x:t.x,z:t.z,radius:t.radius,health:t.health})),baseline:baseline.getStats(),candidate:candidate.getStats(),pipeline:pipeline.getStats(),render:drawCost,memory:{...renderer.info.memory},glError:renderer.getContext().getError()};}
+function pixels(){const a=new Uint8Array(width*height*4);const gl=renderer.getContext();gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,a);return a;}
+function audit(){renderSide(1,false);const before=pixels();renderSide(1,true);const after=pixels();render();return actors.filter(a=>a.group.visible).map((a,index)=>{const p=a.group.position.clone().add(new THREE.Vector3(0,1.7,0)).project(camera),cx=Math.round((p.x*.5+.5)*width),cy=Math.round((p.y*.5+.5)*height);let count=0,kept=0;for(let y=cy-5;y<=cy+5;y++)for(let x=cx-5;x<=cx+5;x++){if(x<0||x>=width||y<0||y>=height)continue;const i=(y*width+x)*4;count++;if(Math.abs(before[i]-after[i])+Math.abs(before[i+1]-after[i+1])+Math.abs(before[i+2]-after[i+2])<65)kept++;}return {index,pixels:count,preservedFraction:count?kept/count:null};});}
+window.cannonOrigin={ready:true,setup,sample,afterImpact,stats,audit,step,play(name='standing',q='high',rm=false){setup(name,q,rm);playing=true;},stop(){playing=false;},reset(){playing=false;for(const v of [baseline,candidate])v.reset();render();return stats();},dispose(){playing=false;baseline.dispose();candidate.dispose();pipeline.dispose();return {baseline:baseline.getStats(),candidate:candidate.getStats()};}};
+setup();let prior=performance.now();function tick(now){const dt=Math.min(.05,(now-prior)/1000);prior=now;if(playing){step(dt);if(time>=1.6)playing=false;}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script></html>

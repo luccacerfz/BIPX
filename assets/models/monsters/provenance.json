@@ -1,0 +1,210 @@
+{
+  "sourceProject": "quake / DeadOrbit",
+  "sourceHeadObserved": "39e9488665a9c941bc0ecfa74ce53c318257ffd3",
+  "authorization": "User authorized reuse of their local generated assets in BIPX.",
+  "provenance": "Tripo generated/rigged/retargeted; copied sidecars preserve task IDs.",
+  "licenseStatus": "Provider provenance established; original account plan and historical commercial license not proven locally. Not MIT/CC0.",
+  "derivation": "Pillow LANCZOS1024 JPEG90; geometry/skin preserved. Walker Walk/Run/Attack retargeted from local Mixamo files; Idle/Death preserved.",
+  "entries": [
+    {
+      "id": "zombie",
+      "originalPath": "/Users/luccacerf/Projetos/Pessoal/Gaming/quake/public/assets/models/zombies/zombie-walker.glb",
+      "preservedSource": "source/zombie-walker.glb",
+      "sourceSha256": "312a50c5a40909f886004d0f8e8e90028499f8f7db271dc544d5144b1f558742",
+      "runtimeFile": "zombie.glb",
+      "runtimeSha256": "91c975ebfef06f38239a7e5f3258c8ac545340dc217b625f6488fe01cc745b2c",
+      "sourceBytes": 1541420,
+      "runtimeBytes": 1512864,
+      "textures": [
+        {
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "bytes": 296812
+        }
+      ],
+      "sidecar": {
+        "id": "zombie-walker",
+        "source": "fullbody-retarget-inplace",
+        "note": "HURT nao cabe no mesmo retarget (API max 5 / rejeita HURT no pack). Flinch continua procedural.",
+        "rig": "607c54fb-2780-4ed0-ba2d-0d91e6a0acd5",
+        "retarget": "991b7ecb-5e21-485e-b957-7c6f9b19cada",
+        "anims": [
+          "IDLE",
+          "WALK",
+          "RUN",
+          "SLASH",
+          "FALL"
+        ],
+        "animate_in_place": true,
+        "inspect": {
+          "mb": 1.54,
+          "bones": 41,
+          "clips": [
+            {
+              "i": 0,
+              "name": "NlaTrack",
+              "dur": 15.38,
+              "ch": 39
+            },
+            {
+              "i": 1,
+              "name": "NlaTrack.001",
+              "dur": 2.38,
+              "ch": 40
+            },
+            {
+              "i": 2,
+              "name": "NlaTrack.002",
+              "dur": 1.29,
+              "ch": 39
+            },
+            {
+              "i": 3,
+              "name": "NlaTrack.003",
+              "dur": 6.62,
+              "ch": 40
+            },
+            {
+              "i": 4,
+              "name": "NlaTrack.004",
+              "dur": 3.04,
+              "ch": 40
+            }
+          ]
+        },
+        "created": "2026-07-10T19:13:08.747888+00:00"
+      },
+      "preservedPreviousRuntime": {
+        "path": "source/zombie-pre-mixamo.glb",
+        "sha256": "af6a973701eacee171d58521108a4b1e324194442946585b4b41c03c96ba1dbf"
+      },
+      "motionSources": [
+        {
+          "role": "Walk",
+          "path": "source/mixamo/Zombie Walk.glb",
+          "sha256": "7078293a2985686f7af287730874d8d0534c717fcf69a229c2172cdba99e4e29",
+          "duration": 4
+        },
+        {
+          "role": "Run",
+          "path": "source/mixamo/Zombie Running.glb",
+          "sha256": "705901030da4e8c091f0552d2d85139c282c710880985d6f2884c7adb3c5730c",
+          "duration": 0.7916666865348816
+        },
+        {
+          "role": "Attack",
+          "path": "source/mixamo/Zombie Attack.glb",
+          "sha256": "be7b3a6319e7b736595dddb7ce552211cfaf9ae48a222f468d88db3903d4c1f5",
+          "duration": 2.625
+        }
+      ],
+      "motionLicense": "Adobe Mixamo motion files copied from user local quake project; provider use terms apply. This does not change or establish Tripo mesh commercial license."
+    },
+    {
+      "id": "brute",
+      "originalPath": "/Users/luccacerf/Projetos/Pessoal/Gaming/quake/public/assets/models/zombies/zombie-brute.glb",
+      "preservedSource": "source/zombie-brute.glb",
+      "sourceSha256": "14791fcb26046fd2ecc00d16b14df857e1992025a34670dad22a53578628aa2f",
+      "runtimeFile": "brute.glb",
+      "runtimeSha256": "d1d58b1ae86045d9fa39dba9b4e87a0bd6d1a66b347d74624cf8095ce208c02a",
+      "sourceBytes": 1478680,
+      "runtimeBytes": 1344848,
+      "textures": [
+        {
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "bytes": 250630
+        }
+      ],
+      "sidecar": {
+        "id": "zombie-brute",
+        "mode": "character",
+        "theme": "mega-300",
+        "prompt": "Low-poly stylized hulking brute zombie thick arms, FULL BODY standing feet visible, A-pose, isolated symmetric game character Quake Diablo hybrid",
+        "anims": [
+          "IDLE",
+          "WALK",
+          "RUN",
+          "SLASH",
+          "FALL"
+        ],
+        "animate_in_place": true,
+        "tasks": {
+          "model": "cb020753-b94b-45ac-98e9-184c3251d24d",
+          "rig": "6bf3344d-a7ba-4ba0-aea0-b90208c04fd4",
+          "retarget": "6c4a06cc-1fd7-47ab-91cd-5a82ae947b25"
+        },
+        "inspect": {
+          "mb": 1.48,
+          "bones": 41,
+          "clips": 5,
+          "ready": true,
+          "aspect_h_w": 2.1658780930218557
+        },
+        "created": "2026-07-11T14:28:59.885250+00:00"
+      }
+    },
+    {
+      "id": "lich",
+      "originalPath": "/Users/luccacerf/Projetos/Pessoal/Gaming/quake/public/assets/models/zombies/boss-lich.glb",
+      "preservedSource": "source/boss-lich.glb",
+      "sourceSha256": "8496c7b5e6642546d1f6603af50453a772ab4f67b29073329afb2996dfeea673",
+      "runtimeFile": "lich.glb",
+      "runtimeSha256": "f6ddd47d97757b4acee76c056baa26c644ff19e2afa17fb5630b00108e832e44",
+      "sourceBytes": 1492616,
+      "runtimeBytes": 1369284,
+      "textures": [
+        {
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "bytes": 248777
+        }
+      ],
+      "sidecar": {
+        "id": "boss-lich",
+        "mode": "character",
+        "theme": "mega-300",
+        "prompt": "Low-poly stylized towering LICH BOSS skeletal mage crown, FULL BODY standing huge feet visible, A-pose, isolated symmetric game character Quake Diablo hybrid",
+        "anims": [
+          "IDLE",
+          "WALK",
+          "RUN",
+          "SLASH",
+          "FALL"
+        ],
+        "animate_in_place": true,
+        "tasks": {
+          "model": "de2d1293-ddd8-4e3c-a373-bcc443359e84",
+          "rig": "b60a3c29-12c3-494a-a938-4f6c9d502de3",
+          "retarget": "8465d9fc-a2ab-4a8d-9474-ff51b873d453"
+        },
+        "inspect": {
+          "mb": 1.49,
+          "bones": 41,
+          "clips": 5,
+          "ready": true,
+          "aspect_h_w": 2.887001791110193
+        },
+        "created": "2026-07-11T15:31:19.243577+00:00"
+      }
+    }
+  ]
+}

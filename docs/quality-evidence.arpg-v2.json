@@ -1,0 +1,283 @@
+{
+  "candidate": {
+    "description": "BIPX authorized six-skill v2 integrated candidate with balanced live controls, per-frame persistent VFX, sword travel emitter, Environment buff/field focus and promoted falling/capped corpse with coherent arms. Original goal/AAA10 remains incomplete.",
+    "capturedAt": "2026-09-19T01:01:52.381226+00:00",
+    "sourceManifest": "output/qa/arpg-v2-integrated-20260919/source-manifest.json",
+    "sourceManifestSha256": "897b5eb82872b9ae85c234bd429e7d361c3dc97aa42098cf1572ae15c0460c64",
+    "sourceInMotionDuringCapture": false,
+    "sourceFiles": 199,
+    "provenance": "output/qa/arpg-v2-integrated-20260919/evidence-provenance.json",
+    "sourceBoundReports": 13,
+    "previousRealJef": "output/qa/arpg-v2-checkpoint-20260919T0051/jef.json"
+  },
+  "dimensions": {
+    "game_design": {
+      "coverage": "partial",
+      "observations": [
+        "Six canonical v2 skills are implemented by a shared browser/Node simulation: timed damage/speed buff, swept cleaving dash, shield charge with stun, explosive cannon, area freeze, and fixed five-second gravity field with actual collision-respecting pull. Sword/rifle remain basic attacks, exactly three active slots per class.",
+        "Control damage was recalibrated for naturally spawned opening-wave enemies around5HP: base shield1.2, frost.8, gravity.6 multiplied by the character damage attribute2. This permits living stun/freeze/combo targets; cannon/dash remain14 base. Costs, regeneration, cooldown, range and boss resistance are explicit in current descriptions.",
+        "Natural real-input combo runs demonstrated one living stunned victim then confirmed dash death, five living frozen/pulled enemies then cannon kills at high quality, and two at low/reduced. No artificial health, enemies, XP or resources. Automated target selection is not human feel/balance approval.",
+        "CPU/protocol fixtures prove timed modifiers and expiry, complete valid area targets, boss resistance, one death/reward, bounds/walls, cancellation and authoritative rejection. Broader wave pacing, build balance and human design review remain incomplete.",
+        "After final presentation hooks, source-stable00:46combo repeat passed3/3: warrior1livingstun+1cut/kill; dwarfhigh2freeze/pull+2kills; low/reduced3freeze/pull+2kills. Environmentfocus1 and portalTintScale.28 were observed for buff/field. Earlier five-victim proof remains separately bound.",
+        "After corpse promotion, fresh00:54combos3/3,00:55stationary/moving12casts,00:56real-browser network and00:5760seconds/class all passed against the identical199-file manifest. Natural runs reached wave2 for both, warrior35kills/level4 with death/restart and dwarf77kills/level6 without death."
+      ],
+      "evidence": [
+        "docs/arpg/combat-v2-contract.md",
+        "output/playwright/2026-09-19T00-33-10-376Z-verify-arpg-combos/arpg-combos.json",
+        "output/qa/arpg-skills-v2/cpu.json",
+        "output/qa/arpg-skills-v2/server-controls.json",
+        "output/playwright/2026-09-19T00-46-56-053Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-49-25-769Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T00-54-57-066Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-55-58-053Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-runs.json"
+      ]
+    },
+    "animation": {
+      "coverage": "partial",
+      "observations": [
+        "Actual local Mixamo takes drive all six gestures with explicit core timing and remote age. Freeze/stun pause enemy mixers and cancel prepared melee. CPU retiming and native asset fixtures are distinct from gameplay. Dwarf skills reuse the rifle take with different preparation; war cry lacks mouth articulation.",
+        "Promoted source enemy-death-cut.js SHAe37398db implements gravity/tumble, actual intersected dark caps and private geometry partitioning. Connected arm/hand/held-prop regions stay with torso instead of being severed by the generic waist plane. Only confirmed lethal dash contacts create the cosmetic corpse; live rigs and one death/reward remain intact.",
+        "No-slide remains rejected: deformed sole patch P90 at6.5m/s is Aldric.394/.295/.598m/s forward/strafe/backward and Lyra.209/.314/.137. Contact transitions contain high peaks; fast backward mismatch, reach error and slight penetration remain. Bone-marker stability does not override this evidence.",
+        "Root historical v3 review correctly rejected a suspended hand at.38/.9s. Animation preserved that candidate, repaired the connected arm region and promoted only after source-stable native four-rig before/after,16CPU pose/heading/floor cases, lifecycle regression and actual natural dash death. Combat separately inspected FINAL arms-final.38/.9s and actual-game settled PNGs: the detached hovering hand is absent in that case. Two rigid pieces remain stylized, not anatomical ragdoll or approval of every possible pose/seam/horde budget."
+      ],
+      "evidence": [
+        "docs/arpg/animation-handoff.md",
+        "docs/arpg/review/locomotion-followup.md",
+        "output/playwright/arpg-animation-cut-v3/report.json",
+        "output/arpg-animation/death-cut-v3/candidate-cpu.json",
+        "docs/arpg/review/v3-cut-followup.md",
+        "docs/arpg/animation-cut-v3-handoff.md",
+        "output/arpg-animation/release-v3.json",
+        "output/playwright/arpg-animation-cut-v3-arms-final/report.json",
+        "output/qa/arpg-skills-v2/corpse-v3-observations.json"
+      ]
+    },
+    "art_direction": {
+      "coverage": "partial",
+      "observations": [
+        "Current game-camera PNGs directly inspected: paths, graves, lanterns, tree canopy and towers form a coherent night cemetery. Cutaway reveals nearby threats but its stippled pattern is visible. HUD orbs and skill icons remain readable in inspected1440x900 frames.",
+        "Five frozen enemies in the earlier bound combo had individual pale facets and recognizable silhouettes. Purple radius/spiral is clear; the low vortex volume still remains subordinate to flat circles. The final promoted corpse fixes the specific floating-hand case, closes cut sections and rests near the floor; it remains a stylized two-rigid-piece collapse rather than full artistic acceptance.",
+        "Dense mixed-effect scenes, all camera/quality modes, physical mobile and continuous perceptual playback lack complete current-candidate art review. No AAA score from stills."
+      ],
+      "evidence": [
+        "output/qa/arpg-skills-v2/combat-native-observations.json",
+        "docs/arpg/review/v2-volume-followup.md",
+        "docs/arpg/environment-handoff.md",
+        "output/qa/arpg-skills-v2/corpse-v3-observations.json"
+      ]
+    },
+    "vfx": {
+      "coverage": "partial",
+      "observations": [
+        "Samurai, HandCast and Linear pinned MIT sources are concretely adapted into pooled blade/fire, crystal/fracture and arcane trails/fields. New v2 wrapper has cast/release/travel/confirmed-impact/status/end phases; area impact occurs once per detonation and no expiry fabricated as hit.",
+        "All six skill IDs were observed from actual game input stopped and moving. Low/reduced retains essential bodies, field and individual frozen statuses. New art adds torso aura, shield front, partial ice coating and low gravity volume; bounded pools and cleanup verified separately in fixtures.",
+        "Combat now supplies sword emitter on dash travel, updates persistent VFX with current rendered actor positions per frame, and sends live buff/field centers/radii/times to Environment focus. Audio/HUD remain10Hz. CPU executes the actual presentation function and verifies movement, fixed centers and cleanup.",
+        "Gravity still needs a more convincing vortex and continuous readability review. No claim of full upstream catalog import, all horde combinations or physical-phone visual/performance approval."
+      ],
+      "evidence": [
+        "docs/arpg/vfx-handoff.md",
+        "docs/arpg/review/v2-volume-followup.md",
+        "output/playwright/2026-09-19T00-39-19-966Z-verify-skill-presentation/skill-presentation.json",
+        "output/playwright/2026-09-19T00-46-56-053Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-49-25-769Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T00-54-57-066Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-55-58-053Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-runs.json"
+      ]
+    },
+    "combat_feel": {
+      "coverage": "partial",
+      "observations": [
+        "Real keyboard/mouse/touch integration provides independent movement/aim, basics and three active skills. Authoritative cooldown/resources reject unavailable casts; death/reset cancels effects. Sweeps stop dash/charge at walls and damage uses the actually traversed path.",
+        "Natural target-aware60-second runs for both classes produce damage, kills, XP and upgrades; warrior also naturally died and restarted. Dedicated combo runs confirm live controls followed by damage, rather than control visuals on corpses.",
+        "Natural automation and frame samples do not establish human responsiveness, weight, fatigue or refined encounter balance. Long varied sessions, remote timing under impaired links and full feel review remain incomplete."
+      ],
+      "evidence": [
+        "docs/arpg/combat-v2-contract.md",
+        "output/playwright/2026-09-19T00-34-04-881Z-verify-natural-runs/natural-runs.json",
+        "output/playwright/2026-09-19T00-33-10-376Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-46-56-053Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-49-25-769Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T00-54-57-066Z-verify-arpg-combos/arpg-combos.json",
+        "output/playwright/2026-09-19T00-55-58-053Z-verify-arpg-browser/arpg-browser.json",
+        "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-runs.json"
+      ]
+    },
+    "ui_ux": {
+      "coverage": "partial",
+      "observations": [
+        "Two ARPG orbs show real health/resource, with basic weapon and exactly three skills. GUI owns1/2/3/numpad and pointer intent; snapshots supply readiness, descriptions, cooldown, buff duration/modifiers. No client UI grants gameplay state.",
+        "GUI owner source-stable fixture107checks and actual-game24checks per class cover icon geometry, actual one-intent touch/secondary touch, movement retained, cooldown rejection, pause/ranking/landscape and focus. Automatic post-touch tooltip was removed; intentional keyboard/hover help remains.",
+        "Inspected actual mobile-emulated cast frame leaves joysticks/combat free of the old tooltip. Full current-candidate end-to-end accessibility/device flows and perceptual hierarchy across dense combat remain incomplete."
+      ],
+      "evidence": [
+        "docs/arpg/gui-handoff.md",
+        "output/playwright/2026-09-19T00-25-23-626Z-ui-arpg-gameplay/gui-help-delivery.json",
+        "docs/arpg/review/v2-volume-followup.md"
+      ]
+    },
+    "mobile": {
+      "coverage": "partial",
+      "observations": [
+        "GUI owner tested portrait/landscape sizes320x568 through844x390 with emulated touch, simultaneous joystick/secondary skill touch and>=44px targets. Low/reduced gameplay retains projectiles/statuses.",
+        "No current-candidate physical iOS or Android gameplay, thermal behavior or touch latency proof. Desktop Chrome emulation is explicitly insufficient."
+      ],
+      "evidence": [
+        "docs/arpg/gui-handoff.md",
+        "docs/arpg/vfx-handoff.md"
+      ]
+    },
+    "audio": {
+      "coverage": "partial",
+      "observations": [
+        "28 actual ElevenLabs cues preserve originals/provenance. Core adapter routes accepted phases with castId, contact/status/end, local ready/resourcefail and bounded persistent loops. Resets, death, pause and mute clean up.",
+        "SFX owner recorded actual-game PCM with both classes: roughly10.7s, peaks.380/.391, mute residual<1e-8, source stable. Dwarf includes three confirmed impacts; warrior contact/death cues were covered only by the core fixture in that recording. Signal/loop tests are not a listening review.",
+        "No perceptual listening approval is claimed: the environment rejected audio input. Sustained mix/fatigue, spatial coherence and distinctness across dense combat remain pending."
+      ],
+      "evidence": [
+        "docs/arpg/sfx-handoff.md",
+        "output/playwright/2026-09-19T00-10-40-057Z-audio-arpg-gameplay/arpg-audio-gameplay-warrior.json",
+        "output/playwright/2026-09-19T00-10-40-057Z-audio-arpg-gameplay/arpg-audio-gameplay-dwarf.json"
+      ]
+    },
+    "performance": {
+      "coverage": "partial",
+      "observations": [
+        "Predeclared gate unchanged: average>=57FPS and p95<=20ms. Final199-file source-bound real-input natural60seconds per class, Chrome native1440x900 ANGLE Metal AppleM5Pro, all new presentation/corpse code active. Warrior8500frames/60.1118s, average141.38655FPS,p957.6ms,p9913.9ms,worst41.7ms; dwarf8661frames/60.1813s,average143.89852FPS,p957.6ms,p997.8ms,worst14.3ms. Neither recorded a frame>50ms or main-thread long task. All raw frame data and failures retained.",
+        "Whole automation run includes screenshots, upgrades and warrior death/restart. Both classes have actual kills/XP/three skills. These are desktop natural runs, not synthetic stress, guaranteed human comfort or an isolated renderer benchmark. GPU was reserved atomically with no other agent render. Earlier00:34measurement is historical and not substituted for the final repeat.",
+        "Physical iOS/Android, thermal/long soak, high-level dense horde and extreme concurrent24corpse budget remain incomplete. Passing near60desktop budget does not establish the entire performance rubric."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-runs.json",
+        "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-warrior.json",
+        "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-dwarf.json",
+        "docs/arpg/animation-cut-v3-handoff.md"
+      ]
+    },
+    "multiplayer": {
+      "coverage": "partial",
+      "observations": [
+        "Two actual Chrome clients via real menu/keys confirmed each of six v2 casts exactly once with identical event payloads, same authoritative world tick, preserved basics, resumed identity/resource/cooldowns/sequence and a third late join. No gameplay fixture; only transport close was injected to exercise reconnect.",
+        "Isolated real-WebSocket server fixtures additionally prove shared area stun/freeze/expiry, persistent field center/pull/latejoin and death cleanup. Trusted fixture targets/positions are explicitly synthetic.",
+        "Final real-browser repeat00:56:20 includes promoted corpse source and presentation hooks: all6casts matched exactly,15monsters in identical shared tick, reconnect same ID/sequence3/resource37.55 and3players/19monsters at latejoin. Source stable and identical to final manifest. Full browser death/wipe, impaired links, long concurrent soak and perceptual remote timing remain incomplete."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T00-32-10-319Z-verify-arpg-network/arpg-network.json",
+        "output/qa/arpg-skills-v2/server-controls.json",
+        "output/playwright/2026-09-19T00-39-19-966Z-verify-skill-presentation/skill-presentation.json",
+        "output/playwright/2026-09-19T00-50-02-746Z-verify-arpg-network/arpg-network.json",
+        "output/playwright/2026-09-19T00-56-20-856Z-verify-arpg-network/arpg-network.json"
+      ]
+    },
+    "accessibility": {
+      "coverage": "partial",
+      "observations": [
+        "Keyboard movement/aim/basic/skills and GUI focus/numpad work; typing, dialogs, menus and upgrades block casts. Reduced motion preserves essential projectile, area, status and HUD cues. Touch buttons have labels and dimensions.",
+        "Complete contrast/zoom/screen-reader navigation and physical assistive-device review are absent. Essential non-color/non-audio signals have bounded fixture/gameplay coverage, not blanket acceptance."
+      ],
+      "evidence": [
+        "docs/arpg/gui-handoff.md",
+        "docs/arpg/vfx-handoff.md"
+      ]
+    },
+    "reliability": {
+      "coverage": "partial",
+      "observations": [
+        "Core and server suites cover resource/cooldown/forgery, movement/static/crowd contacts, progression/rewards/receipts, reconnect and ranking authority. HTTP/SVG MIME fixed and local ranking byte-identical across authorized backend restart; Supabase remains disabled.",
+        "Historical suites that changed sources/tools are retained as non-approvals. A progression verifier IPC/WebSocket ordering race was identified and fixed by requiring160HP both authoritatively and after network receipt; all8checks then passed, unchanged anti-forgery assertions.",
+        "Per-run native logs and hashes distinguish fixtures, natural automation and candidate versions. Full all-suite/long-soak/physical-device recovery evidence is incomplete; no source variation is silently accepted.",
+        "The source-stable00:39:46 suite is FAILED,12/13: progression stopped at zero checks with client HP200 vs160 because it asserted before WebSocket receipt. Its result is not13/13; subsequent isolated00:41 run passed8checks after synchronizing both channels. The subsequent00:46:57 complete fixed-suite rerun is reported separately below.",
+        "Final checkpoint rerun00:46:57 passed13/13 with sourceChangedDuringRun:false and verificationToolsChangedDuringRun:false. Its source hashes match all199current manifest entries. The00:39failed artifact remains historical and is not relabeled.",
+        "After corpse promotion,00:54:45complete suite again passed13/13 with unchanged runtime and verification tools. Final provenance compares13full source-bearing reports across suite,3combos,4cast contexts,3network clients and2natural runs: all199hashes match, no source drift. Local5173 remains active PID97873 with authorized local flags; no production deployment."
+      ],
+      "evidence": [
+        "output/playwright/2026-09-19T00-41-20-708Z-verify-progression-authority/progression-authority.json",
+        "output/qa/arpg-skills-v2/local-server-restart-20260919-v2-balanced.json",
+        "docs/arpg/combat-handoff.md",
+        "output/playwright/2026-09-19T00-46-57-235Z-quality-suite/suite.json",
+        "output/playwright/2026-09-19T00-54-45-126Z-quality-suite/suite.json",
+        "output/qa/arpg-v2-integrated-20260919/evidence-provenance.json"
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "CPU/protocol suite13/13, runtime/tools unchanged",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T00-54-45-126Z-quality-suite/suite.json"
+    },
+    {
+      "name": "Actual-game combos high and low-reduced; Environment focus3/3",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T00-54-57-066Z-verify-arpg-combos/arpg-combos.json"
+    },
+    {
+      "name": "Actual-game stopped/moving12casts, four fresh contexts",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T00-55-58-053Z-verify-arpg-browser/arpg-browser.json"
+    },
+    {
+      "name": "Two actual browsers, six peer casts/reconnect/third latejoin",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T00-56-20-856Z-verify-arpg-network/arpg-network.json"
+    },
+    {
+      "name": "Natural real-input60seconds per class, predeclared57FPS/p95<=20ms",
+      "status": "passed",
+      "evidence": "output/playwright/2026-09-19T00-57-00-491Z-verify-natural-runs/natural-runs.json"
+    },
+    {
+      "name": "Corpse16CPU cases4real rigs, fall/caps/arms/cleanup",
+      "status": "passed",
+      "evidence": "output/arpg-animation/death-cut-v3/runtime-fall-cpu.json"
+    },
+    {
+      "name": "Corpse actual-input death-only and expiry",
+      "status": "passed",
+      "evidence": "output/playwright/arpg-animation-death-only-v3/death-only.json"
+    },
+    {
+      "name": "Deformed sole no-slide acceptance remains rejected",
+      "status": "failed",
+      "evidence": "output/qa/arpg-root-review/2026-09-19T00-07-01-754Z-sole-contact.json"
+    }
+  ],
+  "openDefects": [
+    "No-slide remains explicitly rejected: deformed sole support/transition drift, fast backward mismatch/reach and small penetration. No threshold/contact-flag relaxation.",
+    "Gravity vortex presence remains dominated by planar circles; more convincing convergence and dense temporal readability require refinement.",
+    "Corpse fall is two rigid pieces with pose-dependent support; broad artistic ragdoll/gesture weight/grip and every seam/pose are not accepted, despite repair of the specific suspended hand.",
+    "Physical iOS/Android gameplay, thermal and extreme-horde sustained performance absent.",
+    "Audio PCM/signal/loops proven but perceptual listening/mix/fatigue approval absent.",
+    "Human combat/design feel, full long-session/browser-wipe/impaired-network/accessibility coverage remains incomplete.",
+    "Lich staged gesture/profile and authoritative prepare/release/cancel integration remain next-stage work; Brute staged motion remains rejected."
+  ],
+  "historicalFailures": [
+    {
+      "name": "Source-stable CPU/protocol suite00:39:46",
+      "status": "failed",
+      "passedGroups": 12,
+      "totalGroups": 13,
+      "evidence": "output/playwright/2026-09-19T00-39-46-885Z-quality-suite/suite.json",
+      "followup": "output/playwright/2026-09-19T00-41-20-708Z-verify-progression-authority/progression-authority.json",
+      "cause": "Harness read client state immediately after private IPC instead of awaiting the real WebSocket health update. Server/client health requirements remain160.",
+      "fullSuiteFollowup": "output/playwright/2026-09-19T00-46-57-235Z-quality-suite/suite.json",
+      "postCorpseFullSuiteFollowup": "output/playwright/2026-09-19T00-54-45-126Z-quality-suite/suite.json"
+    },
+    {
+      "name": "First low/reduced natural combo attempt",
+      "status": "failed",
+      "evidence": "output/playwright/2026-09-19T00-29-31-433Z-verify-arpg-combos/arpg-combos.json",
+      "followup": "output/playwright/2026-09-19T00-33-10-376Z-verify-arpg-combos/arpg-combos.json",
+      "cause": "Harness retargeted nearest enemy between skills; cannon legitimately missed the moving target. Repeated with same natural target tracked, no gameplay mutation."
+    },
+    {
+      "name": "First v3 floating detached hand",
+      "status": "artistic_rejection",
+      "evidence": "docs/arpg/review/v3-cut-followup.md",
+      "followup": "docs/arpg/animation-cut-v3-handoff.md",
+      "finalNative": "output/playwright/arpg-animation-cut-v3-arms-final/report.json",
+      "scope": "Specific hand-region issue repaired and checked; not AAA blanket acceptance."
+    }
+  ]
+}

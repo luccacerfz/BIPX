@@ -1,0 +1,21 @@
+<!doctype html><html><meta charset="utf-8"><link rel="icon" href="data:,"><title>Walker motion comparison · isolated fixture</title>
+<style>body{margin:0;background:#17242d;color:#ddd9ce;font:14px system-ui}#title{position:absolute;top:20px;left:25px}#labels{position:absolute;bottom:24px;display:flex;justify-content:space-around;width:100%;font-size:19px}canvas{display:block}</style>
+<div id="title">Walker · retarget comparativo · fixture isolada, não gameplay<br><span id="clip">Walk</span></div>
+<div id="labels"><span>Tripo original · apoio corrigido</span><span>Mixamo → Tripo · retarget</span></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import {GLTFLoader} from '../src/assets/vendor/GLTFLoader.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#17242d');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(32,innerWidth/innerHeight,.1,100);camera.position.set(0,2.7,-8.2);camera.lookAt(0,1.05,0);
+scene.add(new THREE.HemisphereLight(0xc7dce8,0x4b3d31,2));
+for(const [color,power,x,y,z]of [[0xffd3a8,3,-4,6,-4],[0x72bee7,2,4,5,3]]){const l=new THREE.DirectionalLight(color,power);l.position.set(x,y,z);scene.add(l);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x29383f,roughness:1}));floor.rotation.x=-Math.PI/2;scene.add(floor);const grid=new THREE.GridHelper(30,30,0x78858a,0x405057);grid.position.y=.001;scene.add(grid);
+const loader=new GLTFLoader(),gltfs=await Promise.all(['../assets/models/monsters/source/zombie-pre-mixamo.glb','../assets/models/monsters/zombie.glb'].map(p=>loader.loadAsync(p)));
+const actors=gltfs.map((g,i)=>{const root=new THREE.Group();root.position.x=i? -1.6:1.6;scene.add(root);const model=g.scene;root.add(model);model.rotation.y=Math.PI/2;model.updateMatrixWorld(true);let body;model.traverse(o=>{if(o.isSkinnedMesh){body=o;o.frustumCulled=false;o.skeleton.update();}});const box=new THREE.Box3().setFromObject(model,true),height=box.getSize(new THREE.Vector3()).y;root.scale.setScalar(2.1/height);const mixer=new THREE.AnimationMixer(model);const clips={Walk:g.animations[1].clone(),Run:g.animations[2].clone(),Attack:g.animations[3].clone()};if(!i){clips.Attack=THREE.AnimationUtils.subclip(clips.Attack,'Attack',0,65,30);for(const c of Object.values(clips))for(const t of c.tracks)if(t.name==='Root.quaternion'){const bone=model.getObjectByName('Root');for(let n=0;n<t.values.length;n+=4)bone.quaternion.toArray(t.values,n);}}return{root,model,body,mixer,clips,action:null};});
+let mode='Walk',phase=0,paused=new URLSearchParams(location.search).has('manual');
+function setClip(name){mode=name;phase=0;for(const a of actors){a.mixer.stopAllAction();a.action=a.mixer.clipAction(a.clips[name]).reset().setLoop(THREE.LoopOnce,1);a.action.clampWhenFinished=true;a.action.play();}document.querySelector('#clip').textContent=name;sample(0);}
+function sample(value){phase=value;for(const a of actors){a.model.position.y=0;a.action.reset().play();a.mixer.setTime(value*a.clips[mode].duration);a.root.updateMatrixWorld(true);a.body.skeleton.update();const box=new THREE.Box3().setFromObject(a.root,true);a.model.position.y-=box.min.y/a.root.scale.y;}renderer.render(scene,camera);}
+window.motionReview={ready:true,THREE,scene,renderer,camera,actors,setClip,sample,play(value=true){paused=!value;}};
+setClip('Walk');let last=performance.now();function frame(now){const dt=Math.min((now-last)/1000,.1);last=now;if(!paused)sample((phase+dt/(mode==='Walk'?4:mode==='Run'?.7916667:2.625))%1);requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script></html>

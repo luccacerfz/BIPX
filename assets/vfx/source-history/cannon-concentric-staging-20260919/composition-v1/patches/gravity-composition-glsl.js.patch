@@ -1,0 +1,37 @@
+--- /dev/null
++++ b/src/vfx/gravity-composition-glsl.js
+@@ -0,0 +1,34 @@
++// Staged front-prefix insertion. Density functions remain the pinned GH nebula.
++import {NEBULA_FRAGMENT} from './gravity-horizon-source.js';
++let gas=NEBULA_FRAGMENT.slice(NEBULA_FRAGMENT.indexOf('  float shellProfile('),NEBULA_FRAGMENT.indexOf('  void main()'));
++gas=gas.replace(/\bu[A-Z]\w*/g,name=>'gc_'+name).replace(/\b(shellProfile|sampleGas|sphereSpan)\b/g,name=>'gc_'+name).replace(/\bTAU\b/g,'6.28318530718');
++export const gravityCompositionGLSL=/*glsl*/`
++uniform int uGravityCount;
++uniform vec4 uGravityCenterRadius[8];
++uniform vec4 uGravityShape[8];
++uniform vec4 uGravityLife[8];
++uniform float uGravityPrefixSteps;
++vec3 gc_uCentre;float gc_uRadius,gc_uHole,gc_uTime,gc_uDrain;
++const float gc_uFlatten=.22,gc_uCavity=.32,gc_uEdge=.7,gc_uWind=2.4,gc_uTwist=1.6,gc_uSpin=.2,gc_uScale=.58,gc_uRise=.35,gc_uSeed=7.,gc_uDetail=2.3,gc_uFilament=.62,gc_uThreshold=.5,gc_uArms=3.,gc_uArmSharp=1.5,gc_uArmWeight=.68,gc_uSpikes=9.,gc_uSpikeSharp=9.,gc_uSpikeReach=.95,gc_uSpikeGlow=.7,gc_uDensity=2.4,gc_uChurn=0.,gc_uHeatFalloff=2.1;
++${gas}
++void gravitySelect(int i){gc_uCentre=uGravityCenterRadius[i].xyz;gc_uRadius=uGravityCenterRadius[i].w;gc_uHole=uGravityShape[i].x;gc_uTime=uGravityShape[i].y;gc_uDrain=uGravityLife[i].x;}
++float gravityCoreLimit(vec3 ro,vec3 rd,float limit){for(int i=0;i<8;i++){if(i>=uGravityCount)break;float a,b;if(gc_sphereSpan(ro,rd,uGravityCenterRadius[i].xyz,uGravityShape[i].x,a,b)){if(a<=0.)return 0.;limit=min(limit,a);}}return limit;}
++void gravityPrefix(vec3 ro,vec3 rd,float fireT,float opaqueHeight,out vec3 prefix,out float transmission){
++ prefix=vec3(0.);transmission=1.;
++ // Descriptor order is near-to-far; alpha compositing follows the pool far-to-near.
++ for(int n=0;n<8;n++){int i=uGravityCount-1-n;if(i<0)break;gravitySelect(i);float a,b;
++  if(!gc_sphereSpan(ro,rd,gc_uCentre,gc_uRadius*1.14,a,b))continue;
++  float t0=max(a,0.),t1=min(b,fireT),h0,h1;
++  if(gc_sphereSpan(ro,rd,gc_uCentre,gc_uHole,h0,h1))t1=min(t1,max(0.,h0));
++  if(t1<=t0)continue;
++  float steps=uGravityPrefixSteps,dt=(t1-t0)/steps,t=t0+dt*hash13(vec3(gl_FragCoord.xy,gc_uTime*60.));
++  vec3 acc=vec3(0.);float tr=1.;
++  for(int j=0;j<24;j++){if(float(j)>=steps||tr<.012)break;float d,heat;vec3 orbit;gc_sampleGas(ro+rd*t,d,heat,orbit);
++   if(d>.002){float beam=1.+.3*dot(orbit,-rd);vec3 col=mix(vec3(.12,.018,.42),vec3(.48,.08,1.2),smoothstep(0.,.30,heat));col=mix(col,vec3(1.,.58,.18),smoothstep(.38,.88,heat));col=mix(col,vec3(1.,.96,.82),smoothstep(1.,1.75,heat));float emit=1.8*(.32+heat*heat*2.4)*max(beam,.05),coverage=1.-exp(-d*.5*dt);acc+=col*emit*coverage*tr;tr*=1.-coverage;}t+=dt;
++  }
++  float protect=1.-.96*smoothstep(.95,1.6,opaqueHeight-uGravityShape[i].w);
++  float fade=uGravityShape[i].z,alpha=(1.-tr)*fade*uGravityLife[i].y*protect;
++  acc*=fade*protect;prefix=acc+(1.-alpha)*prefix;transmission*=1.-alpha;
++ }
++}
++`;

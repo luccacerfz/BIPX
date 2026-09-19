@@ -1,0 +1,67 @@
+{
+  "scope": "CPU retarget and source preservation, visual review pending",
+  "original": "assets/models/orc-peon.glb",
+  "originalSha256": "f183383155b0a763f46039a93bf048604a5a1f95529a3b4b9b6511b5767c846d",
+  "source": "assets/models/orc-peon-source/mixamo-running.glb",
+  "sourceSha256": "a1d6e22716edba3672e3afc5052516ea22875fe69cffd2a945e8c6b0f527c957",
+  "output": "assets/models/orc-peon-locomotion-v1.glb",
+  "outputSha256": "fac2f9fbaf9eb520ef8511316b3eb286e794c5b76f32a20a9d3559d261c625c8",
+  "checks": {
+    "originalPreserved": true,
+    "binaryPrefixPreserved": true,
+    "rigSkinGeometryMaterialsPreserved": true,
+    "oldClipsPreserved": true,
+    "unitQuaternions": true,
+    "finite": true,
+    "realDonorTranslation": true,
+    "runFootExcursion": true
+  },
+  "ratio": 0.44277830026697085,
+  "displacement": [
+    2.7241185307502747e-8,
+    -5.317543537719516e-7,
+    3.070471975921518
+  ],
+  "motion": {
+    "version": 1,
+    "source": "Local Mixamo Action Adventure Running",
+    "runStride": 1.3595383625158972,
+    "runCycleSeconds": 0.699999988079071,
+    "walkSpeed": 0.41087,
+    "retargetedRoles": [
+      "Run"
+    ],
+    "contactProbes": [
+      4473,
+      10101,
+      13653,
+      14684,
+      16544,
+      18841,
+      18919,
+      20182,
+      20283,
+      20655,
+      20662,
+      20668,
+      20670,
+      23730,
+      24400,
+      24603,
+      25328,
+      25621,
+      26339,
+      26341,
+      27805,
+      28694,
+      29091,
+      29400,
+      29500,
+      29502,
+      29539,
+      29542
+    ],
+    "runFloorLift": 0.03235403080482512
+  },
+  "maxNormError": 2.220446049250313e-16
+}

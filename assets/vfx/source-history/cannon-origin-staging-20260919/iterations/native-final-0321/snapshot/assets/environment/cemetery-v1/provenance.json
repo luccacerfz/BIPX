@@ -1,0 +1,348 @@
+{
+  "version": 1,
+  "sourcesRoot": "/Users/luccacerf/Projetos/Assets/Environment",
+  "assets": [
+    {
+      "id": "blue-shrine",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/18_blue_shrine_tripo_v31_8k.glb",
+      "sourceSha256Before": "83c57d53335def40b6261c543bb6c4500739ddedb1d35e4fd45ae553ca1bcfc9",
+      "sourceSha256After": "83c57d53335def40b6261c543bb6c4500739ddedb1d35e4fd45ae553ca1bcfc9",
+      "sourcePreserved": true,
+      "sourceTriangles": 486276,
+      "runtimeTriangles": 4800,
+      "bytes": 354268,
+      "sha256": "82f1f3b9be9bd1d72ca814c6467ac0c9da88e095fa91637b7f8686c9b81a1a48",
+      "sizeXYZ": [
+        0.8850952386856079,
+        0.9812279641046189,
+        0.7574603855609894
+      ],
+      "textures": [
+        {
+          "name": "18_blue_shrine_tripo_v31_8k_basecolor.jpg",
+          "source": [
+            8192,
+            8192
+          ],
+          "runtime": [
+            768,
+            768
+          ]
+        },
+        {
+          "name": "18_blue_shrine_tripo_v31_8k_normal.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            768,
+            768
+          ]
+        },
+        {
+          "name": "18_blue_shrine_tripo_v31_8k_rm.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            768,
+            768
+          ]
+        }
+      ]
+    },
+    {
+      "id": "barrel",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/08_barrel_tripo_v31_8k.glb",
+      "sourceSha256Before": "074b40a277106dbdc5bed8765a6a4bbef5fd0345cf3cdddfdba80b49b7e06170",
+      "sourceSha256After": "074b40a277106dbdc5bed8765a6a4bbef5fd0345cf3cdddfdba80b49b7e06170",
+      "sourcePreserved": true,
+      "sourceTriangles": 496578,
+      "runtimeTriangles": 1400,
+      "bytes": 136840,
+      "sha256": "d0f13cdae0a1594d14628b4e5b9140240a33c02e547b315117ac677bcd557cfa",
+      "sizeXYZ": [
+        0.9672762751579285,
+        0.8763130212173564,
+        0.9788792133331299
+      ],
+      "textures": [
+        {
+          "name": "08_barrel_tripo_v31_8k_basecolor.jpg",
+          "source": [
+            8192,
+            8192
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "08_barrel_tripo_v31_8k_normal.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "08_barrel_tripo_v31_8k_rm.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rose-bush",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Harbor_Map/Source/Tripo/12_rose_bush_tripo_v31_8k.glb",
+      "sourceSha256Before": "06bc1bccdbc4b1314d8addfdac39348c96fe7f9e61e12cd4af2ed5802d9ca67f",
+      "sourceSha256After": "06bc1bccdbc4b1314d8addfdac39348c96fe7f9e61e12cd4af2ed5802d9ca67f",
+      "sourcePreserved": true,
+      "sourceTriangles": 484222,
+      "runtimeTriangles": 2400,
+      "bytes": 144532,
+      "sha256": "2aa26ff83bdbcff5ed138a7f85a245700fd1428eafc2a60b34aecdb197ca8714",
+      "sizeXYZ": [
+        0.981137216091156,
+        0.2579030532942852,
+        0.3708183765411377
+      ],
+      "textures": [
+        {
+          "name": "12_rose_bush_tripo_v31_8k_basecolor.jpg",
+          "source": [
+            8192,
+            8192
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "12_rose_bush_tripo_v31_8k_normal.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "12_rose_bush_tripo_v31_8k_rm.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        }
+      ]
+    },
+    {
+      "id": "border-rock",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Tunnel_Map/Exports/Game/Families/04_border_rock_cluster/04_border_rock_cluster_LOD1.glb",
+      "sourceSha256Before": "98f2b7ac646ac44a187c100a06a6f3173c96769b32afccc0aef54a8fad239249",
+      "sourceSha256After": "98f2b7ac646ac44a187c100a06a6f3173c96769b32afccc0aef54a8fad239249",
+      "sourcePreserved": true,
+      "sourceTriangles": 4462,
+      "runtimeTriangles": 2000,
+      "bytes": 100732,
+      "sha256": "e4c0a7444700f009b35c736d53305bcf25f00b45160e018c3f2eeb740ecac52c",
+      "sizeXYZ": [
+        1.000102698802948,
+        0.6412528743035786,
+        0.8227434456348419
+      ],
+      "textures": [
+        {
+          "name": "04_border_rock_cluster_tripo_image_2c0cef8c_0.002",
+          "source": [
+            1024,
+            1024
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        }
+      ]
+    },
+    {
+      "id": "root-border",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Tunnel_Map/Exports/Game/Families/07_root_border/07_root_border_LOD1.glb",
+      "sourceSha256Before": "611e685c00e4486be95716671c6962661ee388fbc5cfd16dbd6210cb75bfc4ac",
+      "sourceSha256After": "611e685c00e4486be95716671c6962661ee388fbc5cfd16dbd6210cb75bfc4ac",
+      "sourcePreserved": true,
+      "sourceTriangles": 4128,
+      "runtimeTriangles": 1600,
+      "bytes": 99836,
+      "sha256": "6bf37305e5f91d1deb977f9997db1e7d0edf7fada5277d6496a240b42522d175",
+      "sizeXYZ": [
+        0.9997093975543976,
+        0.18747814215385006,
+        0.33055292069911957
+      ],
+      "textures": [
+        {
+          "name": "07_root_border_tripo_image_83683f6d_0.001",
+          "source": [
+            1024,
+            1024
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mushrooms",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/Tunnel_Map/Exports/Game/Families/26_mushroom_cluster/26_mushroom_cluster_LOD1.glb",
+      "sourceSha256Before": "a6b469245578f8b10513193c76022d10faabb1c7cfef38426bcc32835c150e1e",
+      "sourceSha256After": "a6b469245578f8b10513193c76022d10faabb1c7cfef38426bcc32835c150e1e",
+      "sourcePreserved": true,
+      "sourceTriangles": 2470,
+      "runtimeTriangles": 999,
+      "bytes": 60456,
+      "sha256": "97789281b84d2c7848c8d7354ac6594d0d6b8eff744580371d6f8d0ad0706385",
+      "sizeXYZ": [
+        0.994718998670578,
+        0.8947879653424025,
+        1.001871407032013
+      ],
+      "textures": [
+        {
+          "name": "26_mushroom_cluster_tripo_image_543fe552_0.003",
+          "source": [
+            512,
+            512
+          ],
+          "runtime": [
+            256,
+            256
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crypt-door",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/House_Reconstruction/Source/Tripo/03_door_tripo_v31.glb",
+      "sourceSha256Before": "73e8c335d6e59234f4de7070fe17bf6513d978e578b4d735bd8cf1906393c95f",
+      "sourceSha256After": "73e8c335d6e59234f4de7070fe17bf6513d978e578b4d735bd8cf1906393c95f",
+      "sourcePreserved": true,
+      "sourceTriangles": 88448,
+      "runtimeTriangles": 2000,
+      "bytes": 107140,
+      "sha256": "dad37778ad1cd705a86d6c6d442bec142adc91f0f2be511e397cbdf7c754369a",
+      "sizeXYZ": [
+        0.9827092289924622,
+        0.7812184027352487,
+        0.2812281847000122
+      ],
+      "textures": [
+        {
+          "name": "03_door_tripo_v31_basecolor.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "03_door_tripo_v31_normal.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        },
+        {
+          "name": "03_door_tripo_v31_rm.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            512,
+            512
+          ]
+        }
+      ]
+    },
+    {
+      "id": "timber-beam",
+      "source": "/Users/luccacerf/Projetos/Assets/Environment/House_Reconstruction/Source/Tripo/09_timber_beam_tripo_v31.glb",
+      "sourceSha256Before": "fa46dc40ed930ccc9e74902010ab9162979b1897803c9fc9accff9ac773d7c64",
+      "sourceSha256After": "fa46dc40ed930ccc9e74902010ab9162979b1897803c9fc9accff9ac773d7c64",
+      "sourcePreserved": true,
+      "sourceTriangles": 96188,
+      "runtimeTriangles": 800,
+      "bytes": 48460,
+      "sha256": "9ae557805d0ae2ed0ee6a4b73711cb2a6192d55d55b4ab17108f91af40a8ae8c",
+      "sizeXYZ": [
+        0.9795141220092773,
+        0.11934851156547666,
+        0.1270197555422783
+      ],
+      "textures": [
+        {
+          "name": "09_timber_beam_tripo_v31_basecolor.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            256,
+            256
+          ]
+        },
+        {
+          "name": "09_timber_beam_tripo_v31_normal.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            256,
+            256
+          ]
+        },
+        {
+          "name": "09_timber_beam_tripo_v31_rm.jpg",
+          "source": [
+            4096,
+            4096
+          ],
+          "runtime": [
+            256,
+            256
+          ]
+        }
+      ]
+    }
+  ]
+}

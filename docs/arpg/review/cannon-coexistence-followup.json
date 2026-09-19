@@ -1,0 +1,47 @@
+{
+  "reviewedAt": "2026-09-19T02:19:30.202299+00:00",
+  "reviewer": "root",
+  "kind": "five sampled original native fixture frames; no playback; not gameplay",
+  "report": "output/playwright/2026-09-19T02-15-38-208Z-cannon-wrapper-vfx-native/cannon-wrapper-report.json",
+  "reportSha256": "aa5dae4dae93d3f69557a2acf844d8ada2a6a45a7edb5e9d3a0007107f8ae580",
+  "media": [
+    {
+      "path": "output/playwright/2026-09-19T02-15-38-208Z-cannon-wrapper-vfx-native/cannon-wrapper-vfx-native-coexist-high-1.png",
+      "sha256": "f5c1840c6bfe3ce03862ed21a819a1246f41321f4f4d6e03a322bb56f180aeb2"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-15-38-208Z-cannon-wrapper-vfx-native/cannon-wrapper-vfx-native-coexist-high-4.png",
+      "sha256": "ebcf0585b7a812a146a2663093eebdbb6fbb91c2d357fe6b169bedd8c17cf2fd"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-15-38-208Z-cannon-wrapper-vfx-native/cannon-wrapper-vfx-native-coexist-low-4.png",
+      "sha256": "587b94d67db0c866f55a2bd0e12b931f42ea1c36802179618774b03fd0437e06"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-15-38-208Z-cannon-wrapper-vfx-native/cannon-wrapper-vfx-native-high-0.74.png",
+      "sha256": "17d0d45152d35275cb5725bce7a29d6b0f133f59779dfff631b165fb54016d59"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-15-38-208Z-cannon-wrapper-vfx-native/cannon-wrapper-vfx-native-high-1.25.png",
+      "sha256": "b322551b0e8e68bad0b1718b277d0ed48616135c8646e02fb4f94c38f1967007"
+    }
+  ],
+  "technicalPassed": true,
+  "sourceStable": true,
+  "artGate": {
+    "threshold": 0.65,
+    "allCombinedPassed": false,
+    "fireContributionPassed": true,
+    "scope": "Four 11x11px real-actor torso patches. Overall coexistence failure remains a promotion gate; context-only isolates inherited gravity/freeze contribution."
+  },
+  "promotionReady": false,
+  "aaaAccepted": false,
+  "observations": [
+    "Fire v2 direction retained: upward broken plume, no held orange dome at1.25s.",
+    "At.74s (40ms after contact) the new fire is narrow; force/timing still requires gameplay playback with animation and SFX.",
+    "Four coincident shots create bright lobes; silhouettes remain locally visible in inspected frame, which does not override the failed torso gate.",
+    "High1 combined central torso retention.462810, context.768595, fire contribution.966942: composition is not proven to be an inherited-only issue.",
+    "One shared depth texture/prepass and lifecycle are technical evidence, not art acceptance."
+  ],
+  "next": "VFX owner to isolate bloom/volume/embers at exact failing frame, preserving actors/camera/65% gate. No runtime promotion yet."
+}

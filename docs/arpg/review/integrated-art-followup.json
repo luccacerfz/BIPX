@@ -1,0 +1,153 @@
+{
+  "observedAt": "2026-09-19T01:43:41.116567+00:00",
+  "scope": "Root independently inspected six original native gameplay stills. Does not cover full playback, human feel, listening, physical device, or AAA acceptance.",
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/combo-dwarf-high-gravity-mature.png",
+      "sha256": "981a14a7f0d9b7ab9c307ad7fbaece3af4921d41cb4a375294d2348bb6a52681"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/combo-warrior-high-living-stunned-targets.png",
+      "sha256": "73252bbe99002147e390636d6d96eb277f289ae2c49ca0552bd79f15344fe5bd"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-dwarf-standing-standing-1-release.png",
+      "sha256": "0fea2483ed9fa6836db4ce482ec6033677a9a4a53b6281015bdba40ace75bfd2"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-warrior-standing-standing-1-active.png",
+      "sha256": "3a8d68ee3032039f917f293cf9271b13cb0a98ae0a071fd729f1927a5c12f8fc"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/combo-warrior-high-confirmed-dash-death.png",
+      "sha256": "dfe33d8a4954aba9c029b58436726581ab8ccb9b93d2e809dd54d1778df665ce"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/combo-dwarf-high-living-frozen-targets.png",
+      "sha256": "969850dba2afba37f1cecbde359143e37de38eba0565a0705ca87a990d9c9243"
+    }
+  ],
+  "reportsRead": [
+    {
+      "path": "output/playwright/2026-09-19T01-32-57-940Z-quality-suite/suite.json",
+      "sha256": "c37a55c1d23807a5d368e270e199b6abf2c9352f6546fe923ef6deaedb08d031"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-32-23-124Z-audio-reconnect-gameplay/audio-reconnect-summary.json",
+      "sha256": "f2c180ebc21c8aae505d325b0a39fa65ad54a005e6e370d008a44bd43ee93f02"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/arpg-combos.json",
+      "sha256": "520b04cf7cedfac0d7f8e259a9825f32d7b0d950bbb8968351a587eab4d4b964"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-39-04-801Z-verify-arpg-network/arpg-network.json",
+      "sha256": "b66f52b5b7c3e9970b08b3dcb46f3f24d6b56cf2c4beee4f71b9a8b4c17ae40c"
+    },
+    {
+      "path": "output/playwright/2026-09-19T01-39-37-158Z-verify-arpg-browser/arpg-browser.json",
+      "sha256": "d407be998af1a6d59e693d75e39ddd414720dadc7ae416243b5c7aefb9b2f1d8"
+    }
+  ],
+  "sourceManifestReport": "output/playwright/2026-09-19T01-35-11-363Z-verify-arpg-combos/combo-dwarf-high.json",
+  "sourceCount": 213,
+  "sourceChangedDuringRun": false,
+  "currentSourceMismatches": [],
+  "directAudioReview": false,
+  "audioInputCapability": "Tool returned audio content omitted because audio input is unsupported. No listening occurred.",
+  "acceptedAAA": false,
+  "acceptedNoSliding": false,
+  "newJefPending": false,
+  "jef": {
+    "path": "output/qa/arpg-horizon-integrated-20260919/jef.json",
+    "sha256": "c3b7568701c0390a90d5909139f1f0a90c3a615b42f681fc9d54cff9572d4a0c",
+    "evaluatedAt": "2026-09-19T01:46:13.778Z",
+    "httpStatus": 200,
+    "status": "requires_further_work",
+    "evaluationMode": "indirect_text_evidence_only",
+    "directVisualEvaluation": false,
+    "directAudioEvaluation": false,
+    "stateSha256": "2052464b01ca478a4a6e197bf3956e4c009aa7fdea66cbb235eb06f10dece5dd",
+    "rubricSha256": "fc10b767ef9d5d3f62886822d34b15ad7b747434d9f8c9e386933ff3f10bb2b4",
+    "fullGoalComplete": false,
+    "acceptedScores": {
+      "game_design": null,
+      "animation": null,
+      "art_direction": null,
+      "vfx": null,
+      "combat_feel": null,
+      "ui_ux": null,
+      "mobile": null,
+      "audio": null,
+      "performance": null,
+      "multiplayer": null,
+      "accessibility": null,
+      "reliability": null
+    }
+  },
+  "naturalRuns": {
+    "path": "output/playwright/2026-09-19T01-41-10-684Z-verify-natural-runs/natural-runs.json",
+    "sha256": "5a54cf36ffa74df547add2b52487c9be03631fa42328c7eb8cbc8ce833432cd1",
+    "passed": true,
+    "durationMsPerClass": 60000,
+    "results": [
+      {
+        "character": "warrior",
+        "passed": true,
+        "coverage": {
+          "actualKillsObserved": true,
+          "maxKillsInOneLife": 24,
+          "maxWave": 1,
+          "maxLevel": 3,
+          "actualXpObserved": true,
+          "upgrades": "observed",
+          "death": "observed naturally",
+          "restart": "observed after natural death",
+          "humanFeelReview": "pending",
+          "physicalMobile": false,
+          "skillIds": [
+            "warrior_war_cry",
+            "warrior_cleaving_dash",
+            "warrior_shield_charge"
+          ]
+        },
+        "frameSample": {
+          "averageFps": 142.18427241368985,
+          "p95Ms": 8.299999999995634,
+          "p99Ms": 8.700000000000728,
+          "worstMs": 48.599999999998545,
+          "framesOver50Ms": 0
+        }
+      },
+      {
+        "character": "dwarf",
+        "passed": true,
+        "coverage": {
+          "actualKillsObserved": true,
+          "maxKillsInOneLife": 78,
+          "maxWave": 2,
+          "maxLevel": 7,
+          "actualXpObserved": true,
+          "upgrades": "observed",
+          "death": "not observed",
+          "restart": "not observed",
+          "humanFeelReview": "pending",
+          "physicalMobile": false,
+          "skillIds": [
+            "dwarf_explosive_cannon",
+            "dwarf_frost_shot",
+            "dwarf_gravity_shot"
+          ]
+        },
+        "frameSample": {
+          "averageFps": 140.9398761790003,
+          "p95Ms": 8.399999999999636,
+          "p99Ms": 13.900000000001455,
+          "worstMs": 27.799999999999272,
+          "framesOver50Ms": 0
+        }
+      }
+    ]
+  },
+  "updatedAt": "2026-09-19T01:48:08.094869+00:00"
+}

@@ -1,0 +1,48 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><link rel="icon" href="data:,"><title>Brute v4 staging</title>
+<style>body{margin:0;background:#17232c;color:#ddd;font:15px system-ui}#info{position:absolute;left:20px;top:16px;white-space:pre}#labels{position:absolute;bottom:44px;display:flex;justify-content:space-around;width:100%}#scope{position:absolute;bottom:12px;left:20px;color:#b7c4ca}canvas{display:block}</style>
+<div id="info">BRUTE v4 · staging</div><div id="labels"><span>Frontal · Zombie Attack 2 · 0,55 s = 4,545×</span></div><div id="scope">FIXTURE · fontes Mixamo + Brute preservado · sem arma/IK/pernas fixas · sem autoridade</div>
+<script type="module">
+import * as THREE from '/vendor/three/three.module.js';
+import {GLTFLoader} from '/src/assets/vendor/GLTFLoader.js';
+import {copyBruteAttack} from '/output/brute-motion-v4/attack-profile-adapter.mjs';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#17232c');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;document.body.append(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd6e3f5,0x4c392d,2.3));
+for(const[c,p,x,y,z]of [[0xffd3ad,3,-4,6,-4],[0x80c7ff,2,4,5,4]]){const l=new THREE.DirectionalLight(c,p);l.position.set(x,y,z);scene.add(l);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshStandardMaterial({color:0x34444a,roughness:1}));floor.rotation.x=-Math.PI/2;scene.add(floor);const grid=new THREE.GridHelper(60,60,0x74878c,0x425b62);grid.position.y=.002;scene.add(grid);
+const camera=new THREE.PerspectiveCamera(34,innerWidth/innerHeight,.1,120);
+const profiles=await fetch('/output/brute-motion-v4/attack-profiles.json').then(r=>r.json()).then(p=>p.filter(x=>x.id==='brute-v4-frontal'));
+const groundProbes=await fetch('/assets/models/monsters/ground-probes.json').then(r=>r.json());
+const loader=new GLTFLoader();const actors=[];
+for(const [i,name]of ['frontal'].entries()){
+ const g=await loader.loadAsync(`/output/brute-motion-v4/${name}/brute.glb`),root=new THREE.Group(),model=g.scene;root.position.x=0;root.add(model);scene.add(root);model.rotation.y=Math.PI/2;
+ let body;model.traverse(o=>{if(o.isSkinnedMesh){body=o;o.frustumCulled=false;o.skeleton.update();}});model.updateMatrixWorld(true);
+ const mixer=new THREE.AnimationMixer(model),attack=mixer.clipAction(copyBruteAttack(g,profiles[i])),idle=mixer.clipAction(g.animations[0]);
+ idle.play();mixer.update(0);model.updateMatrixWorld(true);body.skeleton.update();const bounds=new THREE.Box3().setFromObject(model,true);root.scale.setScalar(3.3/bounds.getSize(new THREE.Vector3()).y);model.position.y-=bounds.min.y;
+ const marker=new THREE.Mesh(new THREE.SphereGeometry(.04,10,6),new THREE.MeshBasicMaterial({color:0x64ffbc,depthTest:false}));marker.renderOrder=10;scene.add(marker);
+ actors.push({name,root,model,body,mixer,attack,idle,marker,profile:profiles[i],mode:'idle',elapsed:0,probes:groundProbes.brute.vertexIndices,baseY:model.position.y});
+}
+let view='threequarter',playing=false,raf=0,frames=[],label='sample';
+const bone=(a,name)=>a.model.getObjectByName(name).getWorldPosition(new THREE.Vector3()).toArray();
+function reset(a){a.mixer.stopAllAction();a.idle.reset().stopFading().setEffectiveWeight(1).setEffectiveTimeScale(1).play();a.mixer.update(0);a.mode='idle';a.elapsed=0;}
+function ground(a){a.root.updateMatrixWorld(true);a.body.skeleton.update();const inverse=a.model.matrixWorld.clone().invert(),point=new THREE.Vector3();let minimum=Infinity;for(const index of a.probes){a.body.getVertexPosition(index,point).applyMatrix4(a.body.matrixWorld).applyMatrix4(inverse);minimum=Math.min(minimum,point.y);}if(Number.isFinite(minimum))a.model.position.y=-minimum;}
+function render(){for(const a of actors){ground(a);a.root.updateMatrixWorld(true);a.body.skeleton.update();a.marker.position.fromArray(bone(a,'R_Hand'));}renderer.render(scene,camera);document.querySelector('#info').textContent=`BRUTE v4 · ${view} · ${label}\nFrontal ${actors[0].elapsed.toFixed(3)}s · verde=R_Hand\n${actors.map(a=>`${a.name}: ${a.mode}`).join(' | ')}`;}
+function snapshot(full=false){return actors.map(a=>{a.root.updateMatrixWorld(true);a.body.skeleton.update();const data={name:a.name,mode:a.mode,elapsed:a.elapsed,hand:bone(a,'R_Hand'),head:bone(a,'Head'),hip:bone(a,'Hip'),feet:[bone(a,'L_Foot'),bone(a,'R_Foot')],scale:a.root.scale.x,floorCorrection:(a.model.position.y-a.baseY)*a.root.scale.y};if(full){const box=new THREE.Box3().setFromObject(a.root,true);data.minY=box.min.y;data.size=box.getSize(new THREE.Vector3()).toArray();}return data;});}
+function setView(name){view=name;for(const a of actors)a.root.rotation.y=name==='arpg'?Math.PI:0;if(name==='arpg'){camera.fov=48;camera.position.set(0,17,20);camera.lookAt(0,1.2,0);}else{camera.fov=34;camera.position.set(3.4,3.1,-7.5);camera.lookAt(0,1.35,0);}camera.updateProjectionMatrix();render();}
+function seek(phase){playing=false;cancelAnimationFrame(raf);label='POSE AMOSTRADA';for(const a of actors){a.mixer.stopAllAction();a.attack.reset().stopFading().setEffectiveWeight(1).setLoop(THREE.LoopOnce,1).play();a.attack.paused=true;a.attack.time=phase*a.profile.sourceDuration;a.mixer.update(0);a.elapsed=phase*a.profile.duration;a.mode=`Attack fase${phase.toFixed(3)}`;}render();return snapshot(true);}
+function seekMarkers(){playing=false;cancelAnimationFrame(raf);label='MARCADORES PROPOSTOS';for(const a of actors){a.mixer.stopAllAction();a.attack.reset().stopFading().setEffectiveWeight(1).play();a.attack.paused=true;a.attack.time=a.profile.sourceImpactAt;a.mixer.update(0);a.elapsed=a.profile.impactAt;a.mode='Attack marker';}render();return snapshot(true);}
+function play(timing='caller'){
+ playing=false;cancelAnimationFrame(raf);for(const a of actors)reset(a);frames=[];let elapsed=-.3,start=performance.now(),last=start;playing=true;label=`PLAYBACK ${timing==='caller'?'caller .55s':'duracao fonte'}`;
+ function frame(now){if(!playing)return;const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;elapsed=(now-start)/1000-.3;
+  for(const a of actors){const duration=timing==='caller'?a.profile.duration:a.profile.sourceDuration;
+   if(elapsed>=0&&a.mode==='idle'){a.idle.fadeOut(.065);a.attack.reset().setEffectiveWeight(1).setLoop(THREE.LoopOnce,1).fadeIn(.065).play();a.attack.paused=true;a.mode='Attack';}
+   if(a.mode==='Attack'){a.elapsed=Math.min(elapsed,duration);a.attack.time=a.elapsed/duration*a.profile.sourceDuration;if(elapsed>=duration){a.attack.fadeOut(.14);a.idle.reset().setEffectiveWeight(1).fadeIn(.14).play();a.mode='recovery';}}
+   a.mixer.update(dt);
+  }
+  render();frames.push({time:elapsed,wallTime:(now-start)/1000,dt,actors:snapshot()});const maximum=timing==='caller'?.55:Math.max(...profiles.map(p=>p.sourceDuration));if(elapsed<maximum+.35)raf=requestAnimationFrame(frame);else playing=false;
+ }
+ raf=requestAnimationFrame(frame);
+}
+for(const a of actors)reset(a);setView('threequarter');
+window.bruteReview={ready:true,seek,seekMarkers,setView,play,snapshot,get playing(){return playing;},get frames(){return frames;},glInfo(){const gl=renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');return{renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),error:gl.getError()};}};
+</script></html>

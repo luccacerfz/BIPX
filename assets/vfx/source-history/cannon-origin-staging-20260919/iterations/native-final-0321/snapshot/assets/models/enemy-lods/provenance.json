@@ -1,0 +1,233 @@
+[
+  {
+    "id": "orcPeon",
+    "file": "orcPeon.glb",
+    "source": "/Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/assets/models/orc-peon.glb",
+    "sourceSha256Before": "f183383155b0a763f46039a93bf048604a5a1f95529a3b4b9b6511b5767c846d",
+    "sourceSha256After": "f183383155b0a763f46039a93bf048604a5a1f95529a3b4b9b6511b5767c846d",
+    "sourcePreserved": true,
+    "sha256": "7ca398325c22843ac87c82fc55a94c9931a1c21eaf91bd60772423126c985a67",
+    "bytes": 127284,
+    "triangles": 912,
+    "meshes": [
+      {
+        "name": "OrcBody",
+        "sourceTriangles": 27381,
+        "weldedTriangles": 27381,
+        "targetTriangles": 670,
+        "triangles": 670
+      },
+      {
+        "name": "OrcPeasantMiner_Equipment_Mesh001",
+        "sourceTriangles": 242,
+        "weldedTriangles": 240,
+        "targetTriangles": 20,
+        "triangles": 20
+      },
+      {
+        "name": "OrcPeasantMiner_Equipment_Mesh001_1",
+        "sourceTriangles": 238,
+        "weldedTriangles": 208,
+        "targetTriangles": 20,
+        "triangles": 35
+      },
+      {
+        "name": "OrcPeasantMiner_Equipment_Mesh001_2",
+        "sourceTriangles": 1648,
+        "weldedTriangles": 1648,
+        "targetTriangles": 138,
+        "triangles": 138
+      },
+      {
+        "name": "OrcPeasantMiner_Equipment_Mesh001_3",
+        "sourceTriangles": 220,
+        "weldedTriangles": 220,
+        "targetTriangles": 18,
+        "triangles": 18
+      },
+      {
+        "name": "OrcPeasantMiner_Equipment_Mesh001_4",
+        "sourceTriangles": 392,
+        "weldedTriangles": 392,
+        "targetTriangles": 33,
+        "triangles": 32
+      }
+    ],
+    "height": 1,
+    "sourceHeight": 0.8419968676945803,
+    "normalizationScaleAfterDecimation": 1.0187004050944357,
+    "groundOffsetBeforeNormalization": 0.013974270783364773,
+    "forward": [
+      0,
+      0,
+      -1
+    ],
+    "textures": [
+      [
+        "OrcPeasantMiner_basecolor",
+        [
+          512,
+          512
+        ]
+      ]
+    ],
+    "pose": "Exact runtime loader Idle at time 0, deformed on CPU before simplification",
+    "skeletons": 0,
+    "animations": 0,
+    "blender": "5.2.0 LTS",
+    "trianglesBeforeGltfCleanup": 913,
+    "primitives": 6,
+    "nodes": 1,
+    "snapshotWorldMinY": -9.957135810312323e-12,
+    "snapshotWorldMaxY": 1,
+    "snapshotWorldHeight": 1.0000000000099571,
+    "instanceScaleRule": "Use desired actor world height only; sourceHeight is already normalized out of the extracted world-space vertices."
+  },
+  {
+    "id": "zombie",
+    "file": "zombie.glb",
+    "source": "/Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/assets/models/monsters/zombie.glb",
+    "sourceSha256Before": "af6a973701eacee171d58521108a4b1e324194442946585b4b41c03c96ba1dbf",
+    "sourceSha256After": "af6a973701eacee171d58521108a4b1e324194442946585b4b41c03c96ba1dbf",
+    "sourcePreserved": true,
+    "sha256": "55c8973fef23c17f2b5c963cbd791537abc5bbccc97075d802336f9e3773b6b1",
+    "bytes": 131840,
+    "triangles": 886,
+    "meshes": [
+      {
+        "name": "tripo_node_b82f0afb-168c-4a34-a92b-e0397526a6ad",
+        "sourceTriangles": 6893,
+        "weldedTriangles": 6893,
+        "targetTriangles": 900,
+        "triangles": 899
+      }
+    ],
+    "height": 1,
+    "sourceHeight": 0.8998414929978074,
+    "normalizationScaleAfterDecimation": 1.0017342449174111,
+    "groundOffsetBeforeNormalization": 0.002795304637402296,
+    "forward": [
+      0,
+      0,
+      -1
+    ],
+    "textures": [
+      [
+        "Color_b82f0afb-168c-4a34-a92b-e0397526a6ad",
+        [
+          512,
+          512
+        ]
+      ]
+    ],
+    "pose": "Exact runtime loader Idle at time 0, deformed on CPU before simplification",
+    "skeletons": 0,
+    "animations": 0,
+    "blender": "5.2.0 LTS",
+    "trianglesBeforeGltfCleanup": 899,
+    "primitives": 1,
+    "nodes": 1,
+    "snapshotWorldMinY": 1.214306433183765e-17,
+    "snapshotWorldMaxY": 1.0000000000000002,
+    "snapshotWorldHeight": 1.0000000000000002,
+    "instanceScaleRule": "Use desired actor world height only; sourceHeight is already normalized out of the extracted world-space vertices."
+  },
+  {
+    "id": "brute",
+    "file": "brute.glb",
+    "source": "/Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/assets/models/monsters/brute.glb",
+    "sourceSha256Before": "d1d58b1ae86045d9fa39dba9b4e87a0bd6d1a66b347d74624cf8095ce208c02a",
+    "sourceSha256After": "d1d58b1ae86045d9fa39dba9b4e87a0bd6d1a66b347d74624cf8095ce208c02a",
+    "sourcePreserved": true,
+    "sha256": "f522bc1e15e8297f93b73b1bf261d2692375665b8903bf4f23934379bea59d1a",
+    "bytes": 121280,
+    "triangles": 891,
+    "meshes": [
+      {
+        "name": "tripo_node_cb020753-b94b-45ac-98e9-184c3251d24d",
+        "sourceTriangles": 6491,
+        "weldedTriangles": 6491,
+        "targetTriangles": 900,
+        "triangles": 900
+      }
+    ],
+    "height": 1,
+    "sourceHeight": 0.983186649826362,
+    "normalizationScaleAfterDecimation": 0.9942804135815299,
+    "groundOffsetBeforeNormalization": -0.0026588879991322756,
+    "forward": [
+      0,
+      0,
+      -1
+    ],
+    "textures": [
+      [
+        "Color_cb020753-b94b-45ac-98e9-184c3251d24d",
+        [
+          512,
+          512
+        ]
+      ]
+    ],
+    "pose": "Exact runtime loader Idle at time 0, deformed on CPU before simplification",
+    "skeletons": 0,
+    "animations": 0,
+    "blender": "5.2.0 LTS",
+    "trianglesBeforeGltfCleanup": 900,
+    "primitives": 1,
+    "nodes": 1,
+    "snapshotWorldMinY": -9.71445146547012e-17,
+    "snapshotWorldMaxY": 1.0000000016149984,
+    "snapshotWorldHeight": 1.0000000016149984,
+    "instanceScaleRule": "Use desired actor world height only; sourceHeight is already normalized out of the extracted world-space vertices."
+  },
+  {
+    "id": "lich",
+    "file": "lich.glb",
+    "source": "/Users/luccacerf/Projetos/Pessoal/Gaming/BIPX/assets/models/monsters/lich.glb",
+    "sourceSha256Before": "f6ddd47d97757b4acee76c056baa26c644ff19e2afa17fb5630b00108e832e44",
+    "sourceSha256After": "f6ddd47d97757b4acee76c056baa26c644ff19e2afa17fb5630b00108e832e44",
+    "sourcePreserved": true,
+    "sha256": "c2652b342d9eff7cf1ab74c50fc69483c52e9562ffbddf67cc502d846330fc6b",
+    "bytes": 126204,
+    "triangles": 899,
+    "meshes": [
+      {
+        "name": "tripo_node_de2d1293-ddd8-4e3c-a373-bcc443359e84",
+        "sourceTriangles": 7148,
+        "weldedTriangles": 7148,
+        "targetTriangles": 900,
+        "triangles": 900
+      }
+    ],
+    "height": 1,
+    "sourceHeight": 0.9914485824883439,
+    "normalizationScaleAfterDecimation": 0.9978706431869708,
+    "groundOffsetBeforeNormalization": 0.0012251787120476365,
+    "forward": [
+      0,
+      0,
+      -1
+    ],
+    "textures": [
+      [
+        "Color_de2d1293-ddd8-4e3c-a373-bcc443359e84",
+        [
+          512,
+          512
+        ]
+      ]
+    ],
+    "pose": "Exact runtime loader Idle at time 0, deformed on CPU before simplification",
+    "skeletons": 0,
+    "animations": 0,
+    "blender": "5.2.0 LTS",
+    "trianglesBeforeGltfCleanup": 900,
+    "primitives": 1,
+    "nodes": 1,
+    "snapshotWorldMinY": -1.3877787807814457e-17,
+    "snapshotWorldMaxY": 0.9999999999999997,
+    "snapshotWorldHeight": 0.9999999999999997,
+    "instanceScaleRule": "Use desired actor world height only; sourceHeight is already normalized out of the extracted world-space vertices."
+  }
+]

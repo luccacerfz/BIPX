@@ -1,0 +1,19 @@
+{
+  "observedAt": "2026-09-19T00:52:12.349331+00:00",
+  "device": {
+    "model": "iPhone 17 Pro (iPhone18,1)",
+    "coreDeviceId": "826C2228-376F-5389-9075-4C812A6E9A8B",
+    "state": "available (paired)"
+  },
+  "access": {
+    "app": "Espelhamento do iPhone",
+    "state": "macOS authentication required",
+    "userActionRequested": true,
+    "unlocked": false
+  },
+  "physicalGameplayTested": false,
+  "scope": "Pairing and native access gate only. No Safari launch, phone gameplay, performance or physical touch proof. User server remains loopback5173; a separate route/candidate is required before phone navigation.",
+  "lastRecheckedAt": "2026-09-19T04:45:31.754606+00:00",
+  "lastRecheck": "CUA iPhone Mirroring still shows macOS authentication required. No credential entry, unlock attempt or alternate access. Existing user action request remains pending.",
+  "lastRecheckEvidence": "CUA getApp iPhone Mirroring returned macOS authentication lock with secure password field; no phone UI available."
+}

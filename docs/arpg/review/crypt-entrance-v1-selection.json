@@ -1,0 +1,34 @@
+{
+  "at": "2026-09-19T04:51:26.550556+00:00",
+  "reviewer": "Root",
+  "decision": "select crypt composition with refined10-part collision proxy; prepare combined Environment candidate with independently selected maintenance opening, no runtime promotion yet",
+  "candidateManifest": "output/environment/crypt-entrance-v1/selection-manifest.json",
+  "candidateLayoutSHA256": "b3ed6566eb9176a0450a4c484888f71e62286edb9e14f862c04987ad091e1fb1",
+  "imagesActuallyViewed": [
+    {
+      "file": "output/playwright/environment-crypt-entrance-v1/crypt-baseline-entrance.png",
+      "sha256": "1813e76f976316c1ff7d8878ed932b0fae7c1d1c8535b0ddb25d12dba19fac39"
+    },
+    {
+      "file": "output/playwright/environment-crypt-entrance-v1-final/crypt-candidate-entrance.png",
+      "sha256": "73217bedba5000368759819e64f9de7bcdf595d4f00da89349251f6cb453ea44"
+    },
+    {
+      "file": "output/playwright/environment-crypt-entrance-v1-final/crypt-candidate-colliders.png",
+      "sha256": "7be3104ebc83d0285c2837f5f5726f040ff479e3823d73055ff2e17840dcf30c"
+    }
+  ],
+  "observations": [
+    "Organic taller root/stone silhouette and recessed closed door distinguish this crypt from the former rectangular wall.",
+    "Three original enemies in front remain visible; no actor relocation for the image.",
+    "Irregular low stone threshold improves local composition; surrounding repetitive grave/pavement pattern remains.",
+    "Overlay shows refined narrow crown/pillar proxies; sampled geometry is an approximation, not a watertight certificate."
+  ],
+  "budget": "420088newbytes; dressing70props/48batches/17materials/32textures/257180triangles; whole-scene136draws in this view, not benchmark.",
+  "next": "Owner prepare new combined layout from exact crypt candidate plus two maintenance placement deltas a5f4; prove all other descriptors exact and local routes/contact. Preserve original candidates and native evidence. Coordinate runtime/server geometry together in future batch after Physics native followup.",
+  "limits": [
+    "Static native fixture only.",
+    "No whole-arena navigation/spawn/performance or AAA approval.",
+    "Do not deploy only visuals without matching collision layout."
+  ]
+}

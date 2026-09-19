@@ -1,0 +1,31 @@
+{
+  "reviewedAt": "2026-09-19T02:27:48.191098+00:00",
+  "scope": "Root independently inspected four original native gameplay PNGs after crowd integration; sampled stills, no video/audio perception.",
+  "images": [
+    {
+      "path": "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/combo-dwarf-high-gravity-mature.png",
+      "sha256": "d2d01084bcf9b0ef23919093577da402ba53ba04d41fd3b71edbec30993112e9"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/combo-warrior-high-living-stunned-targets.png",
+      "sha256": "27e1187e2af3dd8b2e07438d7e4ed6511db445615df3e26d33348528317f87e0"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/combo-warrior-high-confirmed-dash-death.png",
+      "sha256": "0d8766b0e2240ff3e627c476a2d8fe2243475097e87eef873408be9ba0b28745"
+    },
+    {
+      "path": "output/playwright/2026-09-19T02-18-58-033Z-verify-arpg-combos/combo-dwarf-high-living-frozen-targets.png",
+      "sha256": "87d522e162b58fd9cfbfc846d76848a30f8aeb7617ef359fc8ffa1ae5b0bab0e"
+    }
+  ],
+  "observations": [
+    "Mature gravity center/halo and fixed area read clearly in this frame. Central targets remain crowded, with fire/ice/number text competing. This uses old runtime cannon, not the staged replacement.",
+    "Living frozen targets show individual icy silhouettes and surrounding fragments. Immediate hit flash hides internal detail; persistent freeze appearance needs playback rather than inference from this instant.",
+    "Shield contact shows front-facing shield and local impact/stun cues, with warrior silhouette recognizable. This frame alone does not establish all target stun timing.",
+    "Confirmed dash kill frame has intertwined warrior/victim bodies and several pale crescents. The two halves are not independently clear enough here to approve the user-requested cleave visually.",
+    "Painted three-skill HUD, both resource spheres, weapon and health readable at1440x900. Desktop hint panel still present during initial onboarding; no physical mobile inference."
+  ],
+  "aaaAccepted": false,
+  "next": "Preserve functional crowd/spawn fixes; promote selected environment in coordinated owner window; retain cannon continuity/composition gates and later improve cleave silhouette."
+}

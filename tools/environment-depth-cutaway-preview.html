@@ -1,0 +1,54 @@
+<!doctype html><html><meta charset="utf-8"><base href="/"><link rel="icon" href="data:,"><title>Environment cutaway depth A/B</title>
+<style>html,body{margin:0;overflow:hidden;background:#10212b;color:white;font:14px system-ui}#panels{display:flex}canvas{width:50vw;height:100vh}header{position:fixed;left:0;right:0;top:0;display:flex;pointer-events:none}header div{width:50%;padding:14px;background:#06131bd9;box-sizing:border-box}small{display:block;opacity:.8}</style>
+<header><div>ANTES · depth sem cutaway<small id="leftLabel"></small></div><div>CANDIDATO · depth com descarte compartilhado<small>Fixture sintética · sem promoção de runtime</small></div></header><div id="panels"><canvas id="left"></canvas><canvas id="right"></canvas></div>
+<script type="module">
+import * as THREE from '/vendor/three/three.module.js';
+import {createCemetery} from '/src/render/cemetery.js';
+import {getEnvironmentLayout} from '/src/render/environment-layout.js';
+import {shareEnvironmentCutawayDepth} from '/src/render/environment-cutaway.js';
+import {loadMonsterLibrary} from '/src/assets/monster-library.js';
+import {createGravityHorizonNebulaPrototype} from '/src/vfx-prototype/gravity-horizon-nebula.js';
+import {createCinematicPipeline} from '/src/render/cinematic-pipeline.js';
+const legacyColor=new URLSearchParams(location.search).has('legacyColor');
+const {loadAssetDressing}=await import(legacyColor?'/src/render/asset-dressing-baseline.js':'/src/render/asset-dressing.js');
+const width=innerWidth/2,height=innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(width,height);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;renderer.localClippingEnabled=true;
+const contexts=['left','right'].map(id=>{const c=document.getElementById(id);c.width=width;c.height=height;return c.getContext('2d',{alpha:false})});
+const pipeline=createCinematicPipeline({THREE,renderer});pipeline.setQuality('high');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x172c34);scene.fog=new THREE.FogExp2(0x172c34,.012);scene.add(new THREE.HemisphereLight(0xa4cddc,0x233d3a,2.2));const moon=new THREE.DirectionalLight(0xb6dcf2,3.8);moon.position.set(-20,36,18);scene.add(moon);
+const cemetery=createCemetery({THREE,scene}),ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),cemetery.groundMaterial);ground.rotation.x=-Math.PI/2;scene.add(ground);
+const trees=getEnvironmentLayout().legacy.filter(c=>c.id.startsWith('tree')).map(c=>new THREE.Vector3(c.x,0,c.z));const world=await loadAssetDressing({THREE,scene,trees,lanterns:cemetery.lanternPositions});for(const p of cemetery.lanternPlaceholders)p.visible=false;
+const actors=new THREE.Group();scene.add(actors);const library=await loadMonsterLibrary({THREE});const actor=library.create('zombie',{parent:actors,height:2.55});actor.update(.25,{speed:0});
+const camera=new THREE.PerspectiveCamera(48,width/height,.1,220),effect=createGravityHorizonNebulaPrototype(THREE,scene);
+const targets=[0,1].map(()=>new THREE.WebGLRenderTarget(width,height,{minFilter:THREE.NearestFilter,magFilter:THREE.NearestFilter,depthBuffer:true}));
+const materialCaches=[new Map(),new Map()];let attached=0;
+function depthFor(source,fixed){const cache=materialCaches[fixed?1:0];let depth=cache.get(source);if(!depth){depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,blending:THREE.NoBlending,side:source.side,map:source.map,alphaMap:source.alphaMap,alphaTest:source.alphaTest});
+ if(fixed&&shareEnvironmentCutawayDepth(source,depth))attached++;cache.set(source,depth);}
+ depth.clippingPlanes=source.clippingPlanes;depth.clipIntersection=source.clipIntersection;return depth;}
+function prepass(fixed){const swapped=[],hidden=[],background=scene.background;effect.group.visible=false;
+ scene.traverseVisible(object=>{if(!object.isMesh)return;const materials=Array.isArray(object.material)?object.material:[object.material];if(materials.every(m=>m.depthWrite===false||(m.transparent&&m.opacity<.99)||m.blending===THREE.AdditiveBlending)){hidden.push(object);object.visible=false;return;}swapped.push([object,object.material]);object.material=Array.isArray(object.material)?materials.map(m=>depthFor(m,fixed)):depthFor(object.material,fixed);});
+ scene.background=null;renderer.setClearColor(0xffffff,1);renderer.setRenderTarget(targets[fixed?1:0]);renderer.clear();renderer.render(scene,camera);
+ const pixels=new Uint8Array(width*height*4);renderer.readRenderTargetPixels(targets[fixed?1:0],0,0,width,height,pixels);
+ renderer.setRenderTarget(null);scene.background=background;for(const[o,m]of swapped)o.material=m;for(const o of hidden)o.visible=true;
+ effect.setSceneDepth({texture:targets[fixed?1:0].texture,width,height,near:camera.near,far:camera.far});return pixels;}
+function colorPixels(){const gl=renderer.getContext(),p=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,p);return p;}
+function hash(p){let h=2166136261;for(const b of p)h=Math.imul(h^b,16777619);return (h>>>0).toString(16);}
+const center=new THREE.Vector3();let currentCase;
+function configure(kind){currentCase=kind;world.group.visible=kind!=='actor';actors.visible=kind==='actor';actors.position.set(0,0,0);
+ if(kind==='canopy'){center.set(9,0,-7);camera.position.set(0,15,18);camera.lookAt(9,.65,-7);}
+ else if(kind==='wall'){const w=new THREE.Vector3(Math.cos(.3)*34,0,Math.sin(.3)*34),n=new THREE.Vector3(-Math.sin(.3),0,Math.cos(.3));center.copy(w).addScaledVector(n,-5);camera.position.copy(w).addScaledVector(n,12);camera.position.y=3.4;camera.lookAt(center.x,.65,center.z);}
+ else {center.set(0,0,-6);camera.position.set(0,7,15);camera.lookAt(0,1,-4);}
+ camera.updateMatrixWorld(true);effect.set({position:center,radius:5,duration:5,remaining:3.2,quality:'high',reducedMotion:false});
+ world.update(new THREE.Vector3(),true,[],[],[{skillId:'dwarf_gravity_shot',position:center,radius:5,remaining:3.2}]);
+ document.querySelector('#leftLabel').textContent=`${kind} · t=1.8 s · mesmo shader de cor / câmera / efeito`;
+}
+function draw(fixed,fx=true,copy=-1){const depth=prepass(fixed);effect.group.visible=fx;pipeline.render(scene,camera,0);const pixels=colorPixels();if(copy>=0)contexts[copy].drawImage(renderer.domElement,0,0);return {depth,pixels};}
+function comparePixels(a,b,roi){let changed=0,delta=0,count=0;const bounds=roi??[0,0,width,height];for(let y=bounds[1];y<bounds[3];y++)for(let x=bounds[0];x<bounds[2];x++){if(x<0||x>=width||y<0||y>=height)continue;const i=(y*width+x)*4,d=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]);if(d>0)changed++;delta+=d;count++;}return {changed,count,delta};}
+function sample(kind){configure(kind);const none=draw(false,false),before=draw(false,true,0),after=draw(true,true,1);const p=center.clone().add(new THREE.Vector3(0,.75,0)).project(camera),cx=Math.round((p.x*.5+.5)*width),cy=Math.round((p.y*.5+.5)*height),roi=[cx-160,cy-115,cx+160,cy+115];
+ const result={kind,synthetic:true,legacyColor,colorWithoutEffectHash:hash(none.pixels),depthDiff:comparePixels(before.depth,after.depth),nebulaDiff:comparePixels(before.pixels,after.pixels),fieldROI:comparePixels(before.pixels,after.pixels,roi),attached,worldFocus:world.stats.skillAreaFocusCount,camera:{position:camera.position.toArray(),center:center.toArray()},glError:renderer.getContext().getError(),depthEncoding:'RGBADepthPacking',depthSize:[width,height],pipeline:pipeline.getStats(),render:{...renderer.info.render}};
+ if(kind==='actor'){const ap=new THREE.Vector3(0,1.65,0).project(camera),ax=Math.round((ap.x*.5+.5)*width),ay=Math.round((ap.y*.5+.5)*height),actorROI=[ax-5,ay-5,ax+6,ay+6];let preserved=0,count=0;for(let y=actorROI[1];y<actorROI[3];y++)for(let x=actorROI[0];x<actorROI[2];x++){const i=(y*width+x)*4,d=Math.abs(none.pixels[i]-after.pixels[i])+Math.abs(none.pixels[i+1]-after.pixels[i+1])+Math.abs(none.pixels[i+2]-after.pixels[i+2]);count++;if(d<65)preserved++;}result.actor={depth:comparePixels(before.depth,after.depth,actorROI),torsoPreservedFraction:preserved/count,pixels:count,depthPolicy:'opaque actor is unmarked; no cutaway or depth-test override'}}
+ return result;
+}
+window.environmentDepthReview={ready:true,sample,dispose(){effect.dispose();pipeline.dispose();for(const t of targets)t.dispose();for(const c of materialCaches)for(const m of c.values())m.dispose();renderer.dispose();}};
+sample('canopy');
+</script></html>

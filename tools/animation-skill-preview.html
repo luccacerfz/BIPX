@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><link rel="icon" href="data:,"><title>BIPX animation fixture v2</title>
+<style>body{margin:0;background:#263442;color:#ecf4f7;font:15px system-ui}canvas{display:block}#label{position:fixed;top:18px;left:22px;background:#0b1529dd;padding:12px;white-space:pre}#note{position:fixed;bottom:15px;left:22px;background:#0b1529dd;padding:10px}</style>
+<div id="label">Loading…</div><div id="note">Native asset fixture · not gameplay · fixed world grid · actual skinned meshes</div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import { loadHeroVisual } from '../src/assets/character-library.js';
+import { loadDwarfVisual } from '../src/assets/dwarf-library.js';
+import { HERO_SKILL_MOTIONS } from '../src/assets/hero-skill-motion.js';
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#263442');scene.add(new THREE.HemisphereLight('#eff7ff','#544437',2.4));
+const sun=new THREE.DirectionalLight('#fff0d7',3);sun.position.set(5,9,4);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun,sun.target);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(2000,2000),new THREE.MeshStandardMaterial({color:'#697c83',roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.004;ground.receiveShadow=true;scene.add(ground,new THREE.GridHelper(2000,2000,'#96adb3','#465b64'));
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.05,3000),parent=new THREE.Group();scene.add(parent);
+const settings={character:'warrior',speed:0,direction:0,view:'front',playback:0};let actor,time=0,castSerial=0;
+async function load(){actor?.dispose();parent.position.set(0,0,0);actor=await(settings.character==='warrior'?loadHeroVisual:loadDwarfVisual)({THREE,parent,height:settings.character==='warrior'?2.7:2.55});time=0;}
+function frame(dt){if(!actor)return;const angle=settings.direction*Math.PI/180,velocity={x:Math.sin(angle)*settings.speed,z:-Math.cos(angle)*settings.speed};parent.position.x+=velocity.x*dt;parent.position.z+=velocity.z*dt;actor.update(dt,{speed:settings.speed,velocity});parent.updateMatrixWorld(true);time+=dt;
+const offset={front:[3.8,2.9,-6.8],side:[7,2.6,0],rear:[2.5,2.8,7],game:[5,7,9]}[settings.view];camera.position.copy(parent.position).add(new THREE.Vector3(...offset));camera.lookAt(parent.position.clone().add(new THREE.Vector3(0,1.2,0)));sun.position.copy(parent.position).add(new THREE.Vector3(5,9,4));sun.target.position.copy(parent.position);sun.target.updateMatrixWorld();renderer.render(scene,camera);document.querySelector('#label').textContent=`${settings.character} · ${actor.stats.currentClip}\n${actor.stats.cast?.skillId||'Locomotion'} · ${actor.stats.cast?.phase||''} ${actor.stats.cast?.elapsed?.toFixed(3)||''}\n${settings.speed} m/s · ${settings.direction}° · ${settings.view} · ${settings.playback}×`;
+}
+window.animationFixture={ready:false,definitions:HERO_SKILL_MOTIONS,configure:async options=>{Object.assign(settings,options);if(options.character||options.reset)await load();frame(0);},cast:(skillId,extra={})=>actor.cast({skillId,castId:`fixture-${++castSerial}`,...extra}),step:(count=1,dt=1/120)=>{for(let i=0;i<count;i++)frame(dt);return structuredClone(actor.stats);},snapshot:()=>({settings:{...settings},time,stats:structuredClone(actor.stats),position:parent.position.toArray(),glError:renderer.getContext().getError()})};
+await load();window.animationFixture.ready=true;frame(0);let previous=performance.now();function tick(now){const dt=Math.min((now-previous)/1000,.05)*settings.playback;previous=now;if(settings.playback>0)frame(dt);requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script></html>

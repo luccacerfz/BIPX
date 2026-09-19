@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {sha256} from './class-skill-vfx-support.mjs';
+const source=fs.readFileSync('tools/dash-art2-vfx-native.mjs','utf8');
+const a=source.indexOf(' function observeEventRevision('),b=source.indexOf(' const transform=classSkillVfx.updateDashTransform.bind',a);assert(a>=0&&b>a);
+const literal=source.slice(a,b),observe=new Function(literal+';return observeEventRevision;')();
+const trace={revisions:new WeakMap(),revision:0,renderRevision:0,castOrdinals:new Map(),observedEvents:[]};
+const cast={skillId:'warrior_cleaving_dash',castId:'test:1',phase:'cast',time:1,origin:{x:0,y:.1,z:0},target:{x:0,y:.1,z:0}};
+const history=[cast],before=JSON.stringify(history),results=[];
+const sample=renderTime=>{const result=observe(history,trace);results.push({renderTime,eventTime:result.event.time,revision:result.revision,previous:result.previousRevision,fresh:result.fresh,phase:result.event.phase});return result;};
+assert.equal(sample(1.016).fresh,true);assert.equal(sample(1.032).fresh,false);assert.equal(JSON.stringify(history),before);
+const travel={...cast,phase:'travel',time:1.032,target:{x:0,y:.1,z:.4}};history.push(travel);assert.equal(sample(1.049).fresh,true);assert.equal(sample(1.068).fresh,false);
+history.push({...travel,time:1.068,target:{x:0,y:.1,z:.8}});history.push({...travel,time:1.068,target:{x:0,y:.1,z:1.2},terminal:true});history.push({...travel,phase:'end',time:1.068,terminal:true});
+assert.equal(sample(1.085).fresh,true);assert.equal(sample(1.102).fresh,false);assert.equal(sample(1.118).fresh,false);
+assert.equal(trace.revision,5);assert.equal(trace.observedEvents.length,5);assert.equal(trace.observedEvents.at(-1).phase,'end');assert.deepEqual(trace.observedEvents.map(e=>e.eventOrdinalWithinCast),[1,2,3,4,5]);
+assert.notEqual(results[0].eventTime,results[0].renderTime);assert.equal(results[0].fresh,true);
+fs.writeFileSync('output/vfx-dash-art-v2/observer-cpu.json',JSON.stringify({at:new Date().toISOString(),passed:true,scope:'Literal read-only observer helper; old event time/new render time, identity revision, batched travel+terminal/end and no-event tail; no GPU',literalSHA256:sha256(literal),results,observedEvents:trace.observedEvents},null,2));
+console.log(JSON.stringify({passed:true,renders:results.length,revisions:trace.revision}));

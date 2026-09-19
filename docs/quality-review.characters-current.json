@@ -1,0 +1,56 @@
+{
+  "kind": "direct_visual_observations_without_scores",
+  "candidateSuite": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/suite.json",
+  "mainSha256": "96f38650216d1aba6a6789edc31b3836da9d5e0d75c257fcc3f5a6b0c99a4408",
+  "coverage": "partial; representative current native captures, not every frame or physical device",
+  "reviewedImages": [
+    {
+      "path": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-experience/compact-touch-experience-login.png",
+      "sha256": "c87ad398251275cb9e9646510cf20103e6f967c7bac2ecc9ed613fff64554e77",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-experience/landscape-touch-experience-playing.png",
+      "sha256": "1b2b3e03c4022ae25e5e9df4875f8dc2a9af702e30d9fdaa1b908ad32277e54c",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-experience/compact-touch-experience-simultaneous-touch-move-fire.png",
+      "sha256": "a8cb88f86ba40adcfbf367dda31226acbf1f6cc23b869251336977f24bb40520",
+      "syntheticFixture": false
+    },
+    {
+      "path": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-npcs/npc-desktop-bounded-horde.png",
+      "sha256": "e8457d1d7b74365c7c47567acbb15a4c24c4a47751838e712a763452d946d980",
+      "syntheticFixture": true
+    }
+  ],
+  "observations": [
+    "At 390x844 emulated viewport the actual login capture displays Aldric and Lyra portraits, role/weapon descriptions, selected-state marker, name field and both mode buttons legibly. This full-page screenshot does not establish physical phone keyboard behavior.",
+    "At 390x844 actual simultaneous touch movement/firing capture shows Lyra holding a rifle, muzzle flash and a tracer while touch controls and health/weapon labels remain visible. Canvas detail is visibly less sharp than the DOM HUD and text.",
+    "At 874x402 landscape actual gameplay, the top-right sword skill chip appears to crop the lower LVL 1 line against the HUD boundary. The main health/score and touch targets remain visible.",
+    "The current synthetic bounded-horde capture shows detailed imported near enemies alongside rings of tan, green and purple cylindrical far proxies and black far silhouettes. This creates a conspicuous art discontinuity. One cyan block-shaped boss remains visible. Tree canopies cover parts of the horde. This fixture seeds legacy build/HUD fields; its orb icon is not evidence that a naturally selected warrior fires an orb."
+  ],
+  "openVisualFindings": [
+    {
+      "id": "landscape-skill-level-clipping",
+      "status": "observed",
+      "severity": "minor",
+      "evidence": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-experience/landscape-touch-experience-playing.png"
+    },
+    {
+      "id": "mobile-canvas-sharpness",
+      "status": "observed-quality-limitation",
+      "severity": "review-required",
+      "evidence": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-experience/compact-touch-experience-simultaneous-touch-move-fire.png"
+    },
+    {
+      "id": "far-enemy-proxy-art-discontinuity",
+      "status": "observed",
+      "severity": "major-art-quality",
+      "evidence": "output/playwright/2026-09-18T18-06-31-749Z-quality-suite/verify-npcs/npc-desktop-bounded-horde.png"
+    }
+  ],
+  "scoresAssigned": false,
+  "physicalDevice": false
+}

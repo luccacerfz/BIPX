@@ -1,0 +1,7 @@
+# Cache da busca de vizinhos — revisão independente limitada
+
+Root leu o patch contacts-optimization e o verificador, além dos dois relatórios CPU referidos no JSON. O cache guarda somente lista/ordem dos corpos nas células; cada sweep ainda aplica os mesmos testes exatos de AABB/altura. update passa por remove e invalida cache; remove também invalida mesmo se o ID não existe. Resultado usa array independente e ordenação determinística. Nenhuma redução de atores, vizinhos, passos ou planejamento foi introduzida pelo patch.
+
+Os seis grupos de segurança passaram, incluindo mutações/mesmas células,70corpos/2100movimentos com alturas/raios distintos e400corpos10/20/60Hz com igualdade exata de segmentos/estados. A/B temporizado alterna ordem em6×3s, inclui reconstrução/update do índice e IA/crowd, desliga auditor só na medição. Fontes estáveis.400corpos60Hz:P95 12.456→7.492ms;10Hz:50.943→21.037ms.10corpos60Hz ficou ligeiramente pior,.0784→.0815ms, preservado. Custo continua material e CPU não é frame time do jogo.
+
+Revisão apoia levar o cache junto do candidato dinâmico à próxima janela coordenada, após handoff final do dono. Main/server devem integrar em ambos os lados, atualizar o índice após cada movimento e evitar reutilização após correções/pull. Não copiar snapshots históricos. Manter dash/charge com seu contrato de atravessar vítimas; validar spawn livre, freeze/stun sem empurrão ordinário, gravidade com parede/boss e retomada, rede e custo do jogo integrado. Fonte runtime ainda anterior nesta revisão; nenhum aceite global de física/desempenho.

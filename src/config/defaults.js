@@ -8,26 +8,26 @@ const baseConfig = {
   },
   lighting: {
     hemi: {
-      skyColor: 0xe7f4ff,
-      groundColor: 0x556c61,
-      intensity: 3.7,
+      skyColor: 0xa4cddc,
+      groundColor: 0x233d3a,
+      intensity: 2.2,
     },
     moon: {
-      color: 0xf1f7ff,
-      intensity: 4.9,
+      color: 0xb6dcf2,
+      intensity: 3.8,
       shadowMapSize: 2048,
       shadowBias: -0.0005,
     },
     player: {
       color: 0xffe2ab,
-      intensity: 6.1,
-      distance: 64,
+      intensity: 5.2,
+      distance: 24,
       height: 4.5,
     },
   },
   fog: {
-    color: 0x22323b,
-    density: 0.0065,
+    color: 0x172c34,
+    density: 0.012,
   },
   quality: {
     highPixelRatio: 2,
@@ -88,12 +88,12 @@ export const DEFAULT_CONFIG = Object.freeze({
       },
       lighting: {
         hemi: {
-          skyColor: 0xf0f8ff,
-          groundColor: 0x64786d,
-          intensity: 4.4,
+          skyColor: 0xbad8e2,
+          groundColor: 0x324c46,
+          intensity: 2.6,
         },
         moon: {
-          intensity: 5.4,
+          intensity: 3.9,
           shadowMapSize: 1024,
           shadowBias: -0.0018,
         },
@@ -104,7 +104,7 @@ export const DEFAULT_CONFIG = Object.freeze({
         },
       },
       fog: {
-        color: 0x2a3d46,
+        color: 0x1b303a,
         density: 0.013,
       },
       quality: {
@@ -147,12 +147,12 @@ export const DEFAULT_CONFIG = Object.freeze({
       },
       lighting: {
         hemi: {
-          skyColor: 0xf0f8ff,
-          groundColor: 0x607469,
-          intensity: 4.2,
+          skyColor: 0xbad8e2,
+          groundColor: 0x324c46,
+          intensity: 2.6,
         },
         moon: {
-          intensity: 5.1,
+          intensity: 3.9,
           shadowMapSize: 1024,
           shadowBias: -0.002,
         },
@@ -162,7 +162,7 @@ export const DEFAULT_CONFIG = Object.freeze({
         },
       },
       fog: {
-        color: 0x2a3d46,
+        color: 0x1b303a,
         density: 0.016,
       },
     }),
