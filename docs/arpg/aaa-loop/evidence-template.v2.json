@@ -1,0 +1,844 @@
+{
+  "schemaVersion": 2,
+  "language": "en",
+  "howToUse": [
+    "Copy this file, replace every REPLACE value and fill `observations`. Schema and rules: docs/quality-gates.md, \"Evidence file schema v2\".",
+    "Freeze the candidate first: node tools/jef-candidate-manifest.mjs --id <id> --out <dir>/candidate-manifest.json",
+    "Never add a coverage field: coverage is computed by tools/lib/evidence-lint.mjs from requiredScenarios.",
+    "Check without any API call: npm run jef:lint -- --evidence <file> --out <dir>"
+  ],
+  "candidate": {
+    "id": "REPLACE-candidate-id",
+    "manifest": {
+      "path": "REPLACE/candidate-manifest.json",
+      "sha256": "REPLACE-with-the-64-hex-sha256-of-the-manifest-file"
+    },
+    "deployedPreview": null
+  },
+  "roles": {
+    "implementer": "REPLACE",
+    "reviewer": "REPLACE (must differ from the implementer)",
+    "evaluator": "REPLACE (who runs the gate)"
+  },
+  "artifacts": {},
+  "dimensions": {
+    "game_design": {
+      "name": "Game design and class identity",
+      "scenarioChecklist": [
+        {
+          "id": "GD1",
+          "kind": "automated",
+          "text": "Natural play shows Aldric using the sword basic attack plus three intentional warrior skills.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD2",
+          "kind": "automated",
+          "text": "Natural play shows Lyra using the rifle basic attack plus three intentional dwarf skills.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD3",
+          "kind": "automated",
+          "text": "Exactly the six authorized skill IDs are present and no other active skill exists.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD4",
+          "kind": "automated",
+          "text": "Skill costs, resource regeneration and cooldowns are meaningful: they limit what the player can cast in natural play.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD5",
+          "kind": "automated",
+          "text": "Range and crowd control are meaningful in natural play.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD6",
+          "kind": "agent_observed",
+          "text": "The two classes require distinct decisions.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "GD7",
+          "kind": "agent_observed",
+          "text": "Preparation, impact and recovery of attacks and skills are readable.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "GD8",
+          "kind": "agent_observed",
+          "text": "Enemies give the player counterplay.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "GD9",
+          "kind": "human",
+          "text": "Wave pacing is meaningful in natural play.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "GD10",
+          "kind": "automated",
+          "text": "Upgrades and rewards are compatible with the class skills.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD11",
+          "kind": "automated",
+          "text": "The server owns skill casts and rejects forged casts.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD12",
+          "kind": "automated",
+          "text": "XP, drops, party, late join, reconnect, wipe and local ranking are preserved.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD13",
+          "kind": "automated",
+          "text": "The six canonical v2 functions behave as specified: real timed war-cry buff, swept cleaving dash, shield charge with area stun, explosive fire cannon, area-freezing shot, and persistent stationary gravity field with collision-respecting pull.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD14",
+          "kind": "automated",
+          "text": "Skill modifiers and expiry, every valid area target and boss resistances are proven.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "GD15",
+          "kind": "automated",
+          "text": "One death and one reward per dash victim, and authoritative status cleanup and reconstruction, are proven.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        }
+      ],
+      "observations": []
+    },
+    "animation": {
+      "name": "Animation, locomotion and contact",
+      "scenarioChecklist": [
+        {
+          "id": "AN1",
+          "kind": "agent_observed",
+          "text": "Native complete-cycle playback of the animations is inspected.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AN2",
+          "kind": "automated",
+          "text": "World-space foot contact and sliding are measured for walk, run, start, stop, turn and strafe at multiple speeds.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN3",
+          "kind": "automated",
+          "text": "World-space foot contact and sliding are measured during attacks and casts.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN4",
+          "kind": "automated",
+          "text": "The foot contact measurements include both local and remote actors.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN5",
+          "kind": "automated",
+          "text": "Independent skinned sole contact metrics cover both heroes and enemies.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN6",
+          "kind": "automated",
+          "text": "Stride is coherent with the actual distance travelled.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN7",
+          "kind": "agent_observed",
+          "text": "Body and weapon grips stay stable.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AN8",
+          "kind": "human",
+          "text": "Weight and transitions look natural.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AN9",
+          "kind": "automated",
+          "text": "Feet keep ground contact and mesh deformation stays finite.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN10",
+          "kind": "automated",
+          "text": "Attack impact timing is correct.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AN11",
+          "kind": "agent_observed",
+          "text": "Legs continue moving while casting.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AN12",
+          "kind": "human",
+          "text": "Inspected playback shows no visible foot sliding and acceptable artistic quality.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        }
+      ],
+      "observations": []
+    },
+    "art_direction": {
+      "name": "Art direction",
+      "scenarioChecklist": [
+        {
+          "id": "AR1",
+          "kind": "agent_observed",
+          "text": "Real rendered scenes are inspected from native desktop and mobile captures, in quiet and dense combat.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AR2",
+          "kind": "human",
+          "text": "Lighting and materials are coherent and balanced.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AR3",
+          "kind": "human",
+          "text": "Composition is intentional.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AR4",
+          "kind": "human",
+          "text": "Character and enemy silhouettes are clear.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AR5",
+          "kind": "agent_observed",
+          "text": "No visible clipping appears on desktop or mobile, in quiet or dense combat.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AR6",
+          "kind": "agent_observed",
+          "text": "Sustained play video and extreme combat moments are captured and inspected.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AR7",
+          "kind": "agent_observed",
+          "text": "Enemies and pickups are readable.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AR8",
+          "kind": "human",
+          "text": "The environment is cohesive, with no obvious placeholder clash.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        }
+      ],
+      "observations": []
+    },
+    "vfx": {
+      "name": "VFX integration and readability",
+      "scenarioChecklist": [
+        {
+          "id": "VX1",
+          "kind": "agent_observed",
+          "text": "Every applicable upstream effect family from the Samurai, HandCast and LinearAbility sources is documented with its actual trigger, and any exclusion is justified.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX2",
+          "kind": "agent_observed",
+          "text": "Shaders and materials render correctly, with no missing textures.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX3",
+          "kind": "human",
+          "text": "Effects stay readable over time under dense combat.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "VX4",
+          "kind": "automated",
+          "text": "Effect resources are cleaned up, with no stuck particles or persistent allocations.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "VX5",
+          "kind": "agent_observed",
+          "text": "All six authorized skill IDs are shown across their applicable preparation, release, travel, contact, status and end phases.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX6",
+          "kind": "agent_observed",
+          "text": "War-cry aura, continuous dash slash, shield collision and stun, abundant cannon fire, persistent frost and purple gravitational flow are synchronized with actual collision and animation.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX7",
+          "kind": "agent_observed",
+          "text": "Evidence labels fixture versus natural gameplay and distinguishes contact from miss or expiration.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX8",
+          "kind": "agent_observed",
+          "text": "Essential projectiles, areas and statuses remain visible in low quality and reduced motion.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX9",
+          "kind": "agent_observed",
+          "text": "Stylized corpse splitting appears only on confirmed dash kills.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "VX10",
+          "kind": "agent_observed",
+          "text": "Effect timing is restrained, telegraphs and hit feedback are clear, and threats are not obscured.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        }
+      ],
+      "observations": []
+    },
+    "combat_feel": {
+      "name": "Combat feel",
+      "scenarioChecklist": [
+        {
+          "id": "CF1",
+          "kind": "agent_observed",
+          "text": "Natural move, aim, fire, damage and recovery input and playback are documented across the weapon families.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "CF2",
+          "kind": "human",
+          "text": "Impacts and hazards are readable.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "CF3",
+          "kind": "human",
+          "text": "Motion, aim and fire respond to input without perceptible delay.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "CF4",
+          "kind": "automated",
+          "text": "Both basic attacks and all six skills are covered.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "CF5",
+          "kind": "automated",
+          "text": "Casts are rejected when resource or cooldown does not allow them.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "CF6",
+          "kind": "automated",
+          "text": "Contacts are grounded and obstacles block.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "CF7",
+          "kind": "automated",
+          "text": "Cast and impact timing are synchronized between local and remote clients.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "CF8",
+          "kind": "automated",
+          "text": "Player and projectile state are measured for all weapon and damage cases.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "CF9",
+          "kind": "agent_observed",
+          "text": "Aiming is consistent, and damage direction and escalation are visible.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "CF10",
+          "kind": "human",
+          "text": "Impact and recovery feel coherent, and feedback stays useful under dense combat.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        }
+      ],
+      "observations": []
+    },
+    "ui_ux": {
+      "name": "User interface and flow",
+      "scenarioChecklist": [
+        {
+          "id": "UI1",
+          "kind": "agent_observed",
+          "text": "Menu, login, ranking, gameplay HUD, upgrades, settings, pause, death and restart are each documented.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "UI2",
+          "kind": "agent_observed",
+          "text": "Those screens show consistent hierarchy, typography and legibility.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "UI3",
+          "kind": "automated",
+          "text": "Controls are functional and every flow works with keyboard and with pointer.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "UI4",
+          "kind": "automated",
+          "text": "The ARPG bottom HUD shows a left health orb, a right class-resource orb, exactly three active skills and the basic weapon indicator.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "UI5",
+          "kind": "automated",
+          "text": "Skill cost, readiness and cooldowns shown in the HUD are authoritative.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "UI6",
+          "kind": "automated",
+          "text": "Skills work by touch and by the 1/2/3 keys, upgrade input takes precedence, and no cast happens while typing or in dialogs.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "UI7",
+          "kind": "automated",
+          "text": "The HUD shows real buff duration and the new v2 icon identities, with no old skill labels and no simulated readiness.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "UI8",
+          "kind": "agent_observed",
+          "text": "State transitions are clear, focus is reliable and no button is misleading.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        }
+      ],
+      "observations": []
+    },
+    "mobile": {
+      "name": "Mobile play",
+      "scenarioChecklist": [
+        {
+          "id": "MB1",
+          "kind": "automated",
+          "text": "Actual touch input moves the hero while firing at the same time.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MB2",
+          "kind": "automated",
+          "text": "Safe areas and UI are correct in compact, portrait and landscape layouts, with no overflow or overlap.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MB3",
+          "kind": "device",
+          "text": "Gameplay is documented on a physical iOS device.",
+          "whoCanEstablishIt": "OWNER ONLY: physical device in the owner's hands (owner-session-form.md)"
+        },
+        {
+          "id": "MB4",
+          "kind": "device",
+          "text": "Gameplay is documented on a physical Android device.",
+          "whoCanEstablishIt": "OWNER ONLY: physical device in the owner's hands (owner-session-form.md)"
+        },
+        {
+          "id": "MB5",
+          "kind": "device",
+          "text": "Touch targets are comfortable on a physical device.",
+          "whoCanEstablishIt": "OWNER ONLY: physical device in the owner's hands (owner-session-form.md)"
+        },
+        {
+          "id": "MB6",
+          "kind": "automated",
+          "text": "Orientation changes are stable and cancelled touches release the controls.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MB7",
+          "kind": "device",
+          "text": "Thermal evidence from physical-device play is documented.",
+          "whoCanEstablishIt": "OWNER ONLY: physical device in the owner's hands (owner-session-form.md)"
+        }
+      ],
+      "observations": []
+    },
+    "audio": {
+      "name": "Audio experience",
+      "scenarioChecklist": [
+        {
+          "id": "AU1",
+          "kind": "automated",
+          "text": "Audio output is captured from gameplay.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AU2",
+          "kind": "human",
+          "text": "Listening shows that gameplay events are audible and distinct from each other.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AU3",
+          "kind": "human",
+          "text": "Listening shows a balanced volume and mix.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AU4",
+          "kind": "human",
+          "text": "Listening shows useful spatial or directional cues.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AU5",
+          "kind": "human",
+          "text": "Listening shows no clipping.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AU6",
+          "kind": "human",
+          "text": "Listening shows no fatigue during sustained combat.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AU7",
+          "kind": "human",
+          "text": "Audio unlock, mute and persistence behave as expected when listened to.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        },
+        {
+          "id": "AU8",
+          "kind": "human",
+          "text": "Listening notes cover quiet play, heavy combat, damage and death, and mute, unmute and settings.",
+          "whoCanEstablishIt": "OWNER ONLY: source \"owner\" with device and date (owner-session-form.md)"
+        }
+      ],
+      "observations": []
+    },
+    "performance": {
+      "name": "Performance",
+      "scenarioChecklist": [
+        {
+          "id": "PF1",
+          "kind": "automated",
+          "text": "Hardware and browser are declared.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "PF2",
+          "kind": "automated",
+          "text": "Sustained frame-time percentiles are measured in natural play.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "PF3",
+          "kind": "automated",
+          "text": "Sustained frame-time percentiles are measured under dense stress at level 6 and level 16.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "PF4",
+          "kind": "automated",
+          "text": "Memory and resource budgets are measured for natural play and dense stress, and allocations stay bounded.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "PF5",
+          "kind": "automated",
+          "text": "Normal play runs near 60 fps with frame-time p95 at most 20 ms on the declared desktop target and no recurring long frames.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code",
+          "bounds": [
+            {
+              "metric": "frameTimeP95Ms",
+              "op": "<=",
+              "limit": 20
+            }
+          ]
+        },
+        {
+          "id": "PF6",
+          "kind": "device",
+          "text": "Behaviour on a physical mobile device is documented.",
+          "whoCanEstablishIt": "OWNER ONLY: physical device in the owner's hands (owner-session-form.md)"
+        },
+        {
+          "id": "PF7",
+          "kind": "device",
+          "text": "Frame-time p95 is at most 25 ms on the declared mobile target, measured on a physical device.",
+          "whoCanEstablishIt": "OWNER ONLY: physical device in the owner's hands (owner-session-form.md)",
+          "bounds": [
+            {
+              "metric": "frameTimeP95Ms",
+              "op": "<=",
+              "limit": 25
+            }
+          ]
+        }
+      ],
+      "observations": []
+    },
+    "multiplayer": {
+      "name": "Multiplayer behavior",
+      "scenarioChecklist": [
+        {
+          "id": "MP1",
+          "kind": "automated",
+          "text": "At least two actual browser clients share authoritative enemies, projectiles and rewards.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MP2",
+          "kind": "automated",
+          "text": "Late join is verified with actual browser clients.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MP3",
+          "kind": "automated",
+          "text": "Reconnect and disconnect are verified.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MP4",
+          "kind": "automated",
+          "text": "Death and wipe, including simultaneous death, are verified.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MP5",
+          "kind": "automated",
+          "text": "Concurrent play is verified.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "MP6",
+          "kind": "automated",
+          "text": "The authoritative world stays consistent, damage and rewards are fair, and recovery and state reconciliation are verified.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        }
+      ],
+      "observations": []
+    },
+    "accessibility": {
+      "name": "Accessibility",
+      "scenarioChecklist": [
+        {
+          "id": "AC1",
+          "kind": "automated",
+          "text": "Controls and settings are usable with the keyboard only.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AC2",
+          "kind": "automated",
+          "text": "Focus remains visible and is restored.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AC3",
+          "kind": "automated",
+          "text": "Labels are meaningful.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AC4",
+          "kind": "automated",
+          "text": "Contrast is inspected and measured.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "AC5",
+          "kind": "agent_observed",
+          "text": "The interface stays readable under zoom.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AC6",
+          "kind": "agent_observed",
+          "text": "Reduced motion actually suppresses motion.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        },
+        {
+          "id": "AC7",
+          "kind": "agent_observed",
+          "text": "Gameplay gives redundant cues, so no essential information depends on color or sound alone.",
+          "whoCanEstablishIt": "agents: a named inspector looking at native captures or playback"
+        }
+      ],
+      "observations": []
+    },
+    "reliability": {
+      "name": "Reliability",
+      "scenarioChecklist": [
+        {
+          "id": "RL1",
+          "kind": "automated",
+          "text": "All current automated test suites ran and passed on the same source candidate.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "RL2",
+          "kind": "automated",
+          "text": "Runtime and resource logs are clean: no runtime, page or resource errors, unhandled exceptions or missing assets.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "RL3",
+          "kind": "automated",
+          "text": "Boot and repeated restart work.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "RL4",
+          "kind": "automated",
+          "text": "Settings persist.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "RL5",
+          "kind": "automated",
+          "text": "Long play completes without state corruption.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        },
+        {
+          "id": "RL6",
+          "kind": "automated",
+          "text": "Lifecycle recovery works without state corruption.",
+          "whoCanEstablishIt": "agents: tool output (JSON) with at least one claim verified in code"
+        }
+      ],
+      "observations": []
+    }
+  },
+  "tests": [],
+  "openDefects": [],
+  "closedDefects": [],
+  "examples": {
+    "artifact": {
+      "perf-natural": {
+        "path": "output/qa/aaa-loop/<run>/verify-performance.json",
+        "sha256": "<64 hex of the file>"
+      },
+      "dense-capture": {
+        "path": "output/qa/aaa-loop/<run>/dense-combat.png",
+        "sha256": "<64 hex>",
+        "boundBy": "capture-index"
+      }
+    },
+    "automatedObservation": {
+      "id": "pf-desktop-01",
+      "scenarios": [
+        "PF2",
+        "PF5"
+      ],
+      "source": "automation",
+      "inputKind": "natural",
+      "environment": {
+        "hardware": "Apple M5 Pro",
+        "browser": "Chrome 141 (ANGLE Metal)",
+        "qualityMode": "high"
+      },
+      "method": "Ten minute natural run with real keyboard and mouse input, frame times sampled every frame.",
+      "result": "Frame time p95 stayed under the desktop bound for the whole run. Two frames were longer than fifty milliseconds.",
+      "limits": "One machine. No dense stress in this run.",
+      "artifacts": [
+        "perf-natural"
+      ],
+      "claims": [
+        {
+          "claim": "frame time p95 in milliseconds",
+          "metric": "frameTimeP95Ms",
+          "value": 8.3,
+          "artifact": "perf-natural",
+          "pointer": "/measurements/frameSample/frameTimeP95Ms"
+        }
+      ]
+    },
+    "agentObservedObservation": {
+      "id": "ar-clipping-01",
+      "scenarios": [
+        "AR5"
+      ],
+      "source": "agent",
+      "inspector": "vision-agent: <name of the reviewing agent, not the implementer>",
+      "inputKind": "natural",
+      "method": "Inspected twenty four native captures: desktop high and mobile low, quiet and dense combat, six locations.",
+      "result": "No mesh passes through another in twenty three captures. In one capture the sword tip enters the shield during the charge.",
+      "limits": "Stills only; motion was not inspected here.",
+      "artifacts": [
+        "dense-capture"
+      ]
+    },
+    "ownerObservation": {
+      "id": "mb-ios-01",
+      "scenarios": [
+        "MB3"
+      ],
+      "source": "owner",
+      "inputKind": "natural",
+      "environment": {
+        "device": "iPhone 15",
+        "os": "iOS 19.1",
+        "browser": "Safari",
+        "physical": true,
+        "date": "2026-09-21"
+      },
+      "method": "Ten minute scripted session from owner-session-form.md, portrait then landscape, both classes.",
+      "result": "The owner moved and attacked with two thumbs at once, used the three skills and picked one card by touch. Sound started on the first touch.",
+      "verbatim": "Movi e ataquei ao mesmo tempo sem falha. O som tocou no primeiro toque.",
+      "limits": "One device. Ten minutes.",
+      "artifacts": [
+        "owner-session-iphone"
+      ]
+    },
+    "test": {
+      "name": "verify:all",
+      "status": "passed",
+      "dimensions": [
+        "reliability"
+      ],
+      "artifact": "suite",
+      "pointer": "/ok",
+      "expected": true
+    },
+    "openDefect": {
+      "id": "ANIM-01",
+      "dimensions": [
+        "animation"
+      ],
+      "severity": "P1",
+      "status": "open",
+      "summary": "Independent sole contact study still reports visible sliding."
+    },
+    "closedDefect": {
+      "id": "A2-01",
+      "resolution": "Canopy no longer hides the remote warrior at dash contact.",
+      "closedBy": {
+        "artifact": "canopy-after"
+      }
+    }
+  }
+}
