@@ -11,15 +11,20 @@ import * as navigation from '../src/physics/navigation.mjs';
 import * as skills from '../src/combat/class-skills.mjs';
 import * as melee from '../src/combat/melee-timing.mjs';
 import * as collisionHeights from '../src/combat/collision-heights.mjs';
+import * as heroPower from '../src/combat/hero-power.mjs';
+import * as networkMove from '../src/combat/network-move.mjs';
+import * as crowdControl from '../src/combat/crowd-control.mjs';
+import { getSkillMods } from '../src/progression/skill-upgrades.mjs';
+import { skillMods } from '../src/progression/authority.mjs';
 import { segmentCircleContact } from '../src/combat/projectile-sweep.mjs';
 import { getEnvironmentColliders, ENVIRONMENT_GROUND } from '../src/render/environment-layout.js';
 
-const files = ['src/main.js', 'server.mjs', 'src/combat/class-skills.mjs', 'src/combat/melee-timing.mjs', 'src/combat/projectile-sweep.mjs', 'src/combat/collision-heights.mjs',
+const files = ['src/main.js', 'server.mjs', 'src/combat/hero-power.mjs', 'src/combat/network-move.mjs', 'src/combat/crowd-control.mjs', 'src/progression/skill-upgrades.mjs', 'src/progression/authority.mjs', 'src/combat/class-skills.mjs', 'src/combat/melee-timing.mjs', 'src/combat/projectile-sweep.mjs', 'src/combat/collision-heights.mjs',
   'src/physics/contacts.mjs', 'src/physics/navigation.mjs', 'src/render/environment-layout.js', 'tools/physics-integration.mjs'];
 const hashes = () => Object.fromEntries(files.map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')]));
 const report = { scope: 'Production hooks extracted verbatim. CPU fixtures; presentation/transport/damage sinks observed or stubbed. Not real gameplay.', sourceHashes: hashes(), tests: [] };
 const source = { client: fs.readFileSync('src/main.js', 'utf8'), server: fs.readFileSync('server.mjs', 'utf8') };
-const out = path.resolve(`output/physics/${new Date().toISOString().replace(/[:.]/g, '-')}-integration`);
+const out = path.resolve(process.env.BIPX_EVIDENCE_DIR || `output/physics/${new Date().toISOString().replace(/[:.]/g, '-')}-integration`);
 fs.mkdirSync(out, { recursive: true });
 const near = (a, b, tolerance = 1e-4) => assert.ok(Math.abs(a - b) < tolerance, `${a} != ${b}`);
 const wallWorld = physics.createCollisionWorld({ colliders: [{ id: 'wall', shape: 'box', x: 0, z: 0, halfX: .1, halfZ: 6, minY: 0, maxY: 3 }] });
@@ -35,9 +40,11 @@ function profile(name) {
 }
 const profiles = profile('serverMonsterProfiles');
 function context(extra = {}) {
-  return vm.createContext({ ...physics, ...navigation, ...skills, ...melee, ...collisionHeights, THREE, segmentCircleContact,
+  // T1 moved the basic-attack profiles into src/combat/hero-power.mjs; the server now derives them exactly like this.
+  assert.ok(source.server.includes('const serverCharacterProfiles = { warrior: basicAttackSpec("warrior"), dwarf: basicAttackSpec("dwarf") };'), 'Server profiles must come from hero-power');
+  return vm.createContext({ ...physics, ...navigation, ...skills, ...melee, ...collisionHeights, ...heroPower, ...crowdControl, THREE, segmentCircleContact, getSkillMods, skillMods,
     collisionWorld: wallWorld, serverWorldLimit: 55, serverMonsterProfiles: profiles,
-    serverCharacterProfiles: profile('serverCharacterProfiles'),
+    serverCharacterProfiles: { warrior: heroPower.basicAttackSpec('warrior'), dwarf: heroPower.basicAttackSpec('dwarf') },
     clampNumber: (v, min, max, fallback) => Number.isFinite(Number(v)) ? Math.max(min, Math.min(max, Number(v))) : fallback,
     normalizeCharacter: (v, fallback = 'dwarf') => v === 'warrior' || v === 'dwarf' ? v : fallback,
     distanceSq: (x, z, a, b) => (x - a) ** 2 + (z - b) ** 2,
@@ -45,7 +52,9 @@ function context(extra = {}) {
     resolveDamage: (_progression, damage) => ({ damage }), getProjectileSpeed: p => Math.hypot(p.vx, p.vz),
     ...extra });
 }
-function install(ctx, mode, names) { vm.runInContext(names.map(name => extract(mode, name)).join('\n'), ctx); return ctx; }
+// Production helpers that the extracted hooks call since v5/T2; they are extracted verbatim too, never stubbed.
+const companions = { server: ['getServerCrowdBodies', 'getPlayingClients'], client: ['getPlayerSkillMods'] };
+function install(ctx, mode, names) { vm.runInContext([...new Set([...names, ...companions[mode]])].map(name => extract(mode, name)).join('\n'), ctx); return ctx; }
 function test(name, run) {
   try { report.tests.push({ name, passed: true, details: run() }); }
   catch (error) { report.tests.push({ name, passed: false, error: error.stack }); }
@@ -61,10 +70,27 @@ test('client updatePlayer consumes collision result and respects bounded dt', ()
   near(player.position.x, -.74); near(player.mesh.position.x, player.position.x);
 });
 test('server normalizePlayerState sweeps submitted path instead of accepting wall teleport', () => {
+  // v5 authority (Grok v3 movement budget): client x/z is intent only. The `state` handler credits a speed budget, spends it
+  // through moveActor and hands the already-collided point to normalizePlayerState. The hook is executed verbatim and the
+  // handler's own composition is replayed with the real network-move module; its wiring is pinned against the source.
+  for (const wiring of ['const spent = consumeMoveBudget(requestedX, requestedZ, credited.moveBudget);',
+    'const moved = moveActor(collisionWorld, { id: client.id, x: client.state.x, z: client.state.z, radius: .64 }, { x: spent.dx, z: spent.dz });',
+    'client.state = normalizePlayerState(incomingState, client.state, { position: moved });']) assert.ok(source.server.includes(wiring), `State handler wiring changed: ${wiring}`);
   const ctx = install(context(), 'server', ['normalizePlayerState']);
-  const fallback = { character: 'warrior', state: 'playing', x: -3, z: 0, rotation: 0, aimX: 1, aimZ: 0, health: 200 };
-  const next = ctx.normalizePlayerState({ x: 3, z: 0, health: 9999 }, fallback);
-  near(next.x, -.74); assert.equal(next.health, 200);
+  let state = { character: 'warrior', state: 'playing', x: -3, z: 0, rotation: 0, aimX: 1, aimZ: 0, health: 200 };
+  const forged = ctx.normalizePlayerState({ x: 3, z: 0, health: 9999 }, state);
+  assert.equal(forged.x, -3); assert.equal(forged.health, 200);
+  let clock = 0, budget = 0, maxStep = 0; const steps = [];
+  for (let tick = 0; tick < 12; tick++) {
+    const credited = networkMove.creditMoveBudget({ now: clock += 250, moveClock: clock - 250, moveBudget: budget, speed: networkMove.PLAYER_LOCOMOTION_SPEED });
+    const spent = networkMove.consumeMoveBudget(3 - state.x, 0 - state.z, credited.moveBudget); budget = spent.leftover;
+    const moved = physics.moveActor(wallWorld, { id: 'player', x: state.x, z: state.z, radius: .64 }, { x: spent.dx, z: spent.dz });
+    const next = ctx.normalizePlayerState({ x: 3, z: 0, health: 9999 }, state, { position: moved });
+    maxStep = Math.max(maxStep, Math.hypot(next.x - state.x, next.z - state.z)); steps.push(next.x); state = next;
+  }
+  assert.ok(maxStep <= networkMove.PLAYER_LOCOMOTION_SPEED * networkMove.MAX_CATCH_UP_DT + 1e-9, `Teleport-sized step ${maxStep}`);
+  near(state.x, -.74); assert.equal(state.health, 200);
+  return { forgedX: forged.x, maxStep, steps };
 });
 test('server rifle and enemy projectile select wall before target', () => {
   const hits = [], ctx = install(context({ damageServerPlayer: (_room, client) => hits.push(client.id) }), 'server', ['getServerAttackHits', 'updateServerProjectiles']);
@@ -248,8 +274,10 @@ test('actual player spawn hook validates all four slots and rejects impossible t
   return { positions, impossibleTopologyRejected: true };
 });
 test('actual client and server v2 movement stops at the first real cemetery solid', () => {
-  const from = { x: -15.5, z: -6 }, aim = { x: 0, z: -1 };
-  const first = physics.sweepStatic(actualWorld, from, { x: from.x, z: from.z - 8 }, .64, { kind: 'actor' });
+  // Promoted 153-collider layout: the garden ensemble moved and burial-rail-0 now sits at (-14,-17.2); the former northern approach
+  // from z=-6 meets the garden trees first. Same fixture, mirrored: the rail is approached from its free south side, heading +Z.
+  const from = { x: -14, z: -22.2 }, aim = { x: 0, z: 1 };
+  const first = physics.sweepStatic(actualWorld, from, { x: from.x, z: from.z + 8 }, .64, { kind: 'actor' });
   assert.equal(first?.colliderId, 'burial-rail-0');
   const start = physics.moveActor(actualWorld, { ...from, radius: .64 }, { x: 0, z: 0 });
   near(start.x, from.x); near(start.z, from.z);
@@ -270,18 +298,18 @@ test('actual client and server v2 movement stops at the first real cemetery soli
     assert.equal(skills.beginSkill(state, { slot, aimX: aim.x, aimZ: aim.z }, actor).ok, true);
     for (let frame = 0; frame < 30; frame++) {
       tick(); near(position().x, from.x);
-      assert.ok(position().z >= first.z - 1e-5, 'Movement crossed the first real solid');
+      assert.ok(position().z <= first.z + 1e-5, 'Movement crossed the first real solid');
     }
     near(position().z, first.z, .001);
     const travel = events.filter(e => e.phase === 'travel');
     assert.ok(travel.length && travel.at(-1).terminal); assert.equal(state.active.length, 0);
-    for (const event of travel) assert.ok(event.target.z >= first.z - 1e-5);
+    for (const event of travel) assert.ok(event.target.z <= first.z + 1e-5);
     results.push({ mode, skillId: skills.getClassSkills('warrior')[slot].id, collider: first.colliderId, x: position().x, z: position().z });
   }
   return results;
 });
 test('actual gravity and monster hooks preserve real cemetery cover and crowd separation', () => {
-  const impact = physics.sweepStatic(actualWorld, { x: -15.5, y: 1.05, z: -6 }, { x: -15.5, y: 1.05, z: -24 }, .3);
+  const impact = physics.sweepStatic(actualWorld, { x: -14, y: 1.05, z: -22.2 }, { x: -14, y: 1.05, z: -4.2 }, .3); // mirrored approach, see above
   assert.equal(impact?.colliderId, 'burial-rail-0');
   const center = { x: impact.x, z: impact.z }, enemies = [];
   for (let i = 0; i < 80 && enemies.length < 12; i++) {
