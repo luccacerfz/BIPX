@@ -12553,6 +12553,7 @@ function getPartyPlayers() {
 
 function updateLeaderboard(leaderboard, status = "ready") {
   const snapshot = leaderboard || {};
+  if (snapshot.available === false) status = "error";
   multiplayer.leaderboard = {
     totalPlayers: Number(snapshot.totalPlayers) || 0,
     players: Array.isArray(snapshot.players) ? snapshot.players.slice(0, 10) : [],
@@ -12583,17 +12584,13 @@ async function loadLeaderboardSnapshot({ clearBeforeFetch = false } = {}) {
   try {
     const response = await fetch(getLeaderboardApiUrl("/api/leaderboard"), { cache: "no-store" });
     if (!response.ok) {
-      if (clearBeforeFetch) {
-        updateLeaderboard(null, "error");
-      }
+      updateLeaderboard(multiplayer.leaderboard, "error");
       return;
     }
 
     updateLeaderboard(await response.json());
   } catch {
-    if (clearBeforeFetch) {
-      updateLeaderboard(null, "error");
-    }
+    updateLeaderboard(multiplayer.leaderboard, "error");
   }
 }
 
@@ -12675,7 +12672,8 @@ function updateLeaderboardHud() {
   updateOnlineScoreboardHud(true);
 
   if (menuLeaderboardCountElement) {
-    menuLeaderboardCountElement.textContent = status === "loading" ? "atualizando" : `${historicalTotalPlayers} jogadores`;
+    menuLeaderboardCountElement.textContent = status === "loading" ? "atualizando"
+      : status === "error" ? "indisponível" : `${historicalTotalPlayers} jogadores`;
   }
 
   if (menuLeaderboardListElement) {

@@ -44,6 +44,15 @@ const leaderboardStore = {
   sessions: [],
 };
 let saveLeaderboardTimer = null;
+// Hydrated once from the durable backend. Until then supabase must not create
+// or upsert ranking rows from an empty cache (P0 overwrite). File mode is
+// always persist-ready: an absent file is a loaded empty ledger.
+let leaderboardHydrated = leaderboardBackend !== "supabase";
+let leaderboardLoadFlight = null;
+
+function rankingPersistAllowed() {
+  return leaderboardBackend !== "supabase" || leaderboardHydrated;
+}
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -127,6 +136,19 @@ const server = http.createServer(async (request, response) => {
     }
 
     await refreshLeaderboardForRead();
+    if (leaderboardBackend === "supabase" && !leaderboardHydrated) {
+      response.writeHead(503, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      response.end(JSON.stringify({
+        ...getLeaderboardSnapshot(),
+        unavailable: true,
+        error: "leaderboard_unavailable",
+        persistence: false,
+      }));
+      return;
+    }
     response.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
@@ -1677,30 +1699,49 @@ async function loadLeaderboard() {
     const data = JSON.parse(rawData);
     leaderboardStore.players = Object.assign(Object.create(null), typeof data.players === "object" && data.players ? data.players : {});
     leaderboardStore.sessions = Array.isArray(data.sessions) ? data.sessions.slice(-historyLimit) : [];
+    leaderboardHydrated = true;
   } catch (error) {
     if (error.code !== "ENOENT") {
       console.warn(`Could not load leaderboard: ${error.message}`);
     }
+    leaderboardHydrated = true;
   }
 }
 
 async function loadLeaderboardFromSupabase() {
-  try {
-    const [players, sessions] = await Promise.all([
-      supabaseRequest(
-        "/leaderboard_players?select=*&order=total_score.desc,best_score.desc,best_level.desc,best_wave.desc,games_played.desc",
-      ),
-      supabaseRequest(`/leaderboard_sessions?select=*&order=ended_at.desc&limit=${historyLimit}`),
-    ]);
-
-    leaderboardStore.players = Object.fromEntries(
-      players.map((row) => [row.player_key, mapLeaderboardPlayerFromRow(row)]),
-    );
-    leaderboardStore.sessions = sessions.reverse().map(mapLeaderboardSessionFromRow);
-    hydrateLeaderboardKillsFromSessions();
-  } catch (error) {
-    console.warn(`Could not load Supabase leaderboard: ${error.message}`);
+  if (leaderboardLoadFlight) {
+    return leaderboardLoadFlight;
   }
+
+  leaderboardLoadFlight = (async () => {
+    try {
+      const [players, sessions] = await Promise.all([
+        supabaseRequest(
+          "/leaderboard_players?select=*&order=total_score.desc,best_score.desc,best_level.desc,best_wave.desc,games_played.desc",
+        ),
+        supabaseRequest(`/leaderboard_sessions?select=*&order=ended_at.desc&limit=${historyLimit}`),
+      ]);
+
+      if (!Array.isArray(players) || !Array.isArray(sessions)) {
+        throw new Error("Supabase leaderboard payload is not arrays");
+      }
+
+      const nextPlayers = Object.fromEntries(
+        players.map((row) => [row.player_key, mapLeaderboardPlayerFromRow(row)]),
+      );
+      const nextSessions = [...sessions].reverse().map(mapLeaderboardSessionFromRow);
+      leaderboardStore.players = nextPlayers;
+      leaderboardStore.sessions = nextSessions;
+      hydrateLeaderboardKillsFromSessions();
+      leaderboardHydrated = true;
+    } catch (error) {
+      console.warn(`Could not load Supabase leaderboard: ${error.message}`);
+    }
+  })().finally(() => {
+    leaderboardLoadFlight = null;
+  });
+
+  return leaderboardLoadFlight;
 }
 
 function hydrateLeaderboardKillsFromSessions() {
@@ -1752,6 +1793,10 @@ function updatePlayerHistory(client, previousState) {
   const shouldTrackPlayer = state.state === "playing" || previousState === "playing";
 
   if (!shouldTrackPlayer) {
+    return false;
+  }
+
+  if (!rankingPersistAllowed()) {
     return false;
   }
 
@@ -1828,6 +1873,16 @@ function updatePlayerHistory(client, previousState) {
 
 function finishPlayerSession(client) {
   if (!client.sessionStartedAt) {
+    return false;
+  }
+
+  if (!rankingPersistAllowed()) {
+    client.sessionStartedAt = null;
+    client.sessionBestScore = 0;
+    client.sessionBestKills = 0;
+    client.sessionBestWave = 1;
+    client.sessionBestLevel = 1;
+    client.sessionBestBuild = [];
     return false;
   }
 
@@ -2018,6 +2073,7 @@ function getLeaderboardSnapshot() {
       updatedAt: new Date(run.updatedAt).toISOString(),
     }));
 
+  const available = rankingPersistAllowed();
   return {
     generatedAt: new Date().toISOString(),
     scope: "rooms",
@@ -2025,6 +2081,7 @@ function getLeaderboardSnapshot() {
     players,
     recentSessions,
     livePlayers,
+    available,
   };
 }
 
@@ -2038,6 +2095,15 @@ function isLeaderboardRecordVisible(record) {
 async function refreshLeaderboardForRead() {
 
   if (leaderboardBackend !== "supabase") {
+    return;
+  }
+
+  if (!leaderboardHydrated) {
+    await loadLeaderboardFromSupabase();
+    if (saveLeaderboardTimer) {
+      clearTimeout(saveLeaderboardTimer);
+      saveLeaderboardTimer = null;
+    }
     return;
   }
 
@@ -2065,6 +2131,10 @@ function broadcastLeaderboard(room) {
 }
 
 function markLeaderboardChanged() {
+  if (!rankingPersistAllowed()) {
+    return;
+  }
+
   if (saveLeaderboardTimer) {
     clearTimeout(saveLeaderboardTimer);
   }
@@ -2078,6 +2148,9 @@ function markLeaderboardChanged() {
 
 async function saveLeaderboard() {
   if (leaderboardBackend === "supabase") {
+    if (!leaderboardHydrated) {
+      return;
+    }
     await saveLeaderboardToSupabase();
     return;
   }

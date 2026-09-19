@@ -7,6 +7,7 @@ import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import crypto from 'node:crypto';
 import { HERO_PROFILES } from '../src/combat/hero-power.mjs'; // Lyra's class armor applies to every landed hit (saved.health below)
+import { sanitizedChildEnv } from './lib/child-env.mjs';
 const baseRoot=process.cwd();
 const candidate=process.argv[2]||'server.mjs';
 const output=process.env.BIPX_EVIDENCE_DIR||'output/qa/reconnect-protocol';
@@ -33,7 +34,7 @@ const instrumented=path.join(temp,'server.mjs');
 await fs.writeFile(instrumented,relocateServerImports(source)+fixture);
 const report={scope:'Isolated source-identical production server functions with private IPC damage and stationary-target/clear-center placement fixture/import relocation; real WebSockets, no browser. Credentials excluded.',serverSha256:crypto.createHash('sha256').update(source).digest('hex'),passed:false,checks:[]};
 const clients=[];const delay=ms=>new Promise(r=>setTimeout(r,ms));
-const child=spawn(process.execPath,[instrumented],{cwd:baseRoot,env:{...process.env,HOST:'127.0.0.1',PORT:'0',LEADERBOARD_FILE:path.join(temp,'leaderboard.json'),SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:''},stdio:['ignore','pipe','pipe','ipc']});
+const child=spawn(process.execPath,[instrumented],{cwd:baseRoot,env:sanitizedChildEnv({HOST:'127.0.0.1',PORT:'0',LEADERBOARD_FILE:path.join(temp,'leaderboard.json'),SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:''}),stdio:['ignore','pipe','pipe','ipc']});
 let ipcSerial=0;const pendingIpc=new Map();
 child.on('message',m=>{const pending=pendingIpc.get(m.id);if(!pending)return;pendingIpc.delete(m.id);m.error?pending.reject(Error(m.error)):pending.resolve(m.result);});
 function damage(client,amount,room='resume'){return new Promise((resolve,reject)=>{const id=++ipcSerial;pendingIpc.set(id,{resolve,reject});child.send({type:'qa-damage',id,room,clientId:client.id,amount});});}

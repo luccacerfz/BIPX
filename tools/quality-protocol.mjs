@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { relocateServerImports, serverDependencyHashes } from './quality-server-source.mjs';
+import { sanitizedChildEnv } from './lib/child-env.mjs';
 import { spawn } from 'node:child_process';
 
 export const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -63,7 +64,7 @@ export async function launchProtocolServer(name, additionalFixture = '') {
   const file = path.join(temporary, 'server.mjs');
   fs.writeFileSync(file, relocateServerImports(source) + fixture + additionalFixture);
   const child = spawn(process.execPath, [file], {
-    env: { ...process.env, HOST: '127.0.0.1', PORT: '0', LEADERBOARD_FILE: path.join(temporary, 'leaderboard.json'), SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' },
+    env: sanitizedChildEnv({ HOST: '127.0.0.1', PORT: '0', LEADERBOARD_FILE: path.join(temporary, 'leaderboard.json'), SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' }),
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
   let stderr = '', serial = 0;
