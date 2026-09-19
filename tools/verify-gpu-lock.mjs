@@ -16,6 +16,12 @@ if (mode) { // child roles; BIPX_GPU_LOCK_DIR comes from the parent
   if (mode === 'hold') { const lease = await acquireGpuLock({ owner: 'holder' }); say({ held: true, token: lease.token }); await delay(Number(process.argv[3])); say({ released: lease.release() }); }
   if (mode === 'wait') { const lease = await acquireGpuLock({ owner: 'waiter' }); say({ waitedMs: lease.waitedMs, inherited: lease.inherited }); lease.release(); }
   if (mode === 'inherit') { const lease = await acquireGpuLock({ owner: 'child' }); say({ inherited: lease.inherited, released: lease.release() }); }
+  if (mode === 'selflock') { // a legacy tool reserves the GPU by itself (three owner spellings), then launches through the guarded proxy
+    const dir = process.env.BIPX_GPU_LOCK_DIR, spelling = process.argv[3], record = { owner: 'legacy self-locking tool', pid: process.pid, token: '11111111-1111-4111-8111-111111111111', created: new Date().toISOString() };
+    fs.mkdirSync(dir); fs.writeFileSync(path.join(dir, spelling === 'owner.json' ? 'owner.json' : 'owner'), spelling === 'text' ? `legacy self-locking tool pid=${process.pid} since=${record.created}\n` : JSON.stringify(record));
+    const started = Date.now(), lease = await acquireGpuLock({ owner: 'proxy inside the tool', waitMs: 1500 });
+    say({ inherited: lease.inherited, waitedMs: Date.now() - started, released: lease.release(), stillThere: fs.existsSync(dir) }); fs.rmSync(dir, { recursive: true }); // the tool removes its own lock
+  }
   if (mode === 'crash') { await acquireGpuLock({ owner: 'crasher' }); say({ held: true }); throw new Error('deliberate crash while holding the reservation'); }
   if (mode === 'signal') { await acquireGpuLock({ owner: 'signalled' }); say({ held: true }); await delay(30_000); }
   if (mode === 'parent') { // holds the lock, then runs a grandchild that must inherit it (by env token or, without it, by parent pid)
@@ -83,6 +89,12 @@ try {
     assert.equal(result.code, 0, result.stderr); assert.deepEqual(result.lines[0], { child: { inherited: expected, released: false }, stillHeld: true });
     assert.deepEqual(result.lines[1], { released: true }); assert.equal(fs.existsSync(dir), false);
     return result.lines[0];
+  });
+  for (const spelling of ['owner.json', 'json-in-owner', 'text']) await check(`a tool that reserved the GPU itself (${spelling}) never waits on its own reservation`, async () => {
+    const dir = lockDir(), result = await run(dir, ['selflock', spelling]).done;
+    assert.equal(result.code, 0, result.stderr); const [out] = result.lines;
+    assert.equal(out.inherited, 'same process'); assert.ok(out.waitedMs < 1000, `waited ${out.waitedMs} ms on itself`); assert.equal(out.released, false); assert.equal(out.stillThere, true);
+    return out;
   });
   await check('an uncaught error still releases the reservation on exit', async () => {
     const dir = lockDir(), result = await run(dir, ['crash']).done;

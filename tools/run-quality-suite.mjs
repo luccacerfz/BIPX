@@ -30,6 +30,7 @@ import { NEEDS_STAGING_EXIT, NEEDS_STAGING_STATUS } from "./quality-staging.mjs"
 // needs: cpu (pure Node) | server (spawns its own ephemeral WebSocket server) | http (needs the runner's server) | browser.
 // target: consumes BIPX_BASE_URL. group: core = the historical verify:all list; extended = runtime harnesses outside it;
 // historical = can only exercise a frozen snapshot, never selected unless named or --include-historical.
+// selfLocks: the tool reserves the GPU with its own mkdir code; the runner must not hold the lock for it (it would wait on us).
 const suite = (file, needs, options = {}) => ({ file, needs, group: "core", target: false, ...options });
 const browser = (file, options = {}) => suite(file, "browser", { target: true, ...options });
 export const registry = {
@@ -103,6 +104,8 @@ export const registry = {
   "verify:monster:phase": suite("monster-phase-cpu.mjs", "cpu", { group: "extended" }),
   "verify:enemy-locomotion": suite("enemy-locomotion-cpu.mjs", "cpu", { group: "extended" }),
   "verify:gpu-lock": suite("verify-gpu-lock.mjs", "cpu", { group: "extended" }),
+  "verify:jef": suite("verify-jef-gate.mjs", "cpu", { group: "extended" }),
+  "verify:qa-device": browser("verify-device-report.mjs", { group: "extended", target: false, selfLocks: true }),
   "verify:skills:browser": browser("verify-arpg-browser.mjs", { group: "extended", target: false }),
   "verify:skills:network": browser("verify-arpg-network.mjs", { group: "extended", target: false }),
   "verify:skills:audio": browser("audio-arpg-verify.mjs", { group: "extended", target: false }),
@@ -125,7 +128,7 @@ const timeoutOf = entry => flags.has("timeout-ms") ? defaultTimeoutMs : Math.max
 
 if (flags.get("help")) { console.log(fs.readFileSync(new URL(import.meta.url), "utf8").split("\n").filter(line => line.startsWith("//")).map(line => line.slice(3)).join("\n")); process.exit(0); }
 if (flags.get("list")) {
-  const rows = Object.entries(registry).map(([name, entry]) => ({ name, file: `tools/${entry.file}`, needs: entry.needs, group: entry.group, target: entry.target, timeoutMs: timeoutOf(entry), ...(entry.staging ? { staging: true } : {}) }));
+  const rows = Object.entries(registry).map(([name, entry]) => ({ name, file: `tools/${entry.file}`, needs: entry.needs, group: entry.group, target: entry.target, timeoutMs: timeoutOf(entry), ...(entry.staging ? { staging: true } : {}), ...(entry.selfLocks ? { selfLocks: true } : {}) }));
   if (flags.get("json")) console.log(JSON.stringify(rows, null, 2));
   else for (const row of rows) console.log(`${row.name.padEnd(30)} ${row.needs.padEnd(8)} ${row.group.padEnd(10)} ${(row.target ? "target" : "-").padEnd(7)} ${String(row.timeoutMs / 1000).padStart(5)}s  ${row.file}${row.staging ? "  (full run needs a staging artefact)" : ""}`);
   process.exit(0);
@@ -163,7 +166,7 @@ async function runSuite(name) {
   let server = null, lease = null;
   const log = fs.createWriteStream(path.join(folder, "stdout.log"));
   try {
-    if (entry.needs === "browser") { lease = await acquireGpuLock({ owner: `run-quality-suite ${name}`, log: message => console.log(`  ${message}`) }); result.gpuLock = { waitedMs: lease.waitedMs, inherited: lease.inherited }; }
+    if (entry.needs === "browser" && !entry.selfLocks) { lease = await acquireGpuLock({ owner: `run-quality-suite ${name}`, log: message => console.log(`  ${message}`) }); result.gpuLock = { waitedMs: lease.waitedMs, inherited: lease.inherited }; }
     if (entry.target && !externalBase) { server = await startEphemeralServer({ port: Number(flags.get("port") ?? 0), logFile: path.join(folder, "ephemeral-server.log") }); result.server = { origin: server.origin, pid: server.pid }; }
     const baseUrl = entry.target ? externalBase ?? server.origin : null;
     result.startedAt = new Date().toISOString(); // lock wait and server start are not charged to the suite

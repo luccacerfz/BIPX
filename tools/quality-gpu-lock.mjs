@@ -3,6 +3,8 @@
 // Convention (docs/arpg/README.md): one directory, created atomically with mkdir, serialises all GPU/browser work on this host.
 //   /tmp/bipx-arpg-gpu.lock/owner       one text line, `<owner> pid=<pid> since=<iso> token=<uuid>` (what shell agents write and read)
 //   /tmp/bipx-arpg-gpu.lock/owner.json  {owner,pid,token,created,argv} (what the older Node harnesses write and read)
+// A third spelling exists in the wild and is understood when reading: the same JSON object written into `owner` itself
+// (tools/verify-device-report.mjs). Missing it made that tool wait on its own reservation once it launched through the proxy.
 // Rules: wait by retrying every 2 s for up to 25 min, release in `finally`, and never remove a reservation that is not ours.
 //
 // A lease is *inherited* (nothing is acquired or released here) when the reservation already belongs to this process tree:
@@ -24,8 +26,10 @@ export function readGpuLockOwner(dir = GPU_LOCK_DIR) {
   const owner = { dir, owner: null, pid: null, token: null, since: null };
   try { Object.assign(owner, JSON.parse(fs.readFileSync(path.join(dir, 'owner.json'), 'utf8'))); } catch { /* text-only or still being written */ }
   try {
-    const text = fs.readFileSync(path.join(dir, 'owner'), 'utf8').trim();
-    owner.text = text; owner.owner ??= text.split(/\s+pid=/)[0] || null;
+    const text = fs.readFileSync(path.join(dir, 'owner'), 'utf8').trim(); owner.text = text;
+    let json = null; try { json = JSON.parse(text); } catch { /* the plain text line */ }
+    if (json && typeof json === 'object') { owner.owner ??= json.owner ?? null; owner.pid ??= Number(json.pid) || null; owner.token ??= json.token ?? null; owner.since ??= json.created ?? json.since ?? json.at ?? null; }
+    owner.owner ??= text.split(/\s+pid=/)[0] || null;
     owner.pid ??= Number(text.match(/\bpid=(\d+)/)?.[1]) || null;
     owner.token ??= text.match(/\btoken=([0-9a-f-]{36})/)?.[1] ?? null;
     owner.since ??= text.match(/\bsince=(\S+)/)?.[1] ?? null;
