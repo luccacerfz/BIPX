@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { evidenceDir } from './quality-browser.mjs';
+import { basicAttackSpec, basicPower, rifleShot } from '../src/combat/hero-power.mjs';
+import { attackStats } from '../src/progression/authority.mjs';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'bipx-orc-spawn-'));
 const hash = () => crypto.createHash('sha256').update(fs.readFileSync('server.mjs')).digest('hex');
@@ -23,7 +25,7 @@ try {
     server.once('error', reject);
   });
   socket = new WebSocket(`ws://127.0.0.1:${port}/ws?room=orc-seeded&character=dwarf&name=SpawnFixture`);
-  let welcome, world, authority, runStarted, orc, orcHit, orcKilled, reward;
+  let welcome, world, authority, runStarted, orc, orcHit, orcHitAuthority, orcKilled, reward;
   const seen = new Map();
   socket.addEventListener('message', event => {
     const message = JSON.parse(event.data);
@@ -37,7 +39,7 @@ try {
         if (monster.type === 'orcPeon' && !orc) orc = { ...monster, wave: world.wave };
       }
     }
-    if (message.type === 'monsterHit' && message.id === orc?.id) orcHit = message;
+    if (message.type === 'monsterHit' && message.id === orc?.id) { orcHit = message; orcHitAuthority = { level: authority.level, stacks: authority.progression?.upgradeStacks ?? {} }; }
     if (message.type === 'monsterKilled' && message.monster.id === orc?.id) orcKilled = message;
     if (message.type === 'playerReward' && message.monster.id === orc?.id) reward = message;
   });
@@ -66,12 +68,18 @@ try {
   assert.ok(observed.filter(m => m.wave === 1).every(m => m.type !== 'orcPeon'), 'Orc appeared before wave 2');
   assert.ok(orc && orc.wave >= 2, 'Seeded real wave progression did not spawn Orc Peon');
   assert.ok(orcHit && orcKilled && reward, 'Authoritative Orc hit/kill/reward missing');
-  assert.equal(orcHit.amount, 4);
+  // T1 hero power: the rifle hit is server-derived from the actor's trusted level and stacks (the actor levels up during the real
+  // wave progression), and the short pierce may reach the Orc as the second body of a shot. Both legal values come from the
+  // modules the server imports; the forged 8x multiplier in the attack packet must still change nothing.
+  const wire = value => Number(value.toFixed(2)), shot = rifleShot('dwarf');
+  const direct = basicAttackSpec('dwarf').damage * attackStats({ stacks: orcHitAuthority.stacks, character: 'dwarf', weaponTimer: 0, prismStormRemaining: 0 }).damageMultiplier * basicPower('dwarf', orcHitAuthority.level);
+  const legalHits = [wire(direct), ...Array.from({ length: shot.pierce }, (_, index) => wire(direct * shot.pierceFalloff ** (index + 1)))];
+  assert.ok(legalHits.includes(orcHit.amount), `Orc hit ${orcHit.amount} is not a server-derived rifle hit ${JSON.stringify(legalHits)} at level ${orcHitAuthority.level}`);
   assert.equal(reward.scoreDelta, 18);
   assert.equal(reward.xp, 5);
   assert.equal(hash(), report.serverSha256);
   assert.deepEqual(serverDependencyHashes(), report.dependencyHashes);
-  report.observations = [{ name: 'No Orc during wave 1', samples: observed.filter(m => m.wave === 1).length }, { name: 'Orc appeared during actual wave progression', orc }, { name: 'Rifle damage and Orc kill reward', orcHit, orcKilled, reward }];
+  report.observations = [{ name: 'No Orc during wave 1', samples: observed.filter(m => m.wave === 1).length }, { name: 'Orc appeared during actual wave progression', orc }, { name: 'Rifle damage and Orc kill reward', orcHit, orcHitAuthority, legalHits, orcKilled, reward }];
   report.spawnSamples = observed;
   report.passed = true;
 } catch (error) { report.error = error.stack; process.exitCode = 1; }

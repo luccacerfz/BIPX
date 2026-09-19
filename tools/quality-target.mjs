@@ -13,7 +13,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 export const LIVE_PORT = 5173;
-const SECRET_NAME = /(_KEY|_TOKEN|_SECRET|PASSWORD|PASSWD|CREDENTIAL|^SUPABASE_|^TYPESAFE_|^ANTHROPIC_|^OPENAI_|^ELEVENLABS_|^GITHUB_|^GH_|^NPM_|^AWS_|^RENDER_|^VERCEL_|^DATABASE_URL$)/i;
+// Suffix-anchored on purpose: GIT_CONFIG_KEY_<n> (git's own env-config protocol) is a config *name*, and dropping it while keeping
+// GIT_CONFIG_COUNT breaks every `git` call a suite makes.
+const SECRET_NAME = /((_KEY|_TOKEN|_SECRET|_PASSWORD|_PASSWD|_CREDENTIALS?)$|^SUPABASE_|^TYPESAFE_|^ANTHROPIC_|^OPENAI_|^ELEVENLABS_|^GITHUB_|^GH_|^NPM_|^AWS_|^RENDER_|^VERCEL_|^DATABASE_URL$)/i;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function assertNotLiveServer(value, label = 'Target') {
@@ -28,7 +30,7 @@ export function assertNotLiveServer(value, label = 'Target') {
 /** process.env without anything that looks like a credential. SUPABASE_* stay *defined but blank*: server.mjs only reads `.env` for undefined names. */
 export function sanitizedEnv(extra = {}) {
   const env = {};
-  for (const [name, value] of Object.entries(process.env)) if (name.startsWith('BIPX_') || !SECRET_NAME.test(name)) env[name] = value;
+  for (const [name, value] of Object.entries(process.env)) if (name.startsWith('BIPX_') || name.startsWith('GIT_CONFIG_') || !SECRET_NAME.test(name)) env[name] = value;
   return { ...env, SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '', ...extra };
 }
 
