@@ -38,3 +38,13 @@ vercel deploy --prod --yes   # produção
 ```
 
 Alternativa sem staging: `vercel deploy output/releases/integration-v5-20260919/public --prod` após `vercel link --project bipx` nessa pasta (apagar o `.env.local` que o link baixa).
+
+## Publicação executada (autorizada pelo usuário) — 2026-09-19 ~11:00 UTC
+
+1. Backup dos 12 arquivos vivos alterados em `output/qa/aaa-20260919/fable-closeout/live-backup-pre-v5/` (+ `promotion-log.json`); promoção dos 17 arquivos do v5 com verificação de hash antes/depois; árvore viva = 244/244 hashes do candidato congelado. Servidor local 5173 reiniciado com o mesmo ambiente (ranking local preservado), servindo `main.js f0600b67…`.
+2. Varredura de segredos nos arquivos a versionar: nenhuma chave (só placeholder no README). `.vercelignore` novo mantém o site igual ao pacote validado: 238/238 arquivos idênticos, nada extra.
+3. Commit `7ea3d6a` em `main` (1.737 arquivos: runtime nunca versionado, assets, vendor, tools, docs; `output/` fora) e push `9124df5..7ea3d6a`.
+4. Vercel (integração git) publicou em ~24 s: `https://bipx.vercel.app` serve `main.js f0600b67…`; `/server.mjs`, `/tools/*`, `/docs/*`, `/package.json`, `/.env` → 404. Render redeployou o servidor WS do mesmo commit (`/server.mjs` 404, `/api/leaderboard` 200).
+5. Smoke no ar (`fable-closeout/production-smoke/`): dois Chrome reais no site público, entrada pelo botão "Entrar no multiplayer", mesma sala no Render: ambos "2/4", lista de grupo com vida do outro jogador sincronizada, habilidades autoritativas do Aldric entraram em recarga, **zero erros de console e zero requisições com falha**. A Lyra morreu parada em ~7 s antes do roteiro lançar as skills dela (problema de rampa inicial N-01 já reportado), por isso a asserção automática do script marcou `passed:false`; não é falha de publicação.
+
+Observações: `window.__zombieNightDebug` continua exposto em produção (pré-existente; no multiplayer a autoridade é do servidor). Reversão: `git revert 7ea3d6a` + push (Vercel/Render voltam sozinhos) e restaurar o backup local.
