@@ -1,5 +1,6 @@
 // Server-owned per-run progression. Pure CPU module: callers supply only trusted
 // kill/tick/damage events; network clients can choose offered IDs or collect drops.
+import { heroMaxHealth, xpToNext as heroXpToNext } from '../combat/hero-power.mjs';
 export const DEFINITIONS = [
   ['damage', '+Dano', 'common', 'stat', 1, 6],
   ['cadence', '+Cadência', 'common', 'stat', 1, 5],
@@ -26,7 +27,7 @@ const weights = {common: 88, rare: 7, epic: 3.2, legendary: .35};
 const bossWeights = {rare: 86, epic: 13, legendary: 1};
 const copy = value => structuredClone(value);
 const safeInt = value => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-export const xpToNext = level => 10 + level * 7 + Math.floor(level ** 1.35);
+export const xpToNext = heroXpToNext; // Pacing lives in hero-power.mjs, shared with the solo client.
 export function levelFromXp(total) {
   let xp = safeInt(total), level = 1;
   while (xp >= xpToNext(level)) { xp -= xpToNext(level); level++; }
@@ -105,7 +106,7 @@ export function snapshot(p) {
 export function syncProgression(state, p) {
   state.xpTotal = p.xpTotal; state.level = p.level;
   state.bestLevel = Math.max(state.bestLevel || 1, p.level);
-  state.maxHealth = 200 + (p.stacks.maxHealth || 0) * 18;
+  state.maxHealth = heroMaxHealth(p.character) + (p.stacks.maxHealth || 0) * 18;
   state.health = Math.min(state.maxHealth, state.health);
   state.build = Object.entries(p.stacks).filter(([, n]) => n > 0).map(([id, n]) => `${byId.get(id).label} x${n}`).slice(0, 8);
   state.progression = snapshot(p);

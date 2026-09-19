@@ -5,19 +5,21 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {evidenceDir} from './quality-browser.mjs';
 const A = await import('../src/progression/authority.mjs');
+const H = await import('../src/combat/hero-power.mjs'); // XP curve and class max health are shared by client and authority
 const checks=[];const check=(name,details={})=>{checks.push({name,...details});console.log(name)};
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
 const source=await fs.readFile('src/main.js','utf8');
 const definitionText=source.slice(source.indexOf('const upgradeDefinitions = ['),source.indexOf('\nconst upgradeById'));
 const fn=name=>{const start=source.indexOf(`function ${name}(`);return source.slice(start,source.indexOf('\nfunction ',start+1));};
 const basePlayer=()=>({character:'dwarf',health:100,maxHealth:200,upgradeStacks:{},perks:{},upgradeStats:{damageMultiplier:2,cooldownMultiplier:1,areaMultiplier:1,speedMultiplier:1,pickupRadius:2.35,projectileBonus:0},damageReduction:0,critChance:0,critMultiplier:1.8,revives:0,bossKills:0,position:{},perkCooldowns:{prismStorm:0}});
-const context=vm.createContext({player:basePlayer(),multiplayer:{enabled:false},triggerPerkAnimation(){},tryEvolveWeapons(){},Math});
+const context=vm.createContext({player:basePlayer(),multiplayer:{enabled:false},triggerPerkAnimation(){},tryEvolveWeapons(){},Math,heroXpToNext:H.xpToNext});
 vm.runInContext(definitionText+'\n'+fn('applyUpgrade')+'\n'+fn('applyPerkEffect')+'\n'+fn('getXpToNext')+'\n'+fn('getSlayerPactMultiplier')+'\n'+fn('hasPerk')+'\n'+fn('applyDamagePerks')+'\nglobalThis.defs=upgradeDefinitions;',context);
 for(const d of A.DEFINITIONS){const live=context.defs.find(x=>x.id===d.id);for(const key of ['label','rarity','kind','maxStacks'])assert.equal(d[key],live[key]);assert.equal(d.minLevel,live.minLevel??1)}
 check('All18 definitions match live client labels, rarities, kinds, level gates and stack caps');
 const fresh=(character='dwarf')=>{const s={runId:`test-${character}`,character,health:100,maxHealth:200,bestLevel:1,stateVersion:0,state:'playing',x:0,z:0,wave:1};return [s,A.createProgression(s,{random:()=>0})]};
 let [s,p]=fresh();
 for(let l=1;l<100;l++) assert.equal(A.xpToNext(l),context.getXpToNext(l));
+assert.equal(A.xpToNext,H.xpToNext);assert.match(fn('getXpToNext'),/heroXpToNext\(level\)/);assert.equal(basePlayer().maxHealth,H.heroMaxHealth('dwarf'));
 let total=0;for(let l=1;l<30;l++){const before=A.levelFromXp(total);assert.equal(before.level,l);assert.equal(before.xp,0);total+=A.xpToNext(l);const edge=A.levelFromXp(total-1);assert.equal(edge.level,l);assert.equal(edge.xp,A.xpToNext(l)-1)}
 check('XP thresholds and edge remainders match client formula through level99');
 A.grantXp(s,p,Array.from({length:99},(_,i)=>A.xpToNext(i+1)).reduce((a,b)=>a+b,0));

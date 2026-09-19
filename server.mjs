@@ -14,6 +14,7 @@ import { getPursuitDirection } from "./src/physics/navigation.mjs";
 import { createSkillState, skillSnapshot, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills } from "./src/combat/class-skills.mjs";
 import { locomotionSpeed, creditMoveBudget, consumeMoveBudget } from "./src/combat/network-move.mjs";
 import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc } from "./src/combat/melee-timing.mjs";
+import { heroMaxHealth, basicAttackSpec, createHeroCombatState, beginBasicAttack, meleeShape, insideMeleeShape, rifleShot, assistRifleAim, basicPower, skillPower, monsterWeight, applyHeroKnockback, advanceHeroKnockback, resolveIncomingDamage, resolveLeech, waveSpawnBudget, spawnInterval, spawnDistance } from "./src/combat/hero-power.mjs";
 
 import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, resolveDamage, rewardKill, receiveDamage, tickProgression } from "./src/progression/authority.mjs";
 
@@ -23,7 +24,6 @@ await loadLocalEnv();
 const port = Number(process.env.PORT ?? 5173);
 const host = process.env.HOST ?? "0.0.0.0";
 const maxPlayersPerRoom = 4;
-const playerBaseMaxHealth = 200;
 const playerNetworkMaxHealthCap = 600;
 const websocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const leaderboardPath = process.env.LEADERBOARD_FILE || path.join(root, ".data", "leaderboard.json");
@@ -92,10 +92,8 @@ const serverWaveMilestones = new Map([
   [10, "bloodCow"],
   [20, "plumaFinance"],
 ]);
-const serverCharacterProfiles = {
-  warrior: { weapon: "katana", shape: "cone", range: 4.2, minDot: Math.cos(0.92), damage: 7, cooldown: 500 },
-  dwarf: { weapon: "pistol", shape: "ray", range: 26, radius: 0.12, damage: 2, cooldown: 300 },
-};
+// Numbers live in src/combat/hero-power.mjs, shared with the solo client.
+const serverCharacterProfiles = { warrior: basicAttackSpec("warrior"), dwarf: basicAttackSpec("dwarf") };
 
 await loadLeaderboard();
 
@@ -264,6 +262,7 @@ function joinMultiplayerRoom(requestUrl, socket) {
   };
   client.progression = createProgression(client.state);
   client.skills = createSkillState(client.state.character);
+  client.heroCombat = createHeroCombatState(client.state.character);
   client.skillReceipts = new Map();
   client.moveClock = Date.now();
   client.moveBudget = 0;
@@ -281,7 +280,7 @@ function createInitialPlayerState(slot, character, stateVersion = 0, room = null
   const spawn = getSpawnPoint(slot, occupants);
   return {
     x: spawn.x, z: spawn.z, rotation: 0, aimX: 0, aimZ: -1,
-    health: playerBaseMaxHealth, maxHealth: playerBaseMaxHealth,
+    health: heroMaxHealth(character), maxHealth: heroMaxHealth(character),
     score: 0, kills: 0, xpTotal: 0, wave: 1, level: 1, bestLevel: 1, build: [],
     runId: crypto.randomUUID(), stateVersion,
     character, weapon: serverCharacterProfiles[character].weapon,
@@ -332,6 +331,7 @@ function startClientRun(room, client, requestedState = {}, requestId = null) {
   client.state.wave = Math.max(1, room.world.wave);
   client.progression = createProgression(client.state);
   client.skills = createSkillState(client.state.character);
+  client.heroCombat = createHeroCombatState(client.state.character);
   client.skillReceipts = new Map();
   client.state.skills = skillSnapshot(client.skills);
   client.moveClock = Date.now();
@@ -568,6 +568,7 @@ function handleClientMessage(client, rawMessage) {
     }
     client.progression.character = client.state.character;
     if (client.skills.classId !== client.state.character) client.skills = createSkillState(client.state.character);
+    if (client.heroCombat.classId !== client.state.character) client.heroCombat = createHeroCombatState(client.state.character);
     client.state.skills = skillSnapshot(client.skills);
     syncProgression(client.state, client.progression);
     if (client.state.state === "playing" && previousState !== "playing") {
@@ -791,9 +792,7 @@ function startServerNextWave(room) {
   world.wave += 1;
   for (const client of room.clients.values()) if (client.state.state === "playing") client.state.wave = world.wave;
   world.nextWaveDelay = 1.2;
-  const wavePressure = Math.floor(Math.pow(Math.max(0, world.wave - 1), 1.32) * 7.8);
-  const survivalPressure = Math.floor(world.survivalTime / 6);
-  world.zombiesToSpawn = Math.min(24 + world.wave * 11 + wavePressure + survivalPressure, Math.max(120, serverMonsterCap - 8));
+  world.zombiesToSpawn = Math.min(waveSpawnBudget(world.wave, world.survivalTime), Math.max(120, serverMonsterCap - 8));
   world.spawnTimer = 0.15;
 
   const milestoneBoss = serverWaveMilestones.get(world.wave);
@@ -825,7 +824,7 @@ function updateServerSpawning(room, playingClients, dt) {
 function spawnServerMonsterNearClient(room, client, type = pickServerMonsterType(room.world), distanceOverride = null) {
   const base = client?.state ?? getSpawnPoint(0);
   const angle = Math.random() * Math.PI * 2;
-  const distance = distanceOverride ?? 28 + Math.random() * 22;
+  const distance = distanceOverride ?? spawnDistance(room.world.survivalTime, Math.random());
   const x = clampNumber(base.x + Math.cos(angle) * distance, -serverWorldLimit + 2, serverWorldLimit - 2, 0);
   const z = clampNumber(base.z + Math.sin(angle) * distance, -serverWorldLimit + 2, serverWorldLimit - 2, 0);
   return spawnServerMonster(room, x, z, type);
@@ -938,8 +937,15 @@ function updateServerMonsters(room, playingClients, dt) {
       }
 
       monster.attackCooldown = Math.max(0, monster.attackCooldown - dt);
+      // Hero knockback: a short authoritative slide against static colliders, then a stagger that cancels the wind-up.
+      const pushed = advanceHeroKnockback(monster, dt);
+      if (pushed.dx || pushed.dz) {
+        const moved = moveActor(collisionWorld, { id: `monster:${monster.id}`, x: monster.x, z: monster.z, radius: monster.radius }, { x: pushed.dx, z: pushed.dz });
+        monster.x = moved.x; monster.z = moved.z;
+        world.actorIndex.update({ id: `monster:${monster.id}`, x: moved.x, z: moved.z, radius: monster.radius });
+      }
       if (monster.type === 'caster' && updateServerCaster(room, monster, playingClients, dt, casterControls)) continue;
-      if (monster.freezeTimer > 0 || monster.stunTimer > 0) {
+      if (monster.freezeTimer > 0 || monster.stunTimer > 0 || pushed.staggered) {
         if (monster.meleeAttack) monster.meleeAttack.active = false;
         continue;
       }
@@ -951,7 +957,7 @@ function updateServerMonsters(room, playingClients, dt) {
         else {
           const phase = advanceMeleeAttack(strike, dt);
           if (phase.impact && isWithinMeleeArc(monster, lockedTarget.state, strike) && !sweepStatic(collisionWorld, { x: monster.x, y: .9, z: monster.z }, { x: lockedTarget.state.x, y: .9, z: lockedTarget.state.z }, 0)) {
-            damageServerPlayer(room, lockedTarget, monster.damage + Math.floor(world.wave * .55));
+            damageServerPlayer(room, lockedTarget, monster.damage + Math.floor(world.wave * .55), monster);
           }
         }
         continue;
@@ -1004,7 +1010,7 @@ function updateServerMonsters(room, playingClients, dt) {
         world.actorIndex.update({ ...body, x: moved.x, z: moved.z });
       } else if (monster.attackCooldown <= 0 && clearMelee) {
         monster.attackCooldown = profile.meleeCooldown ?? (profile.boss ? 0.86 : 0.62);
-        damageServerPlayer(room, target, monster.damage + Math.floor(world.wave * (profile.boss ? 0.65 : 0.55)));
+        damageServerPlayer(room, target, monster.damage + Math.floor(world.wave * (profile.boss ? 0.65 : 0.55)), monster);
       }
     }
     const separated = separateControlledActors(collisionWorld, getServerCrowdBodies(room, playingClients), dt);
@@ -1106,7 +1112,8 @@ function handleServerSkill(room, client, message) {
   else {
     result = beginSkill(client.skills, message, {
       ...client.state, playing: client.state.state === 'playing', dead: client.state.health <= 0,
-      damageMultiplier: attackStats(client.progression).damageMultiplier,
+      // Trusted class/level power keeps skills relevant; nothing in `message` can reach it.
+      damageMultiplier: attackStats(client.progression).damageMultiplier * skillPower(client.state.character, client.progression.level),
       // Placed after the state spread so nothing a client reported can shadow server progression.
       areaMultiplier: attackStats(client.progression).areaMultiplier,
     });
@@ -1171,37 +1178,66 @@ function applyServerAttackDamage(room, client, attack) {
   }
   client.attackCooldowns.set(weapon, now);
 
-  const direction = normalize2(attack.aimX, attack.aimZ);
   const origin = { x: attack.x, z: attack.z };
-  const baseDamage = spec.damage * attack.damageMultiplier;
+  // Hero power (src/combat/hero-power.mjs): combo step, level power, pierce, point-blank assist, knockback and leech are server-derived.
+  const direction = weapon === 'pistol' ? assistRifleAim(origin, normalize2(attack.aimX, attack.aimZ), room.world.monsters.values(), rifleShot(spec.classId)) : normalize2(attack.aimX, attack.aimZ);
+  attack.aimX = direction.x; attack.aimZ = direction.z;
+  const step = beginBasicAttack(client.heroCombat, now / 1000);
+  attack.finisher = step.finisher;
+  const falloff = weapon === 'pistol' ? rifleShot(spec.classId).pierceFalloff : 1;
+  const baseDamage = spec.damage * attack.damageMultiplier * basicPower(spec.classId, client.progression.level) * step.damageMultiplier;
   const rayCount = weapon === 'pistol' ? 1 + attack.projectileBonus : 1;
+  let landed = 0;
   for (let ray=0; ray<rayCount; ray++) {
     const angle = (ray-(rayCount-1)/2)*.12;
     const aim = {x:direction.x*Math.cos(angle)-direction.z*Math.sin(angle), z:direction.x*Math.sin(angle)+direction.z*Math.cos(angle)};
-    let hits = getServerAttackHits(room, origin, aim, spec, attack.areaMultiplier);
-    // Rifle projectiles have no pierce; each granted projectile uses its own ray.
-    if (weapon === 'pistol') hits = hits.sort((a,b) => distanceSq(origin.x,origin.z,a.x,a.z)-distanceSq(origin.x,origin.z,b.x,b.z)).slice(0,1);
-    for (const monster of hits) {
-      const hit = resolveDamage(client.progression, baseDamage);
-      damageServerMonster(room, monster, hit.damage, client.id, spec.effect || weapon);
-    }
+    // Rifle rays come back nearest-first with the short pierce applied; each granted projectile uses its own ray.
+    const hits = getServerAttackHits(room, origin, aim, spec, attack.areaMultiplier, step.finisher);
+    hits.forEach((monster, index) => {
+      const hit = resolveDamage(client.progression, baseDamage * falloff ** index);
+      applyHeroKnockback(monster, weapon === 'pistol' ? aim : { x: monster.x - origin.x, z: monster.z - origin.z }, step.knockback, serverMonsterWeight(monster));
+      if (damageServerMonster(room, monster, hit.damage, client.id, spec.effect || weapon)) landed++;
+    });
   }
+  leechServerPlayer(room, client, { hits: landed });
+  if (spec.classId === 'warrior') sendJson(client, { type: 'attackResult', runId: client.state.runId, combo: step.index, finisher: step.finisher });
   return true;
 }
 
-function getServerAttackHits(room, origin, direction, spec, areaMultiplier = 1) {
+// Aldric sustain. Kills are credited in rewardServerKill (every kill source); sword hits here. One shared per-second cap.
+function leechServerPlayer(room, client, counts, notify = true) {
+  if (client.state.state !== "playing" || client.state.health <= 0) return 0;
+  const healed = resolveLeech(client.heroCombat, { ...counts, now: Date.now() / 1000, health: client.state.health, maxHealth: client.state.maxHealth });
+  if (!(healed > 0)) return 0;
+  client.state.health = Math.min(client.state.maxHealth, client.state.health + healed);
+  client.state.stateVersion++;
+  if (notify) broadcast(room, { type: "playerState", id: client.id, state: client.state });
+  return healed;
+}
+
+function getServerAttackHits(room, origin, direction, spec, areaMultiplier = 1, finisher = false) {
   const hits = [];
   const area = Math.sqrt(Math.max(0.4, areaMultiplier));
 
   if (spec.shape === "ray") {
-    const endpoint = { x: origin.x + direction.x * spec.range, z: origin.z + direction.z * spec.range };
-    const wall = sweepStatic(collisionWorld, { ...origin, y: RIFLE_COLLISION_HEIGHT }, { ...endpoint, y: RIFLE_COLLISION_HEIGHT }, spec.radius * area);
-    let firstContact = wall?.t ?? Infinity, firstMonster = null;
+    const shot = rifleShot(spec.classId, { areaMultiplier });
+    const endpoint = { x: origin.x + direction.x * shot.range, z: origin.z + direction.z * shot.range };
+    const wall = sweepStatic(collisionWorld, { ...origin, y: RIFLE_COLLISION_HEIGHT }, { ...endpoint, y: RIFLE_COLLISION_HEIGHT }, shot.radius);
+    const contacts = [];
     for (const monster of room.world.monsters.values()) {
-      const contact = segmentCircleContact(origin, endpoint, monster, spec.radius * area + monster.radius);
-      if (contact < firstContact) { firstContact = contact; firstMonster = monster; }
+      const contact = segmentCircleContact(origin, endpoint, monster, shot.radius + monster.radius);
+      if (contact < (wall?.t ?? Infinity)) contacts.push({ monster, contact });
     }
-    return firstMonster ? [firstMonster] : [];
+    return contacts.sort((a, b) => a.contact - b.contact || a.monster.id - b.monster.id).slice(0, 1 + shot.pierce).map(entry => entry.monster);
+  }
+
+  if (spec.shape === "melee") {
+    // Aldric's cleave / 360° finisher: the same predicate the solo client uses, plus line of sight.
+    const shape = meleeShape(spec.classId, { areaMultiplier, finisher });
+    for (const monster of room.world.monsters.values()) {
+      if (insideMeleeShape(shape, origin, direction, monster) && !sweepStatic(collisionWorld, { ...origin, y: .9 }, { x: monster.x, z: monster.z, y: .9 }, 0)) hits.push(monster);
+    }
+    return hits;
   }
 
   for (const monster of room.world.monsters.values()) {
@@ -1293,6 +1329,7 @@ function killServerMonster(room, monster, sourceClientId, skillEffect = null) {
 
 function rewardServerKill(room, client, monster) {
   const profile = serverMonsterProfiles[monster.type] ?? serverMonsterProfiles.zombie;
+  leechServerPlayer(room, client, { kills: 1 }, false); // The reward below already carries the new health.
   client.state.score = Math.max(0, Math.floor(client.state.score + monster.score));
   client.state.kills = Math.max(0, Math.floor(client.state.kills + 1));
   const progressionEffects = rewardKill(client.state, client.progression, monster, {boss:Boolean(profile.boss)});
@@ -1331,14 +1368,20 @@ function rewardServerKill(room, client, monster) {
   }
 }
 
-function damageServerPlayer(room, client, amount) {
+const serverMonsterWeight = monster => monsterWeight({ type: monster.type, eliteType: monster.eliteType, boss: serverMonsterProfiles[monster.type]?.boss });
+
+// `source` is the attacking monster for melee hits. Swarm melee respects the shared hit-grace;
+// brutes, elites, bosses, projectiles and fixtures (no source) always land. Class armor applies to all.
+function damageServerPlayer(room, client, amount, source = null) {
   const previousState = client.state.state;
   const damage = Math.ceil(clampNumber(amount, 0, 120, 0));
   if (damage <= 0 || client.state.state !== "playing" || client.state.health <= 0) {
     return;
   }
 
-  const resolved = receiveDamage(client.state, client.progression, damage);
+  const incoming = resolveIncomingDamage(client.heroCombat, damage, { now: Date.now() / 1000, swarm: Boolean(source) && serverMonsterWeight(source) === "swarm" });
+  if (incoming.graced) return;
+  const resolved = receiveDamage(client.state, client.progression, incoming.damage);
   if (client.state.health <= 0) {
     room.world.actorIndex?.remove(`player:${client.id}`);
     cancelSkills(client.skills, event => broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event }), 'death');
@@ -1503,9 +1546,7 @@ function pickWeighted(weights) {
 }
 
 function getServerSpawnInterval(world) {
-  const wavePressure = Math.min(0.66, world.wave * 0.043 + Math.max(0, world.wave - 10) * 0.017);
-  const timePressure = Math.min(0.22, world.survivalTime * 0.0045);
-  return Math.max(0.05, 0.7 - wavePressure - timePressure);
+  return spawnInterval(world.wave, world.survivalTime, 0.05);
 }
 
 function getServerRangedCooldown(type) {

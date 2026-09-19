@@ -32,6 +32,7 @@ import { createSampleBank } from "./audio/sample-bank.js";
 import { RIFLE_COLLISION_HEIGHT, enemyProjectileCollisionHeight } from "./combat/collision-heights.mjs";
 import { segmentCircleContact } from "./combat/projectile-sweep.js";
 import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc } from "./combat/melee-timing.mjs";
+import { heroProfile, heroMaxHealth, createHeroCombatState, beginBasicAttack, swingDuration, meleeShape, insideMeleeShape, rifleShot, assistRifleAim, basicPower, skillPower, monsterWeight, applyHeroKnockback, advanceHeroKnockback, resolveIncomingDamage, resolveLeech, xpToNext as heroXpToNext, waveSpawnBudget, spawnInterval as heroSpawnInterval, spawnDistance as heroSpawnDistance } from "./combat/hero-power.mjs";
 import {
   forceConfigTarget,
   getAllOverrides,
@@ -131,6 +132,8 @@ let characterLoadVersion = 0;
 let characterError = null;
 const readyCharacters = new Set();
 let pendingSwordStrike = null;
+// Hero power (src/combat/hero-power.mjs): combo, hit-grace and leech budget for the local hero. Solo authority; online it only predicts the combo.
+let heroCombat = createHeroCombatState(selectedCharacter);
 let swordSwingRemaining = 0;
 let keyboardAimActive = false;
 let keyboardAimReleaseUntil = 0;
@@ -1497,8 +1500,8 @@ const retiredServerDrops = new Set();
 const player = {
   character: selectedCharacter,
   name: loadPlayerName(),
-  health: playerBaseMaxHealth,
-  maxHealth: playerBaseMaxHealth,
+  health: heroMaxHealth(selectedCharacter),
+  maxHealth: heroMaxHealth(selectedCharacter),
   score: 0,
   kills: 0,
   wave: 0,
@@ -1941,6 +1944,9 @@ window.__zombieNightDebug = {
         critChance: Number(player.critChance.toFixed(3)),
       },
       survivalTime: Number(game.survivalTime.toFixed(2)),
+      heroPower: { classId: heroCombat.classId, combo: heroCombat.combo, mitigation: heroProfile(player.character).mitigation,
+        basicPower: basicPower(player.character, player.level), skillPower: skillPower(player.character, player.level),
+        staggered: zombies.filter(zombie => zombie.staggerTimer > 0).length },
       player: {
         name: player.name,
         x: Number(player.position.x.toFixed(3)),
@@ -2372,6 +2378,7 @@ function startGame() {
   clearEntities();
   resetProgressionState();
   classSkillState = createSkillState(player.character);
+  heroCombat = createHeroCombatState(player.character);
   pendingSkillRequest = null;
   skillPresentationHistory.length = 0;
   onlineSkillMotion = null; remoteSkillSnapshots = []; persistentSkillPresentation.clear();
@@ -2498,7 +2505,7 @@ function resetProgressionState() {
   }
   serverPowerupsById.clear();
   retiredServerDrops.clear();
-  player.maxHealth = playerBaseMaxHealth;
+  player.maxHealth = heroMaxHealth(player.character);
   player.level = 1;
   player.bestLevel = 1;
   player.xp = 0;
@@ -6365,7 +6372,7 @@ function collectXp(value) {
 }
 
 function getXpToNext(level) {
-  return 10 + level * 7 + Math.floor(level ** 1.35);
+  return heroXpToNext(level); // Shared with authority.mjs through hero-power.mjs.
 }
 
 function activateLevelUpPerks() {
@@ -6822,7 +6829,7 @@ function requestClassSkill(slot) {
     sendMultiplayerMessage({ type: 'skill', requestId: id, runId: multiplayerAuthorityRunId, ...intent });
   } else {
     const result = beginSkill(classSkillState, intent, { x: player.position.x, z: player.position.z,
-      runId: game.soloRunId, damageMultiplier: getCombatDamageMultiplier() / getSkillModifiers(classSkillState).damage, areaMultiplier: getAreaMultiplier(), playing: true, dead: player.health <= 0 });
+      runId: game.soloRunId, damageMultiplier: getCombatDamageMultiplier() / getSkillModifiers(classSkillState).damage * skillPower(player.character, player.level), areaMultiplier: getAreaMultiplier(), playing: true, dead: player.health <= 0 });
     if (result.ok) presentClassSkill(result.event);
     else playSkillFeedback(slot, 'resourcefail');
   }
@@ -7093,21 +7100,22 @@ function updateShooting(dt) {
     if (pendingSwordStrike.remaining <= 0) {
       const direction = pendingSwordStrike.direction;
       pendingSwordStrike = null;
-      damageZombiesInConeFrom(player.position, direction, 4.2 * getAreaMultiplier(), Math.cos(.92), 7 * getCombatDamageMultiplier(), true, true, 'katana');
+      performSwordStrike(direction); // hero-power: cleave / combo finisher, knockback, leech
       audioManager.play('katana', { priority: 2 });
       sendMultiplayerAttack('katana', player.position, direction);
     }
   }
   if (!game.shooting || player.shotCooldown > 0 || classSkillState.lock > 0 || !heroVisual) return;
   if (player.character === 'warrior') {
-    const duration = Math.max(.32, .55 * player.upgradeStats.cooldownMultiplier);
+    const duration = swingDuration('warrior', player.upgradeStats.cooldownMultiplier);
     player.shotCooldown = duration;
     swordSwingRemaining = duration;
     swordSwingDirection.copy(player.aimDirection);
-    pendingSwordStrike = { remaining: duration * .42, direction: swordSwingDirection.clone() };
-    heroVisual.attack({ duration });
+    pendingSwordStrike = { remaining: duration * heroProfile('warrior').basic.impactFraction, direction: swordSwingDirection.clone() };
+    // The combo advances at impact (same moment the server counts it); the wind-up only previews the heavy clip.
+    heroVisual.attack({ duration, heavy: beginBasicAttack({ ...heroCombat }, game.survivalTime + pendingSwordStrike.remaining).finisher });
   } else {
-    const duration = Math.max(.16, .32 * player.upgradeStats.cooldownMultiplier);
+    const duration = swingDuration('dwarf', player.upgradeStats.cooldownMultiplier);
     player.shotCooldown = duration;
     heroVisual.attack({ duration });
     spawnBullet();
@@ -7118,6 +7126,42 @@ function updateShooting(dt) {
 
 function getCombatDamageMultiplier() {
   return player.upgradeStats.damageMultiplier * (player.weaponTimer > 0 ? 1.4 : 1) * getSkillModifiers(classSkillState).damage;
+}
+
+// Hero power (src/combat/hero-power.mjs). Aldric's basic strike: shared cleave / 360° finisher predicate, level power,
+// knockback and leech. Online the server resolves the same step; this side only advances and presents the combo.
+function getZombieWeight(zombie) {
+  return monsterWeight({ type: zombie.type, eliteType: zombie.eliteType, boss: monsterProfiles[zombie.type]?.boss });
+}
+function performSwordStrike(direction) {
+  const step = beginBasicAttack(heroCombat, game.survivalTime);
+  const shape = meleeShape('warrior', { areaMultiplier: getAreaMultiplier(), finisher: step.finisher });
+  const amount = heroProfile('warrior').basic.damage * getCombatDamageMultiplier() * basicPower('warrior', player.level) * step.damageMultiplier;
+  let hits = 0;
+  for (const zombie of [...queryZombiesNear(player.position, shape.range + 2.5, spatialGrid.coneCandidates)]) {
+    if (zombie.serverControlled || zombie.health <= 0) continue;
+    const body = { x: zombie.mesh.position.x, z: zombie.mesh.position.z, radius: zombie.radius };
+    if (!insideMeleeShape(shape, player.position, direction, body)) continue;
+    if (sweepStatic(collisionWorld, { x: player.position.x, z: player.position.z, y: .9 }, { x: body.x, z: body.z, y: .9 }, 0)) continue;
+    applyHeroKnockback(zombie, { x: body.x - player.position.x, z: body.z - player.position.z }, step.knockback, getZombieWeight(zombie));
+    damageZombie(zombie, amount, true, true, 'katana');
+    hits += 1;
+  }
+  applyHeroLeech({ hits });
+  if (step.finisher) presentSwordFinisher(player.position, shape.range);
+}
+function applyHeroLeech(counts) {
+  if (multiplayer.enabled || game.state !== 'playing') return;
+  player.health += resolveLeech(heroCombat, { ...counts, now: game.survivalTime, health: player.health, maxHealth: player.maxHealth });
+}
+function presentSwordFinisher(position, radius, local = true) {
+  combatVfx?.emit('shockwave', position, { color: 0xffd69a, radius, intensity: 1.5 });
+  for (let blade = 0; blade < 3; blade += 1) {
+    const angle = blade / 3 * Math.PI * 2;
+    combatVfx?.emit('slash', { x: position.x + Math.cos(angle) * .35, y: 1.25, z: position.z + Math.sin(angle) * .35 },
+      { direction: { x: Math.cos(angle), z: Math.sin(angle) }, radius: radius * .62, tilt: .12, color: 0xffe2ad });
+  }
+  if (local && !presentationPreferences.reducedMotion) cameraTrauma = Math.max(cameraTrauma, .2);
 }
 
 function updateFlamethrower(dt) {
@@ -7244,12 +7288,20 @@ function updateFrostNovaAttack() {
 }
 
 function spawnBullet() {
+  const shot = rifleShot('dwarf'); // hero-power: one-shot opening zombies, short pierce with falloff, stopping power
+  // Point-blank forgiveness (shared with the server): a body hugging Lyra inside the frontal arc is never missed.
+  const bodies = queryZombiesNear(player.position, shot.assistRange + 2.5).map(zombie => ({ x: zombie.mesh.position.x, z: zombie.mesh.position.z, radius: zombie.radius, health: zombie.health }));
+  const assisted = assistRifleAim(player.position, player.aimDirection, bodies, shot);
   spawnPlayerProjectiles({
+    ...(assisted === player.aimDirection ? {} : { origin: player.position.clone(), direction: new THREE.Vector3(assisted.x, 0, assisted.z) }),
     color: 0xfff2a3,
-    damage: 2,
-    lifespan: .52,
-    radius: .12,
-    speed: 48,
+    damage: shot.damage * basicPower('dwarf', player.level),
+    lifespan: shot.lifespan,
+    radius: shot.radius,
+    speed: shot.speed,
+    pierceHits: shot.pierce,
+    pierceFalloff: shot.pierceFalloff,
+    knockback: heroProfile('dwarf').knockback,
     hitEffect: "pistol",
   });
 }
@@ -7282,6 +7334,8 @@ function spawnProjectile({
   explodeRadius = 0,
   lifespan,
   pierceHits = 0,
+  pierceFalloff = 1,
+  knockback = null,
   radius,
   speed,
   hitEffect = null,
@@ -7315,6 +7369,8 @@ function spawnProjectile({
     hitEffect,
     lifespan,
     pierceHits,
+    pierceFalloff,
+    knockback,
     radius,
     velocity: projectileDirection.multiplyScalar(speed),
   });
@@ -8067,10 +8123,8 @@ function spawnCuttingMoonWave() {
 function startNextWave() {
   player.wave += 1;
   waveElement.textContent = player.wave.toString();
-  const wavePressure = Math.floor(Math.pow(Math.max(0, player.wave - 1), 1.32) * 7.8);
-  const survivalPressure = Math.floor(game.survivalTime / 6);
   game.zombiesToSpawn = Math.min(
-    24 + player.wave * 11 + wavePressure + survivalPressure,
+    waveSpawnBudget(player.wave, game.survivalTime), // Pacing lives in hero-power.mjs, shared with the server.
     Math.max(240, getMaxActiveZombies() - 8),
   );
   game.spawnTimer = 0.2;
@@ -8261,9 +8315,7 @@ function removeTrap(index) {
 }
 
 function getZombieSpawnInterval() {
-  const wavePressure = Math.min(0.66, player.wave * 0.043 + Math.max(0, player.wave - 10) * 0.017);
-  const timePressure = Math.min(0.22, game.survivalTime * 0.0045);
-  return Math.max(0.032, 0.7 - wavePressure - timePressure);
+  return heroSpawnInterval(player.wave, game.survivalTime, 0.032);
 }
 
 function spawnZombie(x, z, type = pickMonsterType(), options = {}) {
@@ -8276,7 +8328,7 @@ function spawnZombie(x, z, type = pickMonsterType(), options = {}) {
     mesh.position.set(x, 0, z);
   } else {
     const angle = Math.random() * Math.PI * 2;
-    const distance = 28 + Math.random() * 22;
+    const distance = heroSpawnDistance(game.survivalTime, Math.random());
     mesh.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
   }
   if (!options.serverControlled) {
@@ -8693,10 +8745,17 @@ function updateZombies(dt) {
         continue;
       }
 
+      // Hero knockback (hero-power.mjs): a short slide against static colliders, then a stagger that cancels the wind-up.
+      const pushed = advanceHeroKnockback(zombie, dt);
+      if (pushed.dx || pushed.dz) {
+        const moved = moveActor(collisionWorld, getZombieCollisionBody(zombie), { x: pushed.dx, z: pushed.dz });
+        zombie.mesh.position.x = moved.x; zombie.mesh.position.z = moved.z;
+        zombieActorIndex?.update({ ...getZombieCollisionBody(zombie), x: moved.x, z: moved.z });
+      }
       if (zombie.type === 'caster' && updateCasterZombie(zombie, dt, casterControls)) {
         updateBossLabelPosition(zombie); continue;
       }
-      if (zombie.freezeTimer > 0 || zombie.stunTimer > 0) {
+      if (zombie.freezeTimer > 0 || zombie.stunTimer > 0 || pushed.staggered) {
         if (zombie.meleeAttack) zombie.meleeAttack.active = false;
         zombie.attackCooldown = Math.max(zombie.attackCooldown - dt, 0.12);
         updateBossLabelPosition(zombie);
@@ -8723,7 +8782,7 @@ function updateZombies(dt) {
         else {
           const phase = advanceMeleeAttack(strike, dt);
           if (phase.impact && isWithinMeleeArc(zombie.mesh.position, lockedTarget.position, strike) && clearEnemyMelee(zombie.mesh.position, lockedTarget.position)) {
-            damagePlayerTarget(lockedTarget, zombie.damage + Math.floor(player.wave * .55));
+            damagePlayerTarget(lockedTarget, zombie.damage + Math.floor(player.wave * .55), zombie);
           }
         }
         updateBossLabelPosition(zombie);
@@ -8776,7 +8835,7 @@ function updateZombies(dt) {
       if (distance < zombie.radius + 0.72 + (zombie.reachBonus || 0) && zombie.attackCooldown <= 0 && clearEnemyMelee(zombie.mesh.position, target.position)) {
         zombie.attackCooldown = zombie.type === 'orcPeon' ? .9 : .62;
         animatedEnemies?.attack(zombie, zombie.type === 'orcPeon' ? .8 : .55);
-        damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.55));
+        damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.55), zombie);
       }
 
       updateBossLabelPosition(zombie);
@@ -8984,7 +9043,7 @@ function updateBossBehavior(zombie, target, toTarget, distance, dt) {
   updateBossMovement(zombie, direction, distance, aiProfile, dt, attackRegion);
   if (distance <= meleeRange && zombie.attackCooldown <= 0 && clearEnemyMelee(zombie.mesh.position, target.position)) {
     zombie.attackCooldown = getBossMeleeCooldown(zombie);
-    damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.65));
+    damagePlayerTarget(target, zombie.damage + Math.floor(player.wave * 0.65), zombie);
     return;
   }
 
@@ -9303,9 +9362,9 @@ function getProjectileHitTarget(projectile) {
   return hitTarget;
 }
 
-function damagePlayerTarget(target, amount) {
+function damagePlayerTarget(target, amount, source = null) {
   if (target.isLocal) {
-    damageLocalPlayer(amount);
+    damageLocalPlayer(amount, source);
     return;
   }
 
@@ -9319,13 +9378,17 @@ function getSpatialAudioOptions(position) {
   return { pan: THREE.MathUtils.clamp((dx * right[0] + dz * right[2]) / 18, -.85, .85), distance: Math.hypot(dx, dz) };
 }
 
-function damageLocalPlayer(amount) {
+// `source` is the attacking monster for melee hits. Swarm melee respects the shared hit-grace (hero-power.mjs);
+// brutes, elites, bosses, projectiles, traps and fixtures always land. Class armor applies before Sangue de Ferro.
+function damageLocalPlayer(amount, source = null) {
   if (game.perfStressImmortal) {
     player.health = player.maxHealth;
     return;
   }
 
-  const reducedAmount = amount * (1 - player.damageReduction);
+  const incoming = resolveIncomingDamage(heroCombat, amount, { now: game.survivalTime, swarm: Boolean(source) && getZombieWeight(source) === 'swarm' });
+  if (incoming.graced) return;
+  const reducedAmount = incoming.damage * (1 - player.damageReduction);
   cinematicPipeline?.impact(Math.min(.5, reducedAmount / 60));
   if (!presentationPreferences.reducedMotion) cameraTrauma = Math.min(.55, cameraTrauma + .18);
   audioManager.play("playerDamage", { priority: 3 });
@@ -9597,6 +9660,7 @@ function updateBullets(dt) {
       bullet.mesh.position.lerpVectors(bullet.previousPosition, bullet.nextPosition, firstContact);
       hit = true;
       bullet.hitZombies.add(target.id);
+      if (bullet.knockback && !target.serverControlled) applyHeroKnockback(target, bullet.velocity, bullet.knockback, getZombieWeight(target)); // hero-power: rifle stopping power
       damageZombie(target, bullet.damage, true, true, bullet.hitEffect);
       if (bullet.explodeRadius > 0) {
         damageZombiesAtPoint(bullet.mesh.position, bullet.explodeRadius, bullet.explodeDamage || bullet.damage, false, true, bullet.hitEffect);
@@ -9605,6 +9669,7 @@ function updateBullets(dt) {
       }
       if (bullet.pierceHits <= 0) break;
       bullet.pierceHits -= 1;
+      bullet.damage *= bullet.pierceFalloff ?? 1;
       hit = false;
     }
     if (!hit && wall) {
@@ -9803,6 +9868,7 @@ function damageZombie(target, amount, shouldFlash, awardRewards = true, hitEffec
         player.bossKills += 1;
         spawnHealthPotionAt(xpPosition, bossHealthPotionAmount, zombie.type);
       }
+      applyHeroLeech({ kills: 1 }); // hero-power: Aldric sustain, every kill source, shared per-second cap
       maybeTriggerKillPerks(zombie.type, xpPosition);
       maybeDropPerkFromZombie(zombie.type, xpPosition);
       maybeDropWeaponFromZombie(zombie.type, xpPosition);
@@ -10826,6 +10892,12 @@ function handleMultiplayerMessage(rawMessage) {
     return;
   }
 
+  // Authoritative combo step for the local Aldric: the prediction in performSwordStrike re-synchronises here.
+  if (messageData.type === "attackResult" && messageData.runId === multiplayerAuthorityRunId) {
+    heroCombat.combo = Math.max(0, Math.floor(Number(messageData.combo) || 0));
+    return;
+  }
+
   if (messageData.type === "playerLeft") {
     removeRemotePlayer(messageData.id);
     updateMultiplayerHud();
@@ -11332,7 +11404,8 @@ function applyAuthoritativeSelfState(state) {
     audioManager.play('levelUp', { priority: 3 });
     if (player.perkCooldowns.prismStorm > 0) triggerPerkAnimation('prismStorm', player.position, 'epic');
   }
-  if (!newRun && player.health > previousHealth) {
+  // Aldric's leech arrives as many small authoritative heals; only potion-sized gains get the burst.
+  if (!newRun && player.health > previousHealth + 6) {
     combatVfx?.emit('heal', player.position, { color: 0xa2e4bc, radius: 2 });
     pulseHealth();
   }
@@ -11683,6 +11756,7 @@ function handleRemoteAttack(playerId, attack) {
       : attack?.kind || "pistol";
   if (remotePlayer && remotePlayer.combatTimer < .1) remotePlayer.visual?.attack({ duration: getRemoteAttackInterval(weapon) });
   spawnRemoteAttackVisual(origin, direction, weapon, remotePlayer?.color || "#74d1ff");
+  if (attack?.finisher === true && weapon === 'katana') presentSwordFinisher(origin, meleeShape('warrior', { finisher: true }).range, false);
   applyRemoteAttackDamage(origin, direction, weapon);
 }
 
