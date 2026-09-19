@@ -11,12 +11,12 @@ import { createCollisionWorld, createActorIndex, moveActor, stepActor, sweepStat
 import { separateControlledActors } from "./src/combat/crowd-control.mjs";
 import { getEnvironmentColliders, ENVIRONMENT_GROUND } from "./src/render/environment-layout.js";
 import { getPursuitDirection } from "./src/physics/navigation.mjs";
-import { createSkillState, skillSnapshot, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills } from "./src/combat/class-skills.mjs";
+import { createSkillState, skillSnapshot, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills, getSkillDamageTaken, creditSkillKill } from "./src/combat/class-skills.mjs";
 import { locomotionSpeed, creditMoveBudget, consumeMoveBudget } from "./src/combat/network-move.mjs";
 import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc } from "./src/combat/melee-timing.mjs";
 import { heroMaxHealth, basicAttackSpec, createHeroCombatState, beginBasicAttack, meleeShape, insideMeleeShape, rifleShot, assistRifleAim, basicPower, skillPower, monsterWeight, applyHeroKnockback, advanceHeroKnockback, resolveIncomingDamage, resolveLeech, waveSpawnBudget, spawnInterval, spawnDistance } from "./src/combat/hero-power.mjs";
 
-import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, resolveDamage, rewardKill, receiveDamage, tickProgression } from "./src/progression/authority.mjs";
+import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, skillMods, resolveDamage, rewardKill, receiveDamage, tickProgression } from "./src/progression/authority.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 await loadLocalEnv();
@@ -1116,9 +1116,13 @@ function handleServerSkill(room, client, message) {
       damageMultiplier: attackStats(client.progression).damageMultiplier * skillPower(client.state.character, client.progression.level),
       // Placed after the state spread so nothing a client reported can shadow server progression.
       areaMultiplier: attackStats(client.progression).areaMultiplier,
+      // Class skill upgrades: derived from server-owned stacks only, never from the message or reported state.
+      skillMods: skillMods(client.progression),
     });
     if (result.ok) {
       if (message.slot > 0 && client.state.character === 'warrior') client.skillMovementUntil = Date.now() + result.event.duration * 1000;
+      // Recuo Tático: the authority owns Lyra's position while she hops back.
+      else if (result.event.mods?.frostHop) client.skillMovementUntil = Date.now() + 320;
       broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event: result.event });
     }
     result = { ok: result.ok, reason: result.reason, castId: result.castId };
@@ -1131,8 +1135,14 @@ function handleServerSkill(room, client, message) {
 
 function updateServerSkills(room, client, dt) {
   advanceSkills(client.skills, dt, {
-    actor: client.state,
+    actor: client.state, skillMods: skillMods(client.progression),
     targets: [...room.world.monsters.values()].map(monster => Object.assign(monster, { boss: Boolean(serverMonsterProfiles[monster.type]?.boss) })),
+    // Upgrade knockback (Brado Trovejante): collided like every other authoritative displacement.
+    moveTarget(monster, delta) {
+      if (!room.world.monsters.has(monster.id)) return null;
+      const moved = moveActor(collisionWorld, { id: `monster:${monster.id}`, x: monster.x, z: monster.z, radius: monster.radius }, delta);
+      monster.x = moved.x; monster.z = moved.z; return moved;
+    },
     sweepStatic: (from, to, radius, kind) => sweepStatic(collisionWorld, from, to, radius, { kind }),
     moveCaster(delta) {
       const moved = moveActor(collisionWorld, { id: client.id, x: client.state.x, z: client.state.z, radius: .64 }, delta, { stopOnContact: true });
@@ -1332,6 +1342,9 @@ function rewardServerKill(room, client, monster) {
   leechServerPlayer(room, client, { kills: 1 }, false); // The reward below already carries the new health.
   client.state.score = Math.max(0, Math.floor(client.state.score + monster.score));
   client.state.kills = Math.max(0, Math.floor(client.state.kills + 1));
+  // Sede de Sangue: kills during an upgraded Grito de Guerra heal; the amount was frozen on that cast.
+  const skillHeal = creditSkillKill(client.skills, { boss: Boolean(profile.boss) }).heal;
+  if (skillHeal > 0 && client.state.health > 0) client.state.health = Math.min(client.state.maxHealth, client.state.health + skillHeal);
   const progressionEffects = rewardKill(client.state, client.progression, monster, {boss:Boolean(profile.boss)});
   const leaderboardChanged = updatePlayerHistory(client, "playing");
   const reward = {
@@ -1373,6 +1386,7 @@ const serverMonsterWeight = monster => monsterWeight({ type: monster.type, elite
 // `source` is the attacking monster for melee hits. Swarm melee respects the shared hit-grace;
 // brutes, elites, bosses, projectiles and fixtures (no source) always land. Class armor applies to all.
 function damageServerPlayer(room, client, amount, source = null) {
+  amount *= getSkillDamageTaken(client.skills); // Bastião (Investida de Escudo upgrade)
   const previousState = client.state.state;
   const damage = Math.ceil(clampNumber(amount, 0, 120, 0));
   if (damage <= 0 || client.state.state !== "playing" || client.state.health <= 0) {

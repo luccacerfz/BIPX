@@ -12,7 +12,7 @@ const classSkills = {
   dwarf: ['dwarf_explosive_cannon', 'dwarf_frost_shot', 'dwarf_gravity_shot'],
 };
 const nonnegative = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
-const label = (value, fallback) => typeof value === 'string' && value.trim() ? value.trim().slice(0, 100) : fallback;
+const label = (value, fallback, limit = 100) => typeof value === 'string' && value.trim() ? value.trim().slice(0, limit) : fallback;
 const number = (value) => Math.ceil(value).toLocaleString('pt-BR');
 function statusDescription(status) {
   const modifiers = [['damageMultiplier', 'Dano'], ['speedMultiplier', 'Movimento']]
@@ -55,7 +55,10 @@ export function normalizeSnapshot(value) {
       if (!skill || !['cost', 'cooldownRemaining', 'cooldownDuration'].every((key) => nonnegative(skill[key]))) return null;
       return { id, slot, name: label(skill.name, `Habilidade ${slot + 1}`), key: label(skill.key, String(slot + 1)),
         cost: skill.cost, cooldownRemaining: skill.cooldownRemaining, cooldownDuration: skill.cooldownDuration,
-        enabled: skill.enabled === true, description: label(skill.description, skillArt[id][3]) };
+        // Upgraded numbers lengthen the authoritative text (e.g. "6,4 m por 9,5 s"); never cut it mid-sentence.
+        enabled: skill.enabled === true, description: label(skill.description, skillArt[id][3], 180),
+        upgrades: Array.isArray(skill.upgrades) ? skill.upgrades.filter(entry => entry && typeof entry.label === 'string' && nonnegative(entry.stacks) && entry.stacks > 0 && nonnegative(entry.maxStacks))
+          .slice(0, 8).map(entry => ({ label: label(entry.label, 'Evolução', 40), stacks: Math.floor(entry.stacks), maxStacks: Math.floor(entry.maxStacks) })) : [] };
     }),
   };
 }
@@ -101,7 +104,7 @@ function mount() {
       <kbd class="arpg-skill__key">${slot + 1}</kbd><span class="arpg-skill__art">${icon('unknown')}</span><span class="arpg-skill__mask" aria-hidden="true"></span><span class="arpg-skill__timer" aria-hidden="true"></span><span class="arpg-skill__cost" aria-hidden="true">—</span><span class="sr-only arpg-skill__name">Habilidade ${slot + 1}</span>
     </button>`).join('')}</div><span class="arpg-actionbar__hint">Habilidades</span></div>${orb('resource', 'Recurso')}
     <div id="arpg-statuses" class="arpg-statuses" role="list" aria-label="Efeitos ativos" hidden></div>
-    <div class="arpg-tooltip" id="arpg-tooltip" role="tooltip" hidden><strong></strong><span class="arpg-tooltip__description"></span><span class="arpg-tooltip__meta"></span><span class="arpg-tooltip__effect" hidden></span><span class="arpg-tooltip__state"></span></div>
+    <div class="arpg-tooltip" id="arpg-tooltip" role="tooltip" hidden><strong></strong><span class="arpg-tooltip__description"></span><span class="arpg-tooltip__meta"></span><span class="arpg-tooltip__upgrades" hidden></span><span class="arpg-tooltip__effect" hidden></span><span class="arpg-tooltip__state"></span></div>
     <span id="arpg-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>`;
   root.addEventListener('mousemove', (event) => event.stopPropagation());
   root.addEventListener('mousedown', (event) => event.stopPropagation());
@@ -243,6 +246,10 @@ function renderTooltip() {
   tooltip.querySelector('.arpg-tooltip__description').textContent = skill?.description ?? '';
   tooltip.querySelector('.arpg-tooltip__meta').textContent = skill ? `${skillArt[skill.id][2]} · ${number(skill.cost)} de ${snapshot.resourceLabel} · Recarga ${skill.cooldownDuration.toLocaleString('pt-BR')} s` : 'Aguardando informações da habilidade';
   tooltip.querySelector('.arpg-tooltip__state').textContent = availability(skill)[1];
+  // Owned class cards that change this skill; cost, recharge and the description above already show their numbers.
+  const upgradesLine = tooltip.querySelector('.arpg-tooltip__upgrades');
+  upgradesLine.hidden = !skill?.upgrades.length;
+  upgradesLine.textContent = skill?.upgrades.length ? `Evoluções: ${skill.upgrades.map(entry => `${entry.label} ${entry.stacks}/${entry.maxStacks}`).join(' · ')}` : '';
   const status = snapshot?.statuses.find(item => item.skillId === skill?.id);
   const effect = tooltip.querySelector('.arpg-tooltip__effect');
   effect.hidden = !status;
