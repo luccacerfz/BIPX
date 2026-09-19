@@ -3,6 +3,30 @@ import { moveActor, sweepStatic } from './contacts.mjs';
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const unit = (a, b) => { const d = distance(a, b); return d > 1e-8 ? { x: (b.x - a.x) / d, z: (b.z - a.z) / d } : { x: 0, z: 0 }; };
 const clear = (world, a, b, body) => !sweepStatic(world, a, b, body.radius, { kind: 'actor', y: body.y ?? world.groundY, height: body.height ?? 2 });
+function navigationTelemetry(result, trace) {
+  if (!trace) return result;
+  try { trace.sink({ ...trace.context, ...result, durationMs: performance.now() - trace.startedAt }); } catch { /* Diagnostics must never affect gameplay. */ }
+  return result;
+}
+const quantize = value => Math.round(value * 2) / 2;
+function failedPlanKey(body, target, options, region) {
+  const attack = region ? `${region.range}:${region.minDistance}:${region.losY}` : '-';
+  return [body.id ?? 'actor', quantize(body.x), quantize(body.z), quantize(target.x), quantize(target.z),
+    options.cellSize ?? 1.25, options.arrivalRadius ?? 0, attack].join('|');
+}
+function failedPlanMatches(failure, body, target, options, region) {
+  return failure.bodyX === quantize(body.x) && failure.bodyZ === quantize(body.z) &&
+    failure.targetX === quantize(target.x) && failure.targetZ === quantize(target.z) &&
+    failure.cellSize === (options.cellSize ?? 1.25) && failure.arrivalRadius === (options.arrivalRadius ?? 0) &&
+    failure.attackRange === (region?.range ?? null) && failure.attackMinDistance === (region?.minDistance ?? null) &&
+    failure.attackLosY === (region?.losY ?? null);
+}
+function failedPlanBackoff(attempts) {
+  // A failed search is still allowed to recover when the actor/target moves,
+  // but repeated identical failures must not spend 768-node A* budgets every
+  // ~700 ms. The cap keeps the fallback steering responsive.
+  return Math.min(2.5, .35 * 2 ** Math.min(Math.max(0, attempts - 1), 3));
+}
 function planningInterval(id) {
   let hash = 2166136261;
   for (const char of String(id ?? 'actor')) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
@@ -60,18 +84,22 @@ class Heap {
 
 /** Bounded A*, tested segments including diagonals; no corner-cutting or teleports. */
 export function findNavigationPath(world, body, target, options = {}) {
+  const sink = globalThis.__bipxNavigationTelemetry;
+  const trace = typeof sink === 'function' ? { sink, startedAt: performance.now(), context: {
+    actorId: body.id ?? null, start: { x: body.x, z: body.z }, target: { x: target.x, z: target.z }, maxVisited: options.maxVisited ?? 768,
+  } } : null;
   const cellSize = Math.max(.5, Math.min(3, Number(options.cellSize) || 1.25));
   const maxVisited = Math.max(16, Math.min(4096, Math.floor(options.maxVisited ?? 768)));
   const arrivalRadius = Math.max(0, Math.min(5, options.arrivalRadius ?? 0));
   const region = attackRegion(options);
   const start = { x: body.x, z: body.z }, goal = { x: target.x, z: target.z };
   const validated = moveActor(world, body, { x: 0, z: 0 });
-  if (validated.unresolved || distance(validated, start) > 1e-4) return { waypoints: [], reached: false, visited: 0, reason: 'invalid-start' };
-  if (region && inAttackRegion(world, start, goal, region)) return { waypoints: [], reached: true, visited: 0, reason: 'attack-region' };
+  if (validated.unresolved || distance(validated, start) > 1e-4) return navigationTelemetry({ waypoints: [], reached: false, visited: 0, reason: 'invalid-start' }, trace);
+  if (region && inAttackRegion(world, start, goal, region)) return navigationTelemetry({ waypoints: [], reached: true, visited: 0, reason: 'attack-region' }, trace);
   if (clear(world, start, goal, body)) {
     const radius = region ? region.range - Math.min(.05, (region.range - region.minDistance) / 4) : 0;
     const direction = unit(goal, start), endpoint = radius ? { x: goal.x + direction.x * radius, z: goal.z + direction.z * radius } : goal;
-    return { waypoints: [endpoint], reached: true, visited: 0, reason: 'direct' };
+    return navigationTelemetry({ waypoints: [endpoint], reached: true, visited: 0, reason: 'direct' }, trace);
   }
   const terminals = region ? attackTerminals(world, body, goal, region) : [];
   const terminal = region ? { sampled: 16, valid: terminals.length, sweeps: 0, sweepLimit: 256, connectorLimit: cellSize * 4 } : null;
@@ -123,7 +151,7 @@ export function findNavigationPath(world, body, target, options = {}) {
       }
     }
   }
-  if (!end) return { waypoints: [], reached: false, visited, reason: visited >= maxVisited ? 'budget' : 'no-route', ...(terminal ? { terminal } : {}) };
+  if (!end) return navigationTelemetry({ waypoints: [], reached: false, visited, reason: visited >= maxVisited ? 'budget' : 'no-route', ...(terminal ? { terminal } : {}) }, trace);
   const chain = [];
   for (let node = end; node?.parent; node = node.parent) chain.push({ x: node.x, z: node.z });
   chain.reverse();
@@ -134,7 +162,7 @@ export function findNavigationPath(world, body, target, options = {}) {
     for (let i = chain.length - 1; i > index; i--) if (clear(world, origin, chain[i], body)) { far = i; break; }
     origin = chain[far]; waypoints.push(origin); index = far + 1;
   }
-  return { waypoints, reached: true, visited, reason: 'route', ...(terminal ? { terminal } : {}) };
+  return navigationTelemetry({ waypoints, reached: true, visited, reason: 'route', ...(terminal ? { terminal } : {}) }, trace);
 }
 
 /** Caller stores returned `state` per living actor; clear it on spawn/teleport. */
@@ -144,9 +172,16 @@ export function getPursuitDirection(world, body, target, previous = null, dt = 0
   const state = { waypoints: (previous?.waypoints ?? []).map(p => ({ ...p })), target: previous?.target ? { ...previous.target } : { x: target.x, z: target.z },
     lastPosition: { x: body.x, z: body.z }, cooldown: Math.max(0, (previous?.cooldown ?? 0) - elapsed),
     stuck: previous && distance(body, previous.lastPosition) < .005 ? (previous.stuck ?? 0) + elapsed : 0,
+    failedPlan: previous?.failedPlan ? { ...previous.failedPlan } : null,
     visited: 0, reached: previous?.reached ?? true, planned: false, needsPlan: false };
-  if (region && inAttackRegion(world, body, target, region)) return { direction: { x: 0, z: 0 }, state: { ...state, target: { x: target.x, z: target.z }, waypoints: [], cooldown: 0, stuck: 0 }, mode: 'arrived' };
-  if (clear(world, body, target, body)) return { direction: unit(body, target), state: { ...state, target: { x: target.x, z: target.z }, waypoints: [], cooldown: 0, stuck: 0 }, mode: 'direct' };
+  if (state.failedPlan && !failedPlanMatches(state.failedPlan, body, target, options, region)) {
+    // A changed cell/target is a new causal search, not the same failure;
+    // never carry the previous exponential delay into the new location.
+    state.failedPlan = null;
+    state.cooldown = 0;
+  }
+  if (region && inAttackRegion(world, body, target, region)) return { direction: { x: 0, z: 0 }, state: { ...state, target: { x: target.x, z: target.z }, waypoints: [], cooldown: 0, stuck: 0, failedPlan: null }, mode: 'arrived' };
+  if (clear(world, body, target, body)) return { direction: unit(body, target), state: { ...state, target: { x: target.x, z: target.z }, waypoints: [], cooldown: 0, stuck: 0, failedPlan: null }, mode: 'direct' };
   // A movement tick may cover >1 waypoint epsilon: discard any passed waypoint
   // whose successor is visible, so fast actors do not oscillate around corners.
   while (state.waypoints.length && !(region && state.waypoints.length === 1) && distance(body, state.waypoints[0]) < Math.max(.2, (options.speed ?? 6.5) * elapsed * 1.2)) state.waypoints.shift();
@@ -160,8 +195,26 @@ export function getPursuitDirection(world, body, target, previous = null, dt = 0
     state.waypoints = path.waypoints; state.visited = path.visited; state.reached = path.reached;
     state.target = { x: target.x, z: target.z };
     if (path.terminal) state.terminal = path.terminal;
-    state.cooldown = planningInterval(body.id); state.stuck = 0; state.planned = true; state.needsPlan = false;
+    if (path.reached) {
+      state.failedPlan = null;
+      state.cooldown = planningInterval(body.id);
+    } else {
+      const attempts = (state.failedPlan?.attempts ?? 0) + 1;
+      const key = failedPlanKey(body, target, options, region);
+      state.failedPlan = { key, bodyX: quantize(body.x), bodyZ: quantize(body.z), targetX: quantize(target.x), targetZ: quantize(target.z),
+        cellSize: options.cellSize ?? 1.25, arrivalRadius: options.arrivalRadius ?? 0,
+        attackRange: region?.range ?? null, attackMinDistance: region?.minDistance ?? null, attackLosY: region?.losY ?? null,
+        attempts, reason: path.reason, visited: path.visited,
+        backoff: failedPlanBackoff(attempts) };
+      state.cooldown = Math.max(planningInterval(body.id), state.failedPlan.backoff);
+    }
+    state.stuck = 0; state.planned = true; state.needsPlan = false;
   }
-  if (!state.waypoints.length || !clear(world, body, state.waypoints[0], body)) return { direction: { x: 0, z: 0 }, state, mode: 'waiting' };
+  // Keep a failed pursuer moving through the regular swept-physics step while
+  // the bounded retry is cooling down. This is intentionally only steering;
+  // callers still apply stepActor, so a wall can never be crossed.
+  if (!state.waypoints.length || !clear(world, body, state.waypoints[0], body)) {
+    return { direction: unit(body, target), state, mode: state.failedPlan ? 'fallback' : 'waiting' };
+  }
   return { direction: unit(body, state.waypoints[0]), state, mode: 'waypoint' };
 }

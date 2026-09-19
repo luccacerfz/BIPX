@@ -1,0 +1,154 @@
+/* Upgrade hand: a real-time offer (the world keeps running), so it is a low strip, never a modal.
+   Desktop: top centre, under the boss bar when there is one; it never reaches the hero or the orbs.
+   Touch: three full-width rows right above the sticks (portrait) or a right-hand column above the attack button (landscape),
+   inside thumb reach. Markup comes from renderUpgradeChoices (src/main.js); entry timing from src/ui/arpg-hud.js. */
+:root {
+  /* Same ladder as the world drop labels (rarityStyles in main.js): cyan, gold, ember, radiant gold. One place to retune. */
+  --rarity-common: #8fd6d2;
+  --rarity-rare: #f0cd62;
+  --rarity-epic: #ff9a4a;
+  --rarity-legendary: #ffe39a;
+}
+.upgrade-panel { --hand-gap: 8px; position: fixed; inset: 0; z-index: 5; display: grid; place-items: start center; padding: calc(max(12px, env(safe-area-inset-top)) + var(--hand-boss-offset, 0px)) 16px 0; pointer-events: none; }
+/* The boss bar keeps its place; the hand queues under it. */
+body:has(#boss-bar:not([hidden])) .upgrade-panel { --hand-boss-offset: 62px; }
+.upgrade-panel__shell { position: relative; width: min(960px, calc(100vw - 580px)); min-width: min(640px, calc(100vw - 32px)); pointer-events: auto; }
+.upgrade-panel__shell::before { content: ""; position: absolute; z-index: -1; inset: -12px -36px -18px; background: radial-gradient(ellipse at 50% 38%, #04090de0, #04090d99 55%, transparent 74%); pointer-events: none; }
+.upgrade-panel__header { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin: 0 3px 7px; text-shadow: 0 1px 4px #000, 0 0 12px #000; }
+.upgrade-panel h2 { margin: 0; color: #eadcbd; font-family: var(--display); font-size: 18px; font-weight: 400; letter-spacing: .02em; white-space: nowrap; }
+.upgrade-panel__copy { margin: 0; color: #b9c7c6; font-size: 11px; white-space: nowrap; }
+.upgrade-panel__copy kbd { min-width: 17px; margin: 0 1px; padding: 1px 4px; border-color: #c6a67566; color: #f1e4c8; font-size: 10px; }
+.upgrade-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--hand-gap); align-items: start; pointer-events: auto; }
+
+.upgrade-card { --rarity: var(--rarity-common); position: relative; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto; grid-template-areas: "art name rarity" "art skill skill" "art effect effect" "art level level"; column-gap: 10px; align-content: start; min-width: 0; min-height: 104px; padding: 10px 12px 9px 11px; border: 1px solid color-mix(in srgb, var(--rarity) 38%, #1b2a31); border-top: 3px solid var(--rarity); border-radius: 3px; background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 15%, #0b1820), #0b1820 48%, #08131a); color: var(--text); font-family: var(--sans); text-align: left; box-shadow: 0 10px 26px #000a, inset 0 0 0 1px #ffffff08; transition: transform .12s ease-out, border-color .12s ease-out, box-shadow .12s ease-out, background-color .12s ease-out; }
+.upgrade-card--rare { --rarity: var(--rarity-rare); }
+.upgrade-card--epic { --rarity: var(--rarity-epic); }
+.upgrade-card--legendary { --rarity: var(--rarity-legendary); border-color: color-mix(in srgb, var(--rarity) 70%, #1b2a31); box-shadow: 0 10px 26px #000a, 0 0 22px #ffd76a2e, inset 0 0 0 1px #ffe39a2b; }
+.upgrade-card--skill { background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 22%, #0b1820), #0b1820 58%, #08131a); }
+/* Key badge: a tab on the top edge, the first thing the eye finds. */
+.upgrade-card__key { position: absolute; top: -10px; left: 9px; z-index: 2; display: grid; place-items: center; min-width: 22px; height: 20px; padding: 0 5px; border: 1px solid var(--rarity); border-radius: 3px; background: #0a1319; color: #fff6e2; font-size: 12px; font-weight: 700; line-height: 1; box-shadow: 0 2px 6px #000b; }
+.upgrade-card__medallion { grid-area: art; align-self: start; position: relative; display: grid; place-items: center; width: 48px; height: 48px; margin-top: 3px; border: 1px solid color-mix(in srgb, var(--rarity) 62%, #202a2e); border-radius: 4px; background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--rarity) 30%, #101c23), #0a141a 72%) center / cover no-repeat; color: color-mix(in srgb, var(--rarity) 84%, #fff); box-shadow: inset 0 0 0 2px #070d11, inset 0 1px 0 3px #ffffff0d, 0 0 12px color-mix(in srgb, var(--rarity) 22%, transparent); }
+.upgrade-card__icon { display: block; width: 32px; height: 32px; }
+.upgrade-card__icon--stat { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* The six class skills already have painted art: a skill card shows the very icon it upgrades. */
+.upgrade-card__medallion[data-art="war-cry"] { background-image: url('../../assets/ui/arpg/painted-v3/war-cry.webp'); }
+.upgrade-card__medallion[data-art="cleaving-dash"] { background-image: url('../../assets/ui/arpg/painted-v3/cleaving-dash.webp'); }
+.upgrade-card__medallion[data-art="shield-charge"] { background-image: url('../../assets/ui/arpg/painted-v3/shield-charge.webp'); }
+.upgrade-card__medallion[data-art="explosive-cannon"] { background-image: url('../../assets/ui/arpg/painted-v3/explosive-cannon.webp'); }
+.upgrade-card__medallion[data-art="frost-shot"] { background-image: url('../../assets/ui/arpg/painted-v3/frost-shot.webp'); }
+.upgrade-card__medallion[data-art="gravity-shot"] { background-image: url('../../assets/ui/arpg/painted-v3/gravity-shot.webp'); }
+.upgrade-card__medallion:is([data-art="war-cry"], [data-art="cleaving-dash"], [data-art="shield-charge"], [data-art="explosive-cannon"], [data-art="frost-shot"], [data-art="gravity-shot"]) .upgrade-card__icon { visibility: hidden; }
+.upgrade-card strong { grid-area: name; align-self: center; min-width: 0; color: color-mix(in srgb, var(--rarity) 78%, #fff); font-size: 15px; font-weight: 650; line-height: 1.2; letter-spacing: .005em; }
+.upgrade-card__rarity { grid-area: rarity; align-self: center; color: var(--rarity); font-size: 9.5px; font-weight: 700; letter-spacing: .09em; white-space: nowrap; }
+.upgrade-card__rarity::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 5px 1px 0; background: var(--rarity); transform: rotate(45deg); box-shadow: 0 0 6px var(--rarity); }
+.upgrade-card__skill { grid-area: skill; min-height: 14px; margin-top: 1px; overflow: hidden; color: #cfc3a6; font-size: 10.5px; line-height: 14px; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+.upgrade-card__effect { grid-area: effect; display: -webkit-box; margin-top: 4px; overflow: hidden; color: #cdd6d4; font-size: 12px; line-height: 1.38; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+.upgrade-card__level { grid-area: level; display: flex; align-items: center; gap: 5px; min-height: 11px; margin-top: 8px; }
+.upgrade-card__level i { width: 7px; height: 7px; border: 1px solid color-mix(in srgb, var(--rarity) 45%, #33424a); background: #0a141a; transform: rotate(45deg); }
+.upgrade-card__level i.is-owned { border-color: var(--rarity); background: var(--rarity); box-shadow: 0 0 5px color-mix(in srgb, var(--rarity) 60%, transparent); }
+.upgrade-card__level i.is-next { border-color: #fff6e2; background: color-mix(in srgb, var(--rarity) 40%, #0a141a); box-shadow: 0 0 7px var(--rarity); animation: hand-pip 1.1s ease-in-out infinite alternate; }
+
+/* Hover and focus reveal the whole effect text and lift the card toward the player. */
+.upgrade-card:hover, .upgrade-card:focus-visible, .upgrade-card:focus { z-index: 1; border-color: var(--rarity); background-color: #12232c; transform: translateY(3px); box-shadow: 0 14px 30px #000c, 0 0 0 1px var(--rarity), 0 0 26px color-mix(in srgb, var(--rarity) 34%, transparent); }
+.upgrade-card:hover .upgrade-card__effect, .upgrade-card:focus-visible .upgrade-card__effect, .upgrade-card:focus .upgrade-card__effect { -webkit-line-clamp: 6; line-clamp: 6; color: #eef2ee; }
+.upgrade-card:focus-visible { outline: 2px solid #fff0d3; outline-offset: 3px; }
+.upgrade-card:active { transform: translateY(4px) scale(.985); }
+.upgrade-card:disabled { opacity: .55; cursor: progress; transform: none; }
+.upgrade-card--legendary::after { content: ""; position: absolute; inset: 0; border-radius: 2px; background: linear-gradient(115deg, transparent 38%, #fff4c82e 50%, transparent 62%) 0 0 / 260% 100% no-repeat; animation: hand-sheen 2.4s linear infinite; pointer-events: none; }
+
+/* The offer owns visual priority. Ranking and onboarding remain mounted and
+   regain their prior state when the choice closes, but cannot compete for
+   pixels or focus while text is being read. */
+body.is-upgrade-offer .leaderboard-panel,
+body.is-upgrade-offer .first-run-hint { visibility: hidden; pointer-events: none; }
+
+/* Entry (<= 180 ms in total) and a short tap guard: a hand that appears under a moving thumb must not pick itself.
+   src/ui/arpg-hud.js sets data-entering for 320 ms when the offer opens; re-renders of an open hand do not replay it. */
+.upgrade-panel[data-entering="true"] .upgrade-card { pointer-events: none; animation: hand-card-in .14s cubic-bezier(.2, .8, .3, 1) calc(var(--card-index, 0) * 20ms) both; }
+.upgrade-panel[data-entering="true"] .upgrade-panel__header { animation: hand-header-in .16s ease-out both; }
+@keyframes hand-card-in { from { opacity: 0; transform: translateY(-14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes hand-header-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hand-pip { from { opacity: .55; } to { opacity: 1; } }
+@keyframes hand-sheen { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+[data-high-contrast="true"] .upgrade-card { background: #05090d; border-color: var(--rarity); }
+[data-high-contrast="true"] .upgrade-card__effect { color: #f2f5f1; }
+
+/* Narrow desktop windows keep three columns but spend less on chrome. */
+@media (min-width: 1101px) and (pointer: fine) {
+  /* Keep the offer below the boss while the complete quantitative effect is
+     readable before selection; skill subtitle is redundant with the card name
+     and is hidden only to preserve hero clearance, never the effect text. */
+  body:has(#boss-bar:not([hidden])) .upgrade-panel { --hand-boss-offset: 43px; }
+  .upgrade-card { padding-top: 8px; padding-bottom: 7px; }
+  .upgrade-card__skill { display: none; }
+  .upgrade-card__effect { display: block; overflow: visible; -webkit-line-clamp: unset; line-clamp: unset; }
+}
+@media (max-width: 1100px) and (min-width: 681px) and (pointer: fine) {
+  .upgrade-panel__shell { width: calc(100vw - 32px); min-width: 0; }
+  .upgrade-panel { padding-top: calc(max(58px, env(safe-area-inset-top)) + var(--hand-boss-offset, 0px)); }
+}
+
+/* Touch, landscape and tablets: a right-hand column that ends just above the attack button (the skill arc under it is locked while choosing). */
+@media (pointer: coarse) and (min-width: 681px) {
+  .upgrade-panel { place-items: end end; padding: 0 max(var(--touch-x), env(safe-area-inset-right)) calc(var(--touch-bottom) + var(--fire-size) + 8px) 0; }
+  .upgrade-panel__shell { width: min(292px, 46vw); min-width: 0; }
+  .upgrade-panel__shell::before { inset: -8px -14px -8px -20px; background: radial-gradient(ellipse at 60% 50%, #04090dd9, #04090d8c 60%, transparent 78%); }
+  .upgrade-panel__header { display: block; margin: 0 2px 4px; text-align: right; }
+  .upgrade-panel h2 { font-size: 14px; }
+  .upgrade-panel__copy { display: none; }
+  .upgrade-card__effect { display: block; overflow: visible; -webkit-line-clamp: unset; line-clamp: unset; }
+}
+/* Touch rows (portrait phones, and the landscape column above): icon, name, effect, pips; whole row is the target. */
+@media (pointer: coarse), (max-width: 680px) {
+  .upgrade-options { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .upgrade-card { grid-template-columns: 38px minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: "art name rarity" "art effect level"; column-gap: 9px; min-height: 54px; padding: 6px 10px 6px 7px; border-top-width: 1px; border-top-color: color-mix(in srgb, var(--rarity) 38%, #1b2a31); border-left: 3px solid var(--rarity); background: linear-gradient(90deg, color-mix(in srgb, var(--rarity) 17%, #0b1820), #0b1820 42%, #09151c); touch-action: manipulation; }
+  .upgrade-card__key, .upgrade-card__skill { display: none; }
+  .upgrade-card__medallion { width: 38px; height: 38px; margin-top: 1px; align-self: center; }
+  .upgrade-card__icon { width: 26px; height: 26px; }
+  .upgrade-card__icon--stat { width: 23px; height: 23px; }
+  .upgrade-card strong { font-size: 13.5px; }
+  .upgrade-card__rarity { font-size: 9px; }
+  /* Touch has no reliable hover/title affordance. Keep the complete effect in
+     layout before the single selection tap; text pixels, not aria-label, are
+     the reading evidence. */
+  .upgrade-card__effect { display: block; margin-top: 2px; overflow: visible; font-size: 11px; line-height: 1.26; -webkit-line-clamp: unset; line-clamp: unset; }
+  .upgrade-card__level { align-self: end; justify-content: flex-end; gap: 4px; margin: 0 0 2px; }
+  .upgrade-card__level i { width: 6px; height: 6px; }
+  .upgrade-card:hover, .upgrade-card:focus-visible, .upgrade-card:focus { transform: none; }
+  .upgrade-card:active { transform: scale(.985); }
+  .upgrade-card:hover .upgrade-card__effect, .upgrade-card:focus-visible .upgrade-card__effect { -webkit-line-clamp: unset; line-clamp: unset; }
+  /* Touch focus is the deliberate reading affordance; full text is available without hover. */
+  .upgrade-card:focus .upgrade-card__effect { -webkit-line-clamp: 6; line-clamp: 6; }
+  @keyframes hand-card-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+}
+@media (max-width: 680px) {
+  /* Portrait: the hand sits between the hero and the sticks; its header moves to the HUD status line ("Evolução · toque numa carta"). */
+  /* Keep the complete three-card hand above the hero and the skill arc. The old bottom anchor
+     left the third row over skills 2/3 on 320px screens. */
+  .upgrade-panel { place-items: start center; padding: calc(max(112px, env(safe-area-inset-top) + 106px)) 8px 0; }
+  .upgrade-panel__shell { width: 100%; min-width: 0; }
+  .upgrade-panel__shell::before { inset: -10px -8px -6px; background: linear-gradient(180deg, transparent, #04090db8 22%, #04090dcc); }
+  .upgrade-panel__header { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Landscape touch focal: keep the complete three-card hand in a compact top
+   band so the lower skill arc remains visible and actionable. The boss offset
+   still reserves the bar when one is present; this is presentation-only. */
+@media (pointer: coarse) and (min-width: 681px) {
+  .upgrade-panel { place-items: start start; padding: calc(max(12px, env(safe-area-inset-top)) + var(--hand-boss-offset, 0px)) 12px 0; }
+  /* i3 integration: the boss bar ends at y39 in the 844x390 focal. Keep a
+     5px gap (12px base + 32px boss offset = y44) instead of the v3 y74
+     placement; native/PNG confirmation remains a later GPU-gated step. */
+  body:has(#boss-bar:not([hidden])) .upgrade-panel { --hand-boss-offset: 32px; }
+  .upgrade-panel__shell { width: min(100%, 680px); min-width: 0; }
+  .upgrade-panel__header { display: block; margin: 0 2px 4px; text-align: center; }
+  .upgrade-panel h2 { font-size: 14px; }
+  .upgrade-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .upgrade-card { min-height: 0; padding: 5px 8px 5px 6px; grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 7px; }
+  .upgrade-card__medallion { width: 32px; height: 32px; }
+  .upgrade-card__icon { width: 22px; height: 22px; }
+  .upgrade-card strong { font-size: 12px; }
+  .upgrade-card__rarity { font-size: 8px; }
+  .upgrade-card { padding-top: 4px; padding-bottom: 4px; }
+  .upgrade-card__effect { font-size: 10px; line-height: 1.05; }
+}

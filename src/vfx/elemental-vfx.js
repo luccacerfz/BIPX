@@ -4,6 +4,8 @@
  */
 import { createElementalCrystalGeometry } from './elemental-geometry.js';
 import { crystalVertex, crystalFragment, surfaceVertex, surfaceFragment, ribbonVertex, ribbonFragment } from './elemental-shaders.js';
+import { createThreatMarkers } from './threat-markers.js';
+import { VFX_PALETTE } from './palette.js';
 
 export const ELEMENTAL_SOURCES = Object.freeze({
   handcast: '3431252f7ad88059681d4b9b6484cb7483f7d0d6',
@@ -14,7 +16,8 @@ const QUALITY = Object.freeze({
   medium: { crystals: 64, surfaces: 16, ribbons: 72, density: .72, spacing: .8 },
   low: { crystals: 24, surfaces: 8, ribbons: 28, density: .4, spacing: 1.15 },
 });
-const COLORS = Object.freeze({ glacial: 0x6bc9eb, void: 0xa25ad9, toxic: 0xc93337, arcane: 0xca83ff });
+// Family defaults follow palette ownership: glacial/arcane belong to Lyra, void/toxic are only ever cast by enemies.
+const COLORS = Object.freeze({ glacial: VFX_PALETTE.lyra.frost, void: VFX_PALETTE.hostile.threat, toxic: VFX_PALETTE.hostile.threat, arcane: VFX_PALETTE.lyra.gravity });
 const EMISSIONS = new Set(['glacialCast', 'glacialImpact', 'glacialNova', 'voidCast', 'voidImpact', 'toxicCast', 'toxicImpact', 'arcaneCast', 'arcaneImpact', 'flameCast', 'flameImpact']);
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const finite = (n, fallback) => Number.isFinite(n) ? n : fallback;
@@ -71,6 +74,9 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
     { aOrigin: 3, aEnd: 3, aParams: 4, aLook: 4, aColor: 3 }, ribbonVertex, ribbonFragment, true);
   const pools = [crystals, surfaces, ribbons];
   const bytes = pools.reduce((sum, p) => sum + Object.values(p.arrays).reduce((n, a) => n + a.byteLength, 0), 0);
+  // Hostile projectiles refresh their threat marker through elemental-projectiles.js, whatever their element.
+  const threats = createThreatMarkers(THREE, group);
+  const THREAT_LIMIT = { high: 32, medium: 24, low: 16 };
 
   function slot(pool) {
     const index = pool.head; pool.head = (pool.head + 1) % pool.limit;
@@ -113,7 +119,8 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
       // Sparse edge crystals leave the central actor and targets visible.
       const reach = clamp(finite(options.radius, 3.8), .12, 18);
       point.set(at.x, groundY, at.z);
-      surface(4, point, reach, reduced ? .44 : .7, seed, tintValue, false, intensity);
+      // `surface: false` keeps only the rim crystals, for callers that draw their own front on the same radius.
+      if (options.surface !== false) surface(4, point, reach, reduced ? .44 : .7, seed, tintValue, false, intensity);
       const n = currentQuality === 'low' || reduced ? 6 : currentQuality === 'medium' ? 9 : 12;
       for (let j = 0; j < n; j++) {
         const theta = j / n * Math.PI * 2 + seed;
@@ -214,7 +221,8 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
 
   function update(dt) {
     if (disposed) return;
-    time += clamp(finite(dt, 0), 0, .15); clockUniform.value = time;
+    const step = clamp(finite(dt, 0), 0, .15);
+    time += step; clockUniform.value = time; threats.update(step, reduced);
     for (const p of pools) {
       if (p.dirty) {
         for (const attr of Object.values(p.attributes)) attr.needsUpdate = true;
@@ -230,7 +238,7 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
   }
   function reset() {
     if (disposed) return;
-    time = 0; clockUniform.value = 0; trailState = new WeakMap();
+    time = 0; clockUniform.value = 0; trailState = new WeakMap(); threats.reset();
     for (const p of pools) {
       p.head = 0; p.written = 0; p.active = 0; p.arrays.aParams.fill(0); p.dirty = true;
       p.geometry.instanceCount = 0; p.mesh.visible = false;
@@ -238,7 +246,7 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
   }
   function setQuality(value) {
     if (disposed) return;
-    currentQuality = QUALITY[value] ? value : 'medium'; config = QUALITY[currentQuality];
+    currentQuality = QUALITY[value] ? value : 'medium'; config = QUALITY[currentQuality]; threats.setLimit(THREAT_LIMIT[currentQuality]);
     for (const [i, key] of ['crystals', 'surfaces', 'ribbons'].entries()) {
       const p = pools[i]; p.limit = config[key]; p.head %= p.limit;
       p.written = Math.min(p.written, p.limit); p.dirty = true;
@@ -255,15 +263,17 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
     return { quality: currentQuality, reducedMotion: reduced, disposed, time,
       activeCrystals: crystals.active, activeSurfaces: surfaces.active, activeRibbons: ribbons.active,
       capacities: { crystals: config.crystals, surfaces: config.surfaces, ribbons: config.ribbons },
-      allocatedBytes: bytes, drawCalls: pools.filter(p => p.mesh.visible).length,
+      allocatedBytes: bytes, drawCalls: pools.filter(p => p.mesh.visible).length + threats.getStats().drawCalls, threat: threats.getStats(),
       emitted, overwritten, rejected, trailDistance, events: { ...counts }, sourceCommits: { ...ELEMENTAL_SOURCES } };
   }
   function dispose() {
     if (disposed) return;
-    reset(); group.removeFromParent();
+    reset(); threats.dispose(); group.removeFromParent();
     for (const p of pools) { p.geometry.dispose(); p.material.dispose(); }
     disposed = true;
   }
   setQuality(currentQuality);
-  return { emit, emitTrail, update, setQuality, setReducedMotion, reset, getStats, dispose };
+  /** trackThreat(key, position, radius): refresh the threat marker of one live hostile projectile; call it every frame. */
+  return { emit, emitTrail, update, setQuality, setReducedMotion, reset, getStats, dispose,
+    trackThreat: (key, position, radius) => !disposed && threats.track(key, position, radius) };
 }

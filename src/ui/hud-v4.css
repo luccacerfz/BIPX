@@ -1,0 +1,246 @@
+/* HUD v4 (C3): legibility layer over styles.css + arpg-painted.css. Loaded after both; same selectors, later wins.
+   1. quiet top strip   2. tools and solo ranking   3. level/XP dock   4. action bar states (recharge, ready, resource, relic)
+   5. orbs (damage chip, heal, low and critical life)   6. touch: shared geometry, skill arc around the attack button. */
+
+/* ---- 1. Top strip: wave and time lead; kills and score follow; the legacy vitals row only exists without a snapshot. ---- */
+.survivor-hud { top: max(14px, env(safe-area-inset-top)); left: max(20px, env(safe-area-inset-left)); right: auto; width: min(272px, 42vw); gap: 6px; }
+.survivor-hud__row--stats { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "wave time time" "kills score online"; align-items: center; gap: 3px 16px; width: fit-content; min-width: 176px; min-height: 0; padding: 6px 13px 7px 11px; border: 1px solid #7c684b59; border-left: 2px solid var(--amber); border-radius: 2px; background: linear-gradient(90deg, #0a1216f0, #0a1216b8); }
+.hud__stat { font-size: 13px; }
+.hud__stat--wave { grid-area: wave; align-items: baseline; gap: 6px; }
+.hud__stat--wave small { color: #cdb993; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.hud__stat--wave strong { color: #f4e7cb; font-family: var(--display); font-size: 25px; font-weight: 600; line-height: 1; }
+.hud__stat--time { grid-area: time; font-size: 16px; }
+.hud__stat--time .ui-icon { width: 14px; height: 14px; }
+.hud__stat--kills { grid-area: kills; }
+.hud__stat--score { grid-area: score; }
+.hud__stat--online { grid-area: online; }
+.hud__stat--level { margin-left: 0; }
+[data-bipx-solo="true"] .hud__stat--online { display: none; }
+[data-arpg-connected="true"] .survivor-hud__row--combat { display: none; }
+.skill-list { max-width: 272px; min-height: 0; gap: 4px; }
+.skill-list:empty { display: none; }
+.skill-chip { min-width: 38px; min-height: 40px; padding: 4px 3px 3px; border-color: #7c684b66; background: #0a1216d9; font-size: 18px; }
+.skill-chip .ui-icon { width: 20px; height: 20px; color: #e6d3a9; }
+.skill-chip small { margin-top: 3px; color: #e9dfc9; font-size: 10.5px; font-weight: 600; }
+
+/* ---- 2. Tools: two 44 px icon buttons. The engine writes "Som: ON/OFF" as text; the glyph is the visible state. ---- */
+.game-tools { top: max(14px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); gap: 6px; }
+.audio-toggle, .pause-button { position: relative; width: 44px; min-width: 44px; min-height: 44px; padding: 0; border-color: #7c684b8c; background: #0a1216d9; color: #eee2ca; }
+.audio-toggle { overflow: hidden; font-size: 0; }
+.audio-toggle::before { content: ""; position: absolute; inset: 0; background: currentColor; -webkit-mask: var(--icon-sound-on) center / 22px no-repeat; mask: var(--icon-sound-on) center / 22px no-repeat; }
+.audio-toggle[aria-pressed="true"] { color: #93a5a8; }
+.audio-toggle[aria-pressed="true"]::before { -webkit-mask-image: var(--icon-sound-off); mask-image: var(--icon-sound-off); }
+.audio-toggle:hover, .pause-button:hover { border-color: #d9c39a; background: #17222a; }
+:root {
+  --icon-sound-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.500h3.500L12 5.500v13l-4.500-4H4Z'/%3E%3Cpath d='M15.500 9a4.500 4.500 0 0 1 0 6M18 6.500a8 8 0 0 1 0 11'/%3E%3C/svg%3E");
+  --icon-sound-off: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.500h3.500L12 5.500v13l-4.500-4H4Z'/%3E%3Cpath d='m16 9.500 5 5m0-5-5 5'/%3E%3C/svg%3E");
+  --icon-crown: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.500' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 6 5 5 4-7 4 7 5-5-3 13H6ZM6 16h12'/%3E%3C/svg%3E");
+}
+/* The live ranking of a solo run is one row about yourself: keep it one tap away, not a permanent label. */
+.leaderboard-panel { top: calc(max(14px, env(safe-area-inset-top)) + 52px); right: max(20px, env(safe-area-inset-right)); }
+[data-bipx-solo="true"] .leaderboard-panel:not([open]) { width: 44px; border-color: #7c684b8c; background: #0a1216d9; }
+[data-bipx-solo="true"] .leaderboard-panel:not([open]) .leaderboard-panel__title { position: relative; justify-content: center; padding: 0; color: #cdb993; font-size: 0; }
+[data-bipx-solo="true"] .leaderboard-panel:not([open]) .leaderboard-panel__title > * { display: none; }
+[data-bipx-solo="true"] .leaderboard-panel:not([open]) .leaderboard-panel__title::after { content: ""; position: absolute; inset: 0; background: currentColor; -webkit-mask: var(--icon-crown) center / 21px no-repeat; mask: var(--icon-crown) center / 21px no-repeat; }
+.leaderboard-panel__title { list-style: none; }
+.leaderboard-panel__title::-webkit-details-marker { display: none; }
+
+/* ---- 3. Level and XP: docked on the action bar by arpg-hud.js. Undocked (no ARPG module) it stays a row of the top strip. ---- */
+.survivor-hud__progress { display: flex; align-items: center; gap: 8px; width: fit-content; min-width: 176px; padding: 4px 11px; border-radius: 2px; background: #0a1216d9; }
+.survivor-hud__progress .hud__stat--level { gap: 4px; color: #f0d9a2; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.survivor-hud__progress .hud__stat--level .ui-icon { width: 13px; height: 13px; color: #e2c987; stroke-width: 1.8; }
+.survivor-hud__progress .hud__stat--level strong { font-size: 14px; font-weight: 700; }
+.survivor-hud__xp { position: relative; flex: 1 1 auto; min-width: 60px; height: 7px; overflow: hidden; border: 1px solid #7c684b; border-radius: 1px; background: #070c10; box-shadow: inset 0 1px 2px #000; }
+.xp__fill { background: linear-gradient(90deg, #4fa7a3, #a9ece6); box-shadow: 0 0 8px #85e0db99; }
+.survivor-hud__progress .hud__stat--xp { color: #b9c7c6; font-size: 10.5px; }
+.survivor-hud__progress .hud__stat--xp strong { font-weight: 500; }
+.arpg-actionbar__heading { align-items: center; gap: 9px; }
+.arpg-progress-dock { display: flex; flex: 1 1 auto; min-width: 0; }
+.arpg-progress-dock:empty { display: none; }
+.survivor-hud__progress.is-docked { flex: 1 1 auto; width: auto; min-width: 0; padding: 0; background: none; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+.arpg-run-status { flex: none; }
+.arpg-run-status:empty { display: none; }
+.arpg-hud[data-choosing="true"] .arpg-run-status { padding: 1px 7px 2px; border: 1px solid #c6a67599; border-radius: 2px; background: #1b1508e6; color: #ffe2a6; font-weight: 600; letter-spacing: .03em; }
+
+/* ---- 4. Action bar ---- */
+/* Centred without a transform, so the touch arc below can place the skills against the viewport. */
+.arpg-hud { left: 0; right: 0; margin-inline: auto; transform: none; }
+.arpg-skill { transition: transform .08s ease-out, border-color .12s ease-out; }
+.arpg-skill__key { top: -5px; left: -4px; min-width: 20px; height: 20px; font-size: 12px; font-weight: 700; box-shadow: 0 1px 4px #000c; }
+/* Recharge: the icon goes cold, the wedge is dense with a bright leading edge, the seconds own the centre. */
+.arpg-art-v3 .arpg-skill[data-state="cooldown"] .arpg-skill__art { filter: saturate(.22) brightness(.5); }
+.arpg-art-v3 .arpg-skill__mask { background: conic-gradient(#03070cc9 0deg var(--cooldown-angle, 0deg), transparent var(--cooldown-angle, 0deg) 360deg); }
+.arpg-art-v3 .arpg-skill[data-state="cooldown"] .arpg-skill__mask { background: conic-gradient(from calc(var(--cooldown-angle, 0deg) - 3deg), #fff6e0d9 0deg 3deg, transparent 3deg 360deg), conic-gradient(#03070cc9 0deg var(--cooldown-angle, 0deg), transparent var(--cooldown-angle, 0deg) 360deg); }
+.arpg-art-v3 .arpg-skill__timer { inset: 0; display: block; min-width: 0; height: auto; padding: 0; border-radius: 0; background: none; color: #fffaf0; font-family: var(--sans); font-size: calc(var(--slot-size) * .41); font-weight: 700; line-height: var(--slot-size); letter-spacing: -.02em; text-align: center; text-shadow: 0 0 2px #000, 0 1px 3px #000, 0 0 9px #000, 0 0 16px #000c; }
+.arpg-art-v3 .arpg-skill__timer i { margin-left: 1px; font-size: .52em; font-style: normal; font-weight: 600; opacity: .88; }
+.arpg-art-v3 .arpg-skill__timer b { font-weight: inherit; }
+.arpg-art-v3 .arpg-skill:not([data-state="cooldown"]) .arpg-skill__timer { font-size: calc(var(--slot-size) * .3); opacity: .9; }
+.arpg-art-v3 .arpg-skill__cost { z-index: 3; bottom: 2px; right: 2px; min-width: 18px; padding: 0 4px; border-radius: 2px; background: #04080df2; font-size: 11px; font-weight: 600; line-height: 16px; text-align: center; }
+/* Ready: full colour plus a one-shot ping the corner of the eye can catch. */
+.arpg-art-v3 .arpg-skill[data-state="ready"] { border-color: color-mix(in srgb, var(--element) 78%, #fff); box-shadow: inset 0 0 0 2px #080c10, 0 0 10px color-mix(in srgb, var(--element) 30%, transparent); }
+.arpg-skill.is-ready-ping { animation: arpg-ready-pop .42s cubic-bezier(.2, .9, .3, 1.25); }
+.arpg-skill.is-ready-ping::after { content: ""; position: absolute; z-index: 4; inset: -2px; border: 2px solid color-mix(in srgb, var(--element) 70%, #fff); border-radius: 4px; background: radial-gradient(circle, #ffffff59, transparent 70%); animation: arpg-ready-ring .5s ease-out forwards; pointer-events: none; }
+/* Not enough resource: a blood tint that drains upward as the orb refills, and the price in red. */
+.arpg-art-v3 .arpg-skill[data-state="resource"] { border-color: #e0715f; }
+.arpg-art-v3 .arpg-skill[data-state="resource"] .arpg-skill__art { filter: saturate(.4) brightness(.62); }
+.arpg-art-v3 .arpg-skill[data-state="resource"] .arpg-skill__mask { background: linear-gradient(0deg, #12060800 calc(var(--resource-ratio, 0) * 100%), #4a0d16d1 calc(var(--resource-ratio, 0) * 100%)); border-top: 0; }
+.arpg-art-v3 .arpg-skill[data-state="resource"] .arpg-skill__cost { background: #a5222d; color: #fff; box-shadow: 0 0 0 1px #ffb3a699, 0 0 8px #ff3b4f80; }
+.arpg-art-v3 .arpg-skill:is([data-state="paused"], [data-state="dead"], [data-state="unavailable"], [data-state="upgrade"], [data-state="waiting"]) .arpg-skill__art { filter: saturate(.5) brightness(.6); }
+.arpg-skill.is-pressed { transform: scale(.93); }
+.arpg-skill.is-denied { animation: arpg-denied .36s ease-in-out; }
+.arpg-orb.is-short .arpg-orb__rim { animation: arpg-short .5s ease-out; }
+@keyframes arpg-ready-pop { 0% { transform: scale(1); } 35% { transform: scale(1.13); } 100% { transform: scale(1); } }
+@keyframes arpg-ready-ring { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.28); } }
+@keyframes arpg-denied { 0%, 100% { transform: translateX(0); } 16% { transform: translateX(-4px); } 33% { transform: translateX(4px); } 50% { transform: translateX(-4px); } 66% { transform: translateX(4px); } 83% { transform: translateX(-2px); } }
+@keyframes arpg-short { 0% { box-shadow: 0 0 0 0 #ff3b4f00, inset 0 0 0 2px #191a18; } 30% { box-shadow: 0 0 0 5px #ff3b4fb3, inset 0 0 0 2px #191a18; } 100% { box-shadow: 0 0 0 9px #ff3b4f00, inset 0 0 0 2px #191a18; } }
+
+/* Relic on the basic attack: its own glyph inside a ring that spends itself with the timer. */
+.arpg-basic__icon { position: relative; display: grid; place-items: center; width: 40px; height: 40px; }
+.arpg-basic .arpg-icon { width: 31px; height: 31px; }
+.arpg-basic__ring, .arpg-basic__relic { display: none; }
+.arpg-basic { --relic: #ffd98a; --relic-ratio: 0; }
+.arpg-basic[data-relic]:not([data-relic=""]) { color: var(--relic); }
+.arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__ring { display: block; position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(var(--relic) calc(var(--relic-ratio) * 360deg), #ffffff1f 0); -webkit-mask: radial-gradient(circle, transparent 17px, #000 18px); mask: radial-gradient(circle, transparent 17px, #000 18px); filter: drop-shadow(0 0 4px var(--relic)); }
+.arpg-basic[data-relic]:not([data-relic=""]) .arpg-icon { display: none; }
+.arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__relic { display: block; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px var(--relic)); }
+.arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__name { color: #fff1cf; font-weight: 600; }
+.arpg-basic[data-relic]:not([data-relic=""]) small { display: block; margin-top: 1px; color: #fff; font-size: 12px; font-weight: 700; }
+.arpg-basic[data-relic]:not([data-relic=""]) small i { margin-left: 1px; font-size: .78em; font-style: normal; font-weight: 600; opacity: .85; }
+.arpg-basic[data-relic]:not([data-relic=""]) small::after { content: none; }
+.arpg-basic[data-relic-ending="true"] .arpg-basic__ring, .touch-fire[data-relic-ending="true"]::before { animation: arpg-relic-ending .45s ease-in-out infinite alternate; }
+:is(.arpg-basic, .touch-fire)[data-relic="flamethrower"] { --relic: #ff9a4d; }
+:is(.arpg-basic, .touch-fire)[data-relic="axe"] { --relic: #8fdcff; }
+:is(.arpg-basic, .touch-fire)[data-relic="katana"] { --relic: #a5fbff; }
+:is(.arpg-basic, .touch-fire)[data-relic="crossbow"] { --relic: #ffd98a; }
+:is(.arpg-basic, .touch-fire)[data-relic="talisman"] { --relic: #e3a6ff; }
+:is(.arpg-basic, .touch-fire)[data-relic="thunderstaff"] { --relic: #fff27a; }
+:is(.arpg-basic, .touch-fire)[data-relic="boneCannon"] { --relic: #efe8d2; }
+:is(.arpg-basic, .touch-fire)[data-relic="frostNova"] { --relic: #9be6ff; }
+@keyframes arpg-relic-ending { from { opacity: 1; } to { opacity: .35; } }
+
+/* Active effects: time left as a draining underline; the last three seconds blink. */
+.arpg-status { position: relative; overflow: hidden; }
+.arpg-status::after { content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: #f7e2ae; transform: scaleX(var(--status-ratio, 1)); transform-origin: left center; }
+.arpg-status[data-ending="true"] { border-color: #ffb38a; animation: arpg-relic-ending .4s ease-in-out infinite alternate; }
+
+/* ---- 5. Orbs ---- */
+.arpg-orb__lag { position: absolute; inset: auto 0 0; height: var(--orb-fill); background: #fff1dc; opacity: .92; transition: height .45s cubic-bezier(.3, .1, .3, 1) .22s; }
+.arpg-orb--resource .arpg-orb__lag { display: none; }
+.arpg-orb--health::before { content: ""; position: absolute; z-index: -1; left: 50%; top: calc(var(--orb-size) / 2); width: calc(var(--orb-size) * 1.75); height: calc(var(--orb-size) * 1.75); border-radius: 50%; background: radial-gradient(circle, #ff3b4fb3, #ff3b4f38 45%, transparent 68%); opacity: 0; transform: translate(-50%, -50%); pointer-events: none; }
+.arpg-orb--health[data-danger="low"]::before { opacity: .7; animation: arpg-danger .42s ease-in-out infinite alternate; }
+.arpg-orb--health[data-danger="critical"]::before { opacity: 1; animation: arpg-danger .25s ease-in-out infinite alternate; }
+.arpg-orb--health:is([data-danger="low"], [data-danger="critical"]) .arpg-orb__rim { border-color: #ff9d94; box-shadow: 0 0 0 1px #ff3b4f, 0 0 20px #ff3b4f99, inset 0 0 0 2px #191a18; }
+.arpg-orb--health:is([data-danger="low"], [data-danger="critical"]) { --orb-light: #ff8f86; --orb-color: #e0263c; }
+.arpg-orb--health[data-danger="critical"] .arpg-orb__value { color: #ffe3dc; text-shadow: 0 1px 3px #000, 0 0 6px #000, 0 0 12px #ff3b4f; }
+.arpg-orb--health[data-danger="critical"] .arpg-orb__label { color: #ffb4a8; font-weight: 700; }
+.arpg-orb.is-hurt .arpg-orb__reflection { animation: arpg-hurt .32s ease-out; }
+.arpg-orb.is-healed .arpg-orb__rim { animation: arpg-healed .6s ease-out; }
+@keyframes arpg-danger { from { opacity: .3; } to { opacity: 1; } }
+@keyframes arpg-hurt { 0% { background-color: #ffffff8c; } 100% { background-color: #fff0; } }
+@keyframes arpg-healed { 0% { box-shadow: 0 0 0 0 #7dffb400, inset 0 0 0 2px #191a18; } 25% { box-shadow: 0 0 0 4px #7dffb4cc, 0 0 22px #7dffb4aa, inset 0 0 0 2px #191a18; } 100% { box-shadow: 0 0 0 10px #7dffb400, inset 0 0 0 2px #191a18; } }
+
+/* ---- 6. Touch. One geometry for the sticks, the skill arc and the card hand (upgrade-hand.css reads the same variables). ---- */
+:root { --touch-x: 24px; --touch-bottom: max(156px, calc(env(safe-area-inset-bottom) + 148px)); --stick-size: 122px; --fire-size: 90px; --arc-radius: 116px; --arc-slot: 64px; }
+@media (max-width: 680px) { :root { --touch-x: 16px; --touch-bottom: calc(max(8px, env(safe-area-inset-bottom)) + 74px); --stick-size: 96px; --fire-size: 80px; --arc-radius: 98px; --arc-slot: 54px; } }
+@media (max-width: 359px) { :root { --touch-x: 12px; --stick-size: 88px; --fire-size: 74px; --arc-radius: 90px; --arc-slot: 48px; } }
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) { :root { --touch-x: 18px; --touch-bottom: max(16px, env(safe-area-inset-bottom)); --stick-size: 94px; --fire-size: 80px; --arc-radius: 98px; --arc-slot: 52px; } }
+@media (pointer: coarse), (max-width: 680px) {
+  :root { --touch-right: max(var(--touch-x), env(safe-area-inset-right)); }
+  .touch-controls { inset: auto var(--touch-right) var(--touch-bottom) max(var(--touch-x), env(safe-area-inset-left)); }
+  .touch-stick { width: var(--stick-size); height: var(--stick-size); }
+  .touch-fire { position: relative; width: var(--fire-size); height: var(--fire-size); }
+  /* Skills leave the bar and orbit the attack button: left, up-left and up of it, all inside the right thumb's sweep. */
+  .arpg-skill { --arc-x: 1; --arc-y: 0; position: fixed; z-index: 4; right: calc(var(--touch-right) + var(--fire-size) / 2 - var(--arc-slot) / 2 + var(--arc-radius) * var(--arc-x)); bottom: calc(var(--touch-bottom) + var(--fire-size) / 2 - var(--arc-slot) / 2 + var(--arc-radius) * var(--arc-y)); width: var(--arc-slot); height: var(--arc-slot); border-radius: 50%; box-shadow: inset 0 0 0 2px #080c10, 0 3px 10px #000a; }
+  .arpg-skill[data-arpg-slot="1"] { --arc-x: .7071; --arc-y: .7071; }
+  .arpg-skill[data-arpg-slot="2"] { --arc-x: 0; --arc-y: 1; }
+  .arpg-hud { --slot-size: var(--arc-slot); }
+  .arpg-art-v3 .arpg-skill__art, .arpg-art-v3 .arpg-skill__mask { border-radius: 50%; }
+  .arpg-art-v3 .arpg-skill__art { inset: 2px; }
+  .arpg-skill__key { top: -3px; left: -2px; min-width: 17px; height: 17px; border-radius: 50%; font-size: 10px; }
+  .arpg-art-v3 .arpg-skill__cost { bottom: -4px; right: 50%; transform: translateX(50%); min-width: 22px; border: 1px solid #a18c69; border-radius: 8px; font-size: 11px; line-height: 15px; }
+  .arpg-skill.is-ready-ping::after { border-radius: 50%; }
+  .arpg-art-v3 .arpg-skill:focus-visible { outline-offset: 2px; }
+  /* What stays at the bottom: two orbs around a slim centre (class, level, XP, basic weapon). */
+  .arpg-hud { gap: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }
+  .arpg-actionbar { min-width: 138px; }
+  .arpg-actionbar__heading { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "class status" "dock dock"; gap: 3px 8px; margin: 0 2px 5px; }
+  .arpg-class { grid-area: class; }
+  .arpg-run-status { grid-area: status; justify-self: end; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .arpg-progress-dock { grid-area: dock; }
+  .survivor-hud__progress .hud__stat--xp { display: none; }
+  .arpg-actions { justify-content: center; padding: 4px 8px; }
+  .arpg-actions::before { display: none; }
+  .arpg-basic { flex-direction: row; gap: 6px; width: auto; padding: 0; border: 0; align-self: center; }
+  .arpg-basic__icon { width: 30px; height: 30px; }
+  .arpg-basic .arpg-icon { width: 24px; height: 24px; }
+  .arpg-basic__name { max-width: 84px; font-size: 11px; }
+  .arpg-basic small { display: none; }
+  .arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__ring { inset: -2px; -webkit-mask: radial-gradient(circle, transparent 13px, #000 14px); mask: radial-gradient(circle, transparent 13px, #000 14px); }
+  .arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__relic { width: 18px; height: 18px; }
+  .arpg-basic[data-relic]:not([data-relic=""]) small { display: block; margin: 0; font-size: 11px; }
+  .arpg-actionbar__hint { display: none; }
+  /* Effects read better away from the thumbs: top left, under the strip (and under the boss bar on phones). */
+  .arpg-statuses { position: fixed; top: calc(max(6px, env(safe-area-inset-top)) + 62px); bottom: auto; left: max(8px, env(safe-area-inset-left)); transform: none; justify-content: flex-start; max-width: 62vw; }
+  .arpg-status { min-height: 24px; padding: 2px 7px; }
+  /* The attack button is the basic attack: it wears the relic. */
+  .touch-fire { --relic: #ffd98a; --relic-ratio: 0; }
+  .touch-fire[data-relic]:not([data-relic=""]) { border-color: var(--relic); box-shadow: inset 0 0 0 7px #c6a67512, 0 0 16px color-mix(in srgb, var(--relic) 45%, transparent); }
+  .touch-fire[data-relic]:not([data-relic=""])::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; background: conic-gradient(var(--relic) calc(var(--relic-ratio) * 360deg), #ffffff1a 0); -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); mask: radial-gradient(circle closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); pointer-events: none; }
+  .touch-fire[data-relic]:not([data-relic=""])::after { content: attr(data-relic-time); position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%); color: #fff; font-size: 12px; font-weight: 700; text-shadow: 0 1px 3px #000, 0 0 6px #000; pointer-events: none; }
+  .touch-fire[data-relic]:not([data-relic=""]) > span { display: none; }
+  .touch-fire__relic { display: none; width: 30px; height: 30px; margin-top: -10px; fill: none; stroke: var(--relic); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px var(--relic)); pointer-events: none; }
+  .touch-fire[data-relic]:not([data-relic=""]) .touch-fire__relic { display: block; }
+  /* First-run help leaves the battlefield: a strip under the top HUD. */
+  .first-run-hint { top: calc(max(6px, env(safe-area-inset-top)) + 64px); bottom: auto; width: calc(100vw - 24px); max-width: 520px; }
+  .arpg-tooltip { bottom: calc(100% + 44px); }
+}
+@media (pointer: coarse) { .arpg-basic small::after { content: none; } .arpg-basic small { font-size: 8px; } }
+@media (pointer: coarse) and (orientation: portrait), (max-width: 680px) {
+  /* Focus help (keyboard on a touch device) clears the sticks and the arc. */
+  .arpg-tooltip { bottom: calc(100% + var(--stick-size) + var(--arc-radius) + 8px); }
+}
+body:has(#boss-bar:not([hidden])) .arpg-statuses { --status-boss-offset: 44px; }
+@media (max-width: 680px) { .arpg-statuses { top: calc(max(6px, env(safe-area-inset-top)) + 62px + var(--status-boss-offset, 0px)); } }
+
+/* Phones, portrait: one status line; tools share its row; orbs lose their captions to give the sticks a lower, calmer seat. */
+@media (max-width: 680px) {
+  .survivor-hud { top: max(6px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); right: auto; width: calc(100vw - 118px); gap: 4px; }
+  .survivor-hud__row--stats { grid-template-columns: repeat(4, auto) minmax(0, 1fr); grid-template-areas: "wave time kills score online"; gap: 0 11px; width: fit-content; max-width: 100%; min-width: 0; min-height: 30px; padding: 2px 9px 3px 8px; overflow: hidden; }
+  .hud__stat { gap: 4px; font-size: 12px; }
+  .hud__stat .ui-icon { width: 12px; height: 12px; }
+  .hud__stat--wave { gap: 4px; }
+  .hud__stat--wave small { font-size: 9px; letter-spacing: .1em; }
+  .hud__stat--wave strong { font-size: 18px; }
+  .hud__stat--time { font-size: 13px; }
+  .skill-list { max-width: 100%; min-height: 0; max-height: 26px; overflow: hidden; gap: 3px; }
+  .skill-chip { display: inline-flex; align-items: center; gap: 3px; min-width: 0; min-height: 24px; padding: 1px 5px; font-size: 13px; }
+  .skill-chip .ui-icon { width: 14px; height: 14px; }
+  .skill-chip small { margin: 0; font-size: 10px; }
+  body:has(.message.is-hidden) .game-tools, .game-tools { top: max(6px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); gap: 5px; }
+  .leaderboard-panel { top: calc(max(6px, env(safe-area-inset-top)) + 50px); right: max(8px, env(safe-area-inset-right)); }
+  /* The boss bar occupies the same top band; move the compact ranking below it only while a boss exists. */
+  body:has(#boss-bar:not([hidden])) .leaderboard-panel { top: calc(max(6px, env(safe-area-inset-top)) + 106px); }
+  .arpg-hud { --orb-size: 64px; }
+  .arpg-orb__label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+  .arpg-hud::before { inset: 20% -10px -10px; }
+}
+@media (max-width: 359px) { .hud__stat--score { display: none; } .arpg-hud { --orb-size: 53px; } .arpg-actionbar { min-width: 112px; } }
+/* Phones, landscape: strip on the left, boss bar in the middle, tools on the right; nothing stacks over the play field. */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .survivor-hud { top: max(6px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); right: auto; display: grid; width: min(270px, 40vw); gap: 4px; }
+  .survivor-hud__row--stats { grid-template-columns: repeat(4, auto) minmax(0, 1fr); grid-template-areas: "wave time kills score online"; gap: 0 10px; min-width: 0; min-height: 30px; padding: 2px 9px 3px 8px; }
+  .hud__stat { gap: 4px; font-size: 12px; }
+  .hud__stat .ui-icon { width: 12px; height: 12px; }
+  .hud__stat--wave strong { font-size: 18px; }
+  .hud__stat--wave small { font-size: 9px; letter-spacing: .1em; }
+  .hud__stat--time { font-size: 13px; }
+  .skill-list { position: static; max-width: 100%; max-height: 26px; overflow: hidden; gap: 3px; }
+  .skill-chip { display: inline-flex; align-items: center; gap: 3px; min-width: 0; min-height: 24px; padding: 1px 5px; font-size: 13px; }
+  .skill-chip .ui-icon { width: 14px; height: 14px; }
+  .skill-chip small { margin: 0; font-size: 10px; }
+  body:has(.message.is-hidden) .game-tools, .game-tools { top: max(6px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); }
+  .leaderboard-panel { top: calc(max(6px, env(safe-area-inset-top)) + 50px); right: max(14px, env(safe-area-inset-right)); }
+  .arpg-orb__label { font-size: 10px; margin-top: 2px; }
+  .first-run-hint { top: calc(max(6px, env(safe-area-inset-top)) + 40px); left: 50%; width: auto; max-width: 56vw; }
+}
+@media (orientation: landscape) and (max-height: 600px) and (max-width: 740px) and (pointer: coarse) { .hud__stat--score { display: none; } }

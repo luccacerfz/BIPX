@@ -1,6 +1,6 @@
 // Server-owned per-run progression. Pure CPU module: callers supply only trusted
 // kill/tick/damage events; network clients can choose offered IDs or collect drops.
-import { heroMaxHealth, xpToNext as heroXpToNext } from '../combat/hero-power.mjs';
+import { heroMaxHealth, xpToNext as heroXpToNext, offerSpacing } from '../combat/hero-power.mjs';
 import { SKILL_UPGRADES, SKILL_UPGRADE_WEIGHTS, EXHAUSTED_REWARD, isUpgradeForClass, getSkillMods } from './skill-upgrades.mjs';
 import { RELICS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, AUTO_WEAPONS, nextRelicDrop, getAutoWeaponLoadout } from '../combat/arsenal.mjs';
 export const DEFINITIONS = [
@@ -31,6 +31,12 @@ const weights = {common: 88, rare: 7, epic: 3.2, legendary: .35};
 const bossWeights = {rare: 86, epic: 13, legendary: 1};
 const copy = value => structuredClone(value);
 const safeInt = value => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+// The max-health card is authoritative here so the server, solo mirror and
+// immutable previews cannot drift by repeating the increment in each caller.
+export const MAX_HEALTH_UPGRADE = 18;
+export function maxHealthForStacks(character, stacks = {}) {
+  return heroMaxHealth(character) + safeInt(stacks.maxHealth) * MAX_HEALTH_UPGRADE;
+}
 export const xpToNext = heroXpToNext; // Pacing lives in hero-power.mjs, shared with the solo client.
 export function levelFromXp(total) {
   let xp = safeInt(total), level = 1;
@@ -40,7 +46,7 @@ export function levelFromXp(total) {
 export function createProgression(state, {random = Math.random} = {}) {
   const p = {runId: state.runId, character: state.character, xpTotal: 0,
     level: 1, xp: 0, xpToNext: xpToNext(1), pendingLevelUps: 0,
-    stacks: {}, offer: null, offerSerial: 0, rarityPity: 0,
+    stacks: {}, offer: null, offerSerial: 0, nextOfferAt: 0, rarityPity: 0,
     bossKills: 0, revives: 0, weaponTimer: 0, prismStormRemaining: 0, exhaustedRewards: 0,
     drops: new Map(), dropSerial: 0, dropCounter: 0, receipts: new Map(),
     random, clock: 0};
@@ -93,6 +99,13 @@ function openOffer(state, p, source = 'level') {
   p.offer = {id: `${p.runId}:choice:${++p.offerSerial}`, source, upgradeIds};
   return true;
 }
+// Offer spacing (hero-power.mjs): choosing a card starts a gap of gameplay time; level-ups earned meanwhile are banked, never
+// lost, and tickProgression opens the next offer when the gap ends. An exhausted pool has nothing to space: it pays at once.
+function openLevelOffer(state, p) {
+  if (p.offer || !(p.pendingLevelUps > 0)) return false;
+  if (p.clock < p.nextOfferAt && DEFINITIONS.some(d => available(p, d, 'level'))) return false;
+  return openOffer(state, p);
+}
 export function stats(p) {
   const s = p.stacks;
   return {damageMultiplier: 2 + (s.damage || 0) * .16,
@@ -132,7 +145,7 @@ function rollRelic(p) { const next = nextRelicDrop(p.relicDropIndex, activeRelic
 export function syncProgression(state, p) {
   state.xpTotal = p.xpTotal; state.level = p.level;
   state.bestLevel = Math.max(state.bestLevel || 1, p.level);
-  state.maxHealth = heroMaxHealth(p.character) + (p.stacks.maxHealth || 0) * 18;
+  state.maxHealth = maxHealthForStacks(p.character, p.stacks);
   state.health = Math.min(state.maxHealth, state.health);
   // Rarest first (stable), so the eight slots of the ranking keep the cards that define the build.
   // Same order as the client death summary: unlocked automatic weapons (evolved name when evolved), then cards rarest first.
@@ -144,7 +157,7 @@ export function syncProgression(state, p) {
 function changed(state, p) { state.stateVersion++; syncProgression(state, p); }
 function grant(state, p, upgradeId) {
   p.stacks[upgradeId] = (p.stacks[upgradeId] || 0) + 1;
-  if (upgradeId === 'maxHealth') state.health += 18;
+  if (upgradeId === 'maxHealth') state.health += MAX_HEALTH_UPGRADE;
   if (upgradeId === 'lastBreath') p.revives = Math.max(p.revives, 1);
 }
 function receipt(p, message, key) {
@@ -168,7 +181,8 @@ export function chooseUpgrade(state, p, message) {
   grant(state, p, message.upgradeId);
   if (offer.source === 'level') p.pendingLevelUps--;
   p.offer = null;
-  if (p.pendingLevelUps > 0) openOffer(state, p);
+  p.nextOfferAt = p.clock + offerSpacing(p.clock);
+  openLevelOffer(state, p);
   remember(p, message, key); changed(state, p);
   return {ok: true, upgradeId: message.upgradeId};
 }
@@ -184,7 +198,7 @@ export function grantXp(state, p, amount) {
     if (p.stacks.prismStorm) p.prismStormRemaining = 8;
     if (p.stacks.cuttingMoon) effects.push({kind: 'cuttingMoon', radius: 9.5 * attackStats(p).areaMultiplier, damage: 12 * stats(p).damageMultiplier});
   }
-  if (p.pendingLevelUps > 0 && !p.offer) openOffer(state, p);
+  openLevelOffer(state, p);
   changed(state, p);
   return effects;
 }
@@ -275,7 +289,7 @@ export function collectDrop(state, p, message) {
     if (p.offer && p.offer.upgradeIds.some(id => !available(p,byId.get(id),p.offer.source))) {
       const source=p.offer.source; p.offer=null;
       if (!openOffer(state,p,source) && source==='bossChest') payExhausted(state,p,1);
-      if (!p.offer && p.pendingLevelUps>0) openOffer(state,p);
+      if (!p.offer) openLevelOffer(state,p);
     }
   }
   p.drops.delete(drop.id); remember(p,message,key); changed(state,p);
@@ -291,6 +305,8 @@ export function tickProgression(state,p,dt) {
   p.prismStormRemaining = Math.max(0,p.prismStormRemaining-dt);
   let expired = (previousWeaponActive && p.weaponTimer === 0) || (previousPrismActive && p.prismStormRemaining === 0);
   for (const [id,drop] of p.drops) if (drop.expiresAt<=p.clock) {p.drops.delete(id);expired=true;}
+  // The offer spacing ended with level-ups banked: the next offer opens here and the caller pushes the new state.
+  if (p.pendingLevelUps > 0 && !p.offer && p.clock >= p.nextOfferAt) { const banked = p.pendingLevelUps; if (openLevelOffer(state, p) || p.pendingLevelUps !== banked) expired = true; }
   if (expired) state.stateVersion++;
   syncProgression(state,p);
   return expired;

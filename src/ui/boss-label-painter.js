@@ -37,6 +37,34 @@ function nameLayout(context, label) {
   return { lines: [label], size: 18 };
 }
 
+// 'plate' is the full world plate (name, bar, numbers). 'pip' is what stays in the world once the fixed DOM boss bar
+// (src/ui/boss-bar.js) owns name and numbers: a thin health sliver under the boss accent, so several bosses remain
+// distinguishable without a plate that can land on the HUD. The caller's canvas, texture and cadence do not change.
+let worldPlateMode = 'plate';
+export function setBossWorldPlateMode(mode) { worldPlateMode = mode === 'pip' ? 'pip' : 'plate'; }
+export function getBossWorldPlateMode() { return worldPlateMode; }
+
+function paintBossPip(context, ratio, accent) {
+  const x = 112, y = 96, width = 160, height = 9;
+  context.fillStyle = '#03090dd9';
+  context.fillRect(x - 2, y - 2, width + 4, height + 4);
+  context.strokeStyle = '#9b896999';
+  context.lineWidth = 1;
+  context.strokeRect(x - 1.5, y - 1.5, width + 3, height + 3);
+  context.fillStyle = '#331b24';
+  context.fillRect(x, y, width, height);
+  const blood = context.createLinearGradient(0, y, 0, y + height);
+  blood.addColorStop(0, '#d47378');
+  blood.addColorStop(0.35, '#b33b48');
+  blood.addColorStop(1, '#6c2230');
+  context.fillStyle = blood;
+  context.fillRect(x, y, width * ratio, height);
+  context.beginPath();
+  context.moveTo(192, y - 17); context.lineTo(199, y - 9); context.lineTo(192, y - 1); context.lineTo(185, y - 9); context.closePath();
+  context.fillStyle = '#0a1319'; context.fill();
+  context.strokeStyle = accent || '#b39a6e'; context.lineWidth = 2; context.stroke();
+}
+
 export function paintBossLabel(context, { label, health, maxHealth, healthRatio, accent }) {
   const ratio = healthRatio ?? Math.max(0, Math.min(1, health / maxHealth));
   const valueText = `${Math.ceil(health)} / ${Math.ceil(maxHealth)}`;
@@ -47,6 +75,11 @@ export function paintBossLabel(context, { label, health, maxHealth, healthRatio,
   context.globalCompositeOperation = 'source-over';
   context.shadowBlur = 0;
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+  if (worldPlateMode === 'pip') {
+    paintBossPip(context, ratio, accent);
+    context.restore();
+    return { label: name, nameLines: [], nameFontSize: 0, valueText, healthRatio: ratio, barWidth: 160 * ratio, mode: 'pip' };
+  }
 
   // A narrow, worn metal bevel replaces the saturated rectangular perimeter.
   const metal = context.createLinearGradient(0, 14, 0, 114);

@@ -1,10 +1,13 @@
 import { loadGlb } from '../assets/load-glb.js';
 
-const names = ['blue-shrine', 'barrel', 'rose-bush', 'border-rock', 'root-border', 'mushrooms', 'crypt-door', 'timber-beam', 'crypt-root-arch', 'crypt-flagstone'];
+const names = ['blue-shrine', 'barrel', 'rose-bush', 'border-rock', 'root-border', 'mushrooms', 'crypt-door', 'timber-beam', 'crypt-root-arch', 'crypt-flagstone', 'undead-obelisk-v1'];
+const cemeteryPath = name => name === 'undead-obelisk-v1'
+  ? `../../assets/environment/undead-obelisk-v1/Necromantic_Obelisk_LOD0.glb`
+  : `../../assets/environment/${['crypt-root-arch', 'crypt-flagstone'].includes(name) ? 'crypt-entrance-v1' : 'cemetery-v1'}/${name}.glb`;
 let pending;
 /** Browser derivatives stay separate from the animation team's character library. */
 export async function loadCemeteryLibrary({ THREE }) {
-  pending ??= Promise.all(names.map(async name => [name, (await loadGlb(new URL(`../../assets/environment/${['crypt-root-arch','crypt-flagstone'].includes(name)?'crypt-entrance-v1':'cemetery-v1'}/${name}.glb`, import.meta.url).href)).scene]))
+  pending ??= Promise.all(names.map(async name => [name, (await loadGlb(new URL(cemeteryPath(name), import.meta.url).href)).scene]))
     .then(Object.fromEntries).catch(error => { pending = null; throw error; });
   const prototypes = await pending, variants = new Map();
   return {

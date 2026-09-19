@@ -9,6 +9,9 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2307141b'/%3E%3Cpath d='M32 8 48 32 32 56 16 32Z M32 8V56 M16 32H48' fill='none' stroke='%23c6a675' stroke-width='2'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./src/ui/arpg-painted.css" />
+    <link rel="stylesheet" href="./src/ui/upgrade-hand.css" />
+    <link rel="stylesheet" href="./src/ui/boss-bar.css" />
+    <link rel="stylesheet" href="./src/ui/hud-v4.css" />
   </head>
   <body>
     <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -24,6 +27,35 @@
       <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></symbol>
       <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3m0 3v.1"/></symbol>
       <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="icon-level" viewBox="0 0 24 24"><path d="m12 3 8 9-8 9-8-9Zm0 5-3.5 4 3.5 4 3.5-4Z"/></symbol>
+      <symbol id="up-generic" viewBox="0 0 24 24"><path d="m12 3 7 9-7 9-7-9Zm0 5v8m-3-4h6"/></symbol>
+      <symbol id="up-damage" viewBox="0 0 24 24"><path d="M4 20 14.5 9.5M11 6l7 7M14.5 9.5 20 4l.5-1-1 .5M3 21l2-2M18 16v5m-2.5-2.5h5"/></symbol>
+      <symbol id="up-cadence" viewBox="0 0 24 24"><path d="M13.5 2 5 13.5h6L10 22l9-12.5h-6.2Z"/></symbol>
+      <symbol id="up-area" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9" stroke-dasharray="3.2 2.6"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3"/></symbol>
+      <symbol id="up-speed" viewBox="0 0 24 24"><path d="m4 6 6 6-6 6m7-12 6 6-6 6M19 8l3 4-3 4"/></symbol>
+      <symbol id="up-pickup" viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4ZM6 8h4m4 0h4M12 21v1.5M5.5 19l-1 1m15-1 1 1"/></symbol>
+      <symbol id="up-maxHealth" viewBox="0 0 24 24"><path d="M12 20.5S4.5 16 4.5 9.8A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6c0 6.2-7.5 10.7-7.5 10.7ZM12 9.5v6m-3-3h6"/></symbol>
+      <symbol id="up-projectile" viewBox="0 0 24 24"><path d="M12 21V8M12 21 5.5 9.5M12 21l6.5-11.5"/><circle cx="12" cy="5" r="2"/><circle cx="4.6" cy="7" r="2"/><circle cx="19.4" cy="7" r="2"/></symbol>
+      <symbol id="up-autoWeapon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="4.5 3"/><path d="m12 5.5 1.9 4.6 4.6 1.9-4.6 1.9L12 18.5l-1.9-4.6L5.5 12l4.6-1.9Z"/></symbol>
+      <symbol id="up-soulMagnet" viewBox="0 0 24 24"><path d="m12 6.5 3.8 5.5-3.8 5.5L8.2 12ZM2 12h3.5m13 0H22M12 1.5V4m0 16v2.5M5 5l1.8 1.8M19 5l-1.8 1.8M5 19l1.8-1.8M19 19l-1.8-1.8"/></symbol>
+      <symbol id="up-ironBlood" viewBox="0 0 24 24"><path d="M12 2.5 4.5 5.5V12c0 4.7 3.1 8 7.5 9.5 4.4-1.5 7.5-4.8 7.5-9.5V5.5ZM12 7v10m-4-6.5h8"/></symbol>
+      <symbol id="up-bladeEcho" viewBox="0 0 24 24"><path d="M4 18 16 4l3-1-1 3L6 20Z"/><path d="M10 21 21 8.5" stroke-dasharray="2.6 2.2"/><path d="m3 15 6 6"/></symbol>
+      <symbol id="up-hunterEye" viewBox="0 0 24 24"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2"/></symbol>
+      <symbol id="up-sealRitual" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m12 4.5 6.5 11.2h-13ZM12 19.5 5.5 8.3h13Z"/></symbol>
+      <symbol id="up-ashenHeart" viewBox="0 0 24 24"><path d="M12 20.5S4.5 16 4.5 9.8A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6c0 6.2-7.5 10.7-7.5 10.7Z"/><path d="M12 16.5c-1.5 0-2.5-1-2.5-2.3 0-1.5 1.5-2.1 1.9-3.9 1.5 1 3.1 2.3 3.1 3.9 0 1.3-1 2.3-2.5 2.3Z"/></symbol>
+      <symbol id="up-prismStorm" viewBox="0 0 24 24"><path d="M12 4 4 18.5h16ZM12 4v14.5M1.5 9 6 11m16.5-2L18 11M2 21h20"/></symbol>
+      <symbol id="up-cuttingMoon" viewBox="0 0 24 24"><path d="M16.5 2.5a9.7 9.7 0 1 0 5 13.5 7.8 7.8 0 0 1-5-13.5ZM3 21 8 16"/></symbol>
+      <symbol id="up-lastBreath" viewBox="0 0 24 24"><path d="M12 4.5a7.5 7.5 0 1 1-7 4.8M4.5 3.5v6h6"/><path d="M12 9.5v5m-2.5-2.5h5"/></symbol>
+      <symbol id="up-slayerPact" viewBox="0 0 24 24"><path d="M8 17H6.5L4.5 14V9.5a7.5 7.5 0 0 1 15 0V14l-2 3H16v4H8ZM11 17v4m2-4v4M4 5 2 2m18 3 2-3"/><path d="M7.5 10h3v3h-3Zm6 0h3v3h-3Z"/></symbol>
+      <symbol id="relic-generic" viewBox="0 0 24 24"><path d="m12 2.5 2.6 6.9 6.9 2.6-6.9 2.6L12 21.5l-2.6-6.9L2.5 12l6.9-2.6Z"/></symbol>
+      <symbol id="relic-flamethrower" viewBox="0 0 24 24"><path d="M12 22c-4 0-7-2.8-7-6.6 0-4.4 4.2-6.2 5-11.4 4.4 2.9 9 6.9 9 11.4 0 3.8-3 6.6-7 6.6Z"/><path d="M12 18.5c1.7 0 3-1.2 3-2.9 0-1.9-1.6-3.2-3-4.6-.6 2-3 2.7-3 4.6 0 1.7 1.3 2.9 3 2.9Z"/></symbol>
+      <symbol id="relic-axe" viewBox="0 0 24 24"><path d="M5 21 16.5 7.5"/><path d="M13 3c4.5-.5 8 2.5 8 7-3.2-.3-5.5.5-7.3 2.3L9.8 8.4C11.6 6.6 12.8 5 13 3Z"/></symbol>
+      <symbol id="relic-katana" viewBox="0 0 24 24"><path d="M7.5 16.5C13 13 17.5 8.5 20.5 2.5c.5 6-2.5 11.5-10 16.5ZM3 21l3.5-3.5M5.5 14.5l4 4"/></symbol>
+      <symbol id="relic-crossbow" viewBox="0 0 24 24"><path d="M4 20 19.5 4.5m0 0H14m5.5 0V10M5 9.5c1-3.5 3-5.5 6.5-6.5M14.5 19c3.5-1 5.5-3 6.5-6.5M5 9.5l9.5 9.5"/></symbol>
+      <symbol id="relic-talisman" viewBox="0 0 24 24"><path d="M7.5 2.5h9v14.5L12 21.5 7.5 17ZM10 6.5h4M10 10h4m-2 3v3"/></symbol>
+      <symbol id="relic-thunderstaff" viewBox="0 0 24 24"><path d="M10.5 2 19 13.5h-6l1 8.5-9-12.5h6.2Z"/></symbol>
+      <symbol id="relic-boneCannon" viewBox="0 0 24 24"><path d="M8 17H6.5L4.5 14V9.5a7.5 7.5 0 0 1 15 0V14l-2 3H16v4H8ZM11 17v4m2-4v4"/><path d="M7.5 10h3v3h-3Zm6 0h3v3h-3Z"/></symbol>
+      <symbol id="relic-frostNova" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M12 6 9.8 3.8M12 6l2.2-2.2M12 18l-2.2 2.2M12 18l2.2 2.2M6.8 9 3.8 9.8M6.8 9 6 6m11.2 9 3 .8m-3-.8.8 3M6.8 15l-3-.8m3 .8L6 18M17.2 9l3-.8m-3 .8.8-3"/></symbol>
     </defs></svg>
     <main id="app" aria-label="BIPX — Noite Zumbi">
       <canvas id="game-canvas" tabindex="-1" aria-label="Cemitério e campo de batalha">BIPX precisa de um navegador com WebGL para desenhar o cemitério. Ative a aceleração gráfica e atualize a página.</canvas>
@@ -32,27 +64,43 @@
         <button id="pause-button" class="pause-button" type="button" aria-label="Pausar e abrir opções" title="Pausar · Esc"><svg class="ui-icon" aria-hidden="true"><use href="#icon-pause"/></svg></button>
       </div>
       <section class="hud survivor-hud" aria-label="Status da partida">
-        <div class="xp__track survivor-hud__xp" aria-hidden="true"><div id="xp-fill" class="xp__fill"></div></div>
         <div class="survivor-hud__row survivor-hud__row--stats">
-          <span class="hud__stat" title="Tempo de sobrevivência"><svg class="ui-icon" aria-hidden="true"><use href="#icon-time"/></svg><strong id="time-value">00:00</strong></span>
-          <span class="hud__stat" title="Experiência"><svg class="ui-icon" aria-hidden="true"><use href="#icon-soul"/></svg><strong id="xp-value">0/18</strong></span>
-          <span class="hud__stat" title="Pontuação"><svg class="ui-icon" aria-hidden="true"><use href="#icon-score"/></svg><strong id="score">0</strong></span>
-          <span class="hud__stat" title="Inimigos eliminados"><svg class="ui-icon" aria-hidden="true"><use href="#icon-skull"/></svg><strong id="kills">0</strong></span>
+          <span class="hud__stat hud__stat--wave" title="Onda atual"><small>Onda</small><strong id="wave">1</strong></span>
+          <span class="hud__stat hud__stat--time" title="Tempo de sobrevivência"><svg class="ui-icon" aria-hidden="true"><use href="#icon-time"/></svg><strong id="time-value">00:00</strong></span>
+          <span class="hud__stat hud__stat--kills" title="Inimigos eliminados"><svg class="ui-icon" aria-hidden="true"><use href="#icon-skull"/></svg><strong id="kills">0</strong></span>
+          <span class="hud__stat hud__stat--score" title="Pontuação"><svg class="ui-icon" aria-hidden="true"><use href="#icon-score"/></svg><strong id="score">0</strong></span>
           <span class="hud__stat hud__stat--online"><strong id="online-count">Solo</strong><small id="online-status">Local</small></span>
-          <span class="hud__stat hud__stat--level">Nv. <strong id="level-value">1</strong></span>
         </div>
+        <!-- Legacy vitals: shown only while the ARPG bar has no valid snapshot. -->
         <div class="survivor-hud__row survivor-hud__row--combat">
           <div class="health" aria-label="Vida"><div class="health__track" aria-hidden="true"><div id="health-fill" class="health__fill"></div></div><strong id="health-value">100/100</strong></div>
-          <span class="hud__stat" title="Onda atual"><svg class="ui-icon" aria-hidden="true"><use href="#icon-wave"/></svg><strong id="wave">1</strong></span>
           <span class="hud__stat hud__stat--weapon"><svg class="ui-icon" aria-hidden="true"><use href="#icon-blade"/></svg><strong id="weapon-name">Arma</strong><small id="weapon-timer">Pronta</small></span>
+        </div>
+        <!-- Level and XP: src/ui/arpg-hud.js docks this block on top of the action bar. -->
+        <div class="survivor-hud__progress" aria-label="Nível e almas">
+          <span class="hud__stat hud__stat--level"><svg class="ui-icon" aria-hidden="true"><use href="#icon-level"/></svg>Nv. <strong id="level-value">1</strong></span>
+          <div class="xp__track survivor-hud__xp" aria-hidden="true"><div id="xp-fill" class="xp__fill"></div></div>
+          <span class="hud__stat hud__stat--xp" title="Almas para o próximo nível"><strong id="xp-value">0/18</strong></span>
         </div>
         <div id="skill-list" class="skill-list" aria-label="Poderes equipados"><span class="skill-chip"><span>✧</span><small>Nv. 1</small></span></div>
         <div id="party-list" class="party-list" aria-label="Ranking dos jogadores"></div>
       </section>
-      <section id="arpg-hud" class="arpg-hud arpg-art-v3" aria-label="Vida, recurso e habilidades de classe" hidden></section>
-      <section id="upgrade-panel" class="upgrade-panel is-hidden" aria-label="Escolha de poder">
+      <!-- Fixed boss bar (src/ui/boss-bar.js); replaces the floating world plate. Hidden without a boss. -->
+      <section id="boss-bar" class="boss-bar" aria-label="Chefe" hidden>
+        <div class="boss-bar__main">
+          <div class="boss-bar__plate"><span class="boss-bar__sigil" aria-hidden="true"></span><strong class="boss-bar__name"></strong><span class="boss-bar__state" hidden>Fúria</span><span class="boss-bar__value" aria-hidden="true"></span></div>
+          <div class="boss-bar__track" role="meter" aria-label="Vida do chefe" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div class="boss-bar__lag"></div><div class="boss-bar__fill"></div><div class="boss-bar__ticks" aria-hidden="true"></div></div>
+        </div>
+        <ul class="boss-bar__others" aria-label="Outros chefes" hidden></ul>
+        <span id="boss-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
+      </section>
+      <section id="arpg-hud" class="arpg-hud arpg-art-v3" aria-label="Vida, recurso, nível e habilidades de classe" hidden></section>
+      <section id="upgrade-panel" class="upgrade-panel is-hidden" aria-label="Escolha de evolução">
         <span id="upgrade-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
-        <div class="upgrade-panel__shell"><p class="upgrade-panel__kicker">A noite concede um poder</p><h2>Escolha sua evolução</h2><p class="upgrade-panel__copy">Use 1, 2 ou 3 para escolher. A horda continua avançando.</p><div id="upgrade-options" class="upgrade-options"></div></div>
+        <div class="upgrade-panel__shell">
+          <header class="upgrade-panel__header"><h2>Escolha sua evolução</h2><p class="upgrade-panel__copy"><span class="desktop-control-copy">Teclas <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · a horda não espera</span><span class="touch-control-copy">Toque numa carta · a horda não espera</span></p></header>
+          <div id="upgrade-options" class="upgrade-options"></div>
+        </div>
       </section>
       <section id="message" class="message" aria-label="Menu principal">
         <div class="main-menu__region"><svg class="ui-icon" aria-hidden="true"><use href="#icon-soul"/></svg><span>Um ritual de sobrevivência</span></div>
@@ -62,6 +110,7 @@
             <h1 id="message-title">BIPX</h1><p id="message-kicker" class="message__kicker">Noite Zumbi</p>
           </div>
           <p class="main-menu__story">O cemitério desperta.<br>Faça a noite lembrar seu nome.</p>
+          <div id="run-summary" class="run-summary" aria-hidden="true" hidden></div>
         </div>
         <div class="mode-actions main-menu__actions" aria-label="Menu principal">
           <button id="open-login-button" class="primary-button main-menu__button" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-play"/></svg><span>Entrar na noite</span><kbd>Enter</kbd></button>
@@ -99,7 +148,7 @@
       </section>
       <section class="touch-controls" aria-label="Controles de toque"><div id="touch-stick" class="touch-stick" role="img" aria-label="Arraste para mover"><div id="touch-knob" class="touch-stick__knob"></div></div><button id="touch-fire" class="touch-fire" type="button" aria-label="Segure para atacar e arraste para mirar"><span aria-hidden="true"></span></button></section>
       <details class="leaderboard-panel" aria-label="Ranking da partida"><summary class="leaderboard-panel__title"><strong>Sobreviventes</strong><span id="leaderboard-count">0 jogadores</span></summary><ol id="leaderboard-list" class="leaderboard-list"></ol></details>
-      <div id="first-run-hint" class="first-run-hint" hidden><span class="desktop-control-copy"><kbd>W A S D</kbd> mover <i></i><kbd>Mouse</kbd> mirar e atacar <i></i><kbd>1 2 3</kbd> habilidades <i></i><kbd>Esc</kbd> opções</span><span class="touch-control-copy">Esquerda: mover. Direita: mirar e atacar. Barra: habilidades.</span><button type="button" aria-label="Dispensar dica">×</button></div>
+      <div id="first-run-hint" class="first-run-hint" hidden><span class="desktop-control-copy"><kbd>W A S D</kbd> mover <i></i><kbd>Mouse</kbd> mirar e atacar <i></i><kbd>1 2 3</kbd> habilidades <i></i><kbd>Esc</kbd> opções</span><span class="touch-control-copy">Polegar esquerdo move. O direito mira e ataca; as três habilidades ficam em volta do ataque.</span><button type="button" aria-label="Dispensar dica">×</button></div>
     </main>
     <dialog id="game-dialog" class="game-dialog" aria-labelledby="dialog-title">
       <div class="game-dialog__header"><h2 id="dialog-title">Opções</h2><button id="dialog-close" class="dialog-close" type="button" aria-label="Fechar opções">×</button></div>
@@ -111,10 +160,11 @@
         <label class="setting-row" for="contrast-toggle"><span><strong>Contraste do painel</strong><small>Reforça o fundo das informações da partida.</small></span><input id="contrast-toggle" type="checkbox" role="switch" /></label>
         <label class="setting-row" for="sound-toggle"><span><strong>Som do jogo</strong><small>Ambiente, ataques e efeitos de combate.</small></span><input id="sound-toggle" type="checkbox" role="switch" checked /></label>
       </div>
-      <div id="controls-content" class="dialog-content" hidden><p class="controls-intro">Continue em movimento. Recolha as almas deixadas pela horda para subir de nível e escolher novos poderes.</p><dl class="control-list"><div><dt>Mover</dt><dd><kbd>W A S D</kbd><span>ou setas</span></dd></div><div><dt>Mirar</dt><dd>Mouse <span>ou</span> <kbd>I J K L</kbd></dd></div><div><dt>Atacar</dt><dd>Clique ou <kbd>Espaço</kbd></dd></div><div><dt>Habilidades de classe</dt><dd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></dd></div><div><dt>Escolher evolução</dt><dd>1, 2 ou 3 com as opções abertas</dd></div><div><dt>Abrir opções</dt><dd><kbd>Esc</kbd></dd></div></dl><p class="touch-instructions">No celular, arraste o controle esquerdo para mover. Segure o direito para atacar e arraste para mirar. Toque nas três habilidades da barra inferior para lançá-las na direção da mira.</p></div>
+      <div id="controls-content" class="dialog-content" hidden><p class="controls-intro">Continue em movimento. Recolha as almas deixadas pela horda para subir de nível e escolher novos poderes.</p><dl class="control-list"><div><dt>Mover</dt><dd><kbd>W A S D</kbd><span>ou setas</span></dd></div><div><dt>Mirar</dt><dd>Mouse <span>ou</span> <kbd>I J K L</kbd></dd></div><div><dt>Atacar</dt><dd>Clique ou <kbd>Espaço</kbd></dd></div><div><dt>Habilidades de classe</dt><dd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></dd></div><div><dt>Escolher evolução</dt><dd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>ou toque na carta</span></dd></div><div><dt>Abrir opções</dt><dd><kbd>Esc</kbd></dd></div></dl><p class="touch-instructions">No celular, arraste o controle esquerdo para mover. Segure o direito para atacar e arraste para mirar. Toque nas três habilidades em volta do botão de ataque para lançá-las na direção da mira.</p></div>
       <button id="dialog-done" class="primary-button" type="button">Concluído</button>
     </dialog>
     <script type="module" src="./src/ui/arpg-hud.js"></script>
+    <script type="module" src="./src/ui/boss-bar.js"></script>
     <script type="module" src="./src/main.js"></script>
     <script type="module" src="./src/ui/presentation.js"></script>
     <script type="module" src="./src/qa/device-report.js"></script>

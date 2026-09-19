@@ -167,31 +167,7 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel { display: none; }
 .leaderboard-list__health span { display: block; width: 100%; height: 100%; transform-origin: left center; background: var(--party-color, var(--acid)); }
 .leaderboard-list__meta { font-size: 9px; color: var(--muted); text-align: right; white-space: nowrap; }
 
-/* The upgrade hand is transient; rarity carries the only vivid accents. */
-.upgrade-panel { position: fixed; inset: 0; z-index: 5; display: grid; place-items: end center; padding: 24px; pointer-events: none; }
-/* Cards stay real-time: never cover the life/resource orbs. Compact layouts keep their own paddings. */
-@media (min-width: 901px) and (min-height: 700px) { [data-arpg-connected="true"] .upgrade-panel { padding-bottom: 150px; } }
-.upgrade-panel__shell { width: min(770px, 100%); padding: 24px; border: 1px solid #b39b6b80; border-radius: 3px; background: #07141bf2; box-shadow: 0 20px 65px #0008; pointer-events: auto; }
-.upgrade-panel__kicker { margin: 0 0 5px; color: var(--amber); font-size: 11px; }
-.upgrade-panel h2 { margin: 0; font-family: var(--display); font-size: 31px; font-weight: 400; }
-.upgrade-panel__copy { margin: 8px 0 18px; color: var(--muted); font-size: 11px; }
-.upgrade-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.upgrade-card { --rarity: #91d8d4; min-height: 146px; position: relative; padding: 14px; border: 1px solid color-mix(in srgb, var(--rarity) 50%, transparent); border-top: 2px solid var(--rarity); border-radius: 2px; background: linear-gradient(155deg, color-mix(in srgb, var(--rarity) 9%, #0b1b24), #0b1b24); color: var(--text); text-align: left; }
-.upgrade-card--rare { --rarity: #d4bd8c; }
-.upgrade-card--epic { --rarity: #c3a1da; }
-.upgrade-card--legendary { --rarity: #f0bd6c; box-shadow: 0 0 24px #f0bd6c12; }
-.upgrade-card:hover { background: #17303c; border-color: var(--rarity); }
-.upgrade-card__key { display: inline-grid !important; place-items: center; width: 22px; height: 22px; margin: 0 0 12px !important; border: 1px solid #adbfc333; border-radius: 2px; color: var(--text) !important; font-size: 11px !important; }
-.upgrade-card strong { display: block; color: var(--rarity); font-size: 13px; font-weight: 600; }
-.upgrade-card span { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-.upgrade-card__rarity { float: right; color: var(--rarity); font-size: 9px; font-style: normal; }
-/* Class skill cards: the skill's own action-bar icon and the slot it changes. */
-.upgrade-card--skill { background: linear-gradient(155deg, color-mix(in srgb, var(--rarity) 16%, #0b1b24), #0b1b24 62%); }
-.upgrade-card .upgrade-card__skill { display: flex; align-items: center; gap: 7px; margin: 0 0 7px; color: color-mix(in srgb, var(--rarity) 78%, #fff); font-size: 10px; line-height: 1.25; letter-spacing: .02em; }
-.upgrade-card__icon { flex: none; width: 22px; height: 22px; color: var(--rarity); }
-/* Side-by-side hands keep keys and titles on one line: cards without a skill reserve the same row. Stacked hands do not need it. */
-.upgrade-card .upgrade-card__skill--empty { min-height: 22px; }
-@media (max-width: 680px) { .upgrade-card .upgrade-card__skill--empty { display: none; } }
+/* The upgrade hand lives in src/ui/upgrade-hand.css (compact real-time offer; never over the hero or the orbs). */
 
 /* Rankings reuse the game's generated rows and remain horizontally scrollable. */
 .main-menu__ranking { grid-area: ranking; display: none; width: 100%; min-width: 0; max-height: calc(var(--app-height, 100dvh) - 170px); overflow: hidden; border: 1px solid var(--line); background: #091923f2; }
@@ -356,16 +332,6 @@ kbd { display: inline-block; min-width: 20px; padding: 4px 6px; border: 1px soli
   .touch-stick { width: 118px; height: 118px; }
   .touch-stick__knob { width: 48px; height: 48px; }
   .touch-fire { width: 90px; height: 90px; }
-  .upgrade-panel { padding: 70px 12px 150px; place-items: center; }
-  .upgrade-panel__shell { padding: 17px; }
-  .upgrade-panel h2 { font-size: 27px; }
-  .upgrade-panel__copy { font-size: 10px; margin-bottom: 12px; }
-  .upgrade-options { grid-template-columns: 1fr; gap: 7px; }
-  .upgrade-card { min-height: 83px; padding: 10px 12px 10px 43px; }
-  .upgrade-card__key { position: absolute; left: 11px; top: 12px; }
-  .upgrade-card strong { font-size: 12px; }
-  .upgrade-card span { margin-top: 5px; font-size: 10px; }
-  .upgrade-card__rarity { font-size: 8px; }
   .leaderboard-panel { top: max(108px, calc(env(safe-area-inset-top) + 105px)); right: max(10px, env(safe-area-inset-right)); bottom: auto; width: 103px; max-height: 24px; padding: 4px 6px; overflow: hidden; opacity: .75; }
   .leaderboard-panel__title strong { font-size: 9px; }
   .leaderboard-list, .leaderboard-panel__title span { display: none; }
@@ -435,11 +401,6 @@ kbd { display: inline-block; min-width: 20px; padding: 4px 6px; border: 1px soli
   .leaderboard-panel { top: auto; bottom: 112px; right: 18px; width: 106px; max-height: 24px; padding: 4px 6px; }
   .leaderboard-panel__title strong { font-size: 9px; }
   .leaderboard-list, .leaderboard-panel__title span { display: none; }
-  .upgrade-panel { padding: 50px 100px 22px; }
-  .upgrade-panel__shell { padding: 14px; }
-  .upgrade-panel h2 { font-size: 23px; }
-  .upgrade-panel__copy { font-size: 10px; margin: 5px 0 9px; }
-  .upgrade-card { min-height: 115px; padding: 10px; }
   .first-run-hint { bottom: 18px; max-width: 48vw; padding: 6px 10px; font-size: 10px; }
 }
 @media (min-width: 681px) and (max-height: 520px) {
@@ -675,6 +636,21 @@ body:has(.message:not(.is-hidden)) .arpg-hud { display: none; }
   #message.message--game-over #message-copy { display: block; grid-area: notice; }
 }
 #message.message--game-over #message-copy { color: var(--text); }
+
+/* Death is a result, not a second character picker: keep the summary and restart action
+   inside the viewport at 1280x720 while preserving the normal login form for new runs. */
+@media (min-width: 681px) {
+  #message.message--game-over .main-menu__login--characters { max-width: 420px; padding: 16px 18px; gap: 10px; }
+  #message.message--game-over .main-menu__login--characters > .main-menu__back,
+  #message.message--game-over .main-menu__login--characters > .character-picker,
+  #message.message--game-over .main-menu__login--characters > .character-status-row,
+  #message.message--game-over .main-menu__login--characters > .name-field,
+  #message.message--game-over .main-menu__login--characters > .main-menu__login-tip { display: none; }
+  #message.message--game-over .main-menu__login--characters > strong { font-size: 18px; }
+  #message.message--game-over .main-menu__login--characters > #message-copy { display: block; max-width: 42ch; }
+  #message.message--game-over .main-menu__login--characters > .main-menu__login-actions { display: grid; gap: 8px; align-self: start; }
+  #message.message--game-over .main-menu__login--characters .main-menu__button { min-height: 46px; }
+}
 
 /* Staging only. Keep recovery context in view on short portrait screens. */
 @media (max-width: 680px) and (max-height: 690px) and (orientation: portrait) {

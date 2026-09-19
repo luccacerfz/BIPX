@@ -118,7 +118,9 @@ export async function loadMonsterLibrary({ THREE } = {}) {
     if (castProfileId !== null && (id !== 'lich' || castProfileId !== LICH_CAST_PROFILE.id)) throw new RangeError('Unsupported monster cast profile');
     const castProfile = castProfileId ? LICH_CAST_PROFILE : null;
     const selectedClips = castProfile ? entry.castClips : entry.clips;
-    const supportsPhaseAttack=Boolean(castProfile)||entry.motion?.retargetedRoles?.includes('Attack')===true;
+    const supportsPhaseAttack=Boolean(castProfile)
+      || entry.motion?.retargetedRoles?.includes('Attack')===true
+      || (id==='brute' && selectedClips.some(clip => clip.name === 'Attack'));
     const model = cloneSkeleton(entry.source.scene);
     const root = new THREE.Group();
     root.name = `Monster:${id}`;

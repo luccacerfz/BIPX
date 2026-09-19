@@ -15,7 +15,7 @@
 function startDeviceReport(code) {
   const startedAtMs = performance.now();
   const startedAt = new Date().toISOString();
-  const seconds = () => Math.round((performance.now() - startedAtMs) / 100) / 10;
+  const seconds = () => Math.round(performance.now() - startedAtMs) / 1000;
   const LIMIT = 60;
   const keep = (list, entry, limit = LIMIT) => { if (list.length < limit) list.push(entry); else list.dropped = (list.dropped ?? 0) + 1; };
   const withDropped = (list) => ({ entries: [...list], dropped: list.dropped ?? 0 });
@@ -24,12 +24,66 @@ function startDeviceReport(code) {
   const BIN_MS = 0.5;
   const BINS = 400;
   const LONG_FRAME_MS = 50;
-  const newWindow = () => ({ bins: new Uint32Array(BINS), frames: 0, long: 0, maxMs: 0, startedMs: performance.now(), hiddenMs: 0 });
+  const newWindow = () => ({ bins: new Uint32Array(BINS), frames: 0, sumMs: 0, long: 0, maxMs: 0, over10Ms: 0, over16_7Ms: 0, over33Ms: 0, over50Ms: 0, startedMs: performance.now(), hiddenMs: 0 });
   let minute = newWindow();
   const total = newWindow();
   const minutes = [];
   let lastFrame = 0;
+  let activeLastFrame = 0;
   let hiddenSince = document.hidden ? performance.now() : 0;
+
+  // Premium frames are kept in a separate, event-observed window. The legacy
+  // total above intentionally remains untouched for historical reports; it can
+  // include boot/menu/loading frames and is never promoted by a scenario label.
+  const newGameplayWindow = () => ({ bins: new Uint32Array(BINS), frames: 0, sumMs: 0, long: 0, maxMs: 0, over10Ms: 0, over16_7Ms: 0, over33Ms: 0, over50Ms: 0, startedMs: null, endMs: null, activeMs: 0, lastActiveMs: null, startReason: null, endReason: null });
+  const gameplay = { active: false, current: null, windows: [], total: newGameplayWindow(), transitions: 0,
+    observedBy: ['bipx:qa-gameplay-state', 'visibilitychange', 'pagehide', 'pageshow'] };
+  const recordFrame = (window, delta) => {
+    const bin = delta >= BINS * BIN_MS ? BINS - 1 : Math.max(0, Math.floor(delta / BIN_MS));
+    window.bins[bin] += 1; window.frames += 1; window.sumMs += delta;
+    if (delta > 10) window.over10Ms += 1;
+    if (delta > 16.7) window.over16_7Ms += 1;
+    if (delta > 33) window.over33Ms += 1;
+    if (delta > 50) window.over50Ms += 1;
+    if (delta > LONG_FRAME_MS) window.long += 1;
+    if (delta > window.maxMs) window.maxMs = delta;
+  };
+  const finishGameplayWindow = (window, nowMs, reason) => {
+    if (!window) return;
+    if (window.lastActiveMs !== null) window.activeMs += Math.max(0, nowMs - window.lastActiveMs);
+    window.lastActiveMs = null; window.endMs = nowMs; window.endReason = reason;
+  };
+  const setGameplayActive = (active, reason) => {
+    const nowMs = performance.now();
+    if (Boolean(active) === gameplay.active) return;
+    gameplay.active = Boolean(active); gameplay.transitions += 1;
+    if (gameplay.active) {
+      const window = newGameplayWindow(); window.startedMs = nowMs; window.lastActiveMs = nowMs; window.startReason = reason;
+      gameplay.current = window;
+      if (gameplay.total.startedMs === null) gameplay.total.startedMs = nowMs;
+      gameplay.total.lastActiveMs = nowMs;
+    } else {
+      // Close the rAF interval at the observed transition; do not bridge a
+      // pause/hidden gap into the next active window.
+      activeLastFrame = 0;
+      finishGameplayWindow(gameplay.current, nowMs, reason);
+      if (gameplay.current?.frames > 0) gameplay.windows.push(gameplay.current);
+      gameplay.current = null;
+      finishGameplayWindow(gameplay.total, nowMs, reason);
+    }
+  };
+  let latestBridge = null;
+  const consumeGameplayBridge = (detail, reason = 'bipx:qa-gameplay-state') => {
+    const valid = detail?.producer === 'bipx-qa-gameplay-state' && detail?.version === 1
+      && typeof detail.gameState === 'string' && typeof detail.paused === 'boolean'
+      && typeof detail.characterLoading === 'boolean' && typeof detail.isMultiplayerSuspended === 'boolean';
+    if (!valid) { latestBridge = null; setGameplayActive(false, `${reason}:bridge-unavailable`); return; }
+    latestBridge = detail;
+    const active = !document.hidden && detail.gameState === 'playing' && !detail.paused && !detail.characterLoading && !detail.isMultiplayerSuspended;
+    setGameplayActive(active, reason);
+  };
+  window.addEventListener('bipx:qa-gameplay-state', event => consumeGameplayBridge(event.detail));
+  consumeGameplayBridge(window.__bipxQaGameplayState?.current, 'bridge-initial');
 
   const percentile = (window, fraction) => {
     if (!window.frames) return null;
@@ -37,26 +91,34 @@ function startDeviceReport(code) {
     let seen = 0;
     for (let index = 0; index < BINS; index += 1) {
       seen += window.bins[index];
-      if (seen >= target) return index === BINS - 1 ? Math.round(window.maxMs * 10) / 10 : (index + 1) * BIN_MS;
+      if (seen >= target) return Math.min(window.maxMs, index === BINS - 1 ? window.maxMs : (index + 1) * BIN_MS);
     }
     return Math.round(window.maxMs * 10) / 10;
   };
   const summarize = (window, endMs) => {
     const activeMs = Math.max(0, endMs - window.startedMs - window.hiddenMs);
-    return { frames: window.frames, fps: activeMs > 0 ? Math.round((window.frames / activeMs) * 10000) / 10 : null, p50Ms: percentile(window, 0.5), p95Ms: percentile(window, 0.95), p99Ms: percentile(window, 0.99), maxMs: Math.round(window.maxMs * 10) / 10, longFrames: window.long, activeS: Math.round(activeMs / 100) / 10 };
+    return { frames: window.frames, meanMs: window.frames ? Math.round((window.sumMs / window.frames) * 100) / 100 : null, fps: activeMs > 0 ? Math.round((window.frames / activeMs) * 10000) / 10 : null, p50Ms: percentile(window, 0.5), p95Ms: percentile(window, 0.95), p99Ms: percentile(window, 0.99), maxMs: window.maxMs, over10Ms: window.over10Ms, over16_7Ms: window.over16_7Ms, over33Ms: window.over33Ms, over50Ms: window.over50Ms, longFrames: window.long, activeS: Math.round(activeMs / 100) / 10 };
+  };
+  const summarizeGameplay = (window, nowMs) => {
+    if (!window || window.startedMs === null) return null;
+    const activeMs = Math.max(0, window.activeMs + (window.lastActiveMs === null ? 0 : nowMs - window.lastActiveMs));
+    const endMs = window.endMs ?? nowMs;
+    return { frames: window.frames, samples: window.frames, meanMs: window.frames ? Math.round((window.sumMs / window.frames) * 100) / 100 : null, fps: activeMs > 0 ? Math.round((window.frames / activeMs) * 10000) / 10 : null, p50Ms: percentile(window, 0.5), p95Ms: percentile(window, 0.95), p99Ms: percentile(window, 0.99), maxMs: window.maxMs, over10Ms: window.over10Ms, over16_7Ms: window.over16_7Ms, over33Ms: window.over33Ms, over50Ms: window.over50Ms, longFrames: window.long, activeS: Math.round(activeMs) / 1000, startS: Math.round(window.startedMs - startedAtMs) / 1000, endS: Math.round(endMs - startedAtMs) / 1000, startReason: window.startReason, endReason: window.endReason };
   };
   const rollMinute = (nowMs) => { keep(minutes, { minute: minutes.length + (minutes.dropped ?? 0) + 1, endS: seconds(), ...summarize(minute, nowMs) }, 180); minute = newWindow(); };
   const onFrame = (timestamp) => {
     if (lastFrame) {
       const delta = timestamp - lastFrame;
-      const bin = delta >= BINS * BIN_MS ? BINS - 1 : Math.max(0, Math.floor(delta / BIN_MS));
-      minute.bins[bin] += 1; total.bins[bin] += 1;
-      minute.frames += 1; total.frames += 1;
-      if (delta > LONG_FRAME_MS) { minute.long += 1; total.long += 1; }
-      if (delta > minute.maxMs) minute.maxMs = delta;
-      if (delta > total.maxMs) total.maxMs = delta;
+      recordFrame(minute, delta); recordFrame(total, delta);
     }
     lastFrame = timestamp;
+    if (gameplay.active) {
+      if (activeLastFrame) {
+        const delta = timestamp - activeLastFrame;
+        recordFrame(gameplay.total, delta); recordFrame(gameplay.current, delta);
+      }
+      activeLastFrame = timestamp;
+    } else activeLastFrame = 0;
     if (timestamp - minute.startedMs >= 60000) rollMinute(timestamp);
     requestAnimationFrame(onFrame);
   };
@@ -115,6 +177,9 @@ function startDeviceReport(code) {
     if (document.hidden && !hiddenSince) hiddenSince = nowMs;
     if (!document.hidden && hiddenSince) { minute.hiddenMs += nowMs - hiddenSince; total.hiddenMs += nowMs - hiddenSince; hiddenSince = 0; }
     lastFrame = 0; // the gap while hidden is not a long frame
+    activeLastFrame = 0;
+    if (document.hidden) setGameplayActive(false, type);
+    else consumeGameplayBridge(latestBridge ?? window.__bipxQaGameplayState?.current, type);
     keep(visibility, { atS: seconds(), type, state: document.visibilityState });
   };
   document.addEventListener('visibilitychange', () => onVisibility('visibilitychange'));
@@ -174,9 +239,25 @@ function startDeviceReport(code) {
     } catch { return null; }
   };
 
+  // Explicit metadata is opt-in so this observer never guesses refresh mode or
+  // conflates rAF with CPU/Worker/network time. The game remains untouched.
+  const readPerformanceContext = () => {
+    const context = window.__bipxQaPerformanceContext;
+    if (!context || typeof context !== 'object') return { source: 'rAF', candidate: null, hardware: null, resolution: null, backend: null, quality: null, durationS: null, refreshHz: null, refreshMode: null, visibility: document.visibilityState, scenario: null, cpuMs: null, workerMs: null, networkMs: null };
+    return {
+      source: 'rAF', candidate: context.candidate ?? null, hardware: context.hardware ?? null, resolution: context.resolution ?? null,
+      backend: context.backend ?? null, quality: context.quality ?? null, durationS: context.durationS ?? null,
+      refreshHz: context.refreshHz ?? null, refreshMode: context.refreshMode ?? null, visibility: document.visibilityState,
+      scenario: context.scenario ?? null, cpuMs: context.cpuMs ?? null, workerMs: context.workerMs ?? null, networkMs: context.networkMs ?? null,
+    };
+  };
+
   const buildReport = () => {
     const nowMs = performance.now();
     recordLayout('report');
+    const activeWindows = gameplay.windows.map(window => summarizeGameplay(window, nowMs));
+    if (gameplay.current?.frames > 0) activeWindows.push(summarizeGameplay(gameplay.current, nowMs));
+    const activeTotal = summarizeGameplay(gameplay.total, nowMs);
     return {
       kind: 'bipx-device-qa-report',
       version: 1,
@@ -185,10 +266,13 @@ function startDeviceReport(code) {
       copiedAt: new Date().toISOString(),
       durationS: seconds(),
       href: safeHref(),
+      performanceContractVersion: 2,
+      capture: readPerformanceContext(),
       userAgent: navigator.userAgent,
       platform: { uaPlatform: navigator.userAgentData?.platform ?? null, uaMobile: navigator.userAgentData?.mobile ?? null, maxTouchPoints: navigator.maxTouchPoints ?? null, hardwareConcurrency: navigator.hardwareConcurrency ?? null, deviceMemoryGb: navigator.deviceMemory ?? null, language: navigator.language ?? null, coarsePointer: window.matchMedia?.('(pointer: coarse)').matches ?? null, reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? null, standalone: window.matchMedia?.('(display-mode: standalone)').matches ?? null },
       webgl: readWebgl(),
-      frames: { longFrameMs: LONG_FRAME_MS, binMs: BIN_MS, total: summarize(total, nowMs), currentMinute: summarize(minute, nowMs), minutes: [...minutes], minutesDropped: minutes.dropped ?? 0 },
+      frames: { longFrameMs: LONG_FRAME_MS, binMs: BIN_MS, histogram: { binMs: BIN_MS, semantics: 'interval-estimate', exact: false }, total: summarize(total, nowMs), legacyTotal: summarize(total, nowMs), currentMinute: summarize(minute, nowMs), minutes: [...minutes], minutesDropped: minutes.dropped ?? 0,
+        activeGameplay: { observedBy: [...gameplay.observedBy], transitions: gameplay.transitions, histogram: { binMs: BIN_MS, semantics: 'interval-estimate', exact: false }, total: activeTotal, windows: activeWindows } },
       longTasks: { ...longTasks, recent: [...longTasks.recent] },
       orientation: { current: readOrientation(), changes: withDropped(orientationChanges) },
       safeArea: { current: readSafeArea(), history: withDropped(safeAreas) },

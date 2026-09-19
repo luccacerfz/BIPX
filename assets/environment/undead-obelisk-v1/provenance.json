@@ -1,0 +1,23 @@
+{
+  "asset": "undead-obelisk-v1",
+  "preferredCandidate": "v003",
+  "provider": "Tripo Studio",
+  "taskId": "fd2e624b-5a51-4420-bc58-f0d7ea4a1ff9",
+  "sourceOriginal": "BIPX_Necromantic_Obelisk_Source_v001.glb",
+  "sourceOriginalSha256": "a5921b1aa146453aceafa8e10c32caa6784fdca13dcfe14fae1f295828dde96b",
+  "rejectedCandidates": {
+    "v001": "aggressive un-welded decimation damaged silhouette",
+    "v002": "un-welded silhouette rejected"
+  },
+  "dimensions": { "heightM": 2.8, "pivot": "base center", "baseM": [1.4258017539978027, 1.4631271362304688] },
+  "materials": 1,
+  "textures": { "basecolor": [1024, 1024], "metalrough": [1024, 1024], "normal": [512, 512] },
+  "variants": {
+    "Necromantic_Obelisk_LOD0.glb": { "triangles": 6000, "bytes": 769196, "sha256": "0975b6504faf4475f3f0960826ad7a1b97ff71e325fa78f4e54deea1f66404ac" },
+    "Necromantic_Obelisk_LOD1.glb": { "triangles": 3000, "bytes": 690396, "sha256": "a9bd5885b4ce5b953d2c2edce4cd54b67525cfdbe0b963aa68b0b13cc4cb21ad" }
+  },
+  "runtimePolicy": "Use LOD0 as one safe runtime geometry/material; retain LOD1 for a later bounded mobile LOD pass. No render-only collider or alpha fog.",
+  "evidence": "output/qa/aaa-loop/undead-obelisk-v1/v003/review.md",
+  "visualApproval": false,
+  "runtimeApproval": false
+}

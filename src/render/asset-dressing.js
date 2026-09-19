@@ -42,7 +42,7 @@ export async function loadAssetDressing({ THREE, scene, trees, lanterns }) {
       }
       const cell = `${Math.floor(position.x / 20)}:${Math.floor(position.z / 20)}`;
       const key = cell + ':' + mesh.geometry.uuid + ':' + (Array.isArray(mesh.material) ? mesh.material.map(m => m.uuid).join(',') : mesh.material.uuid);
-      if (!batches.has(key)) batches.set(key, { mesh, matrices: [], colors: [], canopy: name === 'cedar-tree', tree: ['cedar-tree', 'blue-shrine', 'ruined-wall', 'crypt-root-arch'].includes(name), detail: Boolean(options.detail), cell });
+      if (!batches.has(key)) batches.set(key, { mesh, matrices: [], colors: [], canopy: name === 'cedar-tree' || name === 'undead-obelisk-v1', tree: ['cedar-tree', 'blue-shrine', 'ruined-wall', 'crypt-root-arch', 'undead-obelisk-v1'].includes(name), detail: Boolean(options.detail), cell });
       batches.get(key).matrices.push(mesh.matrixWorld.clone());
       batches.get(key).colors.push(options.instanceTint ?? 0xffffff);
     });
@@ -78,7 +78,7 @@ export async function loadAssetDressing({ THREE, scene, trees, lanterns }) {
     const prop={...source,...surfaceDecor[source.id]};
     add(prop.asset,new THREE.Vector3(prop.x,prop.y,prop.z),prop,prop.yaw);
   }
-  const group = new THREE.Group(); group.name = 'Local library environment — cemetery-v1';
+  const group = new THREE.Group(); group.name = 'Local library environment — cemetery-v1 + undead-obelisk-v1';
   for (const { mesh, matrices, colors, tree, canopy, detail, cell } of batches.values()) {
     if (tree) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
       if (canopyMaterials.has(material)) continue;

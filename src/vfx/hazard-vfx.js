@@ -4,12 +4,17 @@
  * Persistent warnings use a dedicated bounded instance buffer; decorative
  * impacts reuse createCombatVfx and its existing quality/reduced-motion budget.
  */
+import { VFX_PALETTE } from './palette.js';
+
+// Colour ownership (palette.js): a hazard is an enemy area, so every warning and every impact is drawn in the hostile
+// threat colour. The symbol, the dark underlay and the countdown track tell the hazards apart — never the hue.
+const THREAT = VFX_PALETTE.hostile.threat;
 export const HAZARD_VISUALS = Object.freeze({
-  graveSpikes: Object.freeze({ symbol: 0, color: 0xbfd2df, effect: null }),
-  profaneCircle: Object.freeze({ symbol: 1, color: 0xd978ff, effect: 'judgement' }),
-  crackedLightning: Object.freeze({ symbol: 2, color: 0xfff45c, effect: 'lightning' }),
-  hazardFrost: Object.freeze({ symbol: 3, color: 0x94e7ff, effect: 'frost', candidate: true }),
-  spectralBlades: Object.freeze({ symbol: 4, color: 0xb7deed, effect: 'bladeStorm', candidate: true }),
+  graveSpikes: Object.freeze({ symbol: 0, color: THREAT, effect: null }),
+  profaneCircle: Object.freeze({ symbol: 1, color: THREAT, effect: 'judgement' }),
+  crackedLightning: Object.freeze({ symbol: 2, color: THREAT, effect: 'lightning' }),
+  hazardFrost: Object.freeze({ symbol: 3, color: THREAT, effect: 'frost', candidate: true }),
+  spectralBlades: Object.freeze({ symbol: 4, color: THREAT, effect: 'bladeStorm', candidate: true }),
 });
 
 const vertexShader = /* glsl */ `
@@ -196,7 +201,7 @@ export function createHazardVfx({ THREE, scene, vfx, capacity = 8, quality = 'hi
       slot.position.x = position.x; slot.position.y = position.y ?? 0; slot.position.z = position.z;
       slot.telegraph = telegraph; slot.duration = duration; slot.elapsed = 0;
       slot.triggered = false; slot.fired = false; slot.impactElapsed = null;
-      slot.color = Number.isInteger(snapshot.color) && snapshot.color >= 0 && snapshot.color <= 0xffffff ? snapshot.color : profile.color;
+      slot.color = profile.color; // the caller's table colour is ignored on purpose: threats have one owner
     }
     slot.elapsed = Math.max(slot.elapsed,elapsed); // delayed packet never rewinds
     if (snapshot.triggered && !slot.triggered) {

@@ -2,6 +2,7 @@ import { loadGlb } from './load-glb.js';
 import { clone as cloneSkeleton } from './vendor/SkeletonUtils.js';
 import { measureOrcSupport, createOrcFootContacts } from './enemy-foot-contacts.js';
 import { getEnemyControlState } from './enemy-control-state.js';
+import { applyMeleeVisualSnapshot, predictMeleeVisual, meleeVisualClipTime } from '../combat/melee-visual-phase.mjs';
 
 const orcUrl = new URL('../../assets/models/orc-peon-locomotion-v1.glb', import.meta.url).href;
 const libraryPromises = new Map(), supportProfileCache = new Map();
@@ -46,7 +47,8 @@ export async function loadEnemyLibrary({ THREE, contactCandidate = false, assetV
       const body = model.getObjectByName('OrcBody'); body.skeleton.update();
       const bounds = new THREE.Box3().setFromObject(body, true), size = bounds.getSize(new THREE.Vector3());
       root.scale.setScalar(height / size.y); model.position.y -= bounds.min.y; parent.add(root);
-      const stats = { loaded: true, id, source: 'OrcPeasantMiner Animation Master', currentClip: 'Idle', animationTime: 0, bones: body.skeleton.bones.length, sourceHeight: size.y, runtimeHeight: height, clips: source.animations.map(clip => ({ name: clip.name, duration: clip.duration })) };
+      const stats = { loaded: true, id, source: 'OrcPeasantMiner Animation Master', currentClip: 'Idle', animationTime: 0, bones: body.skeleton.bones.length, sourceHeight: size.y, runtimeHeight: height, supportsPhaseAttack: true, attack: null, clips: source.animations.map(clip => ({ name: clip.name, duration: clip.duration })) };
+      let attackState = null;
       const motion = source.scene.userData.bipxMotion;
       const gaitSpeed = { Walk: motion.walkSpeed * root.scale.x,
         Run: motion.runStride * root.scale.x / actions.Run.getClip().duration };
@@ -72,19 +74,62 @@ export async function loadEnemyLibrary({ THREE, contactCandidate = false, assetV
         oneShot = false; transition(locomotion());
       }
       mixer.addEventListener('finished', finished);
+      function publishAttack() {
+        stats.attack = attackState ? { ...attackState, normalizedTime: THREE.MathUtils.clamp(attackState.elapsed / attackState.duration, 0, 1),
+          impactReached: attackState.elapsed / attackState.duration >= attackState.impactPhase,
+          clipTime: meleeVisualClipTime(attackState, actions.Attack.getClip().duration) } : null;
+      }
+      function syncAttack(snapshot) {
+        if (disposed || dead || !snapshot || snapshot.id == null) return false;
+        const result = applyMeleeVisualSnapshot(attackState, snapshot, { defaultDuration: .88, defaultImpactPhase: .48 });
+        if (!result.ok) return false;
+        attackState = result.state;
+        if (result.restart && attackState.active) {
+          transition('Attack', result.fade, { once: true, duration: attackState.duration });
+        }
+        if (attackState.active) {
+          actions.Attack.paused = true;
+          actions.Attack.time = meleeVisualClipTime(attackState, actions.Attack.getClip().duration);
+          oneShot = true; mixer.update(0);
+        } else if (current === actions.Attack) {
+          // Clock-complete snapshots omit active; only snapshot.active===false used to exit, which froze Attack paused+oneShot.
+          oneShot = false;
+          actions.Attack.paused = false;
+          transition(locomotion(), .1);
+        }
+        stats.animationTime = current.time;
+        stats.animationTimeScale = attackState.active ? actions.Attack.getClip().duration / attackState.duration : current.getEffectiveTimeScale();
+        publishAttack();
+        return true;
+      }
       const controller = {
-        root, model, weapon: model.getObjectByName('OrcSickle'), stats,
+        root, model, weapon: model.getObjectByName('OrcSickle'), stats, syncAttack,
         update(dt, state = {}) {
           if (disposed) return;
           stats.control = getEnemyControlState(state);
-          if (stats.control.paused) return;
+          const received = state.attack && !state.dead ? syncAttack(state.attack) : false;
+          if (stats.control.paused) {
+            if (attackState?.active) {
+              actions.Attack.paused = true;
+              actions.Attack.time = meleeVisualClipTime(attackState, actions.Attack.getClip().duration);
+              mixer.update(0);
+            }
+            return;
+          }
           footSupport.restore();
           speed = Math.max(0, Number(state.speed) || 0);
           if (Boolean(state.dead) !== dead) {
             dead = Boolean(state.dead); transition(dead ? 'Death' : locomotion(), .1, { once: dead });
+            if (dead && attackState) { attackState = { ...attackState, active: false, cancelled: true }; publishAttack(); }
             if (!dead) oneShot = false;
           }
-          if (!dead && !oneShot) {
+          if (!dead && attackState?.active) {
+            if (!received) attackState = predictMeleeVisual(attackState, Math.min(.1, Math.max(0, Number(dt) || 0)));
+            actions.Attack.time = meleeVisualClipTime(attackState, actions.Attack.getClip().duration);
+            if (!attackState.active) { oneShot = false; transition(locomotion(), .1); }
+            publishAttack();
+          }
+          if (!dead && !oneShot && !attackState?.active) {
             transition(locomotion());
             const nominal = gaitSpeed[stats.currentClip];
             if (nominal) {
@@ -94,15 +139,18 @@ export async function loadEnemyLibrary({ THREE, contactCandidate = false, assetV
             } else stats.gaitSpeedMismatch = 0;
           }
           mixer.update(THREE.MathUtils.clamp(Number(dt) || 0, 0, .1)); stats.animationTime = current.time;
-          stats.animationTimeScale = current.getEffectiveTimeScale();
+          stats.animationTimeScale = attackState?.active ? actions.Attack.getClip().duration / attackState.duration : current.getEffectiveTimeScale();
           footSupport.update(Math.max(0, Number(dt) || 0), state, { clip: stats.currentClip, time: current.time, active: !dead && !oneShot && speed > .08 });
         },
-        attack({ duration = .85 } = {}) { if (!dead && !disposed && !stats.control?.paused) transition('Attack', .06, { once: true, duration }); },
+        attack({ duration = .85, id, elapsed, impactPhase } = {}) {
+          if (dead || disposed || stats.control?.paused) return false;
+          return syncAttack({ id: id ?? `local:${Math.random()}`, duration, elapsed: elapsed ?? 0, impactPhase: impactPhase ?? .48, active: true });
+        },
         hit() { if (!dead && !disposed && !oneShot && !stats.control?.paused) transition('Hit', .055, { once: true, duration: .3 }); },
         reset({ phase: startPhase = 0 } = {}) {
           if (disposed) return;
           footSupport.reset();
-          mixer.stopAllAction(); dead = false; oneShot = false; speed = 0;
+          mixer.stopAllAction(); dead = false; oneShot = false; speed = 0; attackState = null; stats.attack = null;
           stats.control = getEnemyControlState();
           current = actions.Idle.reset().setEffectiveWeight(1).setEffectiveTimeScale(1).setLoop(THREE.LoopRepeat, Infinity);
           current.clampWhenFinished = false; current.time = Math.max(0, startPhase) % current.getClip().duration;

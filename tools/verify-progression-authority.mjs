@@ -20,12 +20,13 @@ const sourcePath=path.resolve('server.mjs');
 const sourceRoot=path.dirname(sourcePath);
 const candidate=await fs.readFile(sourcePath,'utf8');
 const fixture=`
-import {grantXp as fixtureGrantXp,createDrop as fixtureCreateDrop} from ${JSON.stringify(pathToFileURL(sourceRoot+'/src/progression/authority.mjs').href)};
+import {grantXp as fixtureGrantXp,createDrop as fixtureCreateDrop,tickProgression as fixtureTickProgression} from ${JSON.stringify(pathToFileURL(sourceRoot+'/src/progression/authority.mjs').href)};
 process.on('message',q=>{if(q?.type!=='qa-progression')return;try{
  const room=rooms.get(q.room),client=room?.clients.get(q.clientId); if(!client)throw Error('Fixture client missing');
  let value;
  if(q.action==='quiet'){room.world.monsters.clear();room.world.projectiles.clear();room.world.zombiesToSpawn=0;room.world.nextWaveDelay=1e9;}
  if(q.action==='xp'){fixtureGrantXp(client.state,client.progression,q.amount);}
+ if(q.action==='tick'){fixtureTickProgression(client.state,client.progression,Math.max(0,Number(q.dt)||0));}
  if(q.action==='damage'){damageServerPlayer(room,client,q.amount);}
  if(q.action==='drop'){value=fixtureCreateDrop(client.progression,q.kind,q.position,q.data);syncProgression(client.state,client.progression);}
  if(q.action==='target'){room.world.monsters.clear();const m=spawnServerMonster(room,q.x,q.z,q.monsterType||'zombie');m.health=q.health||100;m.maxHealth=m.health;m.speed=0;m.attackCooldown=1e9;value=m.id;}
@@ -58,8 +59,17 @@ try{
  let target=await ipc(c,'target',{x:0,z:-10,health:100});let from=c.messages.length;send(c,{type:'attack',attack:{kind:'pistol',weapon:'pistol',aimX:0,aimZ:-1,damageMultiplier:8,areaMultiplier:5,cooldownMultiplier:.48,projectileBonus:6,crit:true}});const rifleHit=basicHit('dwarf');let hit=await message(c,m=>m.type==='monsterHit',from);assert.equal(hit.amount,rifleHit);from=c.messages.length;send(c,{type:'attack',attack:{kind:'pistol',weapon:'pistol',aimX:0,aimZ:-1,damageMultiplier:8,cooldownMultiplier:.48}});await delay(90);assert.equal(c.messages.slice(from).filter(m=>m.type==='monsterHit').length,0);probe=await ipc(c,'read');assert.equal(wire(probe.monsters[0].health),wire(100-rifleHit));
  check(`Case3: forged8x damage/.48 cooldown/6projectiles/crit produces one base${rifleHit} hit, immediate repeat rejected`,{rifleHit});
  const bad=await command(c,'chooseUpgrade',{offerId:'invented',upgradeId:'maxHealth'});assert.equal(bad.result.code,'not-offered');
- await ipc(c,'rng',{value:.999});probe=await ipc(c,'xp',{amount:50000});c.state=probe.state;let count=0,maxHealthChoice;
- while(c.state.progression.offer && !maxHealthChoice){const offer=c.state.progression.offer;const id=offer.upgradeIds.includes('maxHealth')?'maxHealth':offer.upgradeIds[0];const args={offerId:offer.id,upgradeId:id,requestId:`legit-${++count}`};const prior=c.state.health;const result=await command(c,'chooseUpgrade',args);assert.equal(result.result.ok,true);if(id==='maxHealth'){maxHealthChoice=args;assert.equal(result.state.health,prior+MAX_HEALTH_STEP);assert.equal(result.state.maxHealth,lyraHealth+MAX_HEALTH_STEP)}}
+ // .999 is a valid tail-roll that can exhaust all 27 banked offers without
+ // selecting maxHealth; .5 keeps this semantic +18 assertion deterministic
+ // without claiming a particular natural offer sequence.
+ await ipc(c,'rng',{value:.5});probe=await ipc(c,'xp',{amount:50000});c.state=probe.state;let count=0,maxHealthChoice;
+ // The shared contract spaces banked level-ups after each choice. The old
+ // harness stopped as soon as the first offer closed, so it never reached a
+ // legal maxHealth card and misreported the product as losing an offer.
+ while(!maxHealthChoice && count < 64){
+  if(!c.state.progression.offer){const advanced=await ipc(c,'tick',{dt:28});c.state=advanced.state;if(!c.state.progression.offer)break;}
+  const offer=c.state.progression.offer;const id=offer.upgradeIds.includes('maxHealth')?'maxHealth':offer.upgradeIds[0];const args={offerId:offer.id,upgradeId:id,requestId:`legit-${++count}`};const prior=c.state.health;const result=await command(c,'chooseUpgrade',args);assert.equal(result.result.ok,true);c.state=result.state;if(id==='maxHealth'){maxHealthChoice=args;assert.equal(result.state.health,prior+MAX_HEALTH_STEP);assert.equal(result.state.maxHealth,lyraHealth+MAX_HEALTH_STEP)}
+ }
  assert.ok(maxHealthChoice);const version=c.state.stateVersion;const hp=c.state.health;let ack=await command(c,'chooseUpgrade',maxHealthChoice);assert.equal(ack.result.duplicate,true);assert.equal(ack.state.stateVersion,version);assert.equal(ack.state.health,hp);
  check('Real XP→server offer→chosen+18 maxHP/heal; duplicate request applies once',{choicesUntilMaxHealth:count});
  const sameChoiceNewId=await command(c,'chooseUpgrade',{...maxHealthChoice,requestId:'new-key-same-choice'});assert.equal(sameChoiceNewId.result.ok,false);

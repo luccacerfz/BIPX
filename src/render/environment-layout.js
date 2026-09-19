@@ -1,6 +1,6 @@
 // Shared scene/physics contract. Metres; Three Y yaw; no DOM or renderer imports.
 export const ENVIRONMENT_GROUND = Object.freeze({ y: 0, minY: 0, maxY: 0, shape: 'circle', x: 0, z: 0, radius: 55 });
-export const ENVIRONMENT_VERSION = 'crypt-entrance-v1-staging';
+export const ENVIRONMENT_VERSION = 'crypt-entrance-v1-undead-obelisk-v1';
 const box = (id, x, z, halfX, halfZ, maxY, yaw = 0, minY = 0) => ({ id, shape: 'box', x, z, halfX, halfZ, yaw, minY, maxY, blockingActors: true, blockingProjectiles: true });
 const circle = (id, x, z, radius, maxY) => ({ id, shape: 'circle', x, z, radius, minY: 0, maxY, blockingActors: true, blockingProjectiles: true });
 
@@ -10,6 +10,15 @@ export function getEnvironmentLayout() {
   const add = (id, asset, x, z, width, yaw = 0, extra = {}) => props.push({ id, asset, x, y: 0, z, width, yaw, ...extra });
   // Three places, reusing the already optimized Harbor / Tunnel / House derivatives.
   add('shrine-west', 'blue-shrine', -12.8, -15.1, 2.8, .30, { solid: true, tint: 0xb4ada0, saturation: .16 });
+  // Three readable edge landmarks; center and diagonal escape corridors remain open.
+  for (const [id, x, z, yaw] of [
+    ['undead-obelisk-northwest', -25, -24, .18],
+    ['undead-obelisk-northeast', 25, -24, -.22],
+    ['undead-obelisk-southeast', 27, 25, .42],
+  ]) add(id, 'undead-obelisk-v1', x, z, 1.5, yaw, {
+    solid: true, maxHeight: 2.8, tint: 0xffffff, saturation: .90,
+    colliderFootprint: { halfX: .74, halfZ: .76, maxY: 2.8 },
+  });
   add('crypt-door', 'crypt-door', 0, -46.35, 3.5, 0, { y: .65 });
   // Closed rooted family crypt. Pure collider parts match the same visual placement.
   add('crypt-entry-wall', 'crypt-root-arch', 12.3, -18.1, 6.4, 0, {
@@ -166,6 +175,10 @@ export function getEnvironmentColliders() {
     else if (p.asset === 'ruined-wall') colliders.push(box(p.id,p.x,p.z,p.width*.46,p.width*.10,p.width*.226*(p.verticalScale||1),p.yaw));
     else if (p.asset === 'timber-beam') colliders.push(box(p.id,p.x,p.z,p.width*.46,p.width*.052,p.maxHeight,p.yaw));
     else if (p.asset === 'border-rock') colliders.push(box(p.id, p.x, p.z, p.width * .4, p.width * .28, p.width * .642, p.yaw));
+    else if (p.asset === 'undead-obelisk-v1') {
+      const footprint = p.colliderFootprint ?? { halfX: p.width * .48, halfZ: p.width * .5, maxY: p.maxHeight ?? 2.8 };
+      colliders.push(box(p.id, p.x, p.z, footprint.halfX, footprint.halfZ, p.y + footprint.maxY, p.yaw, p.y));
+    }
   }
   for (const c of layout.crosses) {
     const x = c.x - Math.sin(c.yaw) * .7, z = c.z - Math.cos(c.yaw) * .7;

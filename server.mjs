@@ -13,7 +13,8 @@ import { getEnvironmentColliders, ENVIRONMENT_GROUND } from "./src/render/enviro
 import { getPursuitDirection } from "./src/physics/navigation.mjs";
 import { createSkillState, skillSnapshot, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills, getSkillDamageTaken, creditSkillKill } from "./src/combat/class-skills.mjs";
 import { locomotionSpeed, creditMoveBudget, consumeMoveBudget } from "./src/combat/network-move.mjs";
-import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc } from "./src/combat/melee-timing.mjs";
+import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc, meleeHitReach, meleeRawDamage, meleeLosClear, serializeMeleeAttack } from "./src/combat/melee-timing.mjs";
+import { publishMeleeTelegraph, meleeTelegraphEvent } from "./src/combat/melee-telegraph-handoff.mjs";
 import { heroMaxHealth, basicAttackSpec, createHeroCombatState, beginBasicAttack, meleeShape, insideMeleeShape, rifleShot, assistRifleAim, basicPower, skillPower, monsterWeight, applyHeroKnockback, advanceHeroKnockback, resolveIncomingDamage, resolveLeech, waveSpawnBudget, spawnInterval, spawnDistance } from "./src/combat/hero-power.mjs";
 
 import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, skillMods, resolveDamage, rewardKill, receiveDamage, tickProgression, activeRelic } from "./src/progression/authority.mjs";
@@ -958,8 +959,8 @@ function updateServerMonsters(room, playingClients, dt) {
         if (!lockedTarget) strike.active = false;
         else {
           const phase = advanceMeleeAttack(strike, dt);
-          if (phase.impact && isWithinMeleeArc(monster, lockedTarget.state, strike) && !sweepStatic(collisionWorld, { x: monster.x, y: .9, z: monster.z }, { x: lockedTarget.state.x, y: .9, z: lockedTarget.state.z }, 0)) {
-            damageServerPlayer(room, lockedTarget, monster.damage + Math.floor(world.wave * .55), monster);
+          if (phase.impact && isWithinMeleeArc(monster, lockedTarget.state, strike) && meleeLosClear((a, b, radius) => sweepStatic(collisionWorld, a, b, radius), monster, lockedTarget.state)) {
+            damageServerPlayer(room, lockedTarget, meleeRawDamage(monster.type, monster.damage, world.wave), monster);
           }
         }
         continue;
@@ -980,18 +981,23 @@ function updateServerMonsters(room, playingClients, dt) {
       const meleeRange = (profile.meleeRange ?? monster.radius + 0.72) + (monster.reachBonus || 0);
       const meleeTiming = getMeleeTiming(monster.type);
       const fallbackMeleeRange = meleeTiming ? meleeRange * 0.84 : meleeRange;
-      const clearMelee = !sweepStatic(collisionWorld, { x: monster.x, y: .9, z: monster.z }, { x: target.state.x, y: .9, z: target.state.z }, 0);
-      if (meleeTiming && distance <= meleeTiming.reach + (monster.reachBonus || 0) && clearMelee) {
+      const clearMelee = meleeLosClear((a, b, radius) => sweepStatic(collisionWorld, a, b, radius), monster, target.state);
+      const hitReach = meleeHitReach(monster.type, monster.reachBonus);
+      if (meleeTiming && distance <= hitReach && clearMelee) {
         if (monster.attackCooldown <= 0) {
           monster.meleeSequence = (monster.meleeSequence || 0) + 1;
           monster.meleeAttack = beginMeleeAttack(monster, target.state, {
             ...meleeTiming, id: monster.meleeSequence, targetId: target.id,
-            reach: meleeTiming.reach + (monster.reachBonus || 0),
+            reach: hitReach,
           });
-          monster.attackCooldown = meleeTiming.cooldown;
+          publishMeleeTelegraph(meleeTelegraphEvent(monster, monster.meleeAttack, 'begin'));
+          monster.attackCooldown = monster.type === 'bloodCow'
+            ? (monster.health / monster.maxHealth < 0.35 ? 0.72 : 0.86)
+            : meleeTiming.cooldown;
           broadcast(room, { type: 'monsterMelee', monster: serializeMonster(monster) });
+          continue;
         }
-        continue;
+        if (!(profile.boss && profile.ranged)) continue;
       }
 
       if (monster.type !== 'caster' && profile.ranged && distance < 22 && distance > meleeRange + 1.2 && monster.attackCooldown <= 0 && clearMelee) {
@@ -1010,7 +1016,7 @@ function updateServerMonsters(room, playingClients, dt) {
         if (Math.hypot(pursuit.direction.x, pursuit.direction.z) > .01) monster.rotation = Math.atan2(-pursuit.direction.x, -pursuit.direction.z);
         monster.x = moved.x; monster.z = moved.z;
         world.actorIndex.update({ ...body, x: moved.x, z: moved.z });
-      } else if (monster.attackCooldown <= 0 && clearMelee) {
+      } else if (!meleeTiming && monster.attackCooldown <= 0 && clearMelee) {
         monster.attackCooldown = profile.meleeCooldown ?? (profile.boss ? 0.86 : 0.62);
         damageServerPlayer(room, target, monster.damage + Math.floor(world.wave * (profile.boss ? 0.65 : 0.55)), monster);
       }
@@ -1165,7 +1171,7 @@ function updateServerSkills(room, client, dt) {
       if (!room.world.monsters.has(monster.id)) return;
       const resolved = resolveDamage(client.progression, effect.damage);
       applySkillControl(monster, effect); monster.controlSourceId = client.id;
-      damageServerMonster(room, monster, resolved.damage, client.id, effect.skillId, effect);
+      damageServerMonster(room, monster, resolved.damage, client.id, effect.skillId, effect, resolved.critical);
       return !room.world.monsters.has(monster.id);
     },
     emit(event) { broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event }); },
@@ -1212,7 +1218,7 @@ function applyServerAttackDamage(room, client, attack) {
     hits.forEach((monster, index) => {
       const hit = resolveDamage(client.progression, baseDamage * falloff ** index);
       applyHeroKnockback(monster, weapon === 'pistol' ? aim : { x: monster.x - origin.x, z: monster.z - origin.z }, step.knockback, serverMonsterWeight(monster));
-      if (damageServerMonster(room, monster, hit.damage, client.id, spec.effect || weapon)) landed++;
+      if (damageServerMonster(room, monster, hit.damage, client.id, spec.effect || weapon, null, hit.critical)) landed++;
     });
   }
   leechServerPlayer(room, client, { hits: landed });
@@ -1309,7 +1315,8 @@ function serverArsenalContext(room, client, combatStats, aim = null) {
     hit(monster, effect) {
       if (!room.world.monsters.has(monster.id)) return true;
       const burning = monster.burnTimer > 0 ? monster.burnDps || 0 : 0;
-      damageServerMonster(room, monster, resolveDamage(client.progression, effect.damage).damage, client.id, effect.hitEffect);
+      const resolved = resolveDamage(client.progression, effect.damage);
+      damageServerMonster(room, monster, resolved.damage, client.id, effect.hitEffect, null, resolved.critical);
       const survived = room.world.monsters.has(monster.id);
       // One shared burn rule for solo and server instead of the legacy amount-based guess.
       if (survived && effect.burnDps) monster.burnDps = Math.max(burning, effect.burnDps);
@@ -1330,7 +1337,8 @@ function cancelServerArsenal(room, client) {
   if (client.arsenal) cancelArsenal(client.arsenal, serverArsenalContext(room, client, null).emit, 'death');
 }
 
-function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = "pistol", skillEffect = null) {
+// `critical` and `skillEffect.mod` only colour the client's hit feedback (crit number, napalm ticks roll into one number).
+function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = "pistol", skillEffect = null, critical = false) {
   if (!monster || amount <= 0 || !room.world.monsters.has(monster.id)) {
     return false;
   }
@@ -1352,6 +1360,7 @@ function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = 
     health: Math.max(0, Number(monster.health.toFixed(2))),
     hitEffect,
     sourceId: sourceClientId,
+    ...(critical ? { crit: true } : null), ...(skillEffect?.mod ? { mod: skillEffect.mod } : null),
   });
 
   if (monster.health <= 0) {
@@ -1496,11 +1505,7 @@ function serializeMonster(monster) {
     controlResistance: serverMonsterProfiles[monster.type]?.boss ? { freezeMax: .8, stunMax: .65, pullMultiplier: .35 } : null,
     skillStatuses: monster.skillStatuses || {},
     casterCast: monster.type === 'caster' && monster.casterCastState ? casterCastSnapshot(monster.casterCastState) : null,
-    meleeAttack: monster.meleeAttack ? {
-      id: monster.meleeAttack.id, elapsed: Number(monster.meleeAttack.elapsed.toFixed(3)),
-      duration: monster.meleeAttack.duration, impactPhase: monster.meleeAttack.impactPhase,
-      active: monster.meleeAttack.active,
-    } : null,
+    meleeAttack: serializeMeleeAttack(monster.meleeAttack),
   };
 }
 

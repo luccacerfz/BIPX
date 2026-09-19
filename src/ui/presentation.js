@@ -19,6 +19,7 @@ let ownsPause = false;
 let hintTimeout;
 let characterRequestPending = false;
 let requestedCharacter = null;
+let characterLoadError = null;
 
 function readPreference(key, fallback = null) {
   try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -34,8 +35,23 @@ function selectedCharacterReady() {
   const state = characters()?.getState();
   return Boolean(state && !state.loading && !characterRequestPending && state.characters?.some((character) => character.id === state.selected && character.ready));
 }
+function startupWarmupRunning() {
+  const status = window.__zombieNightDebug?.getStartupWarmup?.().status;
+  return status === 'running' || status === 'failed';
+}
+function startupWarmupFailed() {
+  return window.__zombieNightDebug?.getStartupWarmup?.().status === 'failed';
+}
 function setCharacterStartAvailability(ready) {
-  for (const button of startButtons) button.disabled = !ready;
+  const warmupStatus = window.__zombieNightDebug?.getStartupWarmup?.().status;
+  const blockedByWarmup = warmupStatus === 'running';
+  for (const button of startButtons) {
+    // A failed preparation has an explicit solo reload affordance even when
+    // the last character selection is not ready; multiplayer stays blocked.
+    button.disabled = warmupStatus === 'failed'
+      ? button.id !== 'play-button'
+      : !ready || blockedByWarmup;
+  }
 }
 function syncCharacters() {
   const state = characters()?.getState();
@@ -61,11 +77,14 @@ function syncCharacters() {
   }
   const selected = state.characters?.find((character) => character.id === state.selected);
   const ready = selectedCharacterReady();
+  const preserveCharacterError = !loading && Boolean(characterLoadError) && characterStatus.dataset.state === 'error';
   setCharacterStartAvailability(ready);
-  characterRetry.hidden = loading || ready;
-  characterStatus.dataset.state = loading ? 'loading' : ready ? 'ready' : 'error';
+  characterRetry.hidden = loading || (ready && !preserveCharacterError);
+  characterStatus.dataset.state = loading ? 'loading' : preserveCharacterError ? 'error' : ready ? 'ready' : 'error';
   characterStatus.textContent = loading
     ? 'Carregando seu sobrevivente…'
+    : preserveCharacterError
+      ? characterLoadError
     : ready
       ? `${selected.name} ${state.selected === 'dwarf' ? 'pronta' : 'pronto'} para a noite.`
       : 'O personagem ainda não está pronto. Tente carregar novamente.';
@@ -74,6 +93,7 @@ async function selectCharacter(id) {
   if (!characters() || characterRequestPending || inGame()) return;
   const restoreRadioFocus = characterPicker.contains(document.activeElement);
   requestedCharacter = id;
+  characterLoadError = null;
   characterRequestPending = true;
   syncCharacters();
   let succeeded = false;
@@ -84,19 +104,24 @@ async function selectCharacter(id) {
     syncCharacters();
     if (restoreRadioFocus && !inGame() && !characterPicker.disabled) characterInputs.find((input) => input.checked)?.focus();
   }
+  if (succeeded) characterLoadError = null;
   if (!succeeded) {
+    characterLoadError = 'Não foi possível carregar esse personagem. Tente novamente.';
     characterStatus.dataset.state = 'error';
-    characterStatus.textContent = 'Não foi possível carregar esse personagem. Tente novamente.';
+    characterStatus.textContent = characterLoadError;
     characterRetry.hidden = false;
   }
+  return succeeded;
 }
 for (const input of characterInputs) {
   input.addEventListener('change', () => { if (input.checked) void selectCharacter(input.value); });
 }
 characterRetry.addEventListener('click', () => void selectCharacter(requestedCharacter || characters()?.getState().selected || 'warrior'));
 window.addEventListener('bipx:character-change', syncCharacters);
+window.addEventListener('bipx:startup-warmup-state', syncCharacters);
 for (const button of startButtons) {
   button.addEventListener('click', (event) => {
+    if (button.id === 'play-button' && startupWarmupFailed()) return;
     if (!selectedCharacterReady()) { event.preventDefault(); event.stopImmediatePropagation(); syncCharacters(); }
   }, true);
 }

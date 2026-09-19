@@ -146,12 +146,14 @@ varying float vAge;
 varying float vKind;
 varying float vSeed;
 varying float vAlive;
+varying float vForm;
+varying float vRadius;
 void main() {
   float age = uTime - aParams.x;
   vAge = clamp(age / max(aParams.y, 0.001), 0.0, 1.0);
   vAlive = step(0.0, age) * (1.0 - step(aParams.y, age));
   vUv = position.xy;
-  vColor = aColor; vKind = aParams.w; vSeed = aShape.w;
+  vColor = aColor; vKind = aParams.w; vSeed = aShape.w; vForm = aShape.z; vRadius = max(aParams.z, 0.05);
   float angle = aShape.x;
   vec2 p = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * position.xy * aParams.z * vAlive;
   vec3 world = aOrigin + vec3(p.x, p.y * sin(aShape.y), p.y * cos(aShape.y));
@@ -162,14 +164,18 @@ void main() {
 export const glyphFragment = /* glsl */ `
 uniform float uTime;
 uniform float uMotion;
+uniform vec3 uEmber;
 varying vec2 vUv;
 varying vec3 vColor;
 varying float vAge;
 varying float vKind;
 varying float vSeed;
 varying float vAlive;
+varying float vForm;
+varying float vRadius;
 ${noiseGLSL}
 const float TAU = 6.28318530718;
+float gauss(float d, float width) { float q = d / width; return exp(-q * q); }
 void main() {
   if (vAlive < 0.5) discard;
   float r = length(vUv);
@@ -177,12 +183,12 @@ void main() {
   float turn = fract(atan(vUv.y, vUv.x) / TAU + 0.5);
   float t = vAge;
   float fade = 1.0 - smoothstep(0.45, 1.0, t);
-  float light = 0.0;
+  float light = 0.0, heat = 0.0;
   vec3 color = vColor;
   if (vKind < 0.5) {
-    // ShockRing: the decelerating front exposes cracks in its wake.
+    // ShockRing: the decelerating front exposes cracks in its wake. The band never gets thinner than 12 cm of world.
     float front = 1.0 - (1.0 - t) * (1.0 - t);
-    float ring = band(r, front, mix(0.025, 0.009, front));
+    float ring = band(r, front, max(mix(0.025, 0.009, front), 0.06 / vRadius));
     float wake = smoothstep(front - 0.16, front, r) * step(r, front) * 0.13;
     float cell = turn * 11.0 + vSeed;
     float index = floor(cell);
@@ -207,18 +213,61 @@ void main() {
     light += band(triangle, 0.25, 0.006) * step(r, 0.53) * 0.6 + band(r, 0.59, 0.004) * 0.6;
     light = light * drawn * fade * 0.85;
   } else if (vKind < 2.5) {
-    // A brief crescent with a hot leading edge, rather than a solid disc.
-    float arc = smoothstep(0.06, 0.18, turn) * (1.0 - smoothstep(0.58, 0.83, turn));
-    float front = mix(0.55, 0.94, 1.0 - pow(1.0 - t, 2.0));
-    float width = mix(0.16, 0.015, t) * arc;
-    light = (1.0 - smoothstep(width * 0.3, max(width, 0.001), abs(r - front))) * arc * fade;
-    color = mix(color, vec3(1.0), light * 0.4);
-  } else {
+    // Blade arc. |vForm| is the half-angle of the swing around local +X and its sign the sweep direction; a value
+    // above PI draws the full turn of the combo finisher. The wake is hollow towards the wielder and never exceeds
+    // ~0.3 alpha, so the silhouette behind it keeps reading; only the thin leading edge and the tip line are hot.
+    // +10 on the magnitude marks an owner-coloured arc (relics, companions): its wake keeps the tint instead of Aldric's ember.
+    float raw = abs(vForm), owned = step(8.0, raw), halfArc = raw - owned * 10.0, side = vForm < 0.0 ? -1.0 : 1.0, full = step(3.2, halfArc);
+    float ang = atan(vUv.y, vUv.x) * side;
+    float inside = mix(1.0 - smoothstep(halfArc - 0.05, halfArc + 0.02, abs(ang)), 1.0, full);
+    float sweep = 1.0 - pow(1.0 - clamp(t / mix(0.66, 0.5, full), 0.0, 1.0), 1.5);
+    float lead = mix(-halfArc - 0.12, halfArc + 0.12, sweep);
+    float behind = lead - ang;
+    float wake = step(0.0, behind) * exp(-behind * mix(1.25, 0.45, full));
+    float edge = gauss(behind, mix(0.075, 0.11, full));
+    float tipWidth = max(mix(0.03, 0.05, full), 0.05 / vRadius);
+    float tip = gauss(r - 0.9, tipWidth);
+    float body = smoothstep(0.5, 0.9, r) * (1.0 - smoothstep(0.9, 0.9 + tipWidth * 1.6, r));
+    float hold = 1.0 - smoothstep(mix(0.55, 0.62, full), 1.0, t);
+    heat = inside * edge * (tip + body * 0.5) * hold;
+    light = inside * (tip * wake * 0.75 + body * body * wake * mix(0.2, 0.3, full)) * hold + heat * 0.85;
+    color = mix(mix(uEmber, vColor * 0.85, owned), vColor, clamp(tip * 0.7 + edge, 0.0, 1.0));
+  } else if (vKind < 3.5) {
     float angle = atan(vUv.y, vUv.x);
     float spikes = pow(abs(cos(angle * 3.0)), 20.0);
     light = (exp(-r * r * 18.0) + spikes * exp(-r * 4.0) * 0.28) * fade;
+  } else if (vKind < 4.5) {
+    // Honest reach of a melee cone on the ground: a quiet wedge whose wave runs out to the authoritative range.
+    float halfArc = abs(vForm), ang = atan(vUv.y, vUv.x);
+    float inside = 1.0 - smoothstep(halfArc - 0.035, halfArc + 0.015, abs(ang));
+    float front = mix(0.4, 0.985, 1.0 - pow(1.0 - clamp(t / 0.5, 0.0, 1.0), 2.6));
+    float wave = gauss(r - front, max(0.022, 0.07 / vRadius));
+    float rim = gauss(r - 0.985, max(0.01, 0.04 / vRadius)) * smoothstep(0.25, 0.55, t);
+    // On the dark cemetery ground even 5 % of additive ember reads as a solid decal: the fill stays under 2 %.
+    float fill = (1.0 - smoothstep(front - 0.03, front, r)) * smoothstep(0.1, 0.3, r) * 0.016;
+    float flank = gauss(abs(ang) - halfArc + 0.035, 0.018) * smoothstep(0.14, 0.3, r) * (1.0 - smoothstep(front - 0.06, front, r)) * 0.09;
+    light = inside * (wave * 0.3 + rim * 0.14 + fill + flank) * (1.0 - smoothstep(0.55, 1.0, t));
+  } else if (vKind < 5.5) {
+    // Finisher shock: a solid band (not a line) that stops exactly on the authoritative radius, light behind the front.
+    float grow = 1.0 - pow(1.0 - clamp(t / 0.36, 0.0, 1.0), 3.0);
+    grow = mix(1.0, grow, step(0.5, uMotion));
+    float front = mix(0.1, 0.972, grow), bandWidth = max(0.028, 0.125 / vRadius);
+    float solid = 1.0 - smoothstep(bandWidth * 0.55, bandWidth, abs(r - front));
+    float core = gauss(r - front, bandWidth * 0.3);
+    float wake = smoothstep(front - 0.35, front, r) * step(r, front) * 0.07 * (1.0 - t);
+    float split = abs(fract(turn * 9.0 + vSeed) - 0.5 + (noise2(vec2(r * 4.0, floor(turn * 9.0 + vSeed) * 3.7)) - 0.5) * 0.35);
+    float crack = (1.0 - smoothstep(0.006, 0.026, split * max(r, 0.08))) * step(0.12, r) * step(r, front - bandWidth) * 0.5;
+    float hold = 1.0 - smoothstep(0.42, 1.0, t);
+    heat = core * hold;
+    light = (solid * 0.62 + core * 0.7 + wake + crack * (1.0 - t)) * hold;
+    color = mix(vColor, uEmber, 0.5);
+  } else {
+    // Fake light on the ground: a soft disc in the colour of whatever just flashed above it. vForm is its strength.
+    float pool = exp(-r * r * 3.4) * (1.0 - smoothstep(0.75, 1.0, r));
+    light = pool * clamp(vForm, 0.0, 1.0) * pow(1.0 - t, 1.6);
   }
   if (light < 0.003) discard;
+  color = mix(color, vec3(1.0), clamp(heat, 0.0, 1.0) * 0.72) * (1.0 + clamp(heat, 0.0, 1.0) * 1.5);
   gl_FragColor = vec4(color * 1.5, light);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

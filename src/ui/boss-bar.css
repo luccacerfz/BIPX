@@ -1,0 +1,50 @@
+/* Fixed boss bar, top centre. Same materials as the world plate it replaces: worn bronze, stone channel, blood fill. */
+.boss-bar { --boss-ratio: 1; --boss-accent: #b39a6e; position: fixed; z-index: 4; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; width: min(560px, calc(100vw - 620px)); min-width: min(420px, calc(100vw - 24px)); margin-inline: auto; color: #f2e4cd; pointer-events: none; font-variant-numeric: tabular-nums; animation: boss-bar-in .36s cubic-bezier(.2, .8, .3, 1) both; }
+body:has(.message:not(.is-hidden)) .boss-bar { display: none; }
+.boss-bar__plate { position: relative; display: flex; align-items: baseline; justify-content: center; gap: 10px; min-height: 26px; padding: 0 64px; text-shadow: 0 1px 3px #000, 0 0 14px #000, 0 0 3px #000; }
+.boss-bar__sigil { align-self: center; flex: none; width: 9px; height: 9px; background: var(--boss-accent); transform: rotate(45deg); box-shadow: 0 0 0 2px #0a1319, 0 0 0 3px #9b8969, 0 0 10px var(--boss-accent); }
+.boss-bar__name { min-width: 0; overflow: hidden; font-family: var(--display); font-size: 22px; font-weight: 600; letter-spacing: .04em; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.boss-bar__state { flex: none; padding: 1px 7px 2px; border: 1px solid #e0866f; border-radius: 2px; background: #3a1216d9; color: #ffc9b5; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; animation: boss-bar-fury 1s ease-in-out infinite alternate; }
+.boss-bar__value { position: absolute; right: 2px; bottom: 3px; color: #e5ddcd; font-size: 12px; font-weight: 600; }
+.boss-bar__track { position: relative; height: 16px; margin-top: 3px; border: 1px solid #9b8969; border-radius: 2px; background: #331b24; box-shadow: 0 0 0 2px #03090d, 0 0 0 3px #6d665566, 0 6px 18px #000a, inset 0 0 6px #000; }
+.boss-bar__track::before, .boss-bar__track::after { content: ""; position: absolute; z-index: 3; top: 50%; width: 11px; height: 11px; background: #7c6d52; border: 2px solid #2b261d; transform: translateY(-50%) rotate(45deg); box-shadow: 0 0 0 1px #b39a6e; }
+.boss-bar__track::before { left: -8px; }
+.boss-bar__track::after { right: -8px; }
+.boss-bar__fill, .boss-bar__lag { position: absolute; inset: 0; transform: scaleX(var(--boss-ratio)); transform-origin: left center; }
+.boss-bar__fill { z-index: 1; background: linear-gradient(180deg, #e08a8a, #b33b48 22%, #8c2837 68%, #571f2b); box-shadow: inset 0 1px 0 #efb6a566; transition: transform .12s linear; }
+/* The pale layer trails the fill: the chunk a blow removed stays readable for half a second. */
+.boss-bar__lag { background: #f1dcc0; transition: transform .5s cubic-bezier(.3, .1, .3, 1) .22s; }
+.boss-bar.is-switching .boss-bar__fill, .boss-bar.is-switching .boss-bar__lag { transition: none; }
+.boss-bar__ticks { position: absolute; inset: 0; z-index: 2; }
+.boss-bar__ticks i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #e8d6ad; box-shadow: 0 0 0 1px #03090dcc; }
+.boss-bar__ticks i[data-spent="true"] { background: #6d6655; }
+.boss-bar[data-fury="true"] .boss-bar__track { border-color: #e0866f; box-shadow: 0 0 0 2px #03090d, 0 0 0 3px #e0866f55, 0 0 16px #c4525466, inset 0 0 6px #000; }
+.boss-bar__others { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 7px 0 0; padding: 0; list-style: none; }
+.boss-bar__others li { position: relative; display: flex; align-items: center; gap: 7px; min-height: 20px; padding: 2px 8px 4px; overflow: hidden; border: 1px solid #6d665599; background: #07141bd9; font-size: 11px; white-space: nowrap; }
+.boss-bar__others li::after { content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: var(--boss-accent, #b33b48); transform: scaleX(var(--boss-ratio, 1)); transform-origin: left center; }
+.boss-bar__others b { color: #e8b7a7; font-weight: 600; }
+[data-high-contrast="true"] .boss-bar__plate { background: #05090de8; box-shadow: 0 0 0 6px #05090de8; }
+@keyframes boss-bar-in { from { opacity: 0; transform: translateY(-18px); letter-spacing: .3em; } to { opacity: 1; transform: none; } }
+@keyframes boss-bar-fury { from { opacity: .72; } to { opacity: 1; } }
+
+@media (max-width: 1100px) { .boss-bar { width: min(560px, calc(100vw - 420px)); } }
+/* Portrait phones: under the one-line status strip, full width. */
+@media (max-width: 680px) {
+  .boss-bar { top: calc(max(6px, env(safe-area-inset-top)) + 56px); width: calc(100vw - 28px); min-width: 0; }
+  .boss-bar__plate { min-height: 20px; padding: 0 58px 0 0; justify-content: flex-start; gap: 8px; }
+  .boss-bar__sigil { width: 7px; height: 7px; margin-left: 3px; }
+  .boss-bar__name { font-size: 16px; }
+  .boss-bar__value { font-size: 11px; bottom: 2px; }
+  .boss-bar__track { height: 11px; margin-top: 2px; }
+  .boss-bar__track::before, .boss-bar__track::after { width: 8px; height: 8px; }
+  .boss-bar__others { justify-content: flex-start; margin-top: 5px; }
+}
+/* Landscape phones: between the status strip and the tools. */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .boss-bar { top: max(6px, env(safe-area-inset-top)); width: min(380px, calc(100vw - 470px)); min-width: 240px; }
+  .boss-bar__plate { min-height: 20px; padding: 0 56px; }
+  .boss-bar__name { font-size: 16px; }
+  .boss-bar__value { font-size: 11px; bottom: 2px; }
+  .boss-bar__track { height: 11px; margin-top: 2px; }
+  .boss-bar__others { margin-top: 5px; }
+}

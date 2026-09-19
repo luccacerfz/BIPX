@@ -14,7 +14,7 @@ export const HERO_PROFILES = freeze({
     combo: { hits: 3, resetSeconds: 1.5, finisher: { damageMultiplier: 2, radius: 5.4, knockback: { distance: 2.6, duration: .2, stagger: .8 } } },
     // Fractions of max health, so +Vida máxima keeps the sustain relevant.
     leech: { perHit: .005, perKill: .012, capPerSecond: .05 },
-    power: { basicPerLevel: .045, skillPerLevel: .08 },
+    power: { basicPerLevel: .085, skillPerLevel: .155 },
   },
   // Lyra: rifle. One shot per opening-wave zombie, short pierce and stopping power; stays squishy.
   dwarf: {
@@ -23,10 +23,12 @@ export const HERO_PROFILES = freeze({
     basic: { weapon: 'pistol', shape: 'ray', damage: 3.2, range: 25, radius: .2, speed: 48, cooldownMs: 300, swingSeconds: .32, minSwingSeconds: .16, pierce: 1, pierceFalloff: .6, assistRange: 2.2, assistArc: 1.05 },
     knockback: { distance: .55, duration: .1, stagger: .15 },
     combo: null, leech: null,
-    power: { basicPerLevel: .045, skillPerLevel: .08 },
+    power: { basicPerLevel: .085, skillPerLevel: .155 },
   },
 });
-export const HERO_POWER_LEVEL_CAP = 40;
+// Levels arrive about 1.9× slower than before the card-pacing retune (see xpToNext), so each level carries 1.9× the power and
+// the cap moved from 40 to 22: power over TIME, and the ceiling (basic ×2.79, skills ×4.26), are the ones T1 tuned.
+export const HERO_POWER_LEVEL_CAP = 22;
 // Swarm melee cannot land more often than this on one hero; brutes, elites, bosses, projectiles and traps ignore it.
 export const INCOMING = freeze({ graceSeconds: .4, minimumTaken: .25 });
 const HEAVY_MONSTER_TYPES = new Set(['brute', 'cowBrute']);
@@ -144,8 +146,14 @@ export function resolveLeech(state, { hits = 0, kills = 0, now, health, maxHealt
   return granted;
 }
 
-// Pacing. First level-up after three kills, then the curve rejoins the previous one from below.
-export const xpToNext = level => { const l = Math.max(1, Math.floor(Number(level)) || 1); return Math.round((10 + l * 7 + Math.floor(l ** 1.35)) * (1 - .5 * .62 ** (l - 1))); };
+// Pacing. First level-up after three kills (~0:08). After that the curve is fitted to the XP income measured in natural play
+// (≈ 0.047·t² for Aldric, ≈ 0.032·t² for Lyra): one card offer every 20–30 s during the first three minutes, then slower
+// (35–55 s) as the quadratic term takes over. The previous curve offered a card every ~11 s.
+export const xpToNext = level => { const l = Math.max(1, Math.floor(Number(level)) || 1); return l === 1 ? 9 : Math.round(43 * l - 46 + 15 * Math.max(0, l - 9) ** 2); };
+// Offer spacing. After a card is chosen, banked level-ups wait this many GAMEPLAY seconds before the next offer opens, so a
+// burst of XP (boss, big souls) never chains panels. Authoritative in progression/authority.mjs; mirrored by the solo client.
+export const OFFER_SPACING = freeze({ early: 18, late: 28, lateAfter: 180 });
+export const offerSpacing = clock => (Number(clock) || 0) < OFFER_SPACING.lateAfter ? OFFER_SPACING.early : OFFER_SPACING.late;
 export function waveSpawnBudget(wave, survivalTime = 0) {
   const w = Math.max(1, Math.floor(Number(wave)) || 1);
   return 24 + w * 11 + Math.floor(Math.max(0, w - 1) ** 1.32 * 7.8) + Math.floor(Math.max(0, survivalTime) / 6);

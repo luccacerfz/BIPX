@@ -11,6 +11,10 @@ const classSkills = {
   warrior: ['warrior_war_cry', 'warrior_cleaving_dash', 'warrior_shield_charge'],
   dwarf: ['dwarf_explosive_cannon', 'dwarf_frost_shot', 'dwarf_gravity_shot'],
 };
+// Relics with their own glyph in index.html (#relic-<id>); anything else falls back to #relic-generic.
+const relicGlyphs = new Set(['flamethrower', 'axe', 'katana', 'crossbow', 'talisman', 'thunderstaff', 'boneCannon', 'frostNova']);
+const LOW_HEALTH = .35, CRITICAL_HEALTH = .15; // the screen-edge alarm belongs to the engine; the orb carries the same two steps
+const HAND_ENTER_MS = 320, HAND_EXIT_GUARD_MS = 350;
 const nonnegative = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const label = (value, fallback, limit = 100) => typeof value === 'string' && value.trim() ? value.trim().slice(0, limit) : fallback;
 const number = (value) => Math.ceil(value).toLocaleString('pt-BR');
@@ -24,6 +28,13 @@ let snapshot = null;
 let root;
 let activeSlot = null;
 let statusSignature = '';
+let relicSpan = { id: '', duration: 0 }; // longest remaining seen for the active relic when Combat sends no duration
+let lastHealthRatio = null;
+let criticalAnnouncedAt = -Infinity;
+let handClosedAt = -Infinity;
+let handEnterTimer = 0;
+const slotStates = ['waiting', 'waiting', 'waiting'];
+const touchLayout = typeof matchMedia === 'function' ? matchMedia('(pointer: coarse), (max-width: 680px)') : { matches: false };
 
 // Subscribe first: a synchronous publisher responding to arpg-ready cannot be missed.
 window.addEventListener('bipx:arpg-state', (event) => {
@@ -45,7 +56,8 @@ export function normalizeSnapshot(value) {
     weapon: label(value.weapon, 'Arma básica'),
     // Temporary relic infusing the basic attack (trusted combat state; presentation only).
     relic: value.relic && typeof value.relic.id === 'string' && nonnegative(value.relic.remaining) && value.relic.remaining > 0
-      ? { id: value.relic.id.slice(0, 24), label: label(value.relic.label, 'Relíquia'), name: label(value.relic.name, 'Relíquia'), remaining: value.relic.remaining } : null,
+      ? { id: value.relic.id.slice(0, 24), label: label(value.relic.label, 'Relíquia'), name: label(value.relic.name, 'Relíquia'), remaining: value.relic.remaining,
+        duration: nonnegative(value.relic.duration) && value.relic.duration > 0 ? Math.max(value.relic.duration, value.relic.remaining) : 0 } : null,
     dead: value.dead, paused: value.paused,
     statuses: !value.dead && Array.isArray(value.statuses) ? value.statuses
       .filter(status => status && expected.includes(status.skillId ?? status.id) && typeof status.id === 'string'
@@ -91,24 +103,43 @@ function setIconHref(element, href) {
   // Reassigning the same external href makes Chromium request the sprite again.
   if (element && element.getAttribute('href') !== href) element.setAttribute('href', href);
 }
+function setText(element, text) { if (element && element.textContent !== text) element.textContent = text; }
+// Relic glyphs are copied from the page's <symbol> set instead of referenced: the action bar keeps exactly its four <use> icons.
+function setGlyph(svg, id) {
+  if (!svg || svg.dataset.glyph === id) return;
+  svg.dataset.glyph = id;
+  svg.innerHTML = (document.getElementById(id) ?? document.getElementById('relic-generic'))?.innerHTML ?? '';
+}
 function orb(kind, name) {
   return `<div class="arpg-orb arpg-orb--${kind}" id="arpg-${kind}" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Aguardando estado">
-    <div class="arpg-orb__rim"><div class="arpg-orb__glass"><div class="arpg-orb__liquid"></div><div class="arpg-orb__reflection"></div><strong class="arpg-orb__value">—<small>/ —</small></strong></div></div>
+    <div class="arpg-orb__rim"><div class="arpg-orb__glass"><div class="arpg-orb__lag"></div><div class="arpg-orb__liquid"></div><div class="arpg-orb__reflection"></div><strong class="arpg-orb__value">—<small>/ —</small></strong></div></div>
     <span class="arpg-orb__label">${name}</span></div>`;
+}
+// A transient state class that always restarts its CSS animation.
+function pulse(element, className, duration) {
+  if (!element) return;
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+  clearTimeout(element[`_${className}`]);
+  element[`_${className}`] = setTimeout(() => element.classList.remove(className), duration);
 }
 
 function mount() {
   root = document.querySelector('#arpg-hud');
   if (!root) return;
   root.innerHTML = `${orb('health', 'Vida')}<div class="arpg-actionbar">
-    <div class="arpg-actionbar__heading"><span class="arpg-class">Sobrevivente</span><span class="arpg-run-status">Aguardando estado</span></div>
-    <div class="arpg-actions"><div class="arpg-basic" aria-label="Ataque básico"><span class="arpg-basic__icon">${icon('blade')}</span><span class="arpg-basic__name">Arma</span><small>Mouse / Espaço</small></div>
+    <div class="arpg-actionbar__heading"><span class="arpg-class">Sobrevivente</span><span class="arpg-progress-dock"></span><span class="arpg-run-status">Aguardando estado</span></div>
+    <div class="arpg-actions"><div class="arpg-basic" aria-label="Ataque básico"><span class="arpg-basic__icon"><span class="arpg-basic__ring" aria-hidden="true"></span>${icon('blade')}<svg class="arpg-basic__relic" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="arpg-basic__name">Arma</span><small>Mouse / Espaço</small></div>
     ${[0, 1, 2].map((slot) => `<button type="button" class="arpg-skill" data-arpg-slot="${slot}" data-state="waiting" aria-disabled="true" aria-keyshortcuts="${slot + 1}" aria-describedby="arpg-tooltip">
       <kbd class="arpg-skill__key">${slot + 1}</kbd><span class="arpg-skill__art">${icon('unknown')}</span><span class="arpg-skill__mask" aria-hidden="true"></span><span class="arpg-skill__timer" aria-hidden="true"></span><span class="arpg-skill__cost" aria-hidden="true">—</span><span class="sr-only arpg-skill__name">Habilidade ${slot + 1}</span>
     </button>`).join('')}</div><span class="arpg-actionbar__hint">Habilidades</span></div>${orb('resource', 'Recurso')}
     <div id="arpg-statuses" class="arpg-statuses" role="list" aria-label="Efeitos ativos" hidden></div>
     <div class="arpg-tooltip" id="arpg-tooltip" role="tooltip" hidden><strong></strong><span class="arpg-tooltip__description"></span><span class="arpg-tooltip__meta"></span><span class="arpg-tooltip__upgrades" hidden></span><span class="arpg-tooltip__effect" hidden></span><span class="arpg-tooltip__state"></span></div>
     <span id="arpg-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>`;
+  // Level and XP leave the top strip and dock on the action bar. The engine keeps writing to the very same nodes.
+  const progress = document.querySelector('.survivor-hud__progress');
+  if (progress) { root.querySelector('.arpg-progress-dock').append(progress); progress.classList.add('is-docked'); }
   root.addEventListener('mousemove', (event) => event.stopPropagation());
   root.addEventListener('mousedown', (event) => event.stopPropagation());
   for (const button of root.querySelectorAll('[data-arpg-slot]')) {
@@ -116,6 +147,8 @@ function mount() {
     let secondaryTouch = null;
     let suppressTouchClick = false;
     const activate = (pointer) => {
+      // A card that closed under the finger must not also fire the skill that was hidden beneath it.
+      if (pointer && performance.now() - handClosedAt < HAND_EXIT_GUARD_MS) return;
       requestSkill(slot);
       if (pointer) {
         document.querySelector('#game-canvas')?.focus({ preventScroll: true });
@@ -151,8 +184,21 @@ function mount() {
   }
   const observer = new MutationObserver(() => { if (!inGame()) hideTooltip(); render(); });
   if (menu) observer.observe(menu, { attributes: true, attributeFilter: ['class'] });
-  if (upgrades) observer.observe(upgrades, { attributes: true, attributeFilter: ['class'] });
   if (dialog) observer.observe(dialog, { attributes: true, attributeFilter: ['open'] });
+  if (upgrades) {
+    let handOpen = choosingUpgrade();
+    new MutationObserver(() => {
+      const open = choosingUpgrade();
+      if (open && !handOpen) {
+        // Entry animation and tap guard run once per offer (upgrade-hand.css); re-renders of an open hand stay still.
+        upgrades.dataset.entering = 'true';
+        clearTimeout(handEnterTimer);
+        handEnterTimer = setTimeout(() => { delete upgrades.dataset.entering; }, HAND_ENTER_MS);
+      } else if (!open && handOpen) { handClosedAt = performance.now(); clearTimeout(handEnterTimer); delete upgrades.dataset.entering; }
+      handOpen = open;
+      hideTooltip(); render();
+    }).observe(upgrades, { attributes: true, attributeFilter: ['class'] });
+  }
   render();
   window.dispatchEvent(new CustomEvent('bipx:arpg-ready'));
 }
@@ -160,14 +206,58 @@ function mount() {
 function updateOrb(kind, value, max, name) {
   const element = root.querySelector(`#arpg-${kind}`);
   const known = snapshot !== null;
-  element.style.setProperty('--orb-fill', `${known ? value / max * 100 : 0}%`);
+  const ratio = known ? value / max : 0;
+  element.style.setProperty('--orb-fill', `${ratio * 100}%`);
   element.setAttribute('aria-label', name);
   element.setAttribute('aria-valuemax', known ? max : 100);
   element.setAttribute('aria-valuenow', known ? value : 0);
-  element.setAttribute('aria-valuetext', known ? `${number(value)} de ${number(max)}` : 'Aguardando estado');
-  element.querySelector('.arpg-orb__value').innerHTML = known ? `${number(value)}<small>/ ${number(max)}</small>` : '—<small>/ —</small>';
-  element.querySelector('.arpg-orb__label').textContent = name;
-  element.dataset.low = String(known && value / max <= .25);
+  const danger = kind === 'health' && known && !snapshot.dead ? ratio <= CRITICAL_HEALTH ? 'critical' : ratio <= LOW_HEALTH ? 'low' : '' : '';
+  element.setAttribute('aria-valuetext', known ? `${number(value)} de ${number(max)}${danger === 'critical' ? ', vida crítica' : danger === 'low' ? ', vida baixa' : ''}` : 'Aguardando estado');
+  const text = known ? `${number(value)}<small>/ ${number(max)}</small>` : '—<small>/ —</small>';
+  const valueElement = element.querySelector('.arpg-orb__value');
+  if (valueElement.dataset.text !== text) { valueElement.dataset.text = text; valueElement.innerHTML = text; }
+  setText(element.querySelector('.arpg-orb__label'), name);
+  element.dataset.low = String(known && ratio <= .25);
+  if (kind !== 'health') return;
+  element.dataset.danger = danger;
+  root.dataset.danger = danger;
+  if (known && lastHealthRatio !== null && !snapshot.dead) {
+    if (ratio - lastHealthRatio >= .03) pulse(element, 'is-healed', 600);
+    else if (lastHealthRatio - ratio >= .01) pulse(element, 'is-hurt', 320);
+    if (danger === 'critical' && lastHealthRatio > CRITICAL_HEALTH && performance.now() - criticalAnnouncedAt > 10000) {
+      criticalAnnouncedAt = performance.now();
+      root.querySelector('#arpg-announcement').textContent = 'Vida crítica.';
+    }
+  }
+  lastHealthRatio = known ? ratio : null;
+}
+
+function updateRelic(relic) {
+  const basic = root.querySelector('.arpg-basic'), fire = document.querySelector('#touch-fire');
+  if (relic) {
+    if (relicSpan.id !== relic.id || relic.remaining > relicSpan.duration) relicSpan = { id: relic.id, duration: Math.max(relic.duration, relic.remaining) };
+  } else relicSpan = { id: '', duration: 0 };
+  const ratio = relic ? Math.max(0, Math.min(1, relic.remaining / (relic.duration || relicSpan.duration || relic.remaining))) : 0;
+  const seconds = relic ? `${Math.ceil(relic.remaining)}` : '';
+  basic.dataset.relic = relic ? relic.id : '';
+  basic.dataset.relicEnding = String(Boolean(relic) && relic.remaining <= 5);
+  basic.style.setProperty('--relic-ratio', ratio.toFixed(3));
+  setText(root.querySelector('.arpg-basic__name'), relic ? relic.label : snapshot?.weapon ?? 'Arma');
+  const small = root.querySelector('.arpg-basic small');
+  const smallText = relic ? `<b>${seconds}</b><i>s</i>` : 'Mouse / Espaço';
+  if (small.dataset.text !== smallText) { small.dataset.text = smallText; small.innerHTML = smallText; }
+  const glyphId = `relic-${relic && relicGlyphs.has(relic.id) ? relic.id : 'generic'}`;
+  if (relic) setGlyph(root.querySelector('.arpg-basic__relic'), glyphId);
+  // On touch layouts the attack button is the basic attack: it carries the same ring, glyph and seconds.
+  if (fire) {
+    fire.dataset.relic = relic ? relic.id : '';
+    fire.dataset.relicEnding = basic.dataset.relicEnding;
+    if (relic) fire.dataset.relicTime = `${seconds}s`; else delete fire.dataset.relicTime;
+    fire.style.setProperty('--relic-ratio', ratio.toFixed(3));
+    let glyph = fire.querySelector('.touch-fire__relic');
+    if (relic && !glyph) { fire.insertAdjacentHTML('beforeend', '<svg class="touch-fire__relic" viewBox="0 0 24 24" aria-hidden="true"></svg>'); glyph = fire.querySelector('.touch-fire__relic'); }
+    if (relic) setGlyph(glyph, glyphId);
+  }
 }
 
 function render() {
@@ -177,14 +267,14 @@ function render() {
   document.documentElement.dataset.arpgConnected = String(Boolean(snapshot));
   updateOrb('health', snapshot?.health, snapshot?.maxHealth, 'Vida');
   updateOrb('resource', snapshot?.resource, snapshot?.maxResource, snapshot?.resourceLabel ?? 'Recurso');
-  root.querySelector('.arpg-class').textContent = snapshot ? snapshot.classId === 'warrior' ? 'Aldric' : 'Lyra' : 'Sobrevivente';
-  root.querySelector('.arpg-run-status').textContent = !snapshot ? 'Aguardando estado' : snapshot.dead ? 'Derrotado' : snapshot.paused || dialog?.open ? 'Em pausa' : choosingUpgrade() ? 'Evolução' : '';
+  setText(root.querySelector('.arpg-class'), snapshot ? snapshot.classId === 'warrior' ? 'Aldric' : 'Lyra' : 'Sobrevivente');
+  const choosing = choosingUpgrade();
+  setText(root.querySelector('.arpg-run-status'), !snapshot ? 'Aguardando estado' : snapshot.dead ? 'Derrotado' : snapshot.paused || dialog?.open ? 'Em pausa' : choosing ? touchLayout.matches ? 'Evolução · toque numa carta' : 'Evolução' : '');
+  root.dataset.choosing = String(Boolean(snapshot) && choosing);
   const relic = snapshot && !snapshot.dead ? snapshot.relic : null;
-  root.querySelector('.arpg-basic__name').textContent = relic ? relic.label : snapshot?.weapon ?? 'Arma';
-  root.querySelector('.arpg-basic').dataset.relic = relic ? relic.id : '';
-  root.querySelector('.arpg-basic small').textContent = relic ? `${Math.ceil(relic.remaining)}s` : 'Mouse / Espaço';
+  updateRelic(relic);
   const weaponId = snapshot?.classId === 'dwarf' ? 'rifle' : 'blade';
-  setIconHref(root.querySelector('.arpg-basic use'), `./assets/ui/arpg/icons.svg#${weaponId}`);
+  setIconHref(root.querySelector('.arpg-basic .arpg-icon use'), `./assets/ui/arpg/icons.svg#${weaponId}`);
   root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}${relic ? `, relíquia ${relic.name}, ${Math.ceil(relic.remaining)} segundos` : ''}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
   // Keep the upper weapon/buff status accurate for both classes.
   setIconHref(document.querySelector('.hud__stat--weapon use'), `#icon-${weaponId}`);
@@ -193,18 +283,25 @@ function render() {
     const skill = snapshot?.skills[slot];
     const [state, reason] = availability(skill);
     const [art, element] = skillArt[skill?.id] ?? ['unknown', 'unknown'];
+    // "Pronta" is an event worth a glance: only a recharge or a refilled resource earns the ping, never a closed menu.
+    if (state === 'ready' && ['cooldown', 'resource'].includes(slotStates[slot])) pulse(button, 'is-ready-ping', 520);
+    slotStates[slot] = state;
     button.dataset.state = state;
     button.dataset.element = element;
     button.setAttribute('aria-disabled', String(state !== 'ready'));
     const name = skill?.name ?? `Habilidade ${slot + 1}`;
     button.setAttribute('aria-label', `${slot + 1}: ${name}. ${skill ? `Custo ${number(skill.cost)} de ${snapshot.resourceLabel}. ` : ''}${reason}.`);
-    button.querySelector('.arpg-skill__name').textContent = name;
+    setText(button.querySelector('.arpg-skill__name'), name);
     setIconHref(button.querySelector('use'), `./assets/ui/arpg/icons.svg#${art}`);
-    button.querySelector('.arpg-skill__key').textContent = skill?.key ?? String(slot + 1);
-    button.querySelector('.arpg-skill__cost').textContent = skill ? number(skill.cost) : '—';
-    button.querySelector('.arpg-skill__timer').textContent = state === 'cooldown' ? `${Math.ceil(skill.cooldownRemaining)}s` : state === 'resource' ? '×' : state === 'waiting' ? '—' : state === 'upgrade' ? '◆' : state !== 'ready' ? 'Ⅱ' : '';
+    setText(button.querySelector('.arpg-skill__key'), skill?.key ?? String(slot + 1));
+    setText(button.querySelector('.arpg-skill__cost'), skill ? number(skill.cost) : '—');
+    const timer = button.querySelector('.arpg-skill__timer');
+    const timerText = state === 'cooldown' ? `<b>${Math.ceil(skill.cooldownRemaining)}</b><i>s</i>` : state === 'waiting' ? '—' : state === 'upgrade' ? '◆' : ['ready', 'resource'].includes(state) ? '' : 'Ⅱ';
+    if (timer.dataset.text !== timerText) { timer.dataset.text = timerText; timer.innerHTML = timerText; }
     const ratio = skill?.cooldownRemaining > 0 ? Math.min(1, skill.cooldownRemaining / (skill.cooldownDuration || skill.cooldownRemaining)) : 0;
     button.style.setProperty('--cooldown-angle', `${ratio * 360}deg`);
+    // How much of the cost is already in the orb: the tint drains upward as the resource comes back.
+    button.style.setProperty('--resource-ratio', (skill && skill.cost > 0 && snapshot ? Math.max(0, Math.min(1, snapshot.resource / skill.cost)) : 1).toFixed(3));
   }
   renderStatuses();
   if (activeSlot !== null) renderTooltip();
@@ -233,6 +330,8 @@ function renderStatuses() {
     }
     setIconHref(item.querySelector('use'), `./assets/ui/arpg/icons.svg#${skillArt[status.skillId][0]}`);
     item.lastElementChild.textContent = `${status.label} · ${Math.ceil(status.remaining)}s`;
+    item.style.setProperty('--status-ratio', Math.max(0, Math.min(1, status.remaining / status.duration)).toFixed(3));
+    item.dataset.ending = String(status.remaining <= 3);
     const description = `${status.label}: ${Math.ceil(status.remaining)} segundos restantes.${status.description ? ` ${status.description}` : ''}`;
     item.setAttribute('aria-label', description);
     item.title = description;
@@ -259,15 +358,21 @@ function renderTooltip() {
   const status = snapshot?.statuses.find(item => item.skillId === skill?.id);
   const effect = tooltip.querySelector('.arpg-tooltip__effect');
   effect.hidden = !status;
-  effect.textContent = status ? `Efeito ativo: ${Math.ceil(status.remaining)}s${status.description ? ` · ${status.description}` : ''}` : '';
+  // The description above already says what the effect does; here only what is left of it (plus modifiers Combat reports).
+  const extra = status?.description && status.description !== skill?.description && !skill?.description?.includes(status.description) ? ` · ${status.description}` : '';
+  effect.textContent = status ? `Efeito ativo: ${Math.ceil(status.remaining)} s${extra}` : '';
 }
 
 function requestSkill(slot) {
   const skill = snapshot?.skills[slot];
   const [state, reason] = availability(skill);
+  const button = root.querySelector(`[data-arpg-slot="${slot}"]`);
+  pulse(button, 'is-pressed', 110);
   if (state !== 'ready') {
     root.querySelector('#arpg-announcement').textContent = `${skill?.name ?? 'Habilidade'}: ${reason}.`;
     if (!['cooldown', 'resource'].includes(state)) return;
+    pulse(button, 'is-denied', 360);
+    if (state === 'resource') pulse(root.querySelector('#arpg-resource'), 'is-short', 520);
   }
   window.dispatchEvent(new CustomEvent('bipx:skill-request', { detail: { slot } }));
 }
@@ -281,5 +386,6 @@ window.addEventListener('keydown', (event) => {
   if (!event.repeat) requestSkill(Number(key[1]) - 1);
 }, true);
 
+touchLayout.addEventListener?.('change', () => { if (root) render(); });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
 else mount();
