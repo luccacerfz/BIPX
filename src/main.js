@@ -6697,6 +6697,7 @@ function renderUpgradeChoices() {
   }
 
   upgradePanel.classList.remove("is-hidden");
+  const handHasSkillCard = player.pendingUpgradeChoices.some((upgrade) => upgrade.kind === "skill");
   upgradeOptionsElement.innerHTML = player.pendingUpgradeChoices
     .map((upgrade, index) => {
       const stacks = player.upgradeStacks[upgrade.id] || 0;
@@ -6705,7 +6706,8 @@ function renderUpgradeChoices() {
       const rarity = normalizeRarity(upgrade.rarity);
       const rarityLabel = getRarityStyle(rarity).label;
       // Skill cards name the skill they change and reuse its action-bar icon.
-      const skillTag = skillCard ? `<span class="upgrade-card__skill"><svg class="upgrade-card__icon" viewBox="0 0 64 64" aria-hidden="true"><use href="./assets/ui/arpg/icons.svg#${escapeHtml(getSkillUpgradeIcon(upgrade, player.character))}"/></svg>${escapeHtml(getSkillUpgradeTag(upgrade, player.character))}</span>` : '';
+      const skillTag = skillCard ? `<span class="upgrade-card__skill"><svg class="upgrade-card__icon" viewBox="0 0 64 64" aria-hidden="true"><use href="./assets/ui/arpg/icons.svg#${escapeHtml(getSkillUpgradeIcon(upgrade, player.character))}"/></svg>${escapeHtml(getSkillUpgradeTag(upgrade, player.character))}</span>`
+        : handHasSkillCard ? '<span class="upgrade-card__skill upgrade-card__skill--empty" aria-hidden="true"></span>' : '';
       return `
         <button class="upgrade-card upgrade-card--${rarity}${skillCard ? ' upgrade-card--skill' : ''}" type="button" data-upgrade-index="${index}" data-upgrade-kind="${escapeHtml(upgrade.kind || 'stat')}" aria-keyshortcuts="${index + 1}" ${waitingForServer ? 'disabled' : ''}>
           <span class="upgrade-card__key">${index + 1}</span>
@@ -7014,8 +7016,8 @@ function syncDashTransforms() {
 
 // Events that exist only because of a class skill upgrade carry `mod`. classSkillVfx has a closed phase/status
 // contract (a war-cry stun status would move the buff aura), so the shared combat/elemental pools draw these.
-const skillUpgradeTint = { warCryShockwave: 0xffc467, chargeShockwave: 0xffd994, dashMultiKill: 0xb9e4ff, frostHop: 0x84e5ff, gravityCollapse: 0xc27bff, cannonNapalm: 0xff872e };
 function presentSkillUpgradeEvent(event, actorId) {
+  const skillUpgradeTint = { warCryShockwave: 0xffc467, chargeShockwave: 0xffd994, dashMultiKill: 0xb9e4ff, frostHop: 0x84e5ff, gravityCollapse: 0xc27bff, cannonNapalm: 0xff872e };
   const local = !multiplayer.enabled || actorId === multiplayer.id;
   if (multiplayer.enabled && event.actorPosition) {
     // `free`: the hop ends before the cast lock does, and Lyra keeps walking while she fires.
@@ -7081,9 +7083,9 @@ function presentClassSkill(event, actorId = multiplayer.id) {
 }
 
 // Napalm Rúnico (Canhão Infernal upgrade): burning ground drawn with the shared fire/ember pool on a fixed cadence.
-const napalmPresentation = new Map();
 function presentNapalmFields(fields) {
-  const now = performance.now();
+  // Function-owned state: animate() already runs while this module is still evaluating.
+  const napalmPresentation = presentNapalmFields.timers ??= new Map(), now = performance.now();
   for (const field of fields) {
     const last = napalmPresentation.get(field.castId) || 0;
     if (paused || now - last < (presentationPreferences.reducedMotion ? 520 : 170)) continue;

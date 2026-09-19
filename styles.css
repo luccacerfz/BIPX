@@ -189,6 +189,9 @@ body:has(.message:not(.is-hidden)) .leaderboard-panel { display: none; }
 .upgrade-card--skill { background: linear-gradient(155deg, color-mix(in srgb, var(--rarity) 16%, #0b1b24), #0b1b24 62%); }
 .upgrade-card .upgrade-card__skill { display: flex; align-items: center; gap: 7px; margin: 0 0 7px; color: color-mix(in srgb, var(--rarity) 78%, #fff); font-size: 10px; line-height: 1.25; letter-spacing: .02em; }
 .upgrade-card__icon { flex: none; width: 22px; height: 22px; color: var(--rarity); }
+/* Side-by-side hands keep keys and titles on one line: cards without a skill reserve the same row. Stacked hands do not need it. */
+.upgrade-card .upgrade-card__skill--empty { min-height: 22px; }
+@media (max-width: 680px) { .upgrade-card .upgrade-card__skill--empty { display: none; } }
 
 /* Rankings reuse the game's generated rows and remain horizontally scrollable. */
 .main-menu__ranking { grid-area: ranking; display: none; width: 100%; min-width: 0; max-height: calc(var(--app-height, 100dvh) - 170px); overflow: hidden; border: 1px solid var(--line); background: #091923f2; }
