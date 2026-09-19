@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { getEnvironmentColliders, getEnvironmentLayout, ENVIRONMENT_GROUND } from '../src/render/environment-layout.js';
-const out=path.resolve('output/qa/environment-20260918');fs.mkdirSync(out,{recursive:true});
+const out=path.resolve(process.env.BIPX_EVIDENCE_DIR||'output/qa/environment-20260918');fs.mkdirSync(out,{recursive:true});
 const hash=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const manifest=JSON.parse(fs.readFileSync('assets/environment/cemetery-v1/provenance.json'));
 const checks=[];const check=(name,condition)=>{assert(condition,name);checks.push(name)};
@@ -36,7 +36,16 @@ const distanceToCollider=(x,z,c)=>{
  return Math.hypot(Math.max(0,Math.abs(co*dx-si*dz)-c.halfX),Math.max(0,Math.abs(si*dx+co*dz)-c.halfZ));
 };
 check('Spawn/portal clear for radius4',colliders.every(c=>distanceToCollider(0,0,c)>4));
-check('Every new solid has matching collider id',layout.props.filter(p=>p.solid).every(p=>colliders.some(c=>c.id===p.id)));
+// A solid prop owns either one collider with its own id or, when it declares `colliderParts` (the promoted crypt arch),
+// exactly one collider per declared part named `<prop>-<part>` carrying that part's height band, and no leftover wide proxy.
+const solidCollidersMatch=p=>{
+ if(!p.colliderParts)return colliders.filter(c=>c.id===p.id).length===1;
+ const owned=colliders.filter(c=>c.id.startsWith(`${p.id}-`));
+ return p.colliderParts.length>0&&!colliders.some(c=>c.id===p.id)&&owned.length===p.colliderParts.length&&
+  p.colliderParts.every(part=>{const c=owned.find(c=>c.id===`${p.id}-${part.id}`);return Boolean(c)&&c.minY===part.minY&&c.maxY===part.maxY&&c.halfX===part.halfX&&c.halfZ===part.halfZ});
+};
+check('Every new solid has matching collider id',layout.props.filter(p=>p.solid).every(solidCollidersMatch));
+check('Composite colliders never orphan a part',colliders.filter(c=>c.id.startsWith('crypt-entry-wall-')).length===(layout.props.find(p=>p.id==='crypt-entry-wall')?.colliderParts?.length??0));
 check('Decoration and portal remain nonblocking',layout.props.filter(p=>!p.solid).every(p=>!colliders.some(c=>c.id===p.id)));
 const copy=getEnvironmentColliders();copy[0].x=Infinity;
 check('Callers cannot mutate subsequent layouts',Number.isFinite(getEnvironmentColliders()[0].x));
