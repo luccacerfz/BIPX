@@ -36,3 +36,6 @@ game_design 4,6 · animation 3,1 · art 3,7 · vfx 4,2 · combat_feel 4,6 · ui_
 ### Tick 1 — 2026-09-19
 - Levantado: JEF tooling/credencial, arsenal legado neutralizado (`activateWeapon` só dá buff de 15 s; `updateAutoWeapons` vazio; `autoWeapon`/`sealRitual` bloqueados), números base (Aldric 7×2 em cone 4,2 m/0,5 s; Lyra 2×2 por tiro/0,3 s; zumbi 4,2 HP, 13 de dano; 200 HP).
 - Onda A lançada (6 agentes): T1 poder/ritmo · T2 upgrades 2.0 · T3 arsenal · T4 pesquisa JEF · T5 crítica visual AAA · T6 backlog consolidado.
+- Runner do JEF (fora do repo, credencial só em memória): `/private/tmp/claude-501/-Users-luccacerf-Projetos-Pessoal-Gaming-BIPX/2f407a79-d26b-4fa5-b8d7-023f62610f9e/scratchpad/jef-run.sh <state.json> <report.json>`.
+- Agentes em execução (background, notificam ao terminar): T1 `loop/t1-power`, T2 `loop/t2-upgrades`, T3 `loop/t3-arsenal` (worktrees), T4 → `docs/arpg/aaa-loop/jef-research.md`, T5 → `docs/arpg/aaa-loop/visual-critique.md`, T6 → `docs/arpg/aaa-loop/backlog.md`.
+- Próximo passo ao receber T1–T3: integrar em `aaa-loop` na ordem T1 → T2 → T3 (resolver conflitos nos blocos de ataque básico e em `class-skills.mjs`), rodar suítes CPU, bots de jogo natural nas duas classes, reiniciar 5173, montar evidência e rodar o JEF; depois Onda B a partir de T5/T6 (polimento visual/feel, áudio, acessibilidade, desempenho).
