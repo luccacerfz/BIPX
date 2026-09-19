@@ -83,7 +83,7 @@ export function createArsenalVfx({ THREE, scene, combatVfx = null, elementalVfx 
   let level = QUALITY[quality] ? quality : 'medium', config = QUALITY[level], reduced = Boolean(reducedMotion);
   let clock = 0, disposed = false, emitted = 0, overwritten = 0, rejected = 0, serial = 1;
   const counts = { relic: 0, projectile: 0, auto: 0, state: 0 };
-  const color = new THREE.Color(), from = new THREE.Vector3(), to = new THREE.Vector3(), point = new THREE.Vector3(), heading = new THREE.Vector3();
+  const color = new THREE.Color(), point = new THREE.Vector3();
 
   // ---- ground glyph pool: one instanced draw for rings, fans, lanes, runes, cracks, arcs and hero auras ----
   const capacity = QUALITY.high.glyphs + AURA_SLOTS, geometry = new THREE.InstancedBufferGeometry();
@@ -133,7 +133,8 @@ export function createArsenalVfx({ THREE, scene, combatVfx = null, elementalVfx 
     for (const kind of BODY_KINDS) {
       const part = kind === 'axe' ? new THREE.Group() : new THREE.Mesh(shapes[kind], material);
       if (kind === 'axe') part.add(new THREE.Mesh(shapes.haft, material), new THREE.Mesh(shapes.head, material));
-      if (kind === 'orb') part.add(new THREE.Mesh(shapes.halo, material));
+      // A spinning rim keeps thin whirling bodies readable from the raised camera.
+      if (kind === 'orb' || kind === 'axe' || kind === 'blade') { const rim = new THREE.Mesh(shapes.halo, material); if (kind === 'blade') rim.scale.setScalar(.62); part.add(rim); }
       part.visible = false; parts[kind] = part; root.add(part);
     }
     root.visible = false; bodyGroup.add(root);
@@ -271,7 +272,7 @@ export function createArsenalVfx({ THREE, scene, combatVfx = null, elementalVfx 
       const body = claimBody(), kind = BODY_KINDS.includes(event.body) ? event.body : 'bolt';
       Object.assign(body, { id: event.id, kind, relic: event.relic, x: event.x, z: event.z, vx: finite(event.vx, 0), vz: finite(event.vz, 0), age: 0, life: finite(event.life, 1), born: clock });
       body.material.color.set(tint); body.ember.color = tint; body.parts[kind].visible = true; body.root.visible = true;
-      body.root.scale.setScalar(kind === 'orb' || kind === 'axe' ? 1 : clamp(finite(event.radius, .3) / .3, .8, 1.6));
+      body.root.scale.setScalar(kind === 'orb' ? 1 : kind === 'axe' ? 1.45 : clamp(finite(event.radius, .3) / .3, 1, 1.6) * 1.3);
       body.root.position.set(event.x, BODY_HEIGHT, event.z); body.trail.copy(body.root.position);
       point.set(event.x, BODY_HEIGHT, event.z);
       sparks('muzzle', point, { color: tint, direction: { x: body.vx, z: body.vz }, intensity: .5 });

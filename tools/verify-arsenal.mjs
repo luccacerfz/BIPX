@@ -357,7 +357,7 @@ try {
     return { killed: killed.length, rewards: rewards.length };
   });
 
-  await checkAsync('Server: Lança-chamas (dwarf) applies the shared burn rule and Virotes keep flying server-side until death cleans them up', async () => {
+  await checkAsync('Server: Rifle Lança-chamas applies the shared burn rule; a Selo Teleguiado flies server-side until death cleans it up', async () => {
     const dwarf = await hero('dwarf'), targets = await scene(); await grantRelic(dwarf, 'flamethrower');
     const from = await attack(dwarf, 'pistol', hostile), events = arsenalEvents(observer, from, dwarf.id);
     assert.deepEqual([events[0].shape, events[0].range, events[0].halfAngle], ['cone', 10.5, .58]);
@@ -371,7 +371,9 @@ try {
     const deathFrom = observer.messages.length; await server.killPlayers(room, [dwarf.id]);
     read = await server.requestFixture('qa-arsenal-read', { room, clientId: dwarf.id }); assert.deepEqual(read.arsenal, { pending: 0, projectiles: 0 });
     assert.ok(arsenalEvents(observer, deathFrom, dwarf.id).some(event => event.kind === 'projectile' && event.phase === 'end' && event.reason === 'death'));
-    await delay(400); assert.equal(monsterHits(observer, observer.messages.length - 1, dwarf.id).length, 0);
+    const afterDeath = observer.messages.length; await delay(500);
+    assert.equal(monsterHits(observer, afterDeath, dwarf.id).filter(hit => hit.hitEffect === 'talisman').length, 0, 'a relic body kept damaging after its owner died');
+    assert.equal(arsenalEvents(observer, afterDeath, dwarf.id).length, 0, 'arsenal events continued after death');
     await closeProtocolClient(dwarf);
   });
 

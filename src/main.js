@@ -6743,7 +6743,7 @@ function spawnLevelPulse() {
 function buildArpgState() {
   if (pendingSkillRequest && performance.now() - pendingSkillRequest.at >= 2500) pendingSkillRequest = null;
   if (classSkillState.classId !== player.character) classSkillState = createSkillState(player.character);
-  const relic = player.weaponTimer > 0 && RELICS[player.relic] ? { id: player.relic, label: RELICS[player.relic].label, name: getRelicName(player.relic, player.character), remaining: player.weaponTimer, duration: RELICS[player.relic].duration } : null;
+  const relic = player.weaponTimer > 0 && RELICS[player.relic] ? { id: player.relic, label: RELICS[player.relic].short, name: getRelicName(player.relic, player.character), remaining: player.weaponTimer, duration: RELICS[player.relic].duration } : null;
   return { relic, ...getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
     weapon: player.character === 'warrior' ? 'Espada' : 'Rifle', dead: game.state === 'dead',
     // Open cards keep the run live: skills stay unavailable, but this is not a pause.

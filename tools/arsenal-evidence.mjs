@@ -17,7 +17,8 @@ const [portArg, outArg, mode = 'smoke'] = process.argv.slice(2);
 const port = Number(portArg), W = 1280, H = 720;
 if (!(port >= 5321 && port <= 5329) || !outArg) { console.error('usage: node tools/arsenal-evidence.mjs <5321-5329> <outDir> <mode>'); process.exit(2); }
 const outDir = path.resolve(outArg, mode.replace(':', '-')); fs.mkdirSync(outDir, { recursive: true });
-const RELICS = ['flamethrower', 'axe', 'katana', 'crossbow', 'talisman', 'thunderstaff', 'boneCannon', 'frostNova'];
+// One short session per class: four relics each (the two-client check covers axe, thunderstaff and katana).
+const RELICS = { warrior: ['flamethrower', 'crossbow', 'boneCannon', 'frostNova'], dwarf: ['axe', 'crossbow', 'talisman', 'frostNova'] };
 const lock = '/tmp/bipx-arpg-gpu.lock', scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'bipx-t3-'));
 const report = { mode, startedAt: new Date().toISOString(), fixturesUsed: new Set(), realInput: ['KeyD held to walk onto the relic drop', 'mouse move to aim', 'mouse button held to attack'], steps: [], errors: [] };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -70,6 +71,10 @@ async function calibrate(page) { // world direction of the D key, measured with 
   const a = await sense(page); await page.keyboard.down('KeyD'); await page.waitForTimeout(260); await page.keyboard.up('KeyD'); await page.waitForTimeout(90);
   const b = await sense(page), dx = b.x - a.x, dz = b.z - a.z, n = Math.hypot(dx, dz) || 1; return { x: dx / n, z: dz / n };
 }
+// Level-up cards are answered like a player would: with the real "1" key.
+async function chooseCards(page) {
+  for (let i = 0; i < 5 && await page.evaluate(() => window.__zombieNightDebug.getState().pendingUpgradeChoices.length > 0); i++) { await page.keyboard.press('Digit1'); await page.waitForTimeout(220); (report.cardsChosen ??= 0); report.cardsChosen++; }
+}
 const shot = async (page, name) => { const file = path.join(outDir, `${name}.png`); await page.screenshot({ path: file }); return path.basename(file); };
 async function spawnPack(page, dir, specs) { // FIXTURE: enemies appear along the aim; the aim itself is a real mouse move
   const me = await sense(page);
@@ -80,15 +85,24 @@ async function spawnPack(page, dir, specs) { // FIXTURE: enemies appear along th
   await aimWorld(page, me.x + dir.x * 7, me.z + dir.z * 7);
 }
 async function pickUpRelic(page, dir, relic) {
+  await chooseCards(page);
   const me = await sense(page); await aimWorld(page, me.x + dir.x * 7, me.z + dir.z * 7);
   await fixture(page, 'spawnWeaponDrop', relic);
   await page.keyboard.down('KeyD'); // REAL INPUT: walk onto the drop
   try { await page.waitForFunction(id => window.__zombieNightDebug.getArsenalState().relic === id, relic, { timeout: 2500 }); } finally { await page.keyboard.up('KeyD'); }
 }
+// The level-up panel swallows a mouseup that lands on it (the game then keeps attacking). Cards are therefore answered
+// before the button is released, and a still-running attack is reported and released with one more real click.
+const attacking = page => page.evaluate(() => { const s = window.__zombieNightDebug.getState(); return s.swordSwingRemaining > 0 || s.bullets > 0; });
+async function releaseAttack(page) {
+  await chooseCards(page); await page.mouse.up(); await page.waitForTimeout(750);
+  if (await attacking(page)) { (report.notes ??= []).push('attack stayed held after mouseup (level-up panel swallowed it); released with one extra click'); await chooseCards(page); await page.mouse.move(W - 120, 170); await page.mouse.down(); await page.mouse.up(); await page.waitForTimeout(750); }
+}
 async function holdAttack(page, label, ms, shots) {
+  await chooseCards(page);
   const before = await sense(page), frames = []; await page.mouse.down(); const started = Date.now();
-  for (const at of shots) { await page.waitForTimeout(Math.max(0, at - (Date.now() - started))); frames.push(await shot(page, `${label}-${String(at).padStart(4, '0')}ms`)); }
-  await page.waitForTimeout(Math.max(0, ms - (Date.now() - started))); const during = await sense(page); await page.mouse.up();
+  for (const at of shots) { await page.waitForTimeout(Math.max(0, at - (Date.now() - started))); await chooseCards(page); frames.push(await shot(page, `${label}-${String(at).padStart(4, '0')}ms`)); }
+  await page.waitForTimeout(Math.max(0, ms - (Date.now() - started))); const during = await sense(page); await releaseAttack(page);
   return { before, during, frames };
 }
 
@@ -99,22 +113,7 @@ async function solo(classId, relics) {
   const near = classId === 'warrior';
   const pack = near ? [[2.6, 0, 'zombie'], [3.4, 22, 'brute'], [3.4, -22, 'zombie'], [5.2, 8, 'brute'], [6.4, -10, 'zombie'], [8.5, 4, 'brute'], [10.5, -3, 'zombie'], [3.2, 170, 'brute'], [3.6, -150, 'zombie']]
     : [[5, 0, 'zombie'], [6.5, 14, 'brute'], [6.5, -14, 'zombie'], [8.5, 6, 'brute'], [10, -8, 'zombie'], [12, 3, 'brute'], [14, -4, 'zombie'], [9, 28, 'zombie'], [9, -28, 'brute']];
-  // 1. automatic weapons alone: no attack input at all
-  await fixture(page, 'clearCombatEntities');
-  for (const id of ['guardianBlade', 'orbitOrb', 'sealRain']) await fixture(page, 'unlockAutoWeapon', id);
-  await spawnPack(page, dir, pack.map(([d, a, t]) => [d + 2, a, t]));
-  const autoBefore = await sense(page), autoFrames = [];
-  for (const [wait, at] of [[700, 700], [800, 1500], [900, 2400], [900, 3300]]) { await page.waitForTimeout(wait); autoFrames.push(await shot(page, `auto-weapons-${at}ms`)); }
-  const autoAfter = await sense(page);
-  report.steps.push({ step: 'automatic weapons, no attack input', fixtures: ['clearCombatEntities', 'unlockAutoWeapon×3', 'spawnZombieAhead pack'], input: 'none', frames: autoFrames,
-    killsBefore: autoBefore.kills, killsAfter: autoAfter.kills, loadout: autoAfter.loadout, vfxEvents: autoAfter.vfx.events, companions: autoAfter.vfx.actors, passed: autoAfter.vfx.events.auto > 0 && autoAfter.kills > autoBefore.kills });
-  // 2. evolutions (perk gates reached through the debug perk grant)
-  for (const perk of ['bladeEcho', 'bladeEcho', 'sealRitual', 'sealRitual']) await fixture(page, 'grantPerk', perk);
-  await spawnPack(page, dir, pack.map(([d, a, t]) => [d + 3, a, t])); await page.waitForTimeout(1800);
-  const evolvedFrame = await shot(page, 'auto-weapons-evolved'), evolved = await sense(page);
-  report.steps.push({ step: 'evolved automatic weapons + Ritual de Selos', fixtures: ['grantPerk bladeEcho×2, sealRitual×2', 'spawnZombieAhead pack'], input: 'none', frames: [evolvedFrame], evolved: evolved.evolved, loadout: evolved.loadout,
-    passed: Object.values(evolved.loadout).every(slot => slot.level === 1 && slot.evolved) });
-  // 3. relics: real pickup, real attacks
+  // 1. relics first, before any companion exists: every kill here is the sword/rifle plus its relic
   for (const relic of relics) {
     await fixture(page, 'clearCombatEntities');
     await pickUpRelic(page, dir, relic);
@@ -126,14 +125,31 @@ async function solo(classId, relics) {
       relicVfxEvents: result.during.vfx.events.relic - result.before.vfx.events.relic, projectileVfxEvents: result.during.vfx.events.projectile - result.before.vfx.events.projectile, fps: result.during.fps,
       passed: picked.relic === relic && result.during.kills > result.before.kills && (result.during.vfx.events.relic + result.during.vfx.events.projectile) > (result.before.vfx.events.relic + result.before.vfx.events.projectile) });
   }
+  // 2. automatic weapons alone: no attack input at all
+  await fixture(page, 'clearCombatEntities'); await chooseCards(page);
+  await page.waitForFunction(() => window.__zombieNightDebug.getArsenalState().relic === null, null, { timeout: 26000 }); // the last relic expires on its own clock
+  for (const id of ['guardianBlade', 'orbitOrb', 'sealRain']) await fixture(page, 'unlockAutoWeapon', id);
+  await spawnPack(page, dir, pack.map(([d, a, t]) => [d + 2, a, t]));
+  const autoBefore = await sense(page), autoFrames = []; let heroAttacked = await attacking(page);
+  for (const [wait, at] of [[700, 700], [800, 1500], [900, 2400], [900, 3300]]) { await page.waitForTimeout(wait); await chooseCards(page); heroAttacked ||= await attacking(page); autoFrames.push(await shot(page, `auto-weapons-${at}ms`)); }
+  const autoAfter = await sense(page);
+  report.steps.push({ step: 'automatic weapons, no attack input', fixtures: ['clearCombatEntities', 'unlockAutoWeapon×3', 'spawnZombieAhead pack'], input: 'none', frames: autoFrames,
+    killsBefore: autoBefore.kills, killsAfter: autoAfter.kills, loadout: autoAfter.loadout, vfxEvents: autoAfter.vfx.events, companions: autoAfter.vfx.actors, heroAttackedDuringWindow: heroAttacked, relicDuringWindow: autoAfter.relic,
+    passed: !heroAttacked && autoAfter.relic === null && autoAfter.vfx.events.relic === autoBefore.vfx.events.relic && autoAfter.vfx.events.auto > autoBefore.vfx.events.auto && autoAfter.kills > autoBefore.kills });
+  // 3. evolutions (perk gates reached through the debug perk grant)
+  for (const perk of ['bladeEcho', 'bladeEcho', 'sealRitual', 'sealRitual']) await fixture(page, 'grantPerk', perk);
+  await spawnPack(page, dir, pack.map(([d, a, t]) => [d + 3, a, t])); await page.waitForTimeout(1500); await chooseCards(page); await page.waitForTimeout(300);
+  const evolvedFrame = await shot(page, 'auto-weapons-evolved'), evolved = await sense(page);
+  report.steps.push({ step: 'evolved automatic weapons + Ritual de Selos', fixtures: ['grantPerk bladeEcho×2, sealRitual×2', 'spawnZombieAhead pack'], input: 'none', frames: [evolvedFrame], evolved: evolved.evolved, loadout: evolved.loadout,
+    passed: Object.values(evolved.loadout).every(slot => slot.level === 1 && slot.evolved) });
   // 4. frame rate: automatic weapons + relic + horde, attack held with the real mouse
   await fixture(page, 'clearCombatEntities');
   await pickUpRelic(page, dir, near ? 'axe' : 'boneCannon');
   const horde = []; for (let ring = 0; ring < 5; ring++) for (let step = 0; step < 12; step++) horde.push([7 + ring * 2.2, step * 30 + ring * 7, step % 4 === 0 ? 'brute' : step % 3 === 0 ? 'runner' : 'zombie']);
   await spawnPack(page, dir, horde);
-  const samples = []; await page.mouse.down();
-  for (let i = 0; i < 24; i++) { await page.waitForTimeout(250); const s = await sense(page); samples.push({ t: (i + 1) * .25, fps: s.fps, frameMs: s.frameMs, zombies: s.zombies, glyphs: s.vfx.glyphs, bodies: s.vfx.bodies, kills: s.kills }); if (i === 6) await shot(page, 'horde-fps-moment'); if (i === 16) await shot(page, 'horde-fps-moment-late'); }
-  await page.mouse.up();
+  const samples = []; await chooseCards(page); await page.mouse.down();
+  for (let i = 0; i < 24; i++) { await page.waitForTimeout(250); await chooseCards(page); const s = await sense(page); samples.push({ t: (i + 1) * .25, fps: s.fps, frameMs: s.frameMs, zombies: s.zombies, glyphs: s.vfx.glyphs, bodies: s.vfx.bodies, kills: s.kills }); if (i === 6) await shot(page, 'horde-fps-moment'); if (i === 16) await shot(page, 'horde-fps-moment-late'); }
+  await releaseAttack(page);
   const fpsValues = samples.map(sample => sample.fps).filter(Number.isFinite).sort((a, b) => a - b);
   report.steps.push({ step: 'fps: automatic weapons (evolved) + relic + 60-enemy horde', fixtures: ['spawnZombieAhead ×60', 'spawnWeaponDrop'], input: 'mouse held 6 s', samples,
     fps: { min: fpsValues[0], median: fpsValues[Math.floor(fpsValues.length / 2)], max: fpsValues.at(-1), note: 'fpsAverage is the game\'s exponential moving average; headless Chromium with ANGLE/Metal on a shared GPU' },
@@ -179,10 +195,11 @@ process.on('message', async request => {
   async function round(attacker, watcher, attackerId, center, relic, label) {
     await scene(60); await protocol.requestFixture('qa-arsenal-drop', { room, clientId: attackerId, relic });
     await attacker.waitForFunction(id => window.__zombieNightDebug.getArsenalState().relic === id, relic, { timeout: 6000 }); // the pickup request itself is the production client path
+    await chooseCards(attacker); await chooseCards(watcher);
     await aimWorld(attacker, center.x + 8, center.z); const watcherBefore = await sense(watcher), before = await sense(attacker);
-    await attacker.mouse.down(); await attacker.waitForTimeout(900);
+    await attacker.mouse.down(); await attacker.waitForTimeout(900); await chooseCards(attacker);
     const frames = [await shot(attacker, `${label}-attacker`), await shot(watcher, `${label}-remote-view`)];
-    await attacker.waitForTimeout(1900); frames.push(await shot(watcher, `${label}-remote-view-late`)); await attacker.mouse.up();
+    await attacker.waitForTimeout(1900); frames.push(await shot(watcher, `${label}-remote-view-late`)); await releaseAttack(attacker);
     const after = await sense(attacker), watcherAfter = await sense(watcher);
     report.steps.push({ step: `multiplayer ${label}: ${relic}`, fixtures: ['qa-combat-scene (stationary 60 HP monsters)', `qa-arsenal-drop ${relic}`], input: 'mouse aim + mouse held 2.8 s on the attacker only', frames,
       attacker: { authority: after.authority, relic: before.relic, hud: before.hud, killsBefore: before.kills, killsAfter: after.kills },
@@ -201,8 +218,9 @@ process.on('message', async request => {
   const sceneB = health => protocol.arrangeCombat(room, [[6, 0], [8, 2], [10, -1.5], [12, 1], [14, -.5]].map(([dx, dz]) => ({ x: placedB.x + dx, z: placedB.z + 9 + dz, health })));
   await sceneB(40); await protocol.requestFixture('qa-arsenal-drop', { room, clientId: idB, relic: 'katana' });
   await B.waitForFunction(() => window.__zombieNightDebug.getArsenalState().relic === 'katana', null, { timeout: 6000 });
+  await chooseCards(A); await chooseCards(B);
   await aimWorld(B, placedB.x + 9, placedB.z + 9); const watcherBefore = await sense(A), lyraBefore = await sense(B);
-  await B.mouse.down(); await B.waitForTimeout(1000); const lyraFrames = [await shot(B, 'lyra-ricochet-attacker'), await shot(A, 'lyra-ricochet-remote-view')]; await B.waitForTimeout(1600); await B.mouse.up();
+  await B.mouse.down(); await B.waitForTimeout(1000); const lyraFrames = [await shot(B, 'lyra-ricochet-attacker'), await shot(A, 'lyra-ricochet-remote-view')]; await B.waitForTimeout(1600); await releaseAttack(B);
   const lyraAfter = await sense(B), watcherAfter = await sense(A);
   report.steps.push({ step: 'multiplayer lyra-ricochet-blades: katana', fixtures: ['qa-combat-scene (stationary 40 HP monsters)', 'qa-arsenal-drop katana'], input: 'mouse aim + mouse held 2.6 s on Lyra only', frames: lyraFrames,
     attacker: { authority: lyraAfter.authority, relic: lyraBefore.relic, killsBefore: lyraBefore.kills, killsAfter: lyraAfter.kills }, remote: { projectileEventsSeen: watcherAfter.vfx.events.projectile - watcherBefore.vfx.events.projectile },
@@ -213,8 +231,8 @@ process.on('message', async request => {
 try {
   browser = await chromium.launch({ headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
   if (mode === 'smoke') await solo('warrior', ['axe']);
-  else if (mode === 'solo:warrior') await solo('warrior', RELICS);
-  else if (mode === 'solo:dwarf') await solo('dwarf', RELICS);
+  else if (mode === 'solo:warrior') await solo('warrior', RELICS.warrior);
+  else if (mode === 'solo:dwarf') await solo('dwarf', RELICS.dwarf);
   else if (mode === 'multi') await multi();
   else throw Error(`unknown mode ${mode}`);
 } catch (error) { report.fatal = String(error?.stack || error); }
