@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import { attachAllocationTrace } from "./arpg-resource-allocation-trace.mjs";
@@ -21,7 +22,7 @@ try {
     window.addEventListener('focus', record); window.addEventListener('blur', record);
     document.addEventListener('visibilitychange', record);
   });
-  await page.goto(process.argv[2] || "http://127.0.0.1:5173/?offline=1", { waitUntil: "networkidle" });
+  await page.goto(await suiteUrl("/?offline=1"), { waitUntil: "networkidle" });
   await waitForRuntimeAssets(page, telemetry);
   // Traverse the actual tab order; do not programmatically focus the target.
   let helpFocused = false;

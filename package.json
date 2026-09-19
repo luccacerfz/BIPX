@@ -63,7 +63,19 @@
     "verify:physics:integration": "node tools/physics-integration.mjs",
     "verify:skills:vfx": "node tools/class-skill-vfx-cpu.mjs",
     "verify:skills:animation": "node tools/animation-skill-cpu.mjs",
-    "verify:skills:audio": "node tools/audio-arpg-verify.mjs"
+    "verify:skills:audio": "node tools/audio-arpg-verify.mjs",
+    "verify:cpu": "node tools/run-quality-suite.mjs --cpu-only",
+    "verify:browser": "node tools/run-quality-suite.mjs --browser-only",
+    "verify:list": "node tools/run-quality-suite.mjs --list",
+    "verify:gpu-lock": "node tools/verify-gpu-lock.mjs",
+    "verify:layout": "node tools/verify-arpg-layout.mjs",
+    "verify:environment": "node tools/environment-cpu.mjs",
+    "verify:skill-upgrades": "node tools/verify-skill-upgrades.mjs",
+    "verify:skill-upgrades:server": "node tools/verify-skill-upgrades-server.mjs",
+    "verify:arsenal": "node tools/verify-arsenal.mjs",
+    "qa:natural-play": "node tools/natural-play.mjs",
+    "qa:mobile-probe": "node tools/mobile-a11y-probe.mjs",
+    "qa:two-client": "node tools/native-two-client.mjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"

@@ -125,6 +125,7 @@ export async function launchProtocolServer(name, additionalFixture = '') {
           child.send({ type: 'qa-terminal-damage', id, room, clientIds });
         });
       },
+      stderr: () => stderr,
       assertClean() {
         assert.equal(fs.readFileSync('server.mjs', 'utf8'), source, 'Production server changed during protocol test');
         assert.deepEqual(serverDependencyHashes(), dependencies, 'Server dependencies changed during protocol test');

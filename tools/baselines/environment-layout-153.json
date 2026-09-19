@@ -1,0 +1,243 @@
+{
+ "contract": "Promoted environment layout: 153 colliders (docs/arpg/environment-combined-v1.md, docs/arpg/environment-handoff.md).",
+ "provenance": {
+  "copiedFrom": "output/environment/crypt-maintenance-combined-v1/descriptor-diff.json (untracked staging artefact, key overLive)",
+  "artefactSha256": "f999a570e84fcfb25fc3d695a03879fc8c5dd44a430c0d737a1456c04ffefa96",
+  "artefactAt": "2026-09-19T04:56:19.728Z",
+  "promotedLayoutSha256": "9f6ebea2041910f829042ec14f177cfb26beee44ebcd9e5f5c11333d0c9c486c",
+  "note": "Descriptor-level delta of the promoted 153 layout over the previous runtime layout (143 colliders). The layout hash is informational; the harness compares descriptors."
+ },
+ "colliders": 153,
+ "previousColliders": 143,
+ "added": [
+  {
+   "id": "crypt-entry-wall-west-foot",
+   "shape": "box",
+   "x": 10.125,
+   "z": -17.0865,
+   "halfX": 0.325,
+   "halfZ": 0.3525,
+   "yaw": 0,
+   "minY": 0.12,
+   "maxY": 1.2,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-east-foot",
+   "shape": "box",
+   "x": 14.425,
+   "z": -17.332,
+   "halfX": 0.275,
+   "halfZ": 0.204,
+   "yaw": 0,
+   "minY": 0.12,
+   "maxY": 1.55,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-west-shoulder",
+   "shape": "box",
+   "x": 10.725000000000001,
+   "z": -17.864500000000003,
+   "halfX": 0.275,
+   "halfZ": 0.2785,
+   "yaw": 0,
+   "minY": 1.15,
+   "maxY": 2.4,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-east-shoulder",
+   "shape": "box",
+   "x": 13.875,
+   "z": -17.7165,
+   "halfX": 0.275,
+   "halfZ": 0.1565,
+   "yaw": 0,
+   "minY": 1.4,
+   "maxY": 2.7,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-rear-low",
+   "shape": "box",
+   "x": 12.3,
+   "z": -19.924000000000003,
+   "halfX": 0.8,
+   "halfZ": 0.145,
+   "yaw": 0,
+   "minY": 0.15,
+   "maxY": 1.1,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-rear-mid",
+   "shape": "box",
+   "x": 12.3,
+   "z": -19.8365,
+   "halfX": 0.8,
+   "halfZ": 0.0325,
+   "yaw": 0,
+   "minY": 1.1,
+   "maxY": 1.8,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-rear-upper",
+   "shape": "box",
+   "x": 12.3,
+   "z": -19.674500000000002,
+   "halfX": 0.55,
+   "halfZ": 0.0505,
+   "yaw": 0,
+   "minY": 1.8,
+   "maxY": 2.5,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-crown-low",
+   "shape": "box",
+   "x": 12.3,
+   "z": -18.794500000000003,
+   "halfX": 0.8,
+   "halfZ": 0.2825,
+   "yaw": 0,
+   "minY": 2.5,
+   "maxY": 3.15,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-crown-mid",
+   "shape": "box",
+   "x": 12.450000000000001,
+   "z": -18.6215,
+   "halfX": 0.6,
+   "halfZ": 0.2065,
+   "yaw": 0,
+   "minY": 3.15,
+   "maxY": 3.8,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-entry-wall-crown-peak",
+   "shape": "box",
+   "x": 12.225000000000001,
+   "z": -17.956500000000002,
+   "halfX": 0.225,
+   "halfZ": 0.3195,
+   "yaw": 0,
+   "minY": 3.8,
+   "maxY": 4.3,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  },
+  {
+   "id": "crypt-west-return",
+   "shape": "box",
+   "x": 8.8,
+   "z": -18.5,
+   "halfX": 1.564,
+   "halfZ": 0.34,
+   "yaw": 1.35,
+   "minY": 0,
+   "maxY": 1.26786,
+   "blockingActors": true,
+   "blockingProjectiles": true
+  }
+ ],
+ "removed": [
+  "crypt-entry-wall"
+ ],
+ "changed": [
+  {
+   "id": "crypt-entry-door",
+   "after": {
+    "id": "crypt-entry-door",
+    "shape": "box",
+    "x": 12.3,
+    "z": -16.8,
+    "halfX": 1.495,
+    "halfZ": 0.325,
+    "yaw": 0,
+    "minY": 0,
+    "maxY": 2.58375,
+    "blockingActors": true,
+    "blockingProjectiles": true
+   }
+  },
+  {
+   "id": "rocks-0",
+   "after": {
+    "id": "rocks-0",
+    "shape": "box",
+    "x": 16.1,
+    "z": -18.4,
+    "halfX": 0.96,
+    "halfZ": 0.672,
+    "yaw": 0.9,
+    "minY": 0,
+    "maxY": 1.5408,
+    "blockingActors": true,
+    "blockingProjectiles": true
+   }
+  },
+  {
+   "id": "rocks-1",
+   "after": {
+    "id": "rocks-1",
+    "shape": "box",
+    "x": 8.7,
+    "z": -17,
+    "halfX": 0.9199999999999999,
+    "halfZ": 0.644,
+    "yaw": 2.1,
+    "minY": 0,
+    "maxY": 1.4766,
+    "blockingActors": true,
+    "blockingProjectiles": true
+   }
+  },
+  {
+   "id": "fallen-beam-3",
+   "after": {
+    "id": "fallen-beam-3",
+    "shape": "box",
+    "x": 20.2,
+    "z": 14.3,
+    "halfX": 1.104,
+    "halfZ": 0.1248,
+    "yaw": 1.45,
+    "minY": 0,
+    "maxY": 0.16,
+    "blockingActors": true,
+    "blockingProjectiles": true
+   }
+  },
+  {
+   "id": "barrel-2",
+   "after": {
+    "id": "barrel-2",
+    "shape": "circle",
+    "x": 16.6,
+    "z": 11.6,
+    "radius": 0.516,
+    "minY": 0,
+    "maxY": 1.0752,
+    "blockingActors": true,
+    "blockingProjectiles": true
+   }
+  }
+ ],
+ "removedEarlier": [
+  "shrine-east"
+ ]
+}

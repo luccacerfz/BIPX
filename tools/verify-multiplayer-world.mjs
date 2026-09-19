@@ -3,6 +3,10 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { evidenceDir } from './quality-browser.mjs';
 import { launchProtocolServer, connectProtocolClient, protocolMessage, startProtocolRun, closeProtocolClient } from './quality-protocol.mjs';
+import { basicAttackSpec, basicPower } from '../src/combat/hero-power.mjs';
+import { attackStats } from '../src/progression/authority.mjs';
+// Server-owned level-1 rifle hit, read from the modules server.mjs imports (T1 retuned it) and rounded like monsterHit.amount.
+const baseRifleHit = Number((basicAttackSpec('dwarf').damage * attackStats({ stacks: {}, character: 'dwarf', weaponTimer: 0, prismStormRemaining: 0 }).damageMultiplier * basicPower('dwarf', 1)).toFixed(2));
 
 // Preserve authoritative world, reward, late-join and room-wipe coverage. The
 // isolated server is required because client packets cannot author terminal HP.
@@ -35,7 +39,7 @@ try {
     const from = first.messages.length;
     first.socket.send(JSON.stringify({ type: 'attack', attack: { kind: 'pistol', weapon: 'pistol', aimX: 1, aimZ: 0, damageMultiplier: 8, areaMultiplier: 5 } }));
     const hit = await protocolMessage(first, m => m.type === 'monsterHit' && m.id === target.id, from);
-    assert.equal(hit.amount, 4, 'Forged multiplier changed server-owned base rifle damage');
+    assert.equal(hit.amount, baseRifleHit, 'Forged multiplier changed server-owned base rifle damage');
     hits.push(hit.amount);
     await new Promise(resolve => setTimeout(resolve, 330));
     killed = first.messages.slice(from).find(m => m.type === 'monsterKilled' && m.monster.id === target.id);

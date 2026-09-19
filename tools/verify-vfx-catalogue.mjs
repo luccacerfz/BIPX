@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -9,7 +10,7 @@ const telemetry = attachQualityTelemetry(page, 'vfx-catalogue');
 telemetry.markFixture();
 telemetry.report.scope = 'Synthetic standalone renderer fixture; does not make catalogue abilities available to gameplay characters or prove natural combat readability.';
 try {
-  const url = new URL('/quality-vfx-catalogue', process.argv[2] || 'http://127.0.0.1:5173');
+  const url = new URL('/quality-vfx-catalogue', await suiteUrl('/'));
   await page.route(url.toString(), route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><head><link rel="icon" href="data:,"><style>body{margin:0;background:#101921;color:#eeddb4;font:16px system-ui}header{position:absolute;top:12px;left:20px;z-index:2}canvas{display:block}</style></head><body><header>VFX catalogue — synthetic fixture, not gameplay</header><canvas id="game-canvas"></canvas></body></html>' }));
   await page.goto(url.toString());
   const catalogue = await page.evaluate(async () => {

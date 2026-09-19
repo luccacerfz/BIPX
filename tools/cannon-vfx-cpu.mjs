@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
+// HISTORICAL SNAPSHOT GATE. This harness drives `createCannonPrototype`, the isolated controller that preceded the shipped cannon
+// pool; nothing in src/ exports that API, so it can only ever test the frozen prototype below. A pass here says nothing about
+// the runtime: the shipped cannon is covered by class-skill-vfx-cpu, cannon-wrapper-vfx-cpu, cannon-depth-vfx-cpu and
+// cannon-origin-vfx-cpu, which default to src/vfx. tools/run-quality-suite.mjs lists it as `historical` and never selects it by default.
 const directory='assets/vfx/source-history/cannon-volumetric-staging-20260919';
 const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
 const {createCannonPrototype}=await import(await moduleUrl(`${directory}/cannon-prototype.js`));
@@ -19,4 +23,4 @@ test('Miss/terminal/TTL/end clean bodies without detonation; explosion has bound
 test('Offscreen/hidden roots do not request depth; paused camera return revives volume',()=>{vfx.emit(event('impact'));vfx.update(.14);vfx.prepareSceneDepth(camera);camera.lookAt(0,17,1000);camera.updateMatrixWorld();assert.equal(vfx.prepareSceneDepth(camera).required,false);camera.lookAt(0,0,-3);camera.updateMatrixWorld();assert.equal(vfx.prepareSceneDepth(camera).required,true);vfx.group.visible=false;assert.equal(vfx.prepareSceneDepth(camera).required,false);vfx.group.visible=true;});
 test('Fixed resource capacity is stable over repeated casts/reset; disposal owns no borrowed texture',()=>{for(let i=0;i<120;i++){vfx.reset();vfx.emit(event('impact'));vfx.update(.14);vfx.prepareSceneDepth(camera);vfx.setSceneDepth(depth);}const after=[];scene.traverse(o=>{if(o.isMesh)after.push(o);});assert.deepEqual(after,nodes);let g=0,m=0,t=0;for(const x of geometries)x.addEventListener('dispose',()=>g++);for(const x of materials)x.addEventListener('dispose',()=>m++);texture.addEventListener('dispose',()=>t++);vfx.dispose();vfx.dispose();assert.equal(g,geometries.size);assert.equal(m,materials.size);assert.equal(t,0);assert.equal(scene.children.length,0);});
 const files=(await fs.readdir(directory)).filter(n=>n.endsWith('.js'));const hashes=Object.fromEntries(await Promise.all(files.map(async n=>[`${directory}/${n}`,sha256(await fs.readFile(`${directory}/${n}`))])));
-const output=`output/qa/cannon-vfx-${new Date().toISOString().replace(/[:.]/g,'-')}-cpu.json`;await fs.writeFile(output,JSON.stringify({passed:true,scope:'Isolated event-driven cannon controller CPU; not render/gameplay',checks,hashes},null,2)+'\n');console.log(JSON.stringify({passed:true,checks:checks.length,output}));
+await fs.mkdir(process.env.BIPX_EVIDENCE_DIR||'output/qa',{recursive:true});const output=`${process.env.BIPX_EVIDENCE_DIR||'output/qa'}/cannon-vfx-${new Date().toISOString().replace(/[:.]/g,'-')}-cpu.json`;await fs.writeFile(output,JSON.stringify({passed:true,target:'historical-snapshot',scope:'Isolated event-driven cannon controller CPU; not render/gameplay',checks,hashes},null,2)+'\n');console.log(JSON.stringify({passed:true,checks:checks.length,output}));

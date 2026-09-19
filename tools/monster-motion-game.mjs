@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ try{
  const context=await browser.newContext({viewport:{width:1440,height:900},recordVideo:{dir:path.join(out,'video'),size:{width:1440,height:900}}});
  await context.addInitScript(()=>localStorage.setItem('bipx-character','warrior'));const page=await context.newPage();
  page.on('pageerror',e=>report.errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});page.on('response',r=>{if(r.status()>=400)report.errors.push(`${r.status()} ${r.url()}`);});
- await page.goto('http://127.0.0.1:5173/?offline=1&autoplay=1');
+ await page.goto(await suiteUrl('/?offline=1&autoplay=1'));
  await page.waitForFunction(()=>{const d=window.__zombieNightDebug,a=d?.getPresentationStats().assets;return d?.getState().state==='playing'&&a.hero.loaded&&a.world.loaded&&a.enemies.libraries.includes('monsters');});
  await page.bringToFront();await page.mouse.move(1030,450);
  const stats=()=>page.evaluate(()=>({state:window.__zombieNightDebug.getState(),enemies:window.__zombieNightDebug.getPresentationStats().assets.enemies}));

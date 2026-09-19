@@ -1,3 +1,4 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -24,7 +25,7 @@ try {
       if (original === patched) throw new Error('Diagnostic patch point missing');
       await page.route('**/vendor/three/three.module.js', route => route.fulfill({ contentType: 'application/javascript', body: patched }));
     }
-    await page.goto('http://127.0.0.1:5173/quality-stream-diagnostic');
+    await page.goto(await suiteUrl('/quality-stream-diagnostic'));
     const downloads = await page.evaluate(async () => {
       const { FileLoader } = await import('/vendor/three/three.module.js');
       const results = [];

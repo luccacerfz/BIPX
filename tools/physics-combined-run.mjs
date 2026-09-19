@@ -4,8 +4,11 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {chromium,waitForRuntimeAssets} from './quality-browser.mjs';
-import {createCollisionWorld,moveActor,sweepStatic} from '../output/physics/combined-native-20260919/game/src/physics/contacts.mjs';
-import {getEnvironmentColliders,ENVIRONMENT_GROUND} from '../output/physics/combined-native-20260919/game/src/render/environment-layout.js';
+import {requireStagingArtefacts} from './quality-staging.mjs';
+// Native capture of one staged candidate served from its own game copy under the untracked output/ tree.
+requireStagingArtefacts(['output/physics/combined-native-20260919/game/server.mjs','output/physics/combined-native-20260919/game/src/physics/contacts.mjs','output/physics/combined-native-20260919/game/src/render/environment-layout.js']);
+const {createCollisionWorld,moveActor,sweepStatic}=await import('../output/physics/combined-native-20260919/game/src/physics/contacts.mjs');
+const {getEnvironmentColliders,ENVIRONMENT_GROUND}=await import('../output/physics/combined-native-20260919/game/src/render/environment-layout.js');
 const root=process.cwd(),staging=path.resolve('output/physics/combined-native-20260919'),gameRoot=path.join(staging,'game');
 const stamp=new Date().toISOString().replace(/[:.]/g,'-'),evidence=path.resolve(`output/playwright/${stamp}-physics-combined`);
 fs.mkdirSync(evidence,{recursive:true});

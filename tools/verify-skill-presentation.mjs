@@ -12,7 +12,7 @@ const vfx = [], sounds = [], remotePlayers = new Map();
 const buff = { castId: 'run:1', skillId: 'warrior_war_cry', status: 'buff', remaining: 8, duration: 8, radius: 1.3 };
 const field = { castId: 'other:2', skillId: 'dwarf_gravity_shot', status: 'gravity', x: 9, y: .08, z: 2, radius: 5, remaining: 5, duration: 5 };
 const context = vm.createContext({
-  Map, Object, Boolean, String,
+  Map, Object, Boolean, String, performance,
   multiplayer: { enabled: true, connected: true, id: 'self' }, pendingMultiplayerStart: null, multiplayerAuthorityRunId: 'run',
   player: { position: { x: 0, y: 0, z: 0 } }, remotePlayers,
   remoteSkillSnapshots: [{ id: 'self', x: -20, z: -20, skills: { buff } }, { id: 'peer', x: -10, z: -10, skills: { buff: { ...buff, castId: 'other:1' }, fields: [field] } }],
@@ -24,7 +24,11 @@ const context = vm.createContext({
 });
 const suspendedStart = source.indexOf('function isMultiplayerSuspended(');
 const suspendedEnd = source.indexOf('\n}', suspendedStart) + 2;
-vm.runInContext(source.slice(suspendedStart, suspendedEnd) + '\n' + source.slice(start, end) + '\nthis.sync = syncPersistentSkillPresentation;', context);
+// T3 arsenal: the sync also hands `napalm` fields to presentNapalmFields. It is extracted verbatim; these fixtures carry no napalm
+// field, so it must stay silent (its renderer globals are deliberately absent and would throw if it presented anything).
+const napalmStart = source.indexOf('function presentNapalmFields('), napalmEnd = source.indexOf('\n}', napalmStart) + 2;
+assert.ok(napalmStart > 0 && napalmEnd > napalmStart, 'Production napalm presenter missing');
+vm.runInContext(source.slice(suspendedStart, suspendedEnd) + '\n' + source.slice(napalmStart, napalmEnd) + '\n' + source.slice(start, end) + '\nthis.sync = syncPersistentSkillPresentation;', context);
 const tests = [];
 function check(name, run) { run(); tests.push({ name, passed: true }); }
 remotePlayers.set('peer', { mesh: { position: { x: 4, y: 0, z: 6 } } });

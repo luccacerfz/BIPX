@@ -1,12 +1,11 @@
+import { acquireGpuLock } from './quality-gpu-lock.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { chromium, attachQualityTelemetry, waitForRuntimeAssets, evidenceDir, redactPrivate } from './quality-browser.mjs';
 import { localServer } from './quality-isolated-server.mjs';
-const lock='/tmp/bipx-arpg-gpu.lock',token=crypto.randomUUID();
-try{fs.mkdirSync(lock)}catch{console.log('GPU occupied; no browser launched');process.exit(75)}
-fs.writeFileSync(path.join(lock,'owner.json'),JSON.stringify({owner:'combat-network',pid:process.pid,token,created:new Date().toISOString()}));
+const gpu=await acquireGpuLock({owner:'combat-network'}); // shared reservation: waits (2 s retries, 25 min) or inherits the runner's lease
 const report={passed:false,scope:'Two actual browsers, real menu/keyboard inputs; no target/HP/XP fixtures. Transport close is injected only to reproduce reconnect; gameplay functions are unchanged. Not physical mobile or long multiplayer soak.',casts:[]},clients=[];
 let browser,server;
 async function join(character,name){
@@ -79,6 +78,6 @@ try{
  report.passed=true;
 }catch(error){report.failure=error.stack;process.exitCode=1;}finally{
  for(const c of clients){if(report.failure)c.telemetry.fail(Error(report.failure));await c.telemetry.save();await c.context.close();}
- await browser?.close();await server?.stop();if(JSON.parse(fs.readFileSync(path.join(lock,'owner.json'))).token===token)fs.rmSync(lock,{recursive:true});
+ await browser?.close();await server?.stop();gpu.release();
  report.sourceStable=clients.every(c=>!c.telemetry.report.sourceChangedDuringRun);fs.writeFileSync(path.join(evidenceDir,'arpg-network.json'),JSON.stringify(redactPrivate(report),null,2));console.log(JSON.stringify({evidenceDir,...report}));
 }

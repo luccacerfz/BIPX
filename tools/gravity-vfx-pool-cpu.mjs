@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
-const directory=process.env.VFX_GRAVITY_SOURCE||'assets/vfx/source-history/gravity-horizon-pool-staging-20260919';
+// Default target is the shipped runtime in src/vfx. VFX_SOURCE=<dir> re-runs the harness against a frozen staging snapshot
+// (assets/vfx/source-history/...), which is historical evidence only and says nothing about the game that ships.
+const directory=process.env.VFX_GRAVITY_SOURCE||process.env.VFX_SOURCE||'src/vfx';
 const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
 const {createGravityFieldPool}=await import(await moduleUrl(`${directory}/gravity-field-pool.js`));
 const scene=new THREE.Scene(),pool=createGravityFieldPool(THREE,scene),checks=[];
@@ -22,4 +24,4 @@ test('Pause preserves uniforms and instance transforms exactly',()=>{pool.sync([
 test('1000 replacements do not allocate mesh/geometry/material/instance buffers',()=>{for(let i=0;i<1000;i++){pool.sync([field(`cast${i}`)],i%2?'high':'low',!!(i%3));pool.prepareSceneDepth(camera);pool.setSceneDepth(depth);}const after=[];scene.traverse(o=>{if(o.isMesh)after.push(o);});assert.deepEqual(after,nodes);assert.equal(geo.size,4);assert.equal(materials.size,32);for(let i=0;i<matrices.length;i++)assert.equal(after.filter(o=>o.isInstancedMesh)[i].instanceMatrix.array,matrices[i]);});
 test('Expiry/reset/dispose clear depth, release owned resources once, never dispose borrowed depth',()=>{pool.sync([field('expired',0,0,0)]);assert.equal(pool.prepareSceneDepth(camera).required,false);assert.equal(pool.getStats().drawCalls,0);pool.sync([field('reset')]);pool.prepareSceneDepth(camera);pool.setSceneDepth(depth);pool.reset();assert.equal(pool.getStats().depthValid,false);assert.equal(pool.getStats().trackedFields,0);let g=0,m=0,t=0;for(const o of geo)o.addEventListener('dispose',()=>g++);for(const o of materials)o.addEventListener('dispose',()=>m++);texture.addEventListener('dispose',()=>t++);pool.dispose();pool.dispose();assert.equal(g,4);assert.equal(m,32);assert.equal(t,0);assert.equal(scene.children.length,0);});
 const files=['gravity-field-pool.js','gravity-field-visual.js','gravity-horizon-source.js','gravity-noise.glsl.js','gravity-common.glsl.js'];const hashes=Object.fromEntries(await Promise.all(files.map(async f=>[`${directory}/${f}`,sha256(await fs.readFile(`${directory}/${f}`))])));
-const output=`output/qa/gravity-vfx-pool-${new Date().toISOString().replace(/[:.]/g,'-')}-cpu.json`;await fs.writeFile(output,JSON.stringify({passed:true,scope:'Pool CPU lifecycle/bounds; not render or depth parity',checks,hashes},null,2)+'\n');console.log(JSON.stringify({passed:true,checks:checks.length,output}));
+await fs.mkdir(process.env.BIPX_EVIDENCE_DIR||'output/qa',{recursive:true});const output=`${process.env.BIPX_EVIDENCE_DIR||'output/qa'}/gravity-vfx-pool-${new Date().toISOString().replace(/[:.]/g,'-')}-cpu.json`;await fs.writeFile(output,JSON.stringify({passed:true,scope:'Pool CPU lifecycle/bounds; not render or depth parity',checks,hashes},null,2)+'\n');console.log(JSON.stringify({passed:true,checks:checks.length,output}));

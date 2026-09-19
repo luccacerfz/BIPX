@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
 import {segmentCircleContact} from '../src/combat/projectile-sweep.mjs';
 import { emitProjectileTrail, emitProjectileImpact } from '../src/vfx/elemental-projectiles.js';
+import { createCasterProjectilePresenter } from '../src/combat/caster-projectile-presentation.mjs';
+import { basicAttackSpec, rifleShot, meleeShape, insideMeleeShape } from '../src/combat/hero-power.mjs';
 const productionServer = fs.readFileSync(new URL('../server.mjs', import.meta.url), 'utf8');
 const productionClient = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 function extract(source, name) {
@@ -17,7 +19,10 @@ function extract(source, name) {
   return source.slice(start, end + 2);
 }
 const serverSource = extract(productionServer, 'updateServerProjectiles');
-const soloSource = extract(productionClient, 'updateEnemyProjectiles') + '\n' + extract(productionClient, 'getProjectileHitTarget');
+// v5 routes every solo trail through the production wrapper emitEnemyProjectileTrail (Lich launch-bridge presentation).
+// The wrapper is extracted unmodified like the update itself and receives the real presenter module; these fixture
+// projectiles carry no launch bridge, so the wrapper must forward the authoritative segment to emitProjectileTrail.
+const soloSource = extract(productionClient, 'updateEnemyProjectiles') + '\n' + extract(productionClient, 'getProjectileHitTarget') + '\n' + extract(productionClient, 'emitEnemyProjectileTrail');
 const checks = [];
 const definitions = [
   { name: 'grazing crossing', from: [-.55, 1], speed: [22, 0], dt: .05, targets: [[0, 0]], expected: 0 },
@@ -50,11 +55,12 @@ for (const mode of ['server', 'solo']) {
         emit: (kind, position) => visualEvents.push({ kind, position: position.toArray() }),
         emitTrail: (kind, from, to) => visualEvents.push({ kind: `${kind}Trail`, from: from.toArray(), position: to.toArray() }),
       };
-      const update = new Function('THREE', 'segmentCircleContact', 'enemyProjectiles', 'livingPlayerTargets', 'updateProjectileHoming', 'animateEnemyProjectileVisual', 'damagePlayerTarget', 'spawnExplosion', 'removeEnemyProjectile', 'elementalVfx', 'emitProjectileTrail', 'emitProjectileImpact', 'sweepStatic', 'collisionWorld', 'enemyProjectileCollisionHeight', soloSource + ';return updateEnemyProjectiles;')(THREE, segmentCircleContact, projectiles, targets, () => {}, () => {}, target => { hits.push(target.id); positions.push({x:projectile.mesh.position.x,z:projectile.mesh.position.z}); }, () => {}, i => projectiles.splice(i, 1), visualSink, emitProjectileTrail, emitProjectileImpact, sweepStatic, collisionWorld, enemyProjectileCollisionHeight);
+      const update = new Function('THREE', 'segmentCircleContact', 'enemyProjectiles', 'livingPlayerTargets', 'updateProjectileHoming', 'animateEnemyProjectileVisual', 'damagePlayerTarget', 'spawnExplosion', 'removeEnemyProjectile', 'elementalVfx', 'emitProjectileTrail', 'emitProjectileImpact', 'sweepStatic', 'collisionWorld', 'enemyProjectileCollisionHeight', 'casterProjectilePresentation', soloSource + ';return updateEnemyProjectiles;')(THREE, segmentCircleContact, projectiles, targets, () => {}, () => {}, target => { hits.push(target.id); positions.push({x:projectile.mesh.position.x,z:projectile.mesh.position.z}); }, () => {}, i => projectiles.splice(i, 1), visualSink, emitProjectileTrail, emitProjectileImpact, sweepStatic, collisionWorld, enemyProjectileCollisionHeight, createCasterProjectilePresenter({ sweepVisual: () => null }));
       update(test.dt); update(0);
       retained = projectiles.includes(projectile);
       const impacts = visualEvents.filter(event => event.kind === 'voidImpact');
       assert.equal(impacts.length, test.expected === null ? 0 : 1, `${test.name}: impact must require real contact`);
+      assert.equal(projectile.casterTrailProxy, undefined, 'Unbridged fixture projectile must keep the authoritative trail');
       if (impacts.length) {
         near(impacts[0].position[0], positions[0].x);
         near(impacts[0].position[2], positions[0].z);
@@ -75,20 +81,27 @@ const deadUpdate = new Function('segmentCircleContact', 'damageServerPlayer', 'g
 deadUpdate(deadRoom, [{ id: 'dead', state: { x: -1, z: 0, health: 0, state: 'dead' } }, { id: 'alive', state: { x: 1, z: 0, health: 200, state: 'playing' } }], .05);
 assert.deepEqual(deadHits, ['alive']);
 checks.push({ name: 'server dead target does not intercept', passed: true });
-const profilesStart = productionServer.indexOf('const serverCharacterProfiles = ');
-const profilesEnd = productionServer.indexOf('\n};', profilesStart) + 3;
-const profiles = new Function(productionServer.slice(profilesStart, profilesEnd) + ';return serverCharacterProfiles;')();
-const rifleHits = new Function('segmentCircleContact', 'distanceSq', 'sweepStatic', 'collisionWorld', 'RIFLE_COLLISION_HEIGHT', extract(productionServer, 'getServerAttackHits') + ';return getServerAttackHits;')(
-  segmentCircleContact, (x, z, a, b) => (x - a) ** 2 + (z - b) ** 2, sweepStatic, collisionWorld, RIFLE_COLLISION_HEIGHT,
+// T1 moved the basic-attack numbers into src/combat/hero-power.mjs: the server builds its profiles from basicAttackSpec and
+// the rifle ray from rifleShot (radius, range, short pierce). The extracted production function receives those real modules,
+// and every expectation below is derived from them, so a retune cannot stale the harness while the behaviour stays pinned.
+assert.ok(productionServer.includes('const serverCharacterProfiles = { warrior: basicAttackSpec("warrior"), dwarf: basicAttackSpec("dwarf") };'), 'Server profiles must come from the shared hero-power module');
+const profiles = { warrior: basicAttackSpec('warrior'), dwarf: basicAttackSpec('dwarf') };
+const rifleHits = new Function('segmentCircleContact', 'distanceSq', 'sweepStatic', 'collisionWorld', 'RIFLE_COLLISION_HEIGHT', 'rifleShot', 'meleeShape', 'insideMeleeShape', extract(productionServer, 'getServerAttackHits') + ';return getServerAttackHits;')(
+  segmentCircleContact, (x, z, a, b) => (x - a) ** 2 + (z - b) ** 2, sweepStatic, collisionWorld, RIFLE_COLLISION_HEIGHT, rifleShot, meleeShape, insideMeleeShape,
 );
+const baseShot = rifleShot('dwarf'), wideShot = rifleShot('dwarf', { areaMultiplier: 4 }), bodyRadius = .58;
+assert.ok(wideShot.radius > baseShot.radius && wideShot.range === baseShot.range, '+Área must widen the rifle collider without extending its range');
+const pierced = ids => ids.slice(0, 1 + baseShot.pierce); // nearest-first, capped by the short pierce
+const betweenRadii = bodyRadius + (baseShot.radius + wideShot.radius) / 2; // reached only by the widened collider
 const rifleCases = [
   { name: 'nearby collider grazing the rifle centerline', targets: [{ id: 'near', x: .5, z: -3, radius: .58 }], expected: ['near'] },
   { name: 'distant off-line target formerly hit by the cone', targets: [{ id: 'off-line', x: 1, z: -20, radius: .58 }], expected: [] },
-  { name: 'nearest contact wins regardless of iteration', targets: [{ id: 'far', x: 0, z: -10, radius: .58 }, { id: 'near', x: 0, z: -3, radius: .58 }], expected: ['near'] },
-  { name: 'first collider surface wins over nearest center', targets: [{ id: 'small', x: 0, z: -4, radius: .4 }, { id: 'large', x: 0, z: -5, radius: 2 }], expected: ['large'] },
-  { name: 'area improvement widens projectile collider', area: 4, targets: [{ id: 'wide', x: .75, z: -3, radius: .58 }], expected: ['wide'] },
-  { name: 'same target remains outside base projectile', targets: [{ id: 'wide', x: .75, z: -3, radius: .58 }], expected: [] },
-  { name: 'area improvement does not extend rifle range', area: 4, targets: [{ id: 'beyond', x: 0, z: -30, radius: .58 }], expected: [] },
+  { name: 'nearest contact wins regardless of iteration', targets: [{ id: 'far', x: 0, z: -10, radius: .58 }, { id: 'near', x: 0, z: -3, radius: .58 }], expected: pierced(['near', 'far']) },
+  { name: 'pierce stays nearest-first and capped regardless of iteration', targets: [{ id: 'farthest', x: 0, z: -15, radius: .58 }, { id: 'far', x: 0, z: -10, radius: .58 }, { id: 'near', x: 0, z: -3, radius: .58 }], expected: pierced(['near', 'far', 'farthest']) },
+  { name: 'first collider surface wins over nearest center', targets: [{ id: 'small', x: 0, z: -4, radius: .4 }, { id: 'large', x: 0, z: -5, radius: 2 }], expected: pierced(['large', 'small']) },
+  { name: 'area improvement widens projectile collider', area: 4, targets: [{ id: 'wide', x: betweenRadii, z: -3, radius: bodyRadius }], expected: ['wide'] },
+  { name: 'same target remains outside base projectile', targets: [{ id: 'wide', x: betweenRadii, z: -3, radius: bodyRadius }], expected: [] },
+  { name: 'area improvement does not extend rifle range', area: 4, targets: [{ id: 'beyond', x: 0, z: -(baseShot.range + 5), radius: .58 }], expected: [] },
   { name: 'behind-the-player target cannot intercept', targets: [{ id: 'behind', x: 0, z: 3, radius: .58 }], expected: [] },
 ];
 for (const test of rifleCases) {

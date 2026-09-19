@@ -5,7 +5,9 @@ import { moduleUrl, sourceHashes, sha256 } from './class-skill-vfx-support.mjs';
 import { beginSkill, createSkillState, advanceSkills, cancelSkills, getClassSkill, skillSnapshot } from '../src/combat/class-skills.mjs';
 import { createCollisionWorld, sweepStatic } from '../src/physics/contacts.mjs';
 import { createFixtureVisualSweep } from './cannon-origin-vfx-sweep.mjs';
-const stage = 'assets/vfx/source-history/cannon-origin-staging-20260919';
+// Default target is the shipped runtime in src/vfx. VFX_SOURCE=<dir> re-runs the harness against a frozen staging snapshot
+// (assets/vfx/source-history/...), which is historical evidence only and says nothing about the game that ships.
+const stage = process.env.VFX_SOURCE || 'src/vfx';
 const THREE = await import(await moduleUrl('vendor/three/three.module.js'));
 const { createClassSkillVfx } = await import(await moduleUrl(`${stage}/class-skill-vfx.js`));
 const stagedFiles=(await fs.readdir(stage)).filter(n=>n.endsWith('.js')).map(n=>`${stage}/${n}`);
@@ -14,7 +16,9 @@ const beforeSources=await sourceHashes(tracked);
 const main = await fs.readFile('src/main.js', 'utf8');
 const start = main.indexOf('function presentClassSkill('), end = main.indexOf('\n// Reconstruct enduring visuals', start);
 assert.ok(start > 0 && end > start);
-const adapter = main.slice(start, end);
+// Production helpers the adapter calls since the warcry follow promotion; extracted verbatim like the adapter itself.
+const productionFunction = name => { const at = main.indexOf(`function ${name}(`), stop = main.indexOf('\n}', at); assert.ok(at > 0 && stop > at, `Production helper ${name} missing`); return main.slice(at, stop + 2); };
+const adapter = ['trackPreparingWarCry', 'trackDashTransform', 'retireDashTransform'].map(productionFunction).join('\n') + '\n' + main.slice(start, end);
 const socketOffset = new THREE.Vector3(.2373511452952357, 1.7641336974451918, -1.397756736781511);
 const box = (id, x, z, maxY = 3) => ({ id, shape: 'box', x, z, halfX: 2, halfZ: .1, minY: 0, maxY });
 const cases = [
@@ -43,7 +47,7 @@ function execute(scenario, hz, presentation) {
   const context = vm.createContext({ THREE, getClassSkill, multiplayer: { enabled: false, id: 'self' },
     heroVisual: { muzzle: scenario.missingSocket ? undefined : socket, cast() {} }, remotePlayers: new Map(), player: { shotCooldown: 0 }, pendingSwordStrike: null,
     classSkillVfx: vfx, audioManager: {}, game: { survivalTime: 0 }, skillSoundTravel: new Set(), skillPresentationHistory: [],
-    getSpatialAudioOptions: () => ({}), isMultiplayerSuspended: () => false });
+    getSpatialAudioOptions: () => ({}), isMultiplayerSuspended: () => false, preparingWarCries: new Map(), retiredWarCries: new Set(), activeDashTransforms: new Map(), retiredDashTransforms: new Set() });
   if (vfx) vm.runInContext(`${adapter}\nthis.present=presentClassSkill;`, context);
   const state = createSkillState('dwarf'), events = [], hits = [], frames = [];
   let time = 0, cancelled = false;
@@ -132,5 +136,6 @@ const files = (await fs.readdir(stage)).filter(n => n.endsWith('.js')).map(n => 
 const report = { passed: true, scope: 'Real core + literal presentClassSkill; captured socket offset held fixed on a moving actor. CPU fixture, not new pose/socket measurement or gameplay.',
   adapterSha256: sha256(adapter), sources: await sourceHashes(tracked), results };
 assert.deepEqual(report.sources,beforeSources,'Tracked sources changed during audit');report.sourceStable=true;
-const output = `output/qa/cannon-origin-vfx-${new Date().toISOString().replace(/[:.]/g, '-')}-cpu.json`;
+await fs.mkdir(process.env.BIPX_EVIDENCE_DIR || 'output/qa', { recursive: true });
+const output = `${process.env.BIPX_EVIDENCE_DIR || 'output/qa'}/cannon-origin-vfx-${new Date().toISOString().replace(/[:.]/g, '-')}-cpu.json`;
 await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n'); console.log(JSON.stringify({ passed: true, cases: results.length, output }));

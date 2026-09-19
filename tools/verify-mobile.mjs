@@ -1,6 +1,7 @@
+import { suiteUrl } from './quality-target.mjs';
 import { chromium, browserLaunchOptions, waitForRuntimeAssets, attachQualityTelemetry, sampleAnimationFrames } from "./quality-browser.mjs";
 
-const baseUrl = process.argv[2] ?? "http://127.0.0.1:5173/?autoplay=1&offline=1&quality=auto&perf=1";
+const baseUrl = await suiteUrl("/?autoplay=1&offline=1&quality=auto&perf=1");
 
 const scenarios = [
   { name: "iphone17-pro-portrait", width: 402, height: 874, dpr: 3, stress: true },

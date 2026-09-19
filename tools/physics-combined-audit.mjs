@@ -1,8 +1,12 @@
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import crypto from 'node:crypto';
-import {createCollisionWorld,createActorIndex,moveActor,stepActor,sweepStatic} from '../output/physics/combined-native-20260919/game/src/physics/contacts.mjs';
-import {getPursuitDirection} from '../output/physics/combined-native-20260919/game/src/physics/navigation.mjs';
-import {separateControlledActors} from '../output/physics/combined-native-20260919/game/src/combat/crowd-control.mjs';
-import {getEnvironmentColliders,ENVIRONMENT_GROUND} from '../output/physics/combined-native-20260919/game/src/render/environment-layout.js';
+import {requireStagingArtefacts} from './quality-staging.mjs';
+// Post-capture replay of one staged candidate: it must use that candidate's own modules, which live in the untracked output/ tree.
+const stage='output/physics/combined-native-20260919/game';
+requireStagingArtefacts(['src/physics/contacts.mjs','src/physics/navigation.mjs','src/combat/crowd-control.mjs','src/render/environment-layout.js'].map(file=>`${stage}/${file}`));
+const {createCollisionWorld,createActorIndex,moveActor,stepActor,sweepStatic}=await import(`../${stage}/src/physics/contacts.mjs`);
+const {getPursuitDirection}=await import(`../${stage}/src/physics/navigation.mjs`);
+const {separateControlledActors}=await import(`../${stage}/src/combat/crowd-control.mjs`);
+const {getEnvironmentColliders,ENVIRONMENT_GROUND}=await import(`../${stage}/src/render/environment-layout.js`);
 const input=process.argv[2];assert.ok(input,'evidence directory required');const world=createCollisionWorld({colliders:getEnvironmentColliders(),bounds:ENVIRONMENT_GROUND,groundY:0});
 const report={at:new Date().toISOString(),scope:'Post-capture CPU replay of observed native dt/player history using exact staged steering, index, stepActor and crowd; original failing audit retained. No new browser or gameplay injection.',results:[]};
 for(const name of ['north-fixed','south-fixed','north-moving']) {

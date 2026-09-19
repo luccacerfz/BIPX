@@ -1,8 +1,11 @@
+import {requireStagingArtefacts} from './quality-staging.mjs';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
 import {createSkillState,beginSkill,advanceSkills,skillSnapshot} from '../src/combat/class-skills.mjs';
 const root='output/vfx-dash-art-v2';
+// Promotion gate of the dash art2 candidate against its art1 baseline and recorded native input (untracked output/ tree). The shipped dash pool is covered by class-skill-vfx-cpu.
+requireStagingArtefacts([root+'/candidate/class-skill-vfx.js','output/vfx-dash-art-v1/baseline/class-skill-vfx.js','output/playwright/2026-09-19T03-35-43-992Z-verify-arpg-combos/combo-warrior-high.json','output/vfx-dash-art-v1/native-2026-09-19T07-13-48-249Z/report.json']);
 const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
 const {createClassSkillVfx}=await import(await moduleUrl(root+'/candidate/class-skill-vfx.js'));
 const baseline=await import(await moduleUrl('output/vfx-dash-art-v1/baseline/class-skill-vfx.js'));

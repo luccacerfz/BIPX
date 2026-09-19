@@ -1,12 +1,11 @@
+import { acquireGpuLock } from './quality-gpu-lock.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import {chromium,attachQualityTelemetry,waitForRuntimeAssets,evidenceDir} from './quality-browser.mjs';
 import {localServer} from './quality-isolated-server.mjs';
-const lock='/tmp/bipx-arpg-gpu.lock',token=crypto.randomUUID();
-try{fs.mkdirSync(lock)}catch{console.log('GPU occupied; no browser launched');process.exit(75)}
-fs.writeFileSync(path.join(lock,'owner.json'),JSON.stringify({owner:'combat-combos',pid:process.pid,token}));
+const gpu=await acquireGpuLock({owner:'combat-combos'}); // shared reservation: waits (2 s retries, 25 min) or inherits the runner's lease
 let server,browser;const results=[];
 try{
  server=await localServer();browser=await chromium.launch({channel:'chrome',headless:true,args:['--use-gl=angle','--use-angle=metal']});
@@ -71,4 +70,4 @@ try{
   }catch(error){item.failure=error.stack;telemetry.fail(error);item.observation=await page.evaluate(()=>window.__comboObservation?{frames:window.__comboObservation.frames,events:window.__comboObservation.events}:null).catch(()=>null);process.exitCode=1;}
   finally{await telemetry.save({measurements:item});item.sourceChanged=telemetry.report.sourceChangedDuringRun;const video=page.video();await context.close();if(video)await video.saveAs(path.join(evidenceDir,`${name}.webm`));results.push(item);}
  }
-}finally{await browser?.close();await server?.stop();if(JSON.parse(fs.readFileSync(path.join(lock,'owner.json'))).token===token)fs.rmSync(lock,{recursive:true});fs.writeFileSync(path.join(evidenceDir,'arpg-combos.json'),JSON.stringify({passed:results.length===3&&results.every(r=>r.passed&&!r.sourceChanged),results},null,2));console.log(JSON.stringify({evidenceDir,results:results.map(({character,quality,passed,failure,sourceChanged})=>({character,quality,passed,failure,sourceChanged}))}));}
+}finally{await browser?.close();await server?.stop();gpu.release();fs.writeFileSync(path.join(evidenceDir,'arpg-combos.json'),JSON.stringify({passed:results.length===3&&results.every(r=>r.passed&&!r.sourceChanged),results},null,2));console.log(JSON.stringify({evidenceDir,results:results.map(({character,quality,passed,failure,sourceChanged})=>({character,quality,passed,failure,sourceChanged}))}));}

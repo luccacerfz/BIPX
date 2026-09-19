@@ -1,3 +1,4 @@
+import { assertNotLiveServer } from './quality-target.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -45,7 +46,8 @@ try {
   const changed = Object.keys({...before,...after}).filter(key=>before[key]!==after[key]);
   check('Only styles.css runtime hash changed', changed.length===1 && changed[0]==='styles.css');
   check('Exact baseline prefix and approved CSS bytes applied', fs.readFileSync('styles.css').equals(promoted));
-  const response = await fetch('http://127.0.0.1:5173/styles.css?gui-compact-promotion='+Date.now(), {cache:'no-store'});
+  // Promotion receipt against the owner's live server: opt-in only (BIPX_ALLOW_LIVE_5173=1), never a default.
+  const response = await fetch(assertNotLiveServer('http://127.0.0.1:5173/styles.css?gui-compact-promotion='+Date.now(), 'Promotion receipt'), {cache:'no-store'});
   report.http5173 = {status:response.status, sha256:sha(Buffer.from(await response.arrayBuffer()))};
   check('5173 serves exact promoted CSS without restart', report.http5173.status===200 && report.http5173.sha256===sha(promoted));
   server = await localServer(); protocol = await launchProtocolServer('compact-promoted', spawnFixture);

@@ -1,8 +1,9 @@
+import { suiteUrl } from './quality-target.mjs';
 import fs from "node:fs";
 import path from "node:path";
 import { chromium, browserLaunchOptions, waitForRuntimeAssets, attachQualityTelemetry, evidenceDir } from "./quality-browser.mjs";
 
-const base = new URL(process.argv[2] || "http://127.0.0.1:5173/");
+const base = new URL(await suiteUrl("/"));
 if (!["127.0.0.1", "localhost", "[::1]"].includes(base.hostname)) throw new Error("Browser multiplayer verification requires isolated localhost");
 base.searchParams.set("ws", `ws://${base.host}/ws`);
 base.searchParams.set("room", `qa-browser-${Date.now()}`);

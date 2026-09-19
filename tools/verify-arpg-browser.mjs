@@ -1,3 +1,4 @@
+import { acquireGpuLock } from './quality-gpu-lock.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -5,9 +6,7 @@ import assert from 'node:assert/strict';
 import { getClassSkills } from '../src/combat/class-skills.mjs';
 import { chromium, attachQualityTelemetry, waitForRuntimeAssets, evidenceDir } from './quality-browser.mjs';
 import { localServer } from './quality-isolated-server.mjs';
-const lock='/tmp/bipx-arpg-gpu.lock',token=crypto.randomUUID();
-try { fs.mkdirSync(lock); } catch { console.log('GPU occupied; no browser launched'); process.exit(75); }
-fs.writeFileSync(path.join(lock,'owner.json'),JSON.stringify({owner:'combat',pid:process.pid,token,created:new Date().toISOString()}));
+const gpu=await acquireGpuLock({owner:'combat'}); // shared reservation: waits (2 s retries, 25 min) or inherits the runner's lease
 let server,browser;const results=[];
 try {
  server=await localServer();
@@ -61,7 +60,7 @@ try {
  }
 }finally{
  await browser?.close();await server?.stop();
- if(JSON.parse(fs.readFileSync(path.join(lock,'owner.json'))).token===token) fs.rmSync(lock,{recursive:true});
+ gpu.release();
  fs.writeFileSync(path.join(evidenceDir,'arpg-browser.json'),JSON.stringify({passed:results.length===4&&results.every(r=>r.passed&&!r.sourceChanged),results},null,2));
  console.log(JSON.stringify({evidenceDir,results:results.map(({character,passed,failure,sourceChanged})=>({character,passed,failure,sourceChanged}))}));
 }

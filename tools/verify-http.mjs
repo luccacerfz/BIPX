@@ -1,8 +1,9 @@
+import { suiteUrl } from './quality-target.mjs';
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 
-const base = new URL(process.argv[2] || "http://127.0.0.1:5173/");
+const base = new URL(await suiteUrl("/"));
 if (base.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(base.hostname)) {
   throw new Error("HTTP security verification runs only against an isolated localhost server");
 }
