@@ -1,9 +1,12 @@
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {moduleUrl,sha256} from './class-skill-vfx-support.mjs';
+// Default target is the shipped runtime in src/vfx. VFX_SOURCE=snapshot re-runs the frozen concentric-composition candidates under
+// assets/vfx/source-history (VFX_OVERLAP_FIX=1 selects composition-v2-overlap): historical evidence only, not the game that ships.
 const base='assets/vfx/source-history/cannon-concentric-staging-20260919/'+(process.env.VFX_OVERLAP_FIX?'composition-v2-overlap':'composition-v1');
+const candidate=process.env.VFX_SOURCE==='snapshot'?`${base}/candidate`:process.env.VFX_SOURCE||'src/vfx';
 const THREE=await import(await moduleUrl('vendor/three/three.module.js'));
-const {createClassSkillVfx}=await import(await moduleUrl(`${base}/candidate/class-skill-vfx.js`));
+const {createClassSkillVfx}=await import(await moduleUrl(`${candidate}/class-skill-vfx.js`));
 const scene=new THREE.Scene(),vfx=createClassSkillVfx({THREE,scene}),camera=new THREE.PerspectiveCamera(48,1.6,.1,220);camera.position.set(0,17,20);camera.lookAt(0,0,0);
 const fields=n=>Array.from({length:n},(_,i)=>({id:'field'+i,position:{x:(i%3)*.035,y:.08,z:Math.floor(i/3)*.02},radius:5,remaining:4,duration:5}));
 const count=()=>vfx.getStats().cannon.compositionFields,checks=[];
@@ -26,6 +29,6 @@ select({fields:fields(1)});assert.equal(count(),1);assert.ok(shader.every(u=>u.u
 select({fields:fields(1).map(f=>({...f,remaining:.05}))});assert.equal(count(),1);vfx.update(.1);vfx.prepareSceneDepth(camera);assert.equal(count(),0);checks.push('natural remaining expiry');
 select({fields:fields(8)});select({fields:[]});assert.equal(count(),0);checks.push('empty snapshot removes descriptors');
 select({fields:fields(8)});vfx.reset();assert.equal(count(),0);assert.ok(shader.every(u=>u.uGravityCount.value===0));if(process.env.VFX_OVERLAP_FIX)assert.ok(horizon.every(u=>u.uOverlapCount.value===0));checks.push('reset');vfx.dispose();assert.equal(scene.children.length,0);assert.equal(textureDisposed,false);texture.dispose();checks.push('dispose detaches owned nodes without freeing borrowed texture');
-const at=new Date().toISOString(),hashes=Object.fromEntries(await Promise.all((await fs.readdir(`${base}/candidate`)).filter(f=>f.endsWith('.js')).sort().map(async f=>[f,sha256(await fs.readFile(`${base}/candidate/${f}`))])));
-const file=`${base}/cpu-lifecycle-${at.replaceAll(':','-').replaceAll('.','-')}.json`;
-await fs.writeFile(file,JSON.stringify({at,checks,passed:true,hashes,scope:'CPU lifecycle/descriptor contract, no shader compile or artistic acceptance'},null,2)+'\n');console.log(JSON.stringify({file,passed:true,checks:checks.length}));
+const at=new Date().toISOString(),hashes=Object.fromEntries(await Promise.all((await fs.readdir(candidate)).filter(f=>f.endsWith('.js')).sort().map(async f=>[f,sha256(await fs.readFile(`${candidate}/${f}`))])));
+const reports=process.env.BIPX_EVIDENCE_DIR||'output/qa';await fs.mkdir(reports,{recursive:true});const file=`${reports}/cannon-composition-cpu-lifecycle-${at.replaceAll(':','-').replaceAll('.','-')}.json`; // never inside the tracked assets tree
+await fs.writeFile(file,JSON.stringify({at,target:candidate,checks,passed:true,hashes,scope:'CPU lifecycle/descriptor contract, no shader compile or artistic acceptance'},null,2)+'\n');console.log(JSON.stringify({file,passed:true,checks:checks.length}));
