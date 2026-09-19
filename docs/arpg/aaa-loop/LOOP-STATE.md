@@ -67,3 +67,13 @@ game_design 4,6 · animation 3,1 · art 3,7 · vfx 4,2 · combat_feel 4,6 · ui_
 - Bot natural 180 s: Aldric 4 mortes → 0 (302 abates, onda 4, nv 17); Lyra 3 mortes → 1 aos 2:47 (278 abates, nv 15); ~60 fps. Meta "2 de 3 runs" não demonstrada (1 run por classe). Lyra sem cura própria (50 s com 14–27 HP antes de morrer) — candidato a ajuste na onda de balanceamento final, depois de T2/T3.
 - Pendente de T1: `verify-progression-authority` (já vermelho na base; T8 conserta), checagem MP de dois clientes.
 - Conflito provável no merge do T2: `authority.mjs` (`xpToNext`, vida base em `syncProgression`).
+
+### Tick 6 — T1+T2+T3 integrados e rodando
+- `aaa-loop` @ 87625e0 = T1 (51cab8d) + T2 (68ac768) + T3 (87625e0). Conflitos resolvidos mantendo as três trilhas: `skillPower × skillMods` no cast; Bastião antes da armadura de classe (cliente e servidor); ganchos de abate para roubo de vida + Sede de Sangue; `applyServerAttackDamage` com combo/leech do T1 e depois `applyServerRelicAttack` do T3; funções legadas `update*Attack` removidas (módulo `arsenal.mjs`); `buildArpgState` devolve `{ relic, ...hud }` com `skill.upgrades`.
+- Paridade solo × servidor corrigida na integração: `state.build` do servidor agora lista as armas automáticas primeiro (nome evoluído quando evoluída), como o cliente. Contagens esperadas mudaram de forma explicável (+`autoWeapon` ×3 e `sealRitual` ×2): Lyra 28 elegíveis/76 concessões, Aldric 28.
+- Testes ajustados para derivar expectativas de `hero-power.mjs` (armadura/roubo de vida do T1 somam sob as cartas do T2; `verify-arsenal` lê o básico do módulo em vez de regex no `server.mjs`).
+- **8/8 suítes PASS** na integração: class-skills, class-skills-server, progression-parity, hero-power, hero-power-server, skill-upgrades, skill-upgrades-server, arsenal.
+- Smoke no browser (bot de input real, 120 s por classe, `output/qa/aaa-loop/integration/evidence/i1-*`): **0 erros de página/console**, 0 mortes (antes 3–4), Aldric 183 abates/onda 3/nv 12/vida mín. 74%, Lyra 178 abates/onda 3/nv 9/vida mín. 100%, 60 fps (mín. 58,6). Observação de balanceamento: os primeiros 2 min da Lyra ficaram sem risco nenhum — reavaliar na onda de balanceamento com runs longas.
+- 5173 local caiu com a interrupção da sessão; religado como tarefa em background monitorada, mesmo modo isolado (`LEADERBOARD_FILE=/private/tmp/bipx-aaa-local-leaderboard.json`, Supabase desligado), servindo a branch integrada.
+- Retomados por SendMessage (máx. 3 simultâneos): T7 gate JEF, T8 suítes (com `git merge aaa-loop` antes), T5 crítica visual (agora sobre o build integrado, porta 5341).
+- **Produção continua no v5** (`main` @ 7ea3d6a). Publicar a integração exige ok do usuário.
