@@ -7,6 +7,10 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { evidenceDir } from './quality-browser.mjs';
+import { HERO_PROFILES, INCOMING } from '../src/combat/hero-power.mjs';
+// hero-power contract: the target is Aldric, so every landed hit passes through class armor (percent, then flat plate),
+// and swarm melee respects the real-time hit-grace window, so damaging scenarios are spaced beyond it.
+const armored = amount => Math.max(amount * INCOMING.minimumTaken, amount * (1 - HERO_PROFILES.warrior.mitigation) - HERO_PROFILES.warrior.plate);
 
 // Private child-process IPC fixture; no extra HTTP/WS command exists in the
 // product. This copy retains every production function and real WS broadcast.
@@ -85,12 +89,13 @@ try {
   assert.equal(started.state.state, 'playing');
   for (const type of ['zombie', 'runner']) {
     for (const scenario of ['impact', 'large-step', 'range', 'arc', 'freeze', 'death']) {
+      await wait(INCOMING.graceSeconds * 1000 + 40);
       const from = observer.messages.length;
       const result = await fixture(client, type, scenario);
       const start = result.snapshots[0], last = result.snapshots.at(-1);
       assert.equal(start.health, 200); assert.equal(start.strike.elapsed, 0); assert.equal(start.strike.impactTime, .46);
       const damages = scenario === 'impact' || scenario === 'large-step';
-      assert.equal(last.health, damages ? 200 - result.expectedDamage : 200, `${type}/${scenario}: wrong authoritative health`);
+      assert.equal(last.health, damages ? 200 - armored(result.expectedDamage) : 200, `${type}/${scenario}: wrong authoritative health`);
       if (scenario === 'impact') { assert.equal(result.snapshots[1].health, 200); assert.equal(result.snapshots[2].health, last.health); assert.equal(last.strike.active, false); }
       if (scenario === 'freeze') assert.equal(last.strike.active, false);
       if (scenario === 'death') assert.equal(last.exists, false);
