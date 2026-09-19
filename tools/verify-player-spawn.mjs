@@ -7,12 +7,13 @@ import * as physics from '../src/physics/contacts.mjs';
 import { getEnvironmentColliders, ENVIRONMENT_GROUND } from '../src/render/environment-layout.js';
 import { launchProtocolServer, connectProtocolClient, protocolMessage, startProtocolRun, closeProtocolClient } from './quality-protocol.mjs';
 import { spawnFixture as fixture } from './player-spawn-fixture.mjs';
+import { heroMaxHealth } from '../src/combat/hero-power.mjs'; // createInitialPlayerState reads the class max health from the shared module
 
 const source=fs.readFileSync('server.mjs','utf8');
 const report={createdAt:new Date().toISOString(),scope:'Literal CPU spawn/start fixtures plus real isolated WebSocket latejoin/restart/resume. Occupants and impossible giant body are explicitly synthetic, not natural gameplay.',checks:[],passed:false};
 const extract=name=>{const start=source.indexOf(`function ${name}(`),end=source.indexOf('\n}',start);assert.ok(start>=0&&end>start);return source.slice(start,end+2)};
 const world=physics.createCollisionWorld({colliders:getEnvironmentColliders(),bounds:ENVIRONMENT_GROUND});
-const ctx=vm.createContext({...physics,crypto,collisionWorld:world,playerBaseMaxHealth:200,serverCharacterProfiles:{warrior:{weapon:'katana'}},getPlayingClients:r=>[...r.clients.values()].filter(c=>c.state.state==='playing'&&c.state.health>0)});
+const ctx=vm.createContext({...physics,crypto,collisionWorld:world,heroMaxHealth,serverCharacterProfiles:{warrior:{weapon:'katana'}},getPlayingClients:r=>[...r.clients.values()].filter(c=>c.state.state==='playing'&&c.state.health>0)});
 vm.runInContext(['getSpawnPoint','getServerCrowdBodies','createInitialPlayerState'].map(extract).join('\n'),ctx);
 const overlaps=(point,bodies)=>Math.max(0,...bodies.map(b=>.64+b.radius-Math.hypot(point.x-b.x,point.z-b.z)));
 const clients=[];let server;

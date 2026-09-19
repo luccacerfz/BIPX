@@ -45,6 +45,8 @@
     "verify:protocol": "node tools/verify-protocol-robustness.mjs",
     "verify:progression": "node tools/verify-progression-authority.mjs",
     "verify:progression:parity": "node tools/verify-progression-parity.mjs",
+    "verify:hero-power": "node tools/verify-hero-power.mjs",
+    "verify:hero-power:server": "node tools/verify-hero-power-server.mjs",
     "verify:skills": "node tools/verify-class-skills.mjs",
     "verify:skills:server": "node tools/verify-class-skills-server.mjs",
     "verify:skills:browser": "node tools/verify-arpg-browser.mjs",

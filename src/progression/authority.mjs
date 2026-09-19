@@ -1,5 +1,8 @@
 // Server-owned per-run progression. Pure CPU module: callers supply only trusted
 // kill/tick/damage events; network clients can choose offered IDs or collect drops.
+import { heroMaxHealth, xpToNext as heroXpToNext } from '../combat/hero-power.mjs';
+import { SKILL_UPGRADES, SKILL_UPGRADE_WEIGHTS, EXHAUSTED_REWARD, isUpgradeForClass, getSkillMods } from './skill-upgrades.mjs';
+import { RELICS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, AUTO_WEAPONS, nextRelicDrop, getAutoWeaponLoadout } from '../combat/arsenal.mjs';
 export const DEFINITIONS = [
   ['damage', '+Dano', 'common', 'stat', 1, 6],
   ['cadence', '+Cadência', 'common', 'stat', 1, 5],
@@ -8,7 +11,7 @@ export const DEFINITIONS = [
   ['pickup', '+Raio de coleta', 'common', 'stat', 1, 5],
   ['maxHealth', '+Vida máxima', 'common', 'stat', 1, 4],
   ['projectile', '+Projétil extra', 'common', 'stat', 1, 3],
-  ['autoWeapon', 'Desbloquear arma automática', 'common', 'stat', 1, 2],
+  ['autoWeapon', 'Desbloquear arma automática', 'common', 'stat', 1, 3],
   ['soulMagnet', 'Ímã de Almas', 'rare', 'perk', 2, 2],
   ['ironBlood', 'Sangue de Ferro', 'rare', 'perk', 2, 3],
   ['bladeEcho', 'Eco da Lâmina', 'rare', 'perk', 2, 2],
@@ -19,14 +22,16 @@ export const DEFINITIONS = [
   ['cuttingMoon', 'Lua Cortante', 'legendary', 'perk', 10, 1],
   ['lastBreath', 'Último Fôlego', 'legendary', 'perk', 10, 1],
   ['slayerPact', 'Pacto do Exterminador', 'legendary', 'perk', 10, 1],
-].map(([id, label, rarity, kind, minLevel, maxStacks]) => Object.freeze({id, label, rarity, kind, minLevel, maxStacks, weight: rarity === 'common' ? 72 : undefined}));
+].map(([id, label, rarity, kind, minLevel, maxStacks]) => Object.freeze({id, label, rarity, kind, minLevel, maxStacks, weight: rarity === 'common' ? 72 : undefined}))
+  // Upgrades 2.0: class skill cards (kind 'skill'), class-filtered in available().
+  .concat(SKILL_UPGRADES.map(({id, label, rarity, kind, minLevel, maxStacks, classId, skillId}) => Object.freeze({id, label, rarity, kind, minLevel, maxStacks, weight: undefined, classId, skillId})));
 const byId = new Map(DEFINITIONS.map(d => [d.id, d]));
 const rarityRank = {common: 0, rare: 1, epic: 2, legendary: 3};
 const weights = {common: 88, rare: 7, epic: 3.2, legendary: .35};
 const bossWeights = {rare: 86, epic: 13, legendary: 1};
 const copy = value => structuredClone(value);
 const safeInt = value => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-export const xpToNext = level => 10 + level * 7 + Math.floor(level ** 1.35);
+export const xpToNext = heroXpToNext; // Pacing lives in hero-power.mjs, shared with the solo client.
 export function levelFromXp(total) {
   let xp = safeInt(total), level = 1;
   while (xp >= xpToNext(level)) { xp -= xpToNext(level); level++; }
@@ -36,15 +41,16 @@ export function createProgression(state, {random = Math.random} = {}) {
   const p = {runId: state.runId, character: state.character, xpTotal: 0,
     level: 1, xp: 0, xpToNext: xpToNext(1), pendingLevelUps: 0,
     stacks: {}, offer: null, offerSerial: 0, rarityPity: 0,
-    bossKills: 0, revives: 0, weaponTimer: 0, prismStormRemaining: 0,
+    bossKills: 0, revives: 0, weaponTimer: 0, prismStormRemaining: 0, exhaustedRewards: 0,
     drops: new Map(), dropSerial: 0, dropCounter: 0, receipts: new Map(),
     random, clock: 0};
   syncProgression(state, p);
   return p;
 }
 export function available(p, definition, source = 'level') {
-  if (!definition || ['autoWeapon', 'sealRitual'].includes(definition.id)) return false;
+  if (!definition) return false;
   if (p.character === 'warrior' && ['projectile', 'prismStorm'].includes(definition.id)) return false;
+  if (!isUpgradeForClass(definition, p.character)) return false;
   if (source === 'bossChest' && rarityRank[definition.rarity] < 1) return false;
   if (!(source === 'bossChest' && definition.rarity !== 'legendary') && p.level < definition.minLevel) return false;
   return (p.stacks[definition.id] || 0) < definition.maxStacks;
@@ -59,20 +65,31 @@ function rollChoices(p, source) {
   const selected = [];
   while (selected.length < 3 && pool.length) {
     let nextPool = pool;
-    if (source === 'level' && p.rarityPity >= 8 && !selected.length) {
+    // The first card of every offer belongs to the class while any skill card is available (all are rare+,
+    // so it also satisfies the pity rule below).
+    const classPool = selected.length ? [] : pool.filter(d => d.kind === 'skill');
+    if (classPool.length) nextPool = classPool;
+    else if (source === 'level' && p.rarityPity >= 8 && !selected.length) {
       const rare = pool.filter(d => rarityRank[d.rarity] >= 1);
       if (rare.length) nextPool = rare;
     }
-    const item = pick(p, nextPool, d => source === 'bossChest' ? bossWeights[d.rarity] : d.weight ?? weights[d.rarity]);
+    const item = pick(p, nextPool, d => source === 'bossChest' ? bossWeights[d.rarity] : nextPool === classPool ? SKILL_UPGRADE_WEIGHTS[d.rarity] : d.weight ?? weights[d.rarity]);
     selected.push(item.id); pool = pool.filter(d => d !== item);
   }
   if (source === 'level') p.rarityPity = selected.some(id => rarityRank[byId.get(id).rarity] >= 1) ? 0 : p.rarityPity + 1;
   return selected;
 }
-function openOffer(p, source = 'level') {
+// Nothing left to offer: every surplus level-up (or boss chest) pays a heal and score instead of vanishing.
+function payExhausted(state, p, count) {
+  if (!(count > 0) || !(state.health > 0)) return;
+  state.health = Math.min(state.maxHealth, state.health + state.maxHealth * EXHAUSTED_REWARD.healFraction * count);
+  state.score = Math.max(0, Math.floor((state.score || 0) + EXHAUSTED_REWARD.score * count));
+  p.exhaustedRewards += count;
+}
+function openOffer(state, p, source = 'level') {
   if (p.offer) return false;
   const upgradeIds = rollChoices(p, source);
-  if (!upgradeIds.length) { if (source === 'level') p.pendingLevelUps = 0; return false; }
+  if (!upgradeIds.length) { if (source === 'level') { payExhausted(state, p, p.pendingLevelUps); p.pendingLevelUps = 0; } return false; }
   p.offer = {id: `${p.runId}:choice:${++p.offerSerial}`, source, upgradeIds};
   return true;
 }
@@ -85,6 +102,8 @@ export function stats(p) {
     pickupRadius: 2.35 + (s.pickup || 0) * 1.2,
     projectileBonus: p.character === 'warrior' ? 0 : s.projectile || 0};
 }
+// Trusted class skill mods for beginSkill/advanceSkills/getSkillHud. Derived from owned stacks only.
+export const skillMods = p => getSkillMods(p.stacks, p.character);
 export function attackStats(p) {
   const base = stats(p);
   return {damageMultiplier: base.damageMultiplier * (p.weaponTimer > 0 ? 1.4 : 1),
@@ -98,16 +117,27 @@ export function snapshot(p) {
     perks: Object.fromEntries(DEFINITIONS.filter(d => d.kind === 'perk' && p.stacks[d.id]).map(d => [d.id, p.stacks[d.id]])),
     damageReduction: Math.min(.48, (p.stacks.ironBlood || 0) * .12),
     critChance: Math.min(.42, (p.stacks.hunterEye || 0) * .08), critMultiplier: 1.8,
-    bossKills: p.bossKills, revives: p.revives, rarityPity: p.rarityPity,
+    bossKills: p.bossKills, revives: p.revives, rarityPity: p.rarityPity, exhaustedRewards: p.exhaustedRewards,
     weaponTimer: p.weaponTimer, prismStormRemaining: p.prismStormRemaining,
+    ...arsenalSnapshot(p),
     drops: [...p.drops.values()].map(d => ({...d, ttl: Math.max(0, d.expiresAt - p.clock)}))};
 }
+// Relic (temporary infusion of the basic attack) and automatic weapons are server-owned like every other stack.
+export const activeRelic = p => p.weaponTimer > 0 && Object.hasOwn(RELICS, p.relic) ? p.relic : null;
+export function arsenalSnapshot(p) {
+  const relic = activeRelic(p);
+  return {relic, relicDuration: relic ? RELICS[relic].duration : p.weaponTimer > 0 ? FALLBACK_INFUSION_SECONDS : 0, autoWeapons: getAutoWeaponLoadout(p.stacks)};
+}
+function rollRelic(p) { const next = nextRelicDrop(p.relicDropIndex, activeRelic(p)); p.relicDropIndex = next.index; return next.type; }
 export function syncProgression(state, p) {
   state.xpTotal = p.xpTotal; state.level = p.level;
   state.bestLevel = Math.max(state.bestLevel || 1, p.level);
-  state.maxHealth = 200 + (p.stacks.maxHealth || 0) * 18;
+  state.maxHealth = heroMaxHealth(p.character) + (p.stacks.maxHealth || 0) * 18;
   state.health = Math.min(state.maxHealth, state.health);
-  state.build = Object.entries(p.stacks).filter(([, n]) => n > 0).map(([id, n]) => `${byId.get(id).label} x${n}`).slice(0, 8);
+  // Rarest first (stable), so the eight slots of the ranking keep the cards that define the build.
+  // Same order as the client death summary: unlocked automatic weapons (evolved name when evolved), then cards rarest first.
+  const companions = Object.entries(getAutoWeaponLoadout(p.stacks)).filter(([, weapon]) => weapon.level > 0).map(([id, weapon]) => weapon.evolved ? AUTO_WEAPONS[id].evolution.label : AUTO_WEAPONS[id].label);
+  state.build = [...companions, ...Object.entries(p.stacks).filter(([, n]) => n > 0).sort(([a], [b]) => rarityRank[byId.get(b).rarity] - rarityRank[byId.get(a).rarity]).map(([id, n]) => `${byId.get(id).label} x${n}`)].slice(0, 8);
   state.progression = snapshot(p);
   return state;
 }
@@ -138,7 +168,7 @@ export function chooseUpgrade(state, p, message) {
   grant(state, p, message.upgradeId);
   if (offer.source === 'level') p.pendingLevelUps--;
   p.offer = null;
-  if (p.pendingLevelUps > 0) openOffer(p);
+  if (p.pendingLevelUps > 0) openOffer(state, p);
   remember(p, message, key); changed(state, p);
   return {ok: true, upgradeId: message.upgradeId};
 }
@@ -154,7 +184,7 @@ export function grantXp(state, p, amount) {
     if (p.stacks.prismStorm) p.prismStormRemaining = 8;
     if (p.stacks.cuttingMoon) effects.push({kind: 'cuttingMoon', radius: 9.5 * attackStats(p).areaMultiplier, damage: 12 * stats(p).damageMultiplier});
   }
-  if (p.pendingLevelUps > 0 && !p.offer) openOffer(p);
+  if (p.pendingLevelUps > 0 && !p.offer) openOffer(state, p);
   changed(state, p);
   return effects;
 }
@@ -206,17 +236,19 @@ export function rewardKill(state, p, monster, {boss = false} = {}) {
   if (boss) {
     createDrop(p, 'healthPotion', {x: monster.x + (p.random()-.5)*1.4, z: monster.z + (p.random()-.5)*1.4}, {amount:10,source:monster.type});
     createDrop(p, 'bossChest', {x: monster.x+1.2,z:monster.z+.8}, {bossType:monster.type,source:monster.type});
+    createDrop(p, 'weapon', {x: monster.x-1.2,z:monster.z+.8}, {type:BOSS_RELIC_DROPS[monster.type]||rollRelic(p),source:monster.type});
   } else {
     const chances = {zombie:.004,runner:.007,brute:.028,caster:.033,cowWalker:.009,cowCharger:.012,cowBrute:.038};
     if ([...p.drops.values()].filter(d=>d.kind==='perk').length < 4 && p.random() <= (chances[monster.type]??.015) + Math.min(.014,Math.max(0,p.level-5)*.0012)) {
       const perk = rollPerk(p,monster.type);
       if (perk) createDrop(p,'perk',monster,{perkId:perk.id,rarity:perk.rarity,source:monster.type});
     }
-    p.dropCounter += ['brute','caster'].includes(monster.type) ? 2 : 1;
+    // Kills charge the next relic only while no relic is infused: spikes alternate with plain combat.
+    if (!(p.weaponTimer > 0)) p.dropCounter += ['brute','caster'].includes(monster.type) ? 2 : 1;
     const threshold = Math.max(3,6-Math.floor(state.wave/5)-Math.floor(p.level/8));
     if (p.dropCounter >= threshold) {
       p.dropCounter = 0;
-      if (p.drops.size < 5) createDrop(p,'weapon',monster,{type:p.character==='warrior'?'katana':'pistol',source:monster.type});
+      if (p.drops.size < 5) createDrop(p,'weapon',monster,{type:rollRelic(p),source:monster.type});
     }
   }
   syncProgression(state,p);
@@ -231,17 +263,19 @@ export function collectDrop(state, p, message) {
   if (Math.hypot(state.x-drop.x,state.z-drop.z) >= drop.radius) return {ok:false,code:'out-of-range'};
   let upgradeId;
   if (drop.kind === 'bossChest') {
-    if (!openOffer(p,'bossChest')) return {ok:false,code:'choice-pending-or-exhausted'};
+    if (p.offer) return {ok:false,code:'choice-pending-or-exhausted'};
+    if (!openOffer(state,p,'bossChest')) payExhausted(state,p,1);
   } else if (drop.kind === 'healthPotion') state.health = Math.min(state.maxHealth,state.health+drop.amount);
-  else if (drop.kind === 'weapon') p.weaponTimer = 15;
+  else if (drop.kind === 'weapon') { p.relic = Object.hasOwn(RELICS, drop.type) ? drop.type : null; p.weaponTimer = p.relic ? RELICS[p.relic].duration : FALLBACK_INFUSION_SECONDS; }
   else if (drop.kind === 'perk') {
     if (available(p,byId.get(drop.perkId),'perkDrop')) { upgradeId = drop.perkId; grant(state,p,drop.perkId); }
     // Original rule: capped perk drops still disappear, without adding a stack.
     // A drop may cap a visible option. Issue a fresh offer ID and legal choices
     // so a stale click cannot spend a credit or leave the pending choice stuck.
     if (p.offer && p.offer.upgradeIds.some(id => !available(p,byId.get(id),p.offer.source))) {
-      const source=p.offer.source; p.offer=null; openOffer(p,source);
-      if (!p.offer && p.pendingLevelUps>0) openOffer(p);
+      const source=p.offer.source; p.offer=null;
+      if (!openOffer(state,p,source) && source==='bossChest') payExhausted(state,p,1);
+      if (!p.offer && p.pendingLevelUps>0) openOffer(state,p);
     }
   }
   p.drops.delete(drop.id); remember(p,message,key); changed(state,p);
@@ -253,6 +287,7 @@ export function tickProgression(state,p,dt) {
   const previousWeaponActive = p.weaponTimer > 0;
   const previousPrismActive = p.prismStormRemaining > 0;
   p.weaponTimer = Math.max(0,p.weaponTimer-dt);
+  if (!p.weaponTimer) p.relic = null;
   p.prismStormRemaining = Math.max(0,p.prismStormRemaining-dt);
   let expired = (previousWeaponActive && p.weaponTimer === 0) || (previousPrismActive && p.prismStormRemaining === 0);
   for (const [id,drop] of p.drops) if (drop.expiresAt<=p.clock) {p.drops.delete(id);expired=true;}

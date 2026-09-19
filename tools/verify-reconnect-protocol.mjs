@@ -6,6 +6,7 @@ import os from 'node:os';
 import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import crypto from 'node:crypto';
+import { HERO_PROFILES } from '../src/combat/hero-power.mjs'; // Lyra's class armor applies to every landed hit (saved.health below)
 const baseRoot=process.cwd();
 const candidate=process.argv[2]||'server.mjs';
 const output=process.env.BIPX_EVIDENCE_DIR||'output/qa/reconnect-protocol';
@@ -55,7 +56,7 @@ try{
  const reward=await msg(player,m=>m.type==='playerReward');assert.ok(reward.xpTotal>0);assert.equal(reward.totalKills,1);
  const damageStart=player.messages.length;send(watch,{type:'damagePlayer',targetId:player.id,amount:40});await delay(100);assert.equal(player.messages.slice(damageStart).filter(m=>m.type==='playerDamaged').length,0);check('Legacy damagePlayer packet cannot damage another client');
  await damage(player,40);await msg(player,m=>m.type==='playerDamaged'&&m.id===player.id);
- const saved={...player.authority};assert.equal(saved.health,160);const id=player.id,token=player.token,epoch=player.welcome.world.epoch;
+ const saved={...player.authority};assert.equal(saved.health,200-(40*(1-HERO_PROFILES.dwarf.mitigation)-HERO_PROFILES.dwarf.plate));const id=player.id,token=player.token,epoch=player.welcome.world.epoch;
  await close(player);player=await connect('resume','RenamedRequest',token);
  assert.equal(player.id,id);assert.equal(player.welcome.resumed,true);assert.equal(player.welcome.world.epoch,epoch);
  for(const key of ['health','maxHealth','score','kills','xpTotal','runId','stateVersion'])assert.equal(player.authority[key],saved[key],key);
@@ -64,7 +65,7 @@ try{
  check('30s contract resumes same identity, private credential, run, HP, score, kills, XP and world');
  let from=watch.messages.length;state(player,{score:0,kills:0,xpTotal:0,health:200,stateVersion:0});
  const stale=(await msg(watch,m=>m.type==='playerState'&&m.id===id,from)).state;
- assert.equal(stale.score,saved.score);assert.equal(stale.kills,saved.kills);assert.equal(stale.xpTotal,saved.xpTotal);assert.equal(stale.health,160);
+ assert.equal(stale.score,saved.score);assert.equal(stale.kills,saved.kills);assert.equal(stale.xpTotal,saved.xpTotal);assert.equal(stale.health,saved.health);
  check('Stale periodic state cannot roll back rewards or erase acknowledged damage');
  assert.ok(player.welcome.pendingRewards.some(p=>p.rewardId===reward.rewardId));
  send(player,{type:'rewardAck',rewardId:reward.rewardId});
@@ -73,14 +74,14 @@ try{
  check('Unacknowledged rewards replay on resume and disappear after rewardAck');
  from=watch.messages.length;state(player,{x:55,z:-55});const taken=await msg(watch,m=>m.type==='playerState'&&m.id===id,from);assert.ok(Math.hypot(taken.state.x,taken.state.z)<=55-.64+1e-4);
  check('Socket takeover keeps new transport alive after old close callback');
- for(let i=0;i<4;i++)await damage(player,40);
+ for(let i=0;i<Math.ceil(saved.health/(40*(1-HERO_PROFILES.dwarf.mitigation)-HERO_PROFILES.dwarf.plate));i++)await damage(player,40);
  await msg(player,m=>m.type==='playerDamaged'&&m.id===id&&m.state.state==='dead');
  from=watch.messages.length;state(player,{state:'playing',health:200,score:999999,stateVersion:0});
  const terminal=(await msg(watch,m=>m.type==='playerState'&&m.id===id,from)).state;assert.equal(terminal.state,'dead');assert.equal(terminal.health,0);assert.equal(terminal.score,saved.score);
  await close(player);player=await connect('resume','ResumeQA',token);assert.equal(player.authority.state,'dead');
  check('Death stays terminal across stale state and reconnect');
  const previousRun=player.authority.runId;send(player,{type:'startRun',requestId:'repeatable-start',state:{character:'warrior'}});await msg(player,m=>m.type==='runStarted');
- assert.notEqual(player.authority.runId,previousRun);assert.equal(player.authority.score,0);assert.equal(player.authority.kills,0);assert.equal(player.authority.xpTotal,0);assert.equal(player.authority.health,200);assert.equal(player.authority.character,'warrior');
+ assert.notEqual(player.authority.runId,previousRun);assert.equal(player.authority.score,0);assert.equal(player.authority.kills,0);assert.equal(player.authority.xpTotal,0);assert.equal(player.authority.health,HERO_PROFILES.warrior.maxHealth);assert.equal(player.authority.character,'warrior');
  const newRun=player.authority.runId;from=player.messages.length;send(player,{type:'startRun',requestId:'repeatable-start',state:{character:'warrior'}});await msg(player,m=>m.type==='runStarted',from);assert.equal(player.authority.runId,newRun);
  check('Repeated startRun requestId returns same run instead of creating another session');
  await delay(800);const ledger=JSON.parse(await fs.readFile(path.join(temp,'leaderboard.json'),'utf8'));const record=Object.values(ledger.players).find(r=>r.name==='ResumeQA');assert.equal(record.gamesPlayed,2);assert.equal(record.totalScore,saved.score);assert.equal(record.totalKills,saved.kills);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { HERO_PROFILES, HERO_BASE_DAMAGE_MULTIPLIER } from '../src/combat/hero-power.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { evidenceDir } from './quality-browser.mjs';
@@ -84,7 +85,9 @@ try {
   from = observer.messages.length;
   attack(warrior, { kind: 'katana', weapon: 'katana', aimX: positionFor(target, 2.5).aimX, aimZ: 0 });
   let hit = await message(observer, m => m.type === 'monsterHit' && m.sourceId === warrior.id && m.id === target.id, from);
-  assert.equal(hit.amount, 14);
+  // hero-power contract: base sword damage and the combo step are server-owned; the ack tells which step this swing was.
+  const swordStep = warrior.messages.findLast(m => m.type === 'attackResult');
+  assert.equal(hit.amount, HERO_PROFILES.warrior.basic.damage * HERO_BASE_DAMAGE_MULTIPLIER * (swordStep.finisher ? HERO_PROFILES.warrior.combo.finisher.damageMultiplier : 1));
   const reward = await message(warrior, m => m.type === 'playerReward');
   assert.ok(reward.totalKills >= 1);
   check('Warrior front-facing melee deals exactly 14 damage from server-owned base multiplier2 and preserves authoritative kill reward', { hit });
@@ -98,15 +101,18 @@ try {
   await wait(80);
   assert.ok(!observer.messages.slice(from).some(m => m.type === 'monsterHit' && m.id === target.id));
   check('Warrior melee cannot damage a target 12m away');
-  await wait(500);
+  // hero-power contract: bodies hugging Aldric (point-blank) and the third swing (360° finisher) hit behind the aim by design.
+  // So this case restarts the combo (pause > resetSeconds) and stands the target behind him beyond point-blank, inside reach.
+  await wait(HERO_PROFILES.warrior.combo.resetSeconds * 1000 + 100);
   target = await liveTarget(observer);
-  await setState(warrior, observer, { state: 'playing', ...positionFor(target, 2.5) });
+  await setState(warrior, observer, { state: 'playing', ...positionFor(target, 4) });
   from = observer.messages.length;
-  attack(warrior, { kind: 'katana', weapon: 'katana', aimX: -positionFor(target, 2.5).aimX, aimZ: 0 });
-  await message(observer, m => m.type === 'playerAttack' && m.id === warrior.id, from);
+  attack(warrior, { kind: 'katana', weapon: 'katana', aimX: -positionFor(target, 4).aimX, aimZ: 0 });
+  accepted = await message(observer, m => m.type === 'playerAttack' && m.id === warrior.id, from);
+  assert.equal(accepted.attack.finisher, false);
   await wait(80);
   assert.ok(!observer.messages.slice(from).some(m => m.type === 'monsterHit' && m.id === target.id));
-  check('Warrior cone does not hit a nearby target behind the aim');
+  check('Warrior cleave (not the finisher) does not hit a target behind the aim beyond point-blank');
 
   await wait(500);
   target = await liveTarget(observer);
@@ -130,7 +136,7 @@ try {
   from = observer.messages.length;
   attack(dwarf, { kind: 'pistol', weapon: 'pistol', aimX: positionFor(target, 8).aimX, aimZ: 0 });
   hit = await message(observer, m => m.type === 'monsterHit' && m.sourceId === dwarf.id && m.id === target.id, from);
-  assert.equal(hit.amount, 4);
+  assert.equal(hit.amount, HERO_PROFILES.dwarf.basic.damage * HERO_BASE_DAMAGE_MULTIPLIER); // one shot kills the opening zombie
   await message(observer, m => m.type === 'playerAttack' && m.id === dwarf.id, from);
   from = observer.messages.length;
   attack(dwarf, { kind: 'pistol', weapon: 'pistol' });
@@ -161,7 +167,7 @@ try {
   assert.equal(state.score, savedWarrior.score); assert.equal(state.kills, savedWarrior.kills); assert.equal(state.xpTotal, savedWarrior.xpTotal);
   check('Stale periodic state cannot resurrect dead warrior or roll back earned rewards');
   state = await startProtocolRun(warrior);
-  assert.equal(state.health, 200); assert.equal(state.score, 0); assert.notEqual(state.runId, savedWarrior.runId);
+  assert.equal(state.health, HERO_PROFILES.warrior.maxHealth); assert.equal(state.score, 0); assert.notEqual(state.runId, savedWarrior.runId);
   assert.equal(state.character, 'warrior'); assert.equal(state.weapon, 'katana');
   const late = await connect(`${base}&name=Late&character=dwarf`);
   const lateWarrior = late.welcome.players.find(p => p.id === warrior.id);

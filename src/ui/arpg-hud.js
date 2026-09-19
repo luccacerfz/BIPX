@@ -12,7 +12,7 @@ const classSkills = {
   dwarf: ['dwarf_explosive_cannon', 'dwarf_frost_shot', 'dwarf_gravity_shot'],
 };
 const nonnegative = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
-const label = (value, fallback) => typeof value === 'string' && value.trim() ? value.trim().slice(0, 100) : fallback;
+const label = (value, fallback, limit = 100) => typeof value === 'string' && value.trim() ? value.trim().slice(0, limit) : fallback;
 const number = (value) => Math.ceil(value).toLocaleString('pt-BR');
 function statusDescription(status) {
   const modifiers = [['damageMultiplier', 'Dano'], ['speedMultiplier', 'Movimento']]
@@ -43,6 +43,9 @@ export function normalizeSnapshot(value) {
     resource: Math.min(value.resource, value.maxResource), maxResource: value.maxResource,
     resourceLabel: label(value.resourceLabel, 'Recurso'),
     weapon: label(value.weapon, 'Arma básica'),
+    // Temporary relic infusing the basic attack (trusted combat state; presentation only).
+    relic: value.relic && typeof value.relic.id === 'string' && nonnegative(value.relic.remaining) && value.relic.remaining > 0
+      ? { id: value.relic.id.slice(0, 24), label: label(value.relic.label, 'Relíquia'), name: label(value.relic.name, 'Relíquia'), remaining: value.relic.remaining } : null,
     dead: value.dead, paused: value.paused,
     statuses: !value.dead && Array.isArray(value.statuses) ? value.statuses
       .filter(status => status && expected.includes(status.skillId ?? status.id) && typeof status.id === 'string'
@@ -55,7 +58,10 @@ export function normalizeSnapshot(value) {
       if (!skill || !['cost', 'cooldownRemaining', 'cooldownDuration'].every((key) => nonnegative(skill[key]))) return null;
       return { id, slot, name: label(skill.name, `Habilidade ${slot + 1}`), key: label(skill.key, String(slot + 1)),
         cost: skill.cost, cooldownRemaining: skill.cooldownRemaining, cooldownDuration: skill.cooldownDuration,
-        enabled: skill.enabled === true, description: label(skill.description, skillArt[id][3]) };
+        // Upgraded numbers lengthen the authoritative text (e.g. "6,4 m por 9,5 s"); never cut it mid-sentence.
+        enabled: skill.enabled === true, description: label(skill.description, skillArt[id][3], 180),
+        upgrades: Array.isArray(skill.upgrades) ? skill.upgrades.filter(entry => entry && typeof entry.label === 'string' && nonnegative(entry.stacks) && entry.stacks > 0 && nonnegative(entry.maxStacks))
+          .slice(0, 8).map(entry => ({ label: label(entry.label, 'Evolução', 40), stacks: Math.floor(entry.stacks), maxStacks: Math.floor(entry.maxStacks) })) : [] };
     }),
   };
 }
@@ -101,7 +107,7 @@ function mount() {
       <kbd class="arpg-skill__key">${slot + 1}</kbd><span class="arpg-skill__art">${icon('unknown')}</span><span class="arpg-skill__mask" aria-hidden="true"></span><span class="arpg-skill__timer" aria-hidden="true"></span><span class="arpg-skill__cost" aria-hidden="true">—</span><span class="sr-only arpg-skill__name">Habilidade ${slot + 1}</span>
     </button>`).join('')}</div><span class="arpg-actionbar__hint">Habilidades</span></div>${orb('resource', 'Recurso')}
     <div id="arpg-statuses" class="arpg-statuses" role="list" aria-label="Efeitos ativos" hidden></div>
-    <div class="arpg-tooltip" id="arpg-tooltip" role="tooltip" hidden><strong></strong><span class="arpg-tooltip__description"></span><span class="arpg-tooltip__meta"></span><span class="arpg-tooltip__effect" hidden></span><span class="arpg-tooltip__state"></span></div>
+    <div class="arpg-tooltip" id="arpg-tooltip" role="tooltip" hidden><strong></strong><span class="arpg-tooltip__description"></span><span class="arpg-tooltip__meta"></span><span class="arpg-tooltip__upgrades" hidden></span><span class="arpg-tooltip__effect" hidden></span><span class="arpg-tooltip__state"></span></div>
     <span id="arpg-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>`;
   root.addEventListener('mousemove', (event) => event.stopPropagation());
   root.addEventListener('mousedown', (event) => event.stopPropagation());
@@ -173,10 +179,13 @@ function render() {
   updateOrb('resource', snapshot?.resource, snapshot?.maxResource, snapshot?.resourceLabel ?? 'Recurso');
   root.querySelector('.arpg-class').textContent = snapshot ? snapshot.classId === 'warrior' ? 'Aldric' : 'Lyra' : 'Sobrevivente';
   root.querySelector('.arpg-run-status').textContent = !snapshot ? 'Aguardando estado' : snapshot.dead ? 'Derrotado' : snapshot.paused || dialog?.open ? 'Em pausa' : choosingUpgrade() ? 'Evolução' : '';
-  root.querySelector('.arpg-basic__name').textContent = snapshot?.weapon ?? 'Arma';
+  const relic = snapshot && !snapshot.dead ? snapshot.relic : null;
+  root.querySelector('.arpg-basic__name').textContent = relic ? relic.label : snapshot?.weapon ?? 'Arma';
+  root.querySelector('.arpg-basic').dataset.relic = relic ? relic.id : '';
+  root.querySelector('.arpg-basic small').textContent = relic ? `${Math.ceil(relic.remaining)}s` : 'Mouse / Espaço';
   const weaponId = snapshot?.classId === 'dwarf' ? 'rifle' : 'blade';
   setIconHref(root.querySelector('.arpg-basic use'), `./assets/ui/arpg/icons.svg#${weaponId}`);
-  root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
+  root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}${relic ? `, relíquia ${relic.name}, ${Math.ceil(relic.remaining)} segundos` : ''}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
   // Keep the upper weapon/buff status accurate for both classes.
   setIconHref(document.querySelector('.hud__stat--weapon use'), `#icon-${weaponId}`);
   for (const button of root.querySelectorAll('[data-arpg-slot]')) {
@@ -243,6 +252,10 @@ function renderTooltip() {
   tooltip.querySelector('.arpg-tooltip__description').textContent = skill?.description ?? '';
   tooltip.querySelector('.arpg-tooltip__meta').textContent = skill ? `${skillArt[skill.id][2]} · ${number(skill.cost)} de ${snapshot.resourceLabel} · Recarga ${skill.cooldownDuration.toLocaleString('pt-BR')} s` : 'Aguardando informações da habilidade';
   tooltip.querySelector('.arpg-tooltip__state').textContent = availability(skill)[1];
+  // Owned class cards that change this skill; cost, recharge and the description above already show their numbers.
+  const upgradesLine = tooltip.querySelector('.arpg-tooltip__upgrades');
+  upgradesLine.hidden = !skill?.upgrades.length;
+  upgradesLine.textContent = skill?.upgrades.length ? `Evoluções: ${skill.upgrades.map(entry => `${entry.label} ${entry.stacks}/${entry.maxStacks}`).join(' · ')}` : '';
   const status = snapshot?.statuses.find(item => item.skillId === skill?.id);
   const effect = tooltip.querySelector('.arpg-tooltip__effect');
   effect.hidden = !status;
