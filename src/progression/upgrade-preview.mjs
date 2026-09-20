@@ -91,9 +91,19 @@ function statPreview(id, before, after) {
     common.summary = `Dano básico: ${pt(beforeDamage)} → ${pt(afterDamage)} (+${pct(afterDamage / beforeDamage - 1)}).${temporaryNote(before)}`;
   } else if (id === 'cadence') {
     const beforeSeconds = basicCadence(before), afterSeconds = basicCadence(after);
-    common.before = { multiplier: before.stats.cooldownMultiplier, basicSeconds: beforeSeconds };
-    common.after = { multiplier: after.stats.cooldownMultiplier, basicSeconds: afterSeconds };
-    common.summary = `Ataque básico: ${unit(beforeSeconds, 's')} → ${unit(afterSeconds, 's')}. Habilidades usam recarga própria.`;
+    const beforeSkills = skillRows(before), afterSkills = skillRows(after);
+    common.before = {
+      multiplier: before.stats.cooldownMultiplier,
+      basicSeconds: beforeSeconds,
+      skillCooldowns: beforeSkills.map(row => row.cooldown),
+    };
+    common.after = {
+      multiplier: after.stats.cooldownMultiplier,
+      basicSeconds: afterSeconds,
+      skillCooldowns: afterSkills.map(row => row.cooldown),
+    };
+    const recargas = beforeSkills.map((row, i) => `${unit(row.cooldown, 's')} → ${unit(afterSkills[i].cooldown, 's')}`).join(' · ');
+    common.summary = `Ataque básico: ${unit(beforeSeconds, 's')} → ${unit(afterSeconds, 's')}. Recargas: ${recargas}.`;
   } else if (id === 'area') {
     const beforeSkills = skillRows(before), afterSkills = skillRows(after);
     const beforeRadius = beforeSkills.find(row => row.id === 'dwarf_explosive_cannon')?.radius;
@@ -162,7 +172,9 @@ function skillPreview(card, before, after) {
     result.before = { skillId: def.id, cost: beforeRow.cost, cooldown: beforeRow.cooldown, radius: beforeRow.radius, damage: beforeRow.damage };
     result.after = { skillId: def.id, cost: afterRow.cost, cooldown: afterRow.cooldown, radius: afterRow.radius, damage: afterRow.damage };
     if (mod === 'warCryDuration') result.summary = `Duração: ${unit(def.buffDuration + (beforeMods.warCryDuration || 0), 's')} → ${unit(def.buffDuration + (afterMods.warCryDuration || 0), 's')}.`;
-    else if (mod === 'dashRange') result.summary = `Alcance: ${unit(def.range + (beforeMods.dashRange || 0), 'm', 1)} → ${unit(def.range + (afterMods.dashRange || 0), 'm', 1)}.`;
+    else if (mod === 'dashRange') {
+      result.summary = `Alcance: ${unit(def.range + (beforeMods.dashRange || 0), 'm', 1)} → ${unit(def.range + (afterMods.dashRange || 0), 'm', 1)}. Dano do corte: ${pt(beforeRow.damage)} → ${pt(afterRow.damage)}.${temporaryNote(before)}`;
+    }
     else if (mod === 'dashDamage' || mod === 'cannonDamage') result.summary = `Dano: ${pt(beforeRow.damage)} → ${pt(afterRow.damage)}.${temporaryNote(before)}`;
     else if (mod === 'gravityDuration') result.summary = `Duração do campo: ${unit(def.fieldDuration + (beforeMods.gravityDuration || 0), 's')} → ${unit(def.fieldDuration + (afterMods.gravityDuration || 0), 's')}.`;
     else if (mod === 'frostHop') result.summary = `Recuo: ${unit(beforeMods.frostHop || 0, 'm', 1)} → ${unit(afterMods.frostHop || 0, 'm', 1)}.`;
