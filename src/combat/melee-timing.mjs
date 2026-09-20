@@ -107,6 +107,15 @@ export function isWithinMeleeArc(origin, target, attack) {
   return (dx * attack.directionX + dz * attack.directionZ) / Math.sqrt(distanceSq) >= attack.minDot;
 }
 
+// The game loop owns the phase, locked target and line of sight. This helper
+// centralizes the single impact edge consumed by damage and by visual observers.
+export function advanceMeleeAttackAtTarget(attack, dt, origin, target, { lineOfSight = true } = {}) {
+  const phase = advanceMeleeAttack(attack, dt);
+  const contact = phase.impact && Boolean(target) && isWithinMeleeArc(origin, target, attack) &&
+    Boolean(typeof lineOfSight === 'function' ? lineOfSight() : lineOfSight);
+  return { ...phase, contact };
+}
+
 export function serializeMeleeAttack(attack) {
   if (!attack) return null;
   return {

@@ -2,15 +2,22 @@ import { createCasterProjectilePresenter, withCasterProjectilePresentation } fro
 import { stepCasterCaller } from './combat/caster-caller-boundary.mjs';
 import { cancelCasterCast } from './combat/caster-cast.mjs';
 import { casterVisual, createCasterPresentationInbox } from './combat/caster-presentation.mjs';
+import { CASTER_PROJECTILE_PROFILE, canUseCasterRangedAttack, getCasterProjectileOrigin, getCasterProjectileSpec } from './combat/caster-projectile-profile.mjs';
 import * as THREE from "../vendor/three/three.module.js";
-import { createWorldLabelLayout } from "./ui/world-label-layout.js";
-import { createCinematicPipeline } from "./render/cinematic-pipeline.js";
-import { shareEnvironmentCutawayDepth } from "./render/environment-cutaway.js";
+import { createWorldLabelLayout, createWorldLabelLeaderLine } from "./ui/world-label-layout.js";
+import { readCssViewport, sameCssSize, pointerToNdc, createCssViewportResizer } from "./ui/css-viewport.js";
+import { bindViewportLifecycle } from "./ui/viewport-lifecycle.js";
+import { createCinematicPipeline, createShaderWarmupShadowStage, runShaderWarmupShadowStage } from "./render/cinematic-pipeline.js";
+import { shareEnvironmentCutawayDepth, getEnvironmentCutawayDepthWarmupIdentity } from "./render/environment-cutaway.js";
 import { createCemetery } from "./render/cemetery.js";
 import { createWorldAtmosphere } from "./render/atmosphere.js";
 import { loadAssetDressing } from "./render/asset-dressing.js";
 import { createAnimatedEnemies } from "./render/animated-enemies.js";
+import { getShaderWarmupMaterialSources } from "./render/shader-warmup-variants.mjs";
+import { createShaderWarmupState, startShaderWarmup, getShaderWarmupSnapshot, isShaderWarmupReady, createShaderWarmupResourceLifetime } from "./render/shader-warmup.mjs";
 import { createVisualMotion, sampleVisualMotion } from "./render/visual-motion.js";
+import { createRemotePresentation, stepRemotePresentation, disposeRemotePresentation, motionFromPlayerState, motionFromSkillActor, applyRemoteMotion } from "./network/remote-presentation.mjs";
+import { applyRemoteVisualStep } from "./network/remote-presentation-visual.mjs";
 import { loadEnemyLibrary } from "./assets/enemy-library.js";
 import { loadMonsterLibrary } from "./assets/monster-library.js";
 import { loadEnemyLodLibrary } from "./assets/enemy-lod-library.js";
@@ -22,7 +29,7 @@ import { getEnvironmentColliders, ENVIRONMENT_GROUND } from "./render/environmen
 import { getPursuitDirection } from "./physics/navigation.mjs";
 import { createSkillState, skillSnapshot, restoreSkillSnapshot, getClassSkills, getClassSkill, getSkillHud, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills } from "./combat/class-skills.mjs";
 import { createClassSkillVfx } from "./vfx/class-skill-vfx.js";
-import { createCombatVfx } from "./vfx/combat-vfx.js";
+import { createCombatVfx, createWeaponHeatMaterialVariant } from "./vfx/combat-vfx.js";
 import { createHazardVfx } from "./vfx/hazard-vfx.js";
 import { createElementalVfx } from "./vfx/elemental-vfx.js";
 import { createArsenalVfx } from "./vfx/arsenal-vfx.js";
@@ -30,7 +37,7 @@ import { RELICS, RELIC_IDS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, AUTO_WE
 import { emitProjectileCast, emitProjectileTrail, emitProjectileImpact } from "./vfx/elemental-projectiles.js";
 import { createLocalLeaderboard } from "./progression/local-leaderboard.mjs";
 import { SKILL_UPGRADES, SKILL_UPGRADE_WEIGHTS, EXHAUSTED_REWARD, isUpgradeForClass, getSkillMods, describeSkillUpgrade, getSkillUpgradeTag, getSkillUpgradeIcon, getOwnedSkillUpgrades } from "./progression/skill-upgrades.mjs";
-import { MAX_HEALTH_UPGRADE } from "./progression/authority.mjs";
+import { MAX_HEALTH_UPGRADE, replaceRelic, formatRelicEchoHud, mirrorRelicEcho } from "./progression/authority.mjs";
 import { deriveUpgradePreview, deriveUpgradeSnapshot } from "./progression/upgrade-preview.mjs";
 import { upgradePreviewTransientSignature, shouldRefreshUpgradePreviewTransient } from "./progression/upgrade-preview-transient.mjs";
 import { getSkillDamageTaken, creditSkillKill } from "./combat/class-skills.mjs";
@@ -38,7 +45,7 @@ import { paintBossLabel } from "./ui/boss-label-painter.js";
 import { createSampleBank } from "./audio/sample-bank.js";
 import { RIFLE_COLLISION_HEIGHT, enemyProjectileCollisionHeight } from "./combat/collision-heights.mjs";
 import { segmentCircleContact } from "./combat/projectile-sweep.js";
-import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc, meleeHitReach, meleeRawDamage, meleeLosClear, restoreMeleeAttack } from "./combat/melee-timing.mjs";
+import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttackAtTarget, meleeHitReach, meleeRawDamage, meleeLosClear, restoreMeleeAttack } from "./combat/melee-timing.mjs";
 import { publishMeleeTelegraph, meleeTelegraphEvent } from "./combat/melee-telegraph-handoff.mjs";
 import { proceduralMeleePose, meleeVisualHasProceduralPhase } from "./combat/melee-visual-phase.mjs";
 import { createCowMonsterMesh as buildCowMonsterMesh, applyCowArmPose } from "./render/cow-monster-mesh.js";
@@ -162,6 +169,18 @@ let arsenalVfx = null;
 let cemetery = null;
 let worldAtmosphere = null;
 let heroVisual = null;
+const shaderWarmupHolder = new THREE.Group();
+const warmedHeroVisuals = new Map();
+const heroVisualLoads = new Map();
+const shaderWarmupState = createShaderWarmupState();
+const shaderWarmupOwnedRoots = [];
+const shaderWarmupOwnedCleanupFunctions = [];
+const shaderWarmupResourceLifetime = createShaderWarmupResourceLifetime(shaderWarmupState, disposeTransientShaderWarmupResources);
+let shaderWarmupPreparationPromise = null;
+let shaderWarmupPreparationGeneration = 0;
+let shaderWarmupPreparationDeadline = null;
+let gameVisualsDeadline = null;
+let gameVisualsSettled = false;
 const heroVisualMotion = createVisualMotion();
 let animatedEnemies = null;
 let enemyLodLibrary = null;
@@ -208,6 +227,8 @@ const perfOverlayEnabled = queryParams.get("perf") === "1";
 const perfOverlay = perfOverlayEnabled ? createPerfOverlay() : null;
 let runtimeReady = false;
 
+const cssViewportSize = readCssViewport(window);
+const appliedCssViewportSize = { width: 0, height: 0 };
 setViewportCssVars();
 applyMobileLayoutState();
 
@@ -801,7 +822,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(getGameConfig("fog.color"));
 scene.fog = new THREE.FogExp2(getGameConfig("fog.color"), getGameConfig("fog.density"));
 
-const camera = new THREE.PerspectiveCamera(getGameConfig("camera.fov"), window.innerWidth / window.innerHeight, 0.1, 220);
+const camera = new THREE.PerspectiveCamera(getGameConfig("camera.fov"), cssViewportSize.width / cssViewportSize.height, 0.1, 220);
 camera.position.set(0, getCameraHeight(), getCameraDepth());
 scene.userData.editorRefs = {
   camera,
@@ -819,13 +840,34 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.localClippingEnabled = true; // Private corpse materials carry complementary clipping planes.
 canvas.textContent = '';
-renderer.setPixelRatio(getQualityPixelRatio());
-renderer.setSize(window.innerWidth, window.innerHeight);
+const rendererCssSize = { width: cssViewportSize.width, height: cssViewportSize.height };
+qualityManager.pixelRatio = getQualityPixelRatio();
+renderer.setPixelRatio(qualityManager.pixelRatio);
+renderer.setSize(cssViewportSize.width, cssViewportSize.height, false);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 applyQualitySettings(true);
 subscribeConfig(() => applyRuntimeConfig(true));
+const resizeRenderer = createCssViewportResizer({
+  sourceWindow: window,
+  getCurrentSize: () => cssViewportSize,
+  writeCssSize: setViewportCssVars,
+  afterResize: applyMobileLayoutState,
+  onSizeChange: () => {
+    setRendererCssSize(cssViewportSize.width, cssViewportSize.height);
+    applyRuntimeConfig(false);
+    applyQualitySettings(true);
+  },
+});
+const viewportLifecycle = bindViewportLifecycle({
+  sourceWindow: window,
+  canvas,
+  getCssSize: () => cssViewportSize,
+  onViewportResize: resizeRenderer,
+  onCssBox: applyObservedCssBox,
+  onDprChange: handleDevicePixelRatioChange,
+});
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
@@ -1513,6 +1555,7 @@ const player = {
   weapon: playableCharacters[selectedCharacter].weaponId,
   weaponTimer: 0,
   relic: null,
+  relicEcho: null,
   axeSpinTimer: 0,
   upgradeStats: createDefaultUpgradeStats(),
   upgradeStacks: {},
@@ -1569,7 +1612,8 @@ const game = {
 runtimeReady = true;
 scene.add(player.mesh);
 buildWorld();
-cinematicPipeline = createCinematicPipeline({ THREE, renderer, adaptDepthMaterial: shareEnvironmentCutawayDepth });
+cinematicPipeline = createCinematicPipeline({ THREE, renderer, adaptDepthMaterial: shareEnvironmentCutawayDepth,
+  getDepthWarmupIdentity: getEnvironmentCutawayDepthWarmupIdentity });
 classSkillState = createSkillState(player.character);
 combatVfx = createCombatVfx({ THREE, scene, quality: qualityManager.level, reducedMotion: presentationPreferences.reducedMotion });
 combatVfx.setSoulSource(player.mesh);
@@ -1587,6 +1631,33 @@ window.addEventListener('bipx:arpg-ready', () => publishArpgState());
 
 window.__bipxCharacters = { getState: getCharacterState, select: selectCharacter };
 const gameVisualsReady = loadGameVisuals();
+gameVisualsDeadline = setTimeout(() => {
+  if (!gameVisualsSettled) failStartupShaderWarmup(new Error('game visual assets timed out after 90 seconds'));
+}, 90_000);
+void gameVisualsReady.then(() => {
+  clearTimeout(gameVisualsDeadline);
+  gameVisualsDeadline = null;
+  gameVisualsSettled = true;
+  maybeBeginStartupShaderWarmup();
+}, error => {
+  clearTimeout(gameVisualsDeadline);
+  gameVisualsDeadline = null;
+  gameVisualsSettled = true;
+  failStartupShaderWarmup(error);
+});
+window.addEventListener('pagehide', event => {
+  // pagehide can enter the back/forward cache; retain warmed objects if this
+  // document is suspended and may be restored instead of actually exiting.
+  if (event.persisted) return;
+  clearTimeout(gameVisualsDeadline);
+  clearTimeout(shaderWarmupPreparationDeadline);
+  shaderWarmupPreparationGeneration += 1;
+  for (const visual of new Set(warmedHeroVisuals.values())) visual.dispose();
+  warmedHeroVisuals.clear();
+  shaderWarmupResourceLifetime.pagehide(event);
+  animatedEnemies?.disposeShaderWarmupRoots?.();
+  shaderWarmupHolder.clear();
+});
 cinematicPipeline.setQuality(qualityManager.level);
 cinematicPipeline.setReducedMotion(presentationPreferences.reducedMotion);
 window.__bipxPresentation = {
@@ -1713,10 +1784,6 @@ playerNameInput?.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("resize", resizeRenderer, { passive: true });
-window.addEventListener("orientationchange", resizeRenderer, { passive: true });
-window.visualViewport?.addEventListener("resize", resizeRenderer, { passive: true });
-window.visualViewport?.addEventListener("scroll", resizeRenderer, { passive: true });
 window.addEventListener('blur', () => {
   clearPlayerInput();
   if (!multiplayer.enabled) window.__bipxPresentation.setPaused(true);
@@ -1821,6 +1888,7 @@ upgradeOptionsElement?.addEventListener("click", (event) => {
 window.__zombieNightDebug = {
   getI5MpTrace: () => i5MpTrace.get(),
   getStartupWarmup: () => getStartupWarmupStats(),
+  getShaderWarmup: () => getShaderWarmupStats(),
   getVfxStats: () => combatVfx?.getStats(),
   getAttackVisualTrace: () => ({ calls: { ...attackVisualTrace.calls }, accepted: { ...attackVisualTrace.accepted } }),
   getClassSkillVfxStats: () => classSkillVfx?.getStats(),
@@ -1859,6 +1927,7 @@ window.__zombieNightDebug = {
     return {
       state: game.state,
       startupWarmup: getStartupWarmupStats(),
+      shaderWarmup: getShaderWarmupStats(),
       character: player.character,
       characterLoading,
       swordSwingRemaining,
@@ -2373,8 +2442,14 @@ function clearRunStartRejection() {
 }
 
 function showRunStartWarmupPending() {
-  const warmup = entityPools.startupWarmup;
-  if (runStartWarmupPresentation?.warmupStatus === warmup.status) return;
+  const pools = entityPools.startupWarmup;
+  const shaders = shaderWarmupState;
+  const failed = pools.status === 'failed' || shaders.status === 'failed';
+  const running = !failed && !(pools.status === 'ready' && shaders.status === 'ready');
+  const poolProgressBucket = pools.status === 'running' ? Math.floor(pools.processedItems / 32) : pools.processedItems;
+  const signature = `${pools.status}|${poolProgressBucket}|${shaders.status}|${shaders.completedCases}|${shaders.currentCase ?? ''}`;
+  if (pools.status === 'ready' && shaders.status === 'ready') { clearRunStartWarmupPending(); return; }
+  if (runStartWarmupPresentation?.warmupStatus === signature) return;
   if (!runStartWarmupPresentation) runStartWarmupPresentation = {
     title: messageTitle.textContent,
     kicker: messageKicker.textContent,
@@ -2389,20 +2464,35 @@ function showRunStartWarmupPending() {
     messageClassName: message.className,
   };
   message.dataset.startupWarmup = 'true';
-  messageKicker.textContent = warmup.status === 'failed' ? 'Preparação interrompida' : 'Preparando arena';
+  messageKicker.textContent = failed ? 'Preparação interrompida' : 'Preparando arena';
   messageTitle.textContent = 'BIPX';
   messageCopy.setAttribute('role', 'status');
-  messageCopy.textContent = warmup.status === 'failed'
-    ? 'A preparação da arena falhou. Tente recarregar.'
-    : 'Preparando a arena…';
-  currentPlayButtonLabel().textContent = warmup.status === 'failed' ? 'Recarregar' : 'Preparando a arena…';
+  const poolTotal = Number(pools.totalItems) || 0;
+  const shaderTotal = Number(shaders.totalCases) || 0;
+  const poolPct = poolTotal > 0 ? Math.min(100, Math.round(100 * (Number(pools.processedItems) || 0) / poolTotal)) : 0;
+  const shaderPct = shaderTotal > 0 ? Math.min(100, Math.round(100 * (Number(shaders.completedCases) || 0) / shaderTotal)) : 0;
+  const detail = pools.status !== 'ready'
+    ? (pools.status === 'running' ? `Preparando a arena… ${poolPct}%` : 'Preparando a arena…')
+    : shaders.status === 'preparing' && shaders.phase === 'catalogue'
+      ? 'Preparando os visuais…'
+      : shaders.status === 'preparing'
+      ? 'Carregando os visuais…'
+      : shaders.status === 'running'
+        ? `Preparando os visuais… ${shaderPct}%`
+        : 'Quase pronto…';
+  const diagnostic = `pools:${pools.status}:${pools.processedItems}/${pools.totalItems};shaders:${shaders.status}:${shaders.completedCases}/${shaders.totalCases}:${shaders.phase ?? ''};error:${shaders.error || pools.error || ''}`;
+  message.dataset.startupWarmupDiagnostic = diagnostic;
+  messageCopy.textContent = failed
+    ? 'Não foi possível preparar a arena. Recarregue para tentar novamente.'
+    : detail;
+  currentPlayButtonLabel().textContent = failed ? 'Recarregar' : 'Aguarde…';
   playButton.setAttribute('aria-describedby', 'message-copy');
-  playButton.setAttribute('aria-disabled', warmup.status === 'running' ? 'true' : 'false');
-  playButton.setAttribute('aria-busy', warmup.status === 'running' ? 'true' : 'false');
-  playButton.disabled = warmup.status === 'running';
-  message.setAttribute('aria-busy', warmup.status === 'running' ? 'true' : 'false');
+  playButton.setAttribute('aria-disabled', running ? 'true' : 'false');
+  playButton.setAttribute('aria-busy', running ? 'true' : 'false');
+  playButton.disabled = running;
+  message.setAttribute('aria-busy', running ? 'true' : 'false');
   runStartWarmupPresentation.written = {
-    warmupStatus: warmup.status,
+    warmupStatus: signature,
     title: messageTitle.textContent,
     kicker: messageKicker.textContent,
     copy: messageCopy.textContent,
@@ -2414,9 +2504,9 @@ function showRunStartWarmupPending() {
     ariaBusy: playButton.getAttribute('aria-busy'),
     messageBusy: message.getAttribute('aria-busy'),
   };
-  runStartWarmupPresentation.warmupStatus = warmup.status;
+  runStartWarmupPresentation.warmupStatus = signature;
   window.dispatchEvent(new CustomEvent('bipx:startup-warmup-state'));
-  if (warmup.status === 'failed') {
+  if (failed) {
     // The reload action is the one deliberate exception: keep solo retry
     // available while presentation.js keeps multiplayer unavailable.
     playButton.disabled = false;
@@ -2450,10 +2540,17 @@ function clearRunStartWarmupPending() {
   // Character selection owns button readiness. Restore the pre-warmup disabled
   // state only while that selection is still valid; otherwise presentation.js
   // remains authoritative for the current loading/error state.
-  if (!characterLoading && readyCharacters.has(selectedCharacter) && playButton.disabled === written.disabled && playButton.getAttribute('aria-disabled') === written.ariaDisabled && playButton.getAttribute('aria-busy') === written.ariaBusy) {
-    playButton.disabled = Boolean(previous.disabled);
-    if (previous.ariaDisabled === null) playButton.removeAttribute('aria-disabled'); else playButton.setAttribute('aria-disabled', previous.ariaDisabled);
-    if (previous.ariaBusy === null) playButton.removeAttribute('aria-busy'); else playButton.setAttribute('aria-busy', previous.ariaBusy);
+  if (!characterLoading && readyCharacters.has(selectedCharacter)) {
+    if (playButton.disabled === written.disabled && playButton.getAttribute('aria-disabled') === written.ariaDisabled && playButton.getAttribute('aria-busy') === written.ariaBusy) {
+      playButton.disabled = Boolean(previous.disabled);
+      if (previous.ariaDisabled === null) playButton.removeAttribute('aria-disabled'); else playButton.setAttribute('aria-disabled', previous.ariaDisabled);
+      if (previous.ariaBusy === null) playButton.removeAttribute('aria-busy'); else playButton.setAttribute('aria-busy', previous.ariaBusy);
+    }
+    // The presentation consumer may have changed disabled while warmup owned
+    // the label. Once the selected character is ready, never leave stale ARIA
+    // that describes a different state than the actual control.
+    playButton.setAttribute('aria-disabled', String(playButton.disabled));
+    playButton.setAttribute('aria-busy', 'false');
   }
   window.dispatchEvent(new CustomEvent('bipx:startup-warmup-state'));
 }
@@ -2479,13 +2576,18 @@ function showRunStartRejection() {
 }
 
 function startGame({ allowWarmupRetry = false } = {}) {
-  if (entityPools.startupWarmup.status === 'failed') {
+  if (entityPools.startupWarmup.status === 'failed' || shaderWarmupState.status === 'failed') {
     if (allowWarmupRetry) window.location.reload();
     return false;
   }
   if (characterLoading || !heroVisual || !readyCharacters.has(selectedCharacter)) return false;
   if (pendingMultiplayerStart) return false;
   if (!prewarmEntityPools()) {
+    showRunStartWarmupPending();
+    return false;
+  }
+  if (!isShaderWarmupReady(shaderWarmupState)) {
+    maybeBeginStartupShaderWarmup();
     showRunStartWarmupPending();
     return false;
   }
@@ -2523,6 +2625,7 @@ function startGame({ allowWarmupRetry = false } = {}) {
   player.weapon = playableCharacters[player.character].weaponId;
   player.weaponTimer = 0;
   player.relic = null;
+  player.relicEcho = null;
   arsenalState = createArsenalState(player.character);
   player.axeSpinTimer = 0;
   const requestedSpawn = getMultiplayerStartPosition();
@@ -2677,6 +2780,7 @@ function resetProgressionState() {
   player.pendingUpgradeChoices = [];
   player.pendingLevelUps = 0;
   player.nextOfferAt = 0;
+  player.relicEcho = null;
   renderUpgradeChoices();
 }
 
@@ -2721,12 +2825,44 @@ function getDefaultQualityLevel() {
   return "high";
 }
 
-function setViewportCssVars() {
-  const viewport = window.visualViewport;
-  const width = viewport?.width || window.innerWidth || 1280;
-  const height = viewport?.height || window.innerHeight || 720;
-  document.documentElement.style.setProperty("--app-width", `${width}px`);
-  document.documentElement.style.setProperty("--app-height", `${height}px`);
+function setViewportCssVars(size = readCssViewport(window)) {
+  const widthChanged = !sameCssSize(cssViewportSize, size);
+  cssViewportSize.width = size.width;
+  cssViewportSize.height = size.height;
+  if (!sameCssSize(appliedCssViewportSize, size)) {
+    document.documentElement.style.setProperty("--app-width", `${size.width}px`);
+    document.documentElement.style.setProperty("--app-height", `${size.height}px`);
+    appliedCssViewportSize.width = size.width;
+    appliedCssViewportSize.height = size.height;
+  }
+  return widthChanged;
+}
+
+function setRendererCssSize(width, height) {
+  if (sameCssSize(rendererCssSize, { width, height })) return false;
+  rendererCssSize.width = width;
+  rendererCssSize.height = height;
+  renderer.setSize(width, height, false);
+  return true;
+}
+
+function updateCameraProjectionFromCssViewport() {
+  if (!(cssViewportSize.width > 0 && cssViewportSize.height > 0)) return;
+  camera.aspect = cssViewportSize.width / cssViewportSize.height;
+  camera.updateProjectionMatrix();
+}
+
+function applyObservedCssBox(size) {
+  if (!setViewportCssVars(size)) return;
+  setRendererCssSize(size.width, size.height);
+  updateCameraProjectionFromCssViewport();
+  applyMobileLayoutState();
+  applyQualitySettings(true);
+}
+
+function handleDevicePixelRatioChange() {
+  applyMobileLayoutState();
+  applyQualitySettings(true);
 }
 
 function applyMobileLayoutState() {
@@ -2825,11 +2961,12 @@ function applyQualitySettings(force = false) {
     qualityManager.effectBudget = Math.min(qualityManager.effectBudget, mobileTuned ? 16 : 24);
   }
 
-  if (force || Math.abs(pixelRatio - qualityManager.pixelRatio) > 0.01) {
+  const pixelRatioChanged = Math.abs(pixelRatio - qualityManager.pixelRatio) > 0.01;
+  if (pixelRatioChanged) {
     qualityManager.pixelRatio = pixelRatio;
     renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
   }
+  if (force || pixelRatioChanged) setRendererCssSize(cssViewportSize.width, cssViewportSize.height);
 
   renderer.shadowMap.enabled = qualityManager.level === "high" || (qualityManager.level === "medium" && !mobileTuned);
   combatVfx?.setQuality(qualityManager.level);
@@ -3000,7 +3137,9 @@ function stepEntityPoolWarmup() {
   });
   if (result.done) {
     entityPools.prewarmed = true;
-    clearRunStartWarmupPending();
+    maybeBeginStartupShaderWarmup();
+  } else if (warmup.status === 'running') {
+    showRunStartWarmupPending();
   }
 }
 
@@ -3020,6 +3159,369 @@ function getStartupWarmupStats() {
   };
 }
 
+function getShaderWarmupStats() {
+  return { ...getShaderWarmupSnapshot(shaderWarmupState),
+    parallelCompileExtension: shaderWarmupState.parallelCompileExtension ?? null,
+    variantCount: shaderWarmupState.variantCount ?? 0,
+    shadowMaterialVariantCount: shaderWarmupState.shadowMaterialVariantCount ?? 0,
+    depthVariantCount: shaderWarmupState.depthVariantCount ?? 0,
+    skillCaseCount: shaderWarmupState.skillCaseCount ?? 0,
+    retainedProgramResources: shaderWarmupResourceLifetime.retained,
+    retainedOwnedRootCount: shaderWarmupResourceLifetime.retained ? shaderWarmupOwnedRoots.length : 0,
+    retainedCleanupOwnerCount: shaderWarmupResourceLifetime.retained ? shaderWarmupOwnedCleanupFunctions.length : 0,
+    retainedUntil: shaderWarmupResourceLifetime.retained ? 'non-persisted pagehide (after any BFCache restore)' : null,
+  };
+}
+
+function warmupTextHash(value) {
+  let hash = 0x811c9dc5;
+  for (const character of String(value ?? '')) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function shaderWarmupTextureShape(texture) {
+  if (!texture) return '-';
+  return [texture.mapping, texture.channel, texture.colorSpace, texture.type,
+    texture.isCubeTexture ? 'cube' : '', texture.isArrayTexture ? 'array' : '',
+    texture.isVideoTexture ? 'video' : ''].join(':');
+}
+
+function shaderWarmupMaterialShape(material) {
+  if (!material) return 'none';
+  let customKey = '';
+  try { customKey = material.customProgramCacheKey?.() ?? ''; }
+  catch (error) { customKey = 'custom-key-error:' + error.message; }
+  const maps = ['map', 'alphaMap', 'aoMap', 'bumpMap', 'normalMap', 'displacementMap', 'emissiveMap',
+    'metalnessMap', 'roughnessMap', 'envMap', 'lightMap', 'specularMap', 'gradientMap', 'matcap',
+    'clearcoatMap', 'clearcoatRoughnessMap', 'clearcoatNormalMap', 'sheenColorMap', 'sheenRoughnessMap',
+    'iridescenceMap', 'iridescenceThicknessMap', 'transmissionMap', 'thicknessMap', 'anisotropyMap',
+    'specularColorMap', 'specularIntensityMap'];
+  const features = maps.map(key => key + '=' + shaderWarmupTextureShape(material[key])).join(',');
+  const shaderCode = material.isShaderMaterial || material.isRawShaderMaterial
+    ? warmupTextHash(material.vertexShader) + ':' + warmupTextHash(material.fragmentShader) : '';
+  return [material.type, customKey, shaderCode, JSON.stringify(material.defines ?? {}), material.side,
+    material.transparent, material.alphaTest, material.alphaHash, material.vertexColors, material.flatShading,
+    material.wireframe, material.wireframeLinewidth, material.fog, material.lights, material.toneMapped,
+    material.precision, material.glslVersion, material.normalMapType, material.alphaToCoverage,
+    material.premultipliedAlpha, material.dithering, material.blending, material.combine,
+    material.anisotropy, material.clearcoat, material.dispersion, material.iridescence, material.sheen,
+    material.transmission, material.thickness, material.index0AttributeName,
+    JSON.stringify(material.extensions ?? {}), material.clippingPlanes?.length ?? 0, features].join('|');
+}
+
+function shaderWarmupObjectShape(object) {
+  const geometry = object.geometry;
+  const attributes = geometry?.attributes ?? {};
+  const attributeShape = Object.keys(attributes).sort().map(name => {
+    const attribute = attributes[name];
+    return name + ':' + attribute.itemSize + ':' + (attribute.normalized ? 1 : 0) + ':' + (attribute.isInstancedBufferAttribute ? 1 : 0);
+  }).join(',');
+  const morph = geometry?.morphAttributes ?? {};
+  const morphShape = Object.keys(morph).sort().map(name => name + ':' + morph[name].length).join(',');
+  return [object.type, object.isSkinnedMesh ? 1 : 0, object.isInstancedMesh ? 1 : 0,
+    object.isBatchedMesh ? 1 : 0, object.isPoints ? 1 : 0, object.isLine ? 1 : 0,
+    object.isSprite ? 1 : 0, object.castShadow ? 1 : 0, object.receiveShadow ? 1 : 0,
+    object.isInstancedMesh && object.instanceColor ? 1 : 0,
+    object.isInstancedMesh && object.morphTexture ? 1 : 0,
+    attributeShape, morphShape].join('|');
+}
+
+async function collectShaderWarmupVariants(roots, { yieldControl = () => Promise.resolve(), chunkSize = 128,
+  maxObjects = 50_000, maxVariants = 512 } = {}) {
+  const variants = new Map();
+  const queue = [];
+  const visitedObjects = new Set();
+  let visited = 0;
+  const visit = (object, materialOverride = undefined, role = 'color') => {
+    const material = materialOverride ?? object?.material;
+    if (!object || !material || (!object.geometry && !object.isSprite)) return;
+    const materials = Array.isArray(material) ? material : [material];
+    const key = role + '::' + shaderWarmupObjectShape(object) + '::' + materials.map(shaderWarmupMaterialShape).join('&&');
+    if (!variants.has(key)) {
+      variants.set(key, { object, material, key, role });
+      if (variants.size > maxVariants) throw new RangeError('render shader variant limit exceeded (' + maxVariants + ')');
+    }
+  };
+  for (const root of roots ?? []) {
+    if (root?.source && root.material && typeof root.traverse !== 'function') visit(root.source, root.material, 'packed-depth');
+    else if (root) queue.push(root);
+  }
+  while (queue.length) {
+    const object = queue.pop();
+    if (!object || visitedObjects.has(object)) continue;
+    visitedObjects.add(object);
+    if (++visited > maxObjects) throw new RangeError('shader source traversal limit exceeded (' + maxObjects + ')');
+    for (const source of getShaderWarmupMaterialSources(object)) visit(object, source.material, source.role);
+    for (const child of object.children ?? []) queue.push(child);
+    if (queue.length + visited > maxObjects) throw new RangeError('shader source traversal queue limit exceeded (' + maxObjects + ')');
+    if (visited % chunkSize === 0) await yieldControl();
+  }
+  return [...variants.values()];
+}
+
+function compileShaderWarmupVariants(variants, shadowEnabled = null, targetPass = 'scene') {
+  const stage = new THREE.Scene();
+  for (const variant of variants) {
+    const copy = variant.object.clone(false);
+    copy.visible = true;
+    copy.material = variant.material;
+    stage.add(copy);
+  }
+  let pending;
+  try {
+    pending = cinematicPipeline.compileShaderWarmupScene(stage, camera, scene,
+      { pass: targetPass, shadowEnabled });
+  } finally {
+    stage.clear(); // Scratch clones borrow product resources; never dispose them here.
+  }
+  return pending;
+}
+
+function disposeOwnedShaderWarmupRoot(root) {
+  const geometries = new Set(), materials = new Set(), textures = new Set();
+  root?.traverse?.(object => {
+    if (object.geometry) geometries.add(object.geometry);
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!material) continue;
+      materials.add(material);
+      for (const key of ['map', 'alphaMap', 'aoMap', 'bumpMap', 'normalMap', 'displacementMap', 'emissiveMap',
+        'metalnessMap', 'roughnessMap', 'envMap', 'lightMap', 'specularMap']) if (material[key]) textures.add(material[key]);
+    }
+  });
+  root?.removeFromParent?.();
+  for (const geometry of geometries) geometry.dispose();
+  for (const texture of textures) texture.dispose();
+  for (const material of materials) material.dispose();
+}
+
+function disposeTransientShaderWarmupResources() {
+  const errors = [];
+  for (const root of shaderWarmupOwnedRoots.splice(0)) {
+    try { disposeOwnedShaderWarmupRoot(root); } catch (error) { errors.push(error); }
+  }
+  for (const dispose of shaderWarmupOwnedCleanupFunctions.splice(0)) {
+    try { dispose(); } catch (error) { errors.push(error); }
+  }
+  if (errors.length) {
+    shaderWarmupState.status = 'failed';
+    shaderWarmupState.phase = 'failed';
+    shaderWarmupState.error = `temporary shader warmup cleanup failed: ${errors.map(error => error?.message ?? String(error)).join('; ')}`;
+  }
+  return errors.length === 0;
+}
+
+function getShaderWarmupPoolRoots() {
+  const roots = [];
+  const addFirst = value => { if (value) roots.push(value); };
+  for (const pool of entityPools.zombies.values()) addFirst(pool[0]);
+  addFirst(entityPools.bullets[0]);
+  addFirst(entityPools.enemyProjectiles[0]);
+  addFirst(entityPools.xpGems[0]);
+  for (const pool of entityPools.effects.values()) addFirst(pool[0]);
+  addFirst(entityPools.traps[0]);
+  addFirst(entityPools.damageNumbers[0]);
+  if (entityPools.bullets[0]) {
+    const tracer = entityPools.bullets[0].clone(false);
+    tracer.geometry = getSharedGeometry('rifle-tracer', () => new THREE.CylinderGeometry(.025, .04, .75, 6));
+    roots.push(tracer);
+  }
+  for (const kind of ['boleto', 'lightning', 'evilEye', 'briefcase', 'airplane', 'feather', 'tornado']) {
+    const visual = createEnemyProjectileVisual({ kind, color: 0xffffff, radius: .42 });
+    if (visual.pooled) continue;
+    shaderWarmupOwnedRoots.push(visual.mesh);
+    roots.push(visual.mesh);
+  }
+  const leaderLine = createWorldLabelLeaderLine(THREE);
+  shaderWarmupOwnedRoots.push(leaderLine);
+  roots.push(leaderLine);
+  const thunderstaffPickup = createPowerupMesh('thunderstaff');
+  shaderWarmupOwnedRoots.push(thunderstaffPickup);
+  roots.push(thunderstaffPickup);
+  return roots;
+}
+
+async function buildStartupShaderWarmupCases(yieldControl) {
+  // The instanced XP renderer is a real late-game consumer, not a gameplay spawn.
+  getXpGemInstanceMesh();
+  const heroRoots = [];
+  for (const id of Object.keys(playableCharacters)) {
+    const visual = warmedHeroVisuals.get(id);
+    if (!visual?.root) throw new Error('playable visual did not finish loading: ' + id);
+    heroRoots.push(visual.root);
+  }
+  const enemyRoots = await (animatedEnemies?.prewarmShaderRoots?.({ yieldControl }) ?? []);
+  heroRoots.push(...enemyRoots.map(entry => entry.root));
+  const fadeRoots = animatedEnemies?.createShaderWarmupCorpseFadeRoots?.() ?? [];
+  for (const record of fadeRoots) {
+    heroRoots.push(record.root);
+    shaderWarmupOwnedCleanupFunctions.push(() => { for (const material of record.ownedMaterials) material.dispose(); });
+  }
+  const warriorWeapon = warmedHeroVisuals.get('warrior')?.weapon;
+  if (!warriorWeapon?.geometry || !warriorWeapon.material) throw new Error('Warrior weapon mesh is not ready for heat-variant warmup');
+  const weaponHeatTime = { value: 0 }, weaponHeatAmount = { value: .6 };
+  const weaponMaterials = (Array.isArray(warriorWeapon.material) ? warriorWeapon.material : [warriorWeapon.material])
+    .map(material => createWeaponHeatMaterialVariant(material, { heatTime: weaponHeatTime, heatAmount: weaponHeatAmount }));
+  if (!weaponMaterials.some(material => material.customProgramCacheKey?.() === 'bipx-samurai-weapon-heat-v1'))
+    throw new Error('Warrior heat helper produced no product shader variant');
+  const weaponHeatMesh = warriorWeapon.clone(false);
+  weaponHeatMesh.material = Array.isArray(warriorWeapon.material) ? weaponMaterials : weaponMaterials[0];
+  heroRoots.push(weaponHeatMesh);
+  shaderWarmupOwnedCleanupFunctions.push(() => { for (const material of weaponMaterials) material.dispose(); });
+  const poolRoots = getShaderWarmupPoolRoots();
+  const skillCases = classSkillVfx?.getShaderWarmupCases?.() ?? [];
+  if (skillCases.length !== 6) throw new Error('expected six real class-skill shader roots, received ' + skillCases.length);
+
+  // compileAsync is synchronous until its readiness promise is returned, so each case
+  // contains at most four distinct material/object program shapes.
+  const sourceRoots = [scene, ...heroRoots, ...poolRoots];
+  const allVariants = await collectShaderWarmupVariants(sourceRoots, { yieldControl });
+  const variants = allVariants.filter(variant => variant.role === 'color');
+  const shadowMaterialVariants = allVariants.filter(variant =>
+    variant.role === 'shadow-depth' || variant.role === 'shadow-distance');
+  if (variants.length === 0) throw new Error('no real product material variants were found for shader preparation');
+  const cases = [];
+  const batchSize = 4;
+  for (const shadowEnabled of [true, false]) {
+    for (let index = 0; index < variants.length; index += batchSize) {
+      const batch = variants.slice(index, index + batchSize);
+      cases.push({ id: 'render/' + (shadowEnabled ? 'shadow' : 'no-shadow') + '/' + (index / batchSize + 1),
+        kind: 'variants', variants: batch, shadowEnabled });
+    }
+  }
+  for (const role of ['shadow-depth', 'shadow-distance']) {
+    const roleVariants = shadowMaterialVariants.filter(variant => variant.role === role);
+    for (let index = 0; index < roleVariants.length; index += batchSize) {
+      cases.push({
+        id: 'shadow-material/' + role + '/' + (index / batchSize + 1),
+        kind: 'variants',
+        variants: roleVariants.slice(index, index + batchSize),
+        shadowEnabled: true,
+      });
+    }
+  }
+  for (const skill of skillCases) {
+    const skillVariants = await collectShaderWarmupVariants(skill.roots, { yieldControl, maxObjects: 2_000, maxVariants: 64 });
+    if (skillVariants.length) cases.push({ id: skill.id, kind: 'variants', variants: skillVariants, shadowEnabled: null });
+  }
+  const depthPairs = await cinematicPipeline.getShaderWarmupDepthPairs(sourceRoots, { yieldControl, maxVisited: 50_000, maxPairs: 512 });
+  const depthVariants = await collectShaderWarmupVariants(depthPairs, { yieldControl, maxObjects: 50_000, maxVariants: 512 });
+  for (let index = 0; index < depthVariants.length; index += batchSize) {
+    cases.push({ id: 'depth/no-shadow/' + (index / batchSize + 1), kind: 'variants',
+      variants: depthVariants.slice(index, index + batchSize), shadowEnabled: false, targetPass: 'depth' });
+  }
+  for (const id of cinematicPipeline.getShaderWarmupCases()) cases.push({ id, kind: 'cinematic' });
+  const thunderstaffPickup = poolRoots.find(root => root?.isGroup && root.children?.some(child =>
+    child.isMesh && child.geometry?.type === 'OctahedronGeometry' && child.geometry.parameters?.radius === .28));
+  if (!thunderstaffPickup) throw new Error('production thunderstaff crystal shadow caster was not included in warmup sources');
+  const shadowStage = createShaderWarmupShadowStage({ THREE,
+    shadowLight: scene.userData?.editorRefs?.moonLight, camera, caster: thunderstaffPickup });
+  const releaseShadowStage = () => {
+    const released = shadowStage.dispose();
+    const index = shaderWarmupOwnedCleanupFunctions.indexOf(releaseShadowStage);
+    if (index >= 0) shaderWarmupOwnedCleanupFunctions.splice(index, 1);
+    return released;
+  };
+  shaderWarmupOwnedCleanupFunctions.push(releaseShadowStage);
+  cases.push({ id: 'shadow-map/powerup-thunderstaff', kind: 'shadow-render',
+    shadowStage: { ...shadowStage, dispose: releaseShadowStage } });
+  if (cases.length > 128) throw new RangeError('shader warmup case limit exceeded (128); no compile work started');
+  shaderWarmupState.variantCount = variants.length;
+  shaderWarmupState.shadowMaterialVariantCount = shadowMaterialVariants.length;
+  shaderWarmupState.depthVariantCount = depthVariants.length;
+  shaderWarmupState.skillCaseCount = skillCases.length;
+  return cases;
+}
+
+function failStartupShaderWarmup(error) {
+  shaderWarmupState.status = 'failed';
+  shaderWarmupState.phase = 'failed';
+  shaderWarmupState.error = error instanceof Error ? error.message : String(error);
+  shaderWarmupState.currentCase = null;
+  showRunStartWarmupPending();
+}
+
+function maybeBeginStartupShaderWarmup() {
+  const pools = entityPools.startupWarmup;
+  if (pools.status === 'failed' || ['failed', 'ready', 'running'].includes(shaderWarmupState.status)) return;
+  if (pools.status !== 'ready') return;
+  if (gameVisualsSettled && !characterLoading && (characterError || !heroVisual || !readyCharacters.has(selectedCharacter))) {
+    failStartupShaderWarmup(new Error(characterError || 'selected playable visual is not ready'));
+    return;
+  }
+  if (!gameVisualsSettled || characterLoading || !heroVisual || !readyCharacters.has(selectedCharacter)) {
+    shaderWarmupState.status = 'preparing';
+    shaderWarmupState.phase = gameVisualsSettled ? 'hero-visuals' : 'visual-assets';
+    showRunStartWarmupPending();
+    return;
+  }
+  if (shaderWarmupPreparationPromise) return;
+  shaderWarmupState.status = 'preparing';
+  shaderWarmupState.phase = 'hero-visuals';
+  showRunStartWarmupPending();
+  const generation = ++shaderWarmupPreparationGeneration;
+  const isCurrentPreparation = () => generation === shaderWarmupPreparationGeneration && shaderWarmupState.status !== 'failed';
+  const yieldPreparationFrame = () => new Promise((resolve, reject) => requestAnimationFrame(() => {
+    if (isCurrentPreparation()) resolve();
+    else reject(new Error('shader warmup preparation was cancelled'));
+  }));
+  shaderWarmupPreparationDeadline = setTimeout(() => {
+    if (!isCurrentPreparation()) return;
+    shaderWarmupPreparationGeneration += 1;
+    shaderWarmupPreparationDeadline = null;
+    failStartupShaderWarmup(new Error('shader asset/catalogue preparation timed out after 120 seconds'));
+  }, 120_000);
+  shaderWarmupPreparationPromise = (async () => {
+    if (visualAssetErrors.length) throw new Error('required visual assets failed: ' + visualAssetErrors.join('; '));
+    for (const id of Object.keys(playableCharacters)) {
+      await getOrLoadPlayableVisual(id);
+      if (!isCurrentPreparation()) return;
+    }
+    shaderWarmupState.phase = 'catalogue';
+    showRunStartWarmupPending();
+    const cases = await buildStartupShaderWarmupCases(yieldPreparationFrame);
+    if (!isCurrentPreparation()) return;
+    shaderWarmupState.parallelCompileExtension = Boolean(renderer.getContext().getExtension('KHR_parallel_shader_compile'));
+    clearTimeout(shaderWarmupPreparationDeadline);
+    shaderWarmupPreparationDeadline = null;
+    await startShaderWarmup(shaderWarmupState, cases, {
+      maxCases: 128,
+      caseTimeoutMs: 15_000,
+      totalTimeoutMs: 120_000,
+      yieldControl: () => new Promise(resolve => requestAnimationFrame(() => resolve())),
+      runCase: async item => {
+        if (item.kind === 'cinematic') await cinematicPipeline.compileShaderWarmupCase(item.id, scene);
+        else if (item.kind === 'shadow-render') runShaderWarmupShadowStage(item.shadowStage,
+          (stageScene, stageCamera) => cinematicPipeline.warmupShadowMapScene(stageScene, stageCamera));
+        else await compileShaderWarmupVariants(item.variants, item.shadowEnabled, item.targetPass ?? 'scene');
+        const firstUseProbe = window.__bipxShaderFirstUseProbe;
+        return cinematicPipeline.verifyShaderWarmupPrograms({
+          yieldControl: yieldPreparationFrame,
+          maxPrograms: 512,
+          maxReadinessYields: 120,
+          onReflectionPhase: typeof firstUseProbe?.recordPhase === 'function'
+            ? firstUseProbe.recordPhase
+            : undefined,
+        });
+      },
+      onProgress: showRunStartWarmupPending,
+    });
+  })().catch(error => {
+    if (isCurrentPreparation()) failStartupShaderWarmup(error);
+  }).finally(() => {
+    clearTimeout(shaderWarmupPreparationDeadline);
+    shaderWarmupPreparationDeadline = null;
+    shaderWarmupPreparationPromise = null;
+    // Successful materials own Three's WebGLProgram references. The lifetime
+    // keeps them through gameplay and releases only on real page exit; failures
+    // still release immediately, and BFCache pagehide is deferred.
+    shaderWarmupResourceLifetime.finalize();
+    showRunStartWarmupPending();
+  });
+}
+
 function recordPoolExpansion(poolName) {
   perfStats.poolExpansions[poolName] = (perfStats.poolExpansions[poolName] || 0) + 1;
 }
@@ -3036,6 +3538,17 @@ function announceCharacter() {
   publishQaGameplayState('character-change');
 }
 
+function getOrLoadPlayableVisual(id) {
+  if (warmedHeroVisuals.has(id)) return Promise.resolve(warmedHeroVisuals.get(id));
+  if (heroVisualLoads.has(id)) return heroVisualLoads.get(id);
+  const pending = loadPlayableCharacter(id, { THREE, parent: shaderWarmupHolder }).then(visual => {
+    warmedHeroVisuals.set(id, visual);
+    return visual;
+  }).finally(() => heroVisualLoads.delete(id));
+  heroVisualLoads.set(id, pending);
+  return pending;
+}
+
 async function selectCharacter(id) {
   if (!playableCharacters[id] || game.state === 'playing') return false;
   characterPreview = true;
@@ -3048,14 +3561,19 @@ async function selectCharacter(id) {
   announceCharacter();
   const fallback = player.mesh.children.filter(child => !child.isLight && !child.userData.contactShadow && child !== heroVisual?.root);
   try {
-    const visual = await loadPlayableCharacter(id, { THREE, parent: player.mesh });
-    if (version !== characterLoadVersion) { visual.dispose(); return false; }
+    const visual = await getOrLoadPlayableVisual(id);
+    if (version !== characterLoadVersion) return false;
     weaponFireEmitter?.dispose(); weaponFireEmitter = null;
-    heroVisual?.dispose(); heroVisual = visual;
+    if (heroVisual && heroVisual !== visual) shaderWarmupHolder.add(heroVisual.root);
+    shaderWarmupHolder.remove(visual.root);
+    player.mesh.add(visual.root);
+    warmedHeroVisuals.set(id, visual);
+    heroVisual = visual;
     for (const child of fallback) child.visible = false;
     player.character = id;
     player.weapon = playableCharacters[id].weaponId;
     player.weaponTimer = 0;
+    player.relicEcho = null;
     player.mesh.userData.swordBlade = id === 'warrior' ? visual.weapon : null;
     combatVfx.setSoulSource(visual.root);
     pendingSwordStrike = null; swordSwingRemaining = 0;
@@ -3083,7 +3601,12 @@ async function loadGameVisuals() {
       visualAssetErrors.push(`orc: ${error.message}`);
       console.error('Orc visuals failed to load', error);
     }),
-    loadMonsterLibrary({ THREE }).then(library => animatedEnemies.register('monsters', library)).catch(error => {
+    loadMonsterLibrary({ THREE }).then(library => {
+      animatedEnemies.register('monsters', library);
+      if (library.stats.bloodCowAsset?.state === 'fallback') {
+        visualAssetErrors.push(`bloodCow fallback: ${library.stats.bloodCowAsset.error || 'runtime asset unavailable'}`);
+      }
+    }).catch(error => {
       visualAssetErrors.push(`monsters: ${error.message}`);
       console.error('Monster visuals failed to load', error);
     }),
@@ -5618,6 +6141,9 @@ function getEnemyProjectileSpec(type) {
   }
 
   const profile = monsterProfiles[type] ?? monsterProfiles.caster;
+  if (type === "caster") {
+    return getCasterProjectileSpec(profile.projectileColor ?? 0xff2f5e);
+  }
   return {
     kind: "orb",
     color: profile.projectileColor ?? 0xff2f5e,
@@ -6143,6 +6669,7 @@ function animate() {
   // is created on double-click/restart.
   if (game.state !== "playing" && !characterLoading && heroVisual && readyCharacters.has(selectedCharacter)) {
     stepEntityPoolWarmup();
+    maybeBeginStartupShaderWarmup();
   }
 
   if (game.state === "playing" && !paused && !suspended) {
@@ -6213,7 +6740,7 @@ function animate() {
     const actors = [{ position: player.mesh.position, height: 3.2, radius: 2 }];
     for (const remote of remotePlayers.values()) if (remote.state === 'playing' && remote.health > 0)
       actors.push({ position: remote.mesh.position, height: 3.2, radius: 2 });
-    worldLabelLayout.update({ camera, viewport: { width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight }, actors, drops: powerups });
+    worldLabelLayout.update({ camera, viewport: cssViewportSize, actors, drops: powerups });
   } else {
     worldLabelLayout.hide(powerups);
   }
@@ -7058,6 +7585,7 @@ function buildArpgState() {
   if (pendingSkillRequest && performance.now() - pendingSkillRequest.at >= 2500) pendingSkillRequest = null;
   if (classSkillState.classId !== player.character) classSkillState = createSkillState(player.character);
   const relic = player.weaponTimer > 0 && RELICS[player.relic] ? { id: player.relic, label: RELICS[player.relic].short, name: getRelicName(player.relic, player.character), remaining: player.weaponTimer, duration: RELICS[player.relic].duration } : null;
+  const relicEcho = formatRelicEchoHud(player.relicEcho, player.character);
   const hud = getSkillHud(classSkillState, { health: player.health, maxHealth: player.maxHealth,
     weapon: player.character === 'warrior' ? 'Espada' : 'Rifle', dead: game.state === 'dead',
     // Open cards keep the run live: skills stay unavailable, but this is not a pause.
@@ -7065,7 +7593,7 @@ function buildArpgState() {
     // Display mirror of trusted progression; the server recomputes its own value for every cast.
     areaMultiplier: getAreaMultiplier(), skillMods: getPlayerSkillMods() });
   for (const skill of hud.skills) skill.upgrades = getOwnedSkillUpgrades(player.upgradeStacks, player.character, skill.id);
-  return { relic, ...hud };
+  return { relic, relicEcho, ...hud };
 }
 function publishArpgState() {
   arpgHudTimer = .1;
@@ -7248,13 +7776,13 @@ function syncDashTransforms() {
 
 // Events that exist only because of a class skill upgrade carry `mod`. classSkillVfx has a closed phase/status
 // contract (a war-cry stun status would move the buff aura), so the shared combat/elemental pools draw these.
-function presentSkillUpgradeEvent(event, actorId) {
+function presentSkillUpgradeEvent(event, actorId, envelope = null) {
   const skillUpgradeTint = { warCryShockwave: 0xffc467, chargeShockwave: 0xffd994, dashMultiKill: 0xb9e4ff, frostHop: 0x84e5ff, gravityCollapse: 0xc27bff, cannonNapalm: 0xff872e };
   const local = !multiplayer.enabled || actorId === multiplayer.id;
   if (multiplayer.enabled && event.actorPosition) {
     // `free`: the hop ends before the cast lock does, and Lyra keeps walking while she fires.
     if (local) onlineSkillMotion = { ...event.actorPosition, terminal: Boolean(event.terminal), free: true };
-    else remotePlayers.get(actorId)?.targetPosition?.set(event.actorPosition.x, 0, event.actorPosition.z);
+    else pushRemoteSkillActor(remotePlayers.get(actorId), event, envelope);
   }
   const at = event.target ?? event.origin, color = skillUpgradeTint[event.mod];
   if (!color || !at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) return;
@@ -7275,9 +7803,9 @@ function presentSkillUpgradeEvent(event, actorId) {
   if (skillPresentationHistory.length > 128) skillPresentationHistory.shift();
 }
 
-function presentClassSkill(event, actorId = multiplayer.id) {
+function presentClassSkill(event, actorId = multiplayer.id, envelope = null) {
   if (!getClassSkill(event?.skillId)) return;
-  if (event.mod) { presentSkillUpgradeEvent(event, actorId); return; }
+  if (event.mod) { presentSkillUpgradeEvent(event, actorId, envelope); return; }
   trackPreparingWarCry(event, actorId);
   trackDashTransform(event, actorId);
   const local = !multiplayer.enabled || actorId === multiplayer.id;
@@ -7291,7 +7819,7 @@ function presentClassSkill(event, actorId = multiplayer.id) {
     if (local) onlineSkillMotion = { ...event.actorPosition, terminal: Boolean(event.terminal) };
     else {
       const remote = remotePlayers.get(actorId);
-      remote?.targetPosition?.set(event.actorPosition.x, 0, event.actorPosition.z);
+      pushRemoteSkillActor(remote, event, envelope);
     }
   }
   if (event.phase === 'cast' || event.phase === 'release' || (event.phase === 'travel' && event.skillId === 'warrior_cleaving_dash')) {
@@ -7424,6 +7952,10 @@ function updateActiveWeapon(dt) {
   if (player.weaponTimer > 0) {
     player.weaponTimer = Math.max(0, player.weaponTimer - dt);
     if (player.weaponTimer === 0) resetWeapon();
+  }
+  if (player.relicEcho) {
+    player.relicEcho.remaining = Math.max(0, player.relicEcho.remaining - Math.max(0, dt));
+    if (!(player.relicEcho.remaining > 0)) player.relicEcho = null;
   }
   player.weapon = playableCharacters[player.character].weaponId;
   refreshUpgradeChoicesForTransientState(previousTransient);
@@ -7603,8 +8135,9 @@ function updateAutoWeapons(dt) {
 }
 
 function fireArsenalRelic(direction) {
-  if (multiplayer.enabled || !(player.weaponTimer > 0) || !player.relic) return;
-  relicAttack(arsenalState, getArsenalContext(direction));
+  if (multiplayer.enabled) return;
+  const ctx = getArsenalContext(direction);
+  if (ctx.relic || ctx.echoRelic) relicAttack(arsenalState, ctx);
 }
 
 function getArsenalLoadout() {
@@ -7626,6 +8159,7 @@ function getArsenalContext(aim) {
   const context = arsenalContext, stats = context.stats;
   context.aim = aim; context.dead = false; context.perks = player.perks;
   context.relic = player.weaponTimer > 0 ? player.relic : null;
+  context.echoRelic = player.relicEcho?.remaining > 0 ? player.relicEcho.id : null;
   stats.damageMultiplier = getCombatDamageMultiplier(); stats.areaMultiplier = getAreaMultiplier();
   stats.cooldownMultiplier = player.upgradeStats.cooldownMultiplier; stats.projectileBonus = getProjectileBonus();
   getArsenalLoadout();
@@ -7653,7 +8187,7 @@ function applyArsenalHit(body, effect) {
   const zombie = body.ref;
   if (!zombie || zombie.health <= 0) return true;
   const burning = zombie.burnTimer > 0 ? zombie.burnDps || 0 : 0;
-  const killed = damageZombie(zombie, effect.damage, true, true, effect.hitEffect);
+  const killed = damageZombie(zombie, effect.damage, true, true, effect.hitEffect, null, { controlScale: effect.controlScale ?? 1, remnant: effect.remnant });
   // One burn rule for solo and server (the legacy client/server guesses disagreed).
   if (!killed && effect.burnDps) zombie.burnDps = Math.max(burning, effect.burnDps);
   body.health = zombie.health; body.dead = killed;
@@ -7698,11 +8232,12 @@ function setPlayerRelic(relic, seconds, announce) {
 }
 
 // Multiplayer mirror of server-owned relic and automatic-weapon state; nothing here is sent back.
-function applyAuthoritativeArsenal(progression, newRun, previousWeaponTimer) {
+function applyAuthoritativeArsenal(progression, newRun, previousWeaponTimer, newerVersion = false) {
   const relic = player.weaponTimer > 0 && Object.hasOwn(RELICS, progression.relic) ? progression.relic : null;
   const gained = !newRun && player.weaponTimer > previousWeaponTimer + .5;
   if (player.relic && !relic && player.weaponTimer <= 0) resetWeapon();
   else if (relic !== player.relic || gained) setPlayerRelic(relic, player.weaponTimer, gained);
+  player.relicEcho = mirrorRelicEcho(player.relicEcho, progression.relicEcho, { newerVersion });
   for (const weaponId of AUTO_WEAPON_IDS) {
     const granted = progression.autoWeapons?.[weaponId], slot = player.autoWeapons[weaponId], evolution = evolvedWeaponProfiles[weaponId];
     const level = granted?.level > 0 ? 1 : 0;
@@ -8113,7 +8648,10 @@ function collectPowerup(powerup) {
 function activateWeapon(type) {
   if (!weapons[type] || multiplayer.enabled) return false; // Online, only the server grants a relic.
   player.weapon = playableCharacters[player.character].weaponId;
-  setPlayerRelic(RELICS[type] ? type : null, RELICS[type]?.duration ?? FALLBACK_INFUSION_SECONDS, true);
+  const held = player.weaponTimer > 0 ? player.relic : null;
+  const installed = replaceRelic(held, type, player.relicEcho);
+  player.relicEcho = installed.echo;
+  setPlayerRelic(installed.relic, installed.duration, true);
   updateHud(true);
   return true;
 }
@@ -8889,7 +9427,7 @@ function updateCasterZombie(zombie, dt, controls) {
       alive: zombie.health > 0, frozen: controls.frozen, stunned: controls.stunned },
     target: context, tick: offlineCasterTick, dt, paused,
     ready: zombie.attackCooldown - dt <= 0,
-    inRange: canUseRangedAttack('caster', distance),
+    inRange: canUseCasterRangedAttack(distance, { radius: zombie.radius, reachBonus: zombie.reachBonus }),
     losClear: Boolean(context && clearEnemyMelee(zombie.mesh.position, context.position)),
     cooldownDuration: getRangedCooldown('caster') });
   zombie.casterCastState = step.state; // Persist before emitting anything.
@@ -8967,8 +9505,10 @@ function updateZombies(dt) {
         const lockedTarget = livingPlayerTargets.find(candidate => candidate.id === strike.targetId);
         if (!lockedTarget) strike.active = false;
         else {
-          const phase = advanceMeleeAttack(strike, dt);
-          if (phase.impact && isWithinMeleeArc(zombie.mesh.position, lockedTarget.position, strike) && clearEnemyMelee(zombie.mesh.position, lockedTarget.position)) {
+          const phase = advanceMeleeAttackAtTarget(strike, dt, zombie.mesh.position, lockedTarget.position, {
+            lineOfSight: () => clearEnemyMelee(zombie.mesh.position, lockedTarget.position),
+          });
+          if (phase.contact) {
             damagePlayerTarget(lockedTarget, meleeRawDamage(zombie.type, zombie.damage, player.wave), zombie);
           }
         }
@@ -9232,7 +9772,7 @@ function updateBossBehavior(zombie, target, toTarget, distance, dt) {
   const direction = distance > 0.05 ? tempVectorB.copy(toTarget).normalize() : tempVectorB.set(0, 0, 1);
   zombie.mesh.rotation.y = getForwardRotation(direction);
   const meleeRange = zombie.radius + target.radius + 0.74 + (zombie.reachBonus || 0);
-  const attackRegion = zombie.type === "bloodCow" ? { range: meleeRange, minDistance: zombie.radius + target.radius, losY: .9 } : undefined;
+  const attackRegion = zombie.type === "bloodCow" ? { range: meleeHitReach(zombie.type, zombie.reachBonus), minDistance: zombie.radius + target.radius, losY: .9 } : undefined;
   updateBossMovement(zombie, direction, distance, aiProfile, dt, attackRegion);
   if (!getMeleeTiming(zombie.type) && distance <= meleeRange && zombie.attackCooldown <= 0 && clearEnemyMelee(zombie.mesh.position, target.position)) {
     zombie.attackCooldown = getBossMeleeCooldown(zombie);
@@ -9634,9 +10174,9 @@ function damageRemotePlayer(playerId, amount) {
   });
 }
 
-function canUseRangedAttack(type, distance) {
+function canUseRangedAttack(type, distance, actor = null) {
   return (
-    (type === "caster" && distance < 16 && distance > 4.2) ||
+    (type === "caster" && canUseCasterRangedAttack(distance, actor ?? {})) ||
     (type === "visor" && distance < 18 && distance > 4.4) ||
     (type === "himetrica" && distance < 15 && distance > 3.6) ||
     (type === "dinzo" && distance < 16 && distance > 3.5) ||
@@ -9648,6 +10188,10 @@ function canUseRangedAttack(type, distance) {
 }
 
 function getRangedCooldown(type) {
+  if (type === "caster") {
+    return CASTER_PROJECTILE_PROFILE.cooldown;
+  }
+
   if (type === "angelSheep") {
     return 1.45;
   }
@@ -9702,9 +10246,13 @@ function spawnEnemyProjectile(zombie, target = getClosestPlayerTarget(zombie.mes
   const projectileVisual = createEnemyProjectileVisual(projectileSpec);
   const mesh = projectileVisual.mesh;
   const forwardRotation = Math.atan2(direction.x, direction.z);
-  mesh.position.copy(zombie.mesh.position);
-  mesh.position.y = projectileSpec.height;
-  mesh.position.addScaledVector(direction, projectileSpec.spawnOffset);
+  if (zombie.type === 'caster') {
+    mesh.position.copy(getCasterProjectileOrigin(zombie.mesh.position, direction, zombie.radius));
+  } else {
+    mesh.position.copy(zombie.mesh.position);
+    mesh.position.y = projectileSpec.height;
+    mesh.position.addScaledVector(direction, projectileSpec.spawnOffset);
+  }
   mesh.rotation.y = forwardRotation;
   scene.add(mesh);
 
@@ -10092,7 +10640,7 @@ function applyWeaponHitEffect(zombie, hitEffectType, amount, presentation = null
     applyBurnStatus(zombie, amount);
   }
 
-  if (hitEffectType === "frostNova") {
+  if (hitEffectType === "frostNova" && (presentation?.controlScale ?? 1) > 0) {
     applyFreezeStatus(zombie);
   }
 }
@@ -10645,6 +11193,7 @@ function endGame() {
   cancelSkills(classSkillState, event => classSkillVfx?.emit(event), 'end');
   classSkillVfx?.reset();
   cancelArsenal(arsenalState, presentArsenalEvent, 'death');
+  player.relicEcho = null;
   onlineSkillMotion = null; remoteSkillSnapshots = []; persistentSkillPresentation.clear();
   audioManager.samples?.reset();
   characterPreview = false;
@@ -10714,9 +11263,13 @@ function updateHud(force = false) {
   xpFillElement.style.transform = `scaleX(${xpRatio})`;
   xpValueElement.textContent = `${Math.floor(player.xp)}/${Math.floor(player.xpToNext)}`;
   const relicName = player.weaponTimer > 0 ? getRelicName(player.relic, player.character) : null;
+  const echoHud = formatRelicEchoHud(player.relicEcho, player.character);
   weaponNameElement.textContent = relicName || playableCharacters[player.character].weapon;
-  weaponTimerElement.textContent = player.weaponTimer > 0 ? `${relicName ? 'Relíquia' : '+40%'} · ${Math.ceil(player.weaponTimer)}s` : 'PRONTA';
+  const relicTime = player.weaponTimer > 0 ? `${relicName ? 'Relíquia' : '+40%'} · ${Math.ceil(player.weaponTimer)}s` : 'PRONTA';
+  weaponTimerElement.textContent = echoHud ? `${relicTime} · ${echoHud.text}` : relicTime;
   weaponNameElement.parentElement.dataset.relic = relicName ? player.relic : '';
+  weaponNameElement.parentElement.dataset.echo = echoHud ? echoHud.id : '';
+  weaponNameElement.parentElement.setAttribute('aria-label', `${relicName || playableCharacters[player.character].weapon}${player.weaponTimer > 0 ? `, ${Math.ceil(player.weaponTimer)} segundos` : ''}${echoHud ? `, ${echoHud.aria}` : ''}`);
   renderSkillHud();
   renderPerfOverlay();
   updateOnlineScoreboardHud();
@@ -10997,7 +11550,7 @@ function handleMultiplayerMessage(rawMessage) {
   if (messageData.type === 'skillEvent') {
     if (!messageData.runId || messageData.id !== multiplayer.id || messageData.runId === multiplayerAuthorityRunId) {
       const ageMs = Number.isFinite(messageData.serverTime) && multiplayerClockOffset !== null ? Math.max(0, Date.now() - messageData.serverTime - multiplayerClockOffset) : 0;
-      presentClassSkill({ ...messageData.event, ageMs }, messageData.id);
+      presentClassSkill({ ...messageData.event, ageMs }, messageData.id, remoteSkillEnvelope(messageData));
     }
     return;
   }
@@ -11697,7 +12250,7 @@ function applyAuthoritativeProgression(progression, { newRun = false, newerVersi
   const prismTimer = Math.max(0, Number(progression.prismStormRemaining) || 0);
   player.weaponTimer = newerVersion ? weaponTimer : Math.min(player.weaponTimer, weaponTimer);
   player.perkCooldowns.prismStorm = newerVersion ? prismTimer : Math.min(player.perkCooldowns.prismStorm, prismTimer);
-  applyAuthoritativeArsenal(progression, newRun, previousWeaponTimer);
+  applyAuthoritativeArsenal(progression, newRun, previousWeaponTimer, newerVersion);
   if (!newRun && player.revives < previousRevives) triggerPerkAnimation('lastBreath', player.position, 'legendary');
   if (pendingMultiplayerUpgrade && pendingMultiplayerUpgrade.offerId !== multiplayerUpgradeOfferId) pendingMultiplayerUpgrade = null;
   let stacksChanged = false;
@@ -11988,6 +12541,7 @@ function createRemotePlayer(playerData) {
     labelSprite: createPlayerLabelSprite(playerData.name || "P?", playerData.color || "#74d1ff"),
     aimDirection: new THREE.Vector3(0, 0, -1),
     targetPosition: new THREE.Vector3(0, 0, 0),
+    presentation: createRemotePresentation(),
   };
   remotePlayer.fallback = mesh.children.filter(child => child !== marker && !child.isLight && !child.userData.contactShadow);
   void loadRemoteCharacter(remotePlayer);
@@ -12007,20 +12561,49 @@ async function loadRemoteCharacter(remotePlayer) {
   }
 }
 
+function remoteSkillEnvelope(messageData) {
+  return {
+    runId: messageData.runId,
+    serverTime: messageData.serverTime,
+    motionSeq: messageData.motionSeq,
+    motionTime: messageData.motionTime,
+    motionPath: messageData.motionPath,
+    motionKind: messageData.motionKind,
+    motionSnap: messageData.motionSnap,
+    motionSpeed: messageData.motionSpeed,
+    motionTruncated: messageData.motionTruncated,
+  };
+}
+
+function pushRemoteSkillActor(remotePlayer, event, envelope = null) {
+  if (!remotePlayer) return null;
+  const motion = motionFromSkillActor(event, envelope);
+  if (motion.x == null || motion.z == null) return null;
+  remotePlayer.targetPosition.set(motion.x, 0, motion.z);
+  return applyRemoteMotion(remotePlayer.presentation, motion, performance.now());
+}
+
 function updateRemotePlayerState(remotePlayer, state) {
   if (!state) {
     return;
   }
 
-  remotePlayer.targetPosition.set(Number(state.x) || 0, 0, Number(state.z) || 0);
+  const motion = motionFromPlayerState(state);
+  remotePlayer.targetPosition.set(motion.x, 0, motion.z);
+  applyRemoteMotion(remotePlayer.presentation, motion, performance.now());
   i5MpTrace.record('remote-target', {
     clientId: remotePlayer.id,
-    runId: state.runId || multiplayerAuthorityRunId,
-    epoch: state.worldEpoch ?? multiplayerWorldEpoch,
-    stateVersion: Number.isFinite(Number(state.stateVersion)) ? Number(state.stateVersion) : null,
-    serverTime: Number.isFinite(Number(state.serverTime)) ? Number(state.serverTime) : null,
+    runId: motion.runId,
+    epoch: motion.epoch,
+    stateVersion: motion.stateVersion,
+    serverTime: motion.serverTime,
+    motionSeq: motion.motionSeq,
+    motionTime: motion.motionTime,
+    motionKind: motion.motionKind,
+    source: motion.source,
+    partial: motion.partial,
     target: { x: remotePlayer.targetPosition.x, z: remotePlayer.targetPosition.z },
-    lifecycle: state.state || 'menu',
+    lifecycle: motion.lifecycle || 'menu',
   });
   remotePlayer.aimDirection.set(Number(state.aimX) || 0, 0, Number(state.aimZ) || -1);
 
@@ -12084,34 +12667,45 @@ function applyNetworkPlayerState(playerId, state, amount = 0) {
 }
 
 function updateRemotePlayers(dt) {
-  const moveAlpha = 1 - Math.pow(0.0008, dt);
   const turnAlpha = 1 - Math.pow(0.001, dt);
+  const nowMs = performance.now();
 
   for (const remotePlayer of remotePlayers.values()) {
     const previousRenderX = remotePlayer.mesh.position.x;
     const previousRenderZ = remotePlayer.mesh.position.z;
-    remotePlayer.mesh.position.x += (remotePlayer.targetPosition.x - remotePlayer.mesh.position.x) * moveAlpha;
-    remotePlayer.mesh.position.z += (remotePlayer.targetPosition.z - remotePlayer.mesh.position.z) * moveAlpha;
+    const stepped = stepRemotePresentation(remotePlayer.presentation, dt, nowMs);
+    remotePlayer.mesh.position.x = stepped.x;
+    remotePlayer.mesh.position.z = stepped.z;
     remotePlayer.mesh.position.y = remotePlayer.visual ? 0 : Math.sin(clock.elapsedTime * 8 + remotePlayer.phase) * 0.035;
     remotePlayer.mesh.rotation.y = lerpAngle(
       remotePlayer.mesh.rotation.y,
       getForwardRotation(remotePlayer.aimDirection),
       turnAlpha,
     );
-    sampleVisualMotion(remotePlayer.visualMotion, remotePlayer.mesh.position, dt, remotePlayer.state === 'playing');
+    const applied = applyRemoteVisualStep(
+      remotePlayer.visualMotion,
+      remotePlayer.mesh.position,
+      dt,
+      remotePlayer.state === 'playing',
+      stepped,
+    );
     remotePlayer.visualMotion.dead = remotePlayer.state === 'dead';
     remotePlayer.visual?.update(dt, remotePlayer.visualMotion);
     if (i5MpTrace.enabled) {
       const seconds = Math.max(Number(dt) || 0, 1e-6);
       i5MpTrace.record('remote-render-frame', {
         clientId: remotePlayer.id,
-        runId: multiplayerAuthorityRunId,
-        epoch: multiplayerWorldEpoch,
+        runId: remotePlayer.presentation.identity.runId,
+        epoch: remotePlayer.presentation.identity.epoch,
         dtMs: seconds * 1000,
         lifecycle: remotePlayer.state,
         target: { x: remotePlayer.targetPosition.x, z: remotePlayer.targetPosition.z },
         render: { x: remotePlayer.mesh.position.x, z: remotePlayer.mesh.position.z },
-        velocity: { x: (remotePlayer.mesh.position.x - previousRenderX) / seconds, z: (remotePlayer.mesh.position.z - previousRenderZ) / seconds },
+        displacement: { x: remotePlayer.mesh.position.x - previousRenderX, z: remotePlayer.mesh.position.z - previousRenderZ },
+        velocity: applied.walking,
+        reconciliation: applied.reconciliation,
+        reset: applied.reset,
+        reason: applied.reason,
       });
     }
 
@@ -12429,6 +13023,7 @@ function removeRemotePlayer(playerId) {
   }
 
   remotePlayer.disposed = true;
+  disposeRemotePresentation(remotePlayer.presentation);
   remotePlayer.visual?.dispose();
   scene.remove(remotePlayer.mesh);
   scene.remove(remotePlayer.labelSprite);
@@ -13117,8 +13712,8 @@ function rotateDirectionY(direction, angle) {
 }
 
 function updatePointerFromClient(clientX, clientY) {
-  pointer.x = (clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+  const ndc = pointerToNdc(clientX, clientY, cssViewportSize);
+  pointer.set(ndc.x, ndc.y);
 }
 
 function isInteractiveOverlay(target) {
@@ -13274,12 +13869,6 @@ function getTouchFireAimDeadZone() {
   return getGameConfig("gameplay.touch.fireAimDeadZone");
 }
 
-function resizeRenderer() {
-  setViewportCssVars();
-  applyMobileLayoutState();
-  applyRuntimeConfig(false);
-  applyQualitySettings(true);
-}
 
 function applyRuntimeConfig(updateQuality = true) {
   const fogColor = getGameConfig("fog.color");
@@ -13287,8 +13876,7 @@ function applyRuntimeConfig(updateQuality = true) {
   scene.fog.color.set(fogColor);
   scene.fog.density = getGameConfig("fog.density");
   camera.fov = getGameConfig("camera.fov");
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  updateCameraProjectionFromCssViewport();
 
   const refs = scene.userData.editorRefs;
   refs.hemiLight?.color.set(getGameConfig("lighting.hemi.skyColor"));

@@ -10,13 +10,14 @@ function transformPoint(matrix, x, y, z) {
   return { x: (matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12]) / w, y: (matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13]) / w, z: (matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14]) / w };
 }
 
-function skinVertex(mesh, index) {
+export function skinDeathCutVertex(mesh, index) {
   const local = [mesh.positions[index * 3], mesh.positions[index * 3 + 1], mesh.positions[index * 3 + 2]];
   if (!mesh.skinIndices || !mesh.boneMatrices) return transformPoint(mesh.worldMatrix, ...local);
   const base = transformPoint(mesh.bindMatrix, ...local), skinned = { x: 0, y: 0, z: 0 };
-  for (let slot = 0; slot < 4; slot++) {
-    const weight = mesh.skinWeights[index * 4 + slot]; if (!weight) continue;
-    const boneIndex = mesh.skinIndices[index * 4 + slot], matrix = mesh.boneMatrices.subarray(boneIndex * 16, boneIndex * 16 + 16), transformed = transformPoint(matrix, base.x, base.y, base.z);
+  const stride = Math.max(4, Number(mesh.skinStride) || 4);
+  for (let slot = 0; slot < stride; slot++) {
+    const weight = mesh.skinWeights[index * stride + slot]; if (!weight) continue;
+    const boneIndex = mesh.skinIndices[index * stride + slot], matrix = mesh.boneMatrices.subarray(boneIndex * 16, boneIndex * 16 + 16), transformed = transformPoint(matrix, base.x, base.y, base.z);
     skinned.x += transformed.x * weight; skinned.y += transformed.y * weight; skinned.z += transformed.z * weight;
   }
   const unbound = transformPoint(mesh.bindMatrixInverse, skinned.x, skinned.y, skinned.z);
@@ -26,7 +27,7 @@ function skinVertex(mesh, index) {
 function worldVertices(mesh) {
   if (mesh.worldSpace) return mesh.vertices;
   const vertices = new Float32Array(mesh.positions.length);
-  for (let index = 0; index < mesh.positions.length / 3; index++) { const point = skinVertex(mesh, index); vertices[index * 3] = point.x; vertices[index * 3 + 1] = point.y; vertices[index * 3 + 2] = point.z; }
+  for (let index = 0; index < mesh.positions.length / 3; index++) { const point = skinDeathCutVertex(mesh, index); vertices[index * 3] = point.x; vertices[index * 3 + 1] = point.y; vertices[index * 3 + 2] = point.z; }
   return vertices;
 }
 

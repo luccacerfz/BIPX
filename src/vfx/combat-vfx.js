@@ -35,6 +35,24 @@ const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 const validPosition = value => value && Number.isFinite(value.x) && Number.isFinite(value.z);
 
+/** The exact material variant used by the Warrior relic and startup preparation. */
+export function createWeaponHeatMaterialVariant(material, { heatTime = { value: 0 }, heatAmount = { value: .6 } } = {}) {
+  if (!material?.clone) throw new TypeError('weapon heat variant needs a clonable material');
+  const clone = material.clone();
+  if (clone.isMeshStandardMaterial || clone.isMeshPhongMaterial) {
+    clone.onBeforeCompile = shader => {
+      shader.uniforms.uVfxHeatTime = heatTime;
+      shader.uniforms.uVfxHeatAmount = heatAmount;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+        `#include <common>\nuniform float uVfxHeatTime; uniform float uVfxHeatAmount;\n${thermalGLSL}`);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>\nfloat vfxEdge = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.0);\nfloat vfxHeat = 0.85 + 0.15 * sin(uVfxHeatTime * 2.1 + vViewPosition.y * 5.0);\ntotalEmissiveRadiance += blackbody(2200.0 + vfxEdge * 700.0) * (0.35 + vfxEdge) * vfxHeat * uVfxHeatAmount;`);
+    };
+    clone.customProgramCacheKey = () => 'bipx-samurai-weapon-heat-v1';
+  }
+  return clone;
+}
+
 const beamVertex = /* glsl */ `
 uniform float uTime;
 attribute vec3 aOrigin;
@@ -495,21 +513,7 @@ export function createCombatVfx({ THREE, scene, quality = 'high', reducedMotion 
     const volume = geometry.type === 'BoxGeometry' ? createWeaponFireVolume(THREE, mesh) : null;
     const originals = Array.isArray(original) ? original : [original];
     const heatTime = { value: 0 }, heatAmount = { value: clamp(intensity, 0, 2) };
-    const clones = originals.map(material => {
-      const clone = material.clone();
-      if (clone.isMeshStandardMaterial || clone.isMeshPhongMaterial) {
-        clone.onBeforeCompile = shader => {
-          shader.uniforms.uVfxHeatTime = heatTime;
-          shader.uniforms.uVfxHeatAmount = heatAmount;
-          shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
-            `#include <common>\nuniform float uVfxHeatTime; uniform float uVfxHeatAmount;\n${thermalGLSL}`);
-          shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>',
-            `#include <emissivemap_fragment>\nfloat vfxEdge = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.0);\nfloat vfxHeat = 0.85 + 0.15 * sin(uVfxHeatTime * 2.1 + vViewPosition.y * 5.0);\ntotalEmissiveRadiance += blackbody(2200.0 + vfxEdge * 700.0) * (0.35 + vfxEdge) * vfxHeat * uVfxHeatAmount;`);
-        };
-        clone.customProgramCacheKey = () => 'bipx-samurai-weapon-heat-v1';
-      }
-      return clone;
-    });
+    const clones = originals.map(material => createWeaponHeatMaterialVariant(material, { heatTime, heatAmount }));
     mesh.material = Array.isArray(original) ? clones : clones[0];
     let detached = false;
     const emitter = {

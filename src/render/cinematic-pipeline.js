@@ -1,10 +1,93 @@
 import { createSceneDepthPass } from './scene-depth.js';
+import { verifyAndReflectShaderPrograms } from './shader-program-readiness.mjs';
+
+/** Exercise Three's real WebGLShadowMap path on a temporary staging scene. */
+export function renderShaderWarmupShadowScene({ THREE, renderer, scene, camera, target }) {
+  if (!THREE || !renderer || !scene || !camera || !target) throw new TypeError('shadow warmup needs renderer, scene, camera and target');
+  const output = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  const viewport = renderer.getCurrentViewport(new THREE.Vector4());
+  const gl = renderer.getContext();
+  const scissor = new THREE.Vector4().fromArray(gl.getParameter(gl.SCISSOR_BOX));
+  const scissorTest = gl.isEnabled(gl.SCISSOR_TEST);
+  const outputViewport = output?.viewport?.clone();
+  const clearColor = renderer.getClearColor(new THREE.Color()), clearAlpha = renderer.getClearAlpha();
+  const autoClear = renderer.autoClear;
+  const shadowState = {
+    enabled: renderer.shadowMap.enabled,
+    autoUpdate: renderer.shadowMap.autoUpdate,
+    needsUpdate: renderer.shadowMap.needsUpdate,
+  };
+  const autoReset = renderer.info.autoReset;
+  const renderInfo = { ...renderer.info.render };
+  try {
+    renderer.setRenderTarget(target);
+    renderer.autoClear = true;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.autoUpdate = true;
+    renderer.shadowMap.needsUpdate = true;
+    renderer.render(scene, camera);
+  } finally {
+    renderer.shadowMap.enabled = shadowState.enabled;
+    renderer.shadowMap.autoUpdate = shadowState.autoUpdate;
+    renderer.shadowMap.needsUpdate = shadowState.needsUpdate;
+    renderer.autoClear = autoClear;
+    renderer.info.autoReset = autoReset;
+    for (const key of Object.keys(renderInfo)) renderer.info.render[key] = renderInfo[key];
+    renderer.setClearColor(clearColor, clearAlpha);
+    if (output) output.viewport.copy(viewport);
+    renderer.setRenderTarget(output, face, mip);
+    if (output && outputViewport) output.viewport.copy(outputViewport);
+    renderer.state.viewport(viewport);
+    renderer.state.scissor(scissor);
+    renderer.state.setScissorTest(scissorTest);
+  }
+}
+
+/** Build a disposable shadow-only scene from the actual configured shadow light and product caster. */
+export function createShaderWarmupShadowStage({ THREE, shadowLight, camera, caster }) {
+  if (!THREE?.Scene || !shadowLight?.castShadow || !shadowLight.target?.clone || !shadowLight.shadow?.mapSize ||
+      !camera?.clone || !caster?.position?.set) throw new TypeError('shadow warmup stage needs the production light, camera and caster');
+  const stage = new THREE.Scene();
+  stage.name = 'shader-warmup-shadow-map-thunderstaff';
+  const light = shadowLight.clone(false);
+  light.target = shadowLight.target.clone(false);
+  stage.add(light, light.target, caster);
+  caster.position.set(0, 0, 0);
+  caster.visible = true;
+  let disposed = false;
+  return { scene: stage, camera: camera.clone(), light, caster,
+    shadowMapSize: { width: light.shadow.mapSize.x, height: light.shadow.mapSize.y },
+    dispose() {
+      if (disposed) return false;
+      disposed = true;
+      // The caster is borrowed from the product warmup roots. Only detach it;
+      // the root owner disposes its geometry/material exactly once.
+      stage.remove(caster);
+      stage.remove(light, light.target);
+      light.shadow?.dispose?.(); // LightShadow owns and releases its cloned map/mapPass; DirectionalLight has no dispose().
+      return true;
+    } };
+}
+
+/** Run the real shadow render once, then release its large temporary map on every path. */
+export function runShaderWarmupShadowStage(stage, render) {
+  if (!stage?.scene || !stage?.camera || typeof stage.dispose !== 'function' || typeof render !== 'function') {
+    throw new TypeError('shadow warmup runner needs an owned stage and render callback');
+  }
+  let result, renderError = null, disposeError = null;
+  try { result = render(stage.scene, stage.camera); } catch (error) { renderError = error; }
+  try { stage.dispose(); } catch (error) { disposeError = error; }
+  if (renderError && disposeError) throw new AggregateError([renderError, disposeError], 'shadow warmup render and stage cleanup both failed');
+  if (renderError) throw renderError;
+  if (disposeError) throw disposeError;
+  return result;
+}
 
 // HDR scene -> half-resolution bloom -> restrained filmic composite.
 // All resources are reused and resized only when the drawing buffer changes.
-export function createCinematicPipeline({ THREE, renderer, adaptDepthMaterial }) {
+export function createCinematicPipeline({ THREE, renderer, adaptDepthMaterial, getDepthWarmupIdentity }) {
   const size = new THREE.Vector2();
-  const sceneDepth = createSceneDepthPass({ THREE, renderer, adaptDepthMaterial });
+  const sceneDepth = createSceneDepthPass({ THREE, renderer, adaptDepthMaterial, getDepthWarmupIdentity });
   let disposed = false;
   const sceneTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
   sceneTarget.samples = renderer.capabilities.isWebGL2 ? 4 : 0;
@@ -57,6 +140,83 @@ export function createCinematicPipeline({ THREE, renderer, adaptDepthMaterial })
   let width = 0;
   let height = 0;
   let damage = 0;
+  const warmupMaterials = new Map([
+    ['cinematic/extract', extract], ['cinematic/blur', blur], ['cinematic/composite', composite],
+  ]);
+  const verifiedShaderPrograms = new Set();
+  function shaderWarmupTarget(pass) {
+    if (pass === 'scene') return sceneTarget;
+    if (pass === 'bloom') return bloomTargets[0];
+    if (pass === 'canvas') return null;
+    if (pass === 'depth') {
+      renderer.getDrawingBufferSize(size);
+      return sceneDepth.getShaderWarmupTarget(Math.max(1, size.x), Math.max(1, size.y));
+    }
+    throw new RangeError(`unknown shader warmup render target: ${pass}`);
+  }
+  function compileShaderWarmupScene(sourceScene, sourceCamera, targetScene, { pass = 'scene', shadowEnabled = null } = {}) {
+    const target = shaderWarmupTarget(pass);
+    const output = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+    const viewport = renderer.getCurrentViewport(new THREE.Vector4());
+    const gl = renderer.getContext();
+    const scissor = new THREE.Vector4().fromArray(gl.getParameter(gl.SCISSOR_BOX));
+    const scissorTest = gl.isEnabled(gl.SCISSOR_TEST);
+    const targetViewport = output?.viewport.clone();
+    const previousShadowState = renderer.shadowMap.enabled;
+    let pending;
+    try {
+      renderer.setRenderTarget(target);
+      if (shadowEnabled !== null) renderer.shadowMap.enabled = shadowEnabled;
+      const parallelCompile = gl.getExtension('KHR_parallel_shader_compile');
+      pending = parallelCompile
+        ? renderer.compileAsync(sourceScene, sourceCamera, targetScene)
+        : Promise.resolve(renderer.compile(sourceScene, sourceCamera, targetScene));
+    } finally {
+      renderer.shadowMap.enabled = previousShadowState;
+      if (output) output.viewport.copy(viewport);
+      renderer.setRenderTarget(output, face, mip);
+      if (output && targetViewport) output.viewport.copy(targetViewport);
+      renderer.state.viewport(viewport);
+      renderer.state.scissor(scissor);
+      renderer.state.setScissorTest(scissorTest);
+    }
+    return pending;
+  }
+  async function verifyShaderWarmupPrograms({ yieldControl = () => Promise.resolve(), maxPrograms = 512,
+    maxReadinessYields = 120, onReflectionPhase } = {}) {
+    return verifyAndReflectShaderPrograms({
+      programs: [...(renderer.info.programs ?? [])],
+      gl: renderer.getContext(),
+      checkShaderErrors: renderer.debug.checkShaderErrors,
+      verifiedPrograms: verifiedShaderPrograms,
+      yieldControl,
+      maxPrograms,
+      maxReadinessYields,
+      onReflectionPhase,
+      onShaderError: typeof renderer.debug.onShaderError === 'function'
+        ? renderer.debug.onShaderError.bind(renderer.debug)
+        : undefined,
+    });
+  }
+  async function compileShaderWarmupCase(id, targetScene) {
+    const material = warmupMaterials.get(id);
+    if (!material) throw new RangeError(`unknown cinematic shader warmup case: ${id}`);
+    const before = quad.material;
+    let pending;
+    try {
+      quad.material = material;
+      // WebGLRenderer.compileAsync visits materials synchronously before it returns
+      // its readiness promise, so restore the live quad before yielding to a frame.
+      const pass = id === 'cinematic/composite' ? 'canvas' : 'bloom';
+      pending = compileShaderWarmupScene(screen, camera, targetScene ?? screen, { pass });
+    } finally {
+      quad.material = before;
+    }
+    await pending;
+  }
+  function warmupShadowMapScene(sourceScene, sourceCamera) {
+    return renderShaderWarmupShadowScene({ THREE, renderer, scene: sourceScene, camera: sourceCamera, target: sceneTarget });
+  }
   const pass = (mat, target) => { quad.material = mat; renderer.setRenderTarget(target); renderer.render(screen, camera); };
   return {
     setQuality(value) {
@@ -126,6 +286,12 @@ export function createCinematicPipeline({ THREE, renderer, adaptDepthMaterial })
         renderer.state.viewport(viewport); renderer.state.scissor(scissor); renderer.state.setScissorTest(scissorTest);
       }
     },
+    getShaderWarmupCases() { return [...warmupMaterials.keys()]; },
+    compileShaderWarmupCase,
+    compileShaderWarmupScene,
+    warmupShadowMapScene,
+    verifyShaderWarmupPrograms,
+    getShaderWarmupDepthPairs(roots) { return sceneDepth.getShaderWarmupPairs(roots); },
     getStats() { return { hdr: true, bloom: quality === 'high', quality, passes: (quality === 'high' ? 5 : 2) + sceneDepth.getStats().passes, width, height, depth: sceneDepth.getStats(), disposed }; },
     dispose() { if (disposed) return; disposed = true; sceneDepth.dispose(); sceneTarget.dispose(); bloomTargets.forEach(target => target.dispose());
       [extract, blur, composite].forEach(mat => mat.dispose()); quad.geometry.dispose(); },

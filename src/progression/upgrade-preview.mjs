@@ -5,6 +5,7 @@ import { DEFINITIONS, MAX_HEALTH_UPGRADE, maxHealthForStacks, stats as progressi
 import { getSkillMods, getSkillUpgrade, describeSkillUpgrade, getSkillUpgradeTag } from './skill-upgrades.mjs';
 import { CLASS_RESOURCES, SKILL_MOD_EFFECTS, getClassSkill, getSkillRadius, getSkillCost, getSkillCooldown, getClassSkills, getSkillModifiers, describeSkill } from '../combat/class-skills.mjs';
 import { heroProfile, basicPower, skillPower, swingDuration, meleeShape } from '../combat/hero-power.mjs';
+import { AUTO_WEAPONS, AUTO_WEAPON_IDS, nextAutoWeapon, isAutoWeaponEvolved, getAutoWeaponLoadout, getAutoWeaponPulse } from '../combat/arsenal.mjs';
 
 const BASE_SPEED = 6.5;
 const cloneStacks = value => ({ ...(value && typeof value === 'object' ? value : {}) });
@@ -68,6 +69,56 @@ function basicDamage(context) {
 
 function basicCadence(context) {
   return swingDuration(context.character, context.stats.cooldownMultiplier);
+}
+
+function autoCombatStats(context) {
+  // Same bag fireAuto/readStats consume: attackStats (infusion, prism area) × Grito when supplied.
+  // Automatic weapons do not use basicPower/skillPower.
+  return {
+    damageMultiplier: context.attack.damageMultiplier * context.skillCombat.damage,
+    areaMultiplier: context.attack.areaMultiplier,
+    cooldownMultiplier: context.stats.cooldownMultiplier,
+  };
+}
+
+function autoWeaponTemporaryNote(context) {
+  const notes = [];
+  if (context.weaponTimer > 0) notes.push('Infusão ativa (temporária)');
+  if (context.skillCombat.damage !== 1) notes.push('Grito de Guerra ativo (temporário)');
+  if (!notes.length) return '';
+  return ` Modificadores temporários: ${notes.join('; ')}.`;
+}
+
+function autoWeaponPreview(before, after) {
+  const common = { id: 'autoWeapon', kind: 'stat', before: {}, after: {}, summary: null };
+  const weaponId = nextAutoWeapon(before.stacks);
+  if (!weaponId) {
+    common.summary = 'No limite.';
+    return common;
+  }
+  const combatStats = autoCombatStats(after);
+  const evolved = isAutoWeaponEvolved(weaponId, after.stacks);
+  const pulse = getAutoWeaponPulse(weaponId, combatStats, evolved);
+  const hit = pulse.kind === 'seal' ? pulse.sealDamage : pulse.hitDamage;
+  const per = pulse.kind === 'strike' ? 'por corte' : pulse.kind === 'pulse' ? 'por pulso' : 'por selo';
+  let summary = `${pulse.label}: ${pt(hit)} de dano ${per} a cada ${unit(pulse.cooldown, 's')}.`;
+  if (pulse.coneDamage > 0) {
+    summary = `${pulse.label}: ${pt(pulse.hitDamage)} de dano por corte a cada ${unit(pulse.cooldown, 's')}; corte extra ${pt(pulse.coneDamage)} à frente.`;
+  }
+  const previous = AUTO_WEAPON_IDS
+    .filter(id => getAutoWeaponLoadout(before.stacks)[id].level > 0)
+    .map(id => (isAutoWeaponEvolved(id, before.stacks) ? AUTO_WEAPONS[id].evolution.label : AUTO_WEAPONS[id].label));
+  if (previous.length === 1) summary += ` ${previous[0]} continua ativa.`;
+  else if (previous.length > 1) summary += ' As armas automáticas anteriores continuam ativas.';
+  summary += autoWeaponTemporaryNote(before);
+  common.before = { weaponId: null, hitDamage: 0, cooldown: 0 };
+  common.after = {
+    weaponId, label: pulse.label, evolved, kind: pulse.kind,
+    hitDamage: hit, cooldown: pulse.cooldown, coneDamage: pulse.coneDamage,
+    sealCount: pulse.sealCount, strikeDamage: pulse.hitDamage,
+  };
+  common.summary = summary;
+  return common;
 }
 
 function skillRows(context) {
@@ -137,6 +188,8 @@ function statPreview(id, before, after) {
     common.before = { count: beforeCount };
     common.after = { count: afterCount };
     common.summary = `Projéteis: ${beforeCount} → ${afterCount}.${temporaryNote(before)}`;
+  } else if (id === 'autoWeapon') {
+    return autoWeaponPreview(before, after);
   }
   return common;
 }

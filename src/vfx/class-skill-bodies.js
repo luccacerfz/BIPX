@@ -70,5 +70,5 @@ export function createClassSkillBodies(THREE, scene, capacity = 64, name = 'Clas
   }
   function reset() { arrays.aStyle.fill(0); highWater = 0; active = 0; dirty = true; geometry.instanceCount = 0; mesh.visible = false; }
   function dispose() { if (disposed) return; reset(); mesh.removeFromParent(); geometry.dispose(); material.dispose(); disposed = true; }
-  return { set, hide, update, reset, dispose, getStats: () => ({ active, capacity, drawCalls: mesh.visible ? 1 : 0, allocatedBytes: Object.values(arrays).reduce((n, a) => n + a.byteLength, 0), disposed }) };
+  return { set, hide, update, reset, dispose, getShaderWarmupRoots: () => [mesh], getStats: () => ({ active, capacity, drawCalls: mesh.visible ? 1 : 0, allocatedBytes: Object.values(arrays).reduce((n, a) => n + a.byteLength, 0), disposed }) };
 }

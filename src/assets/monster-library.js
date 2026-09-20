@@ -1,3 +1,5 @@
+import { createBloodCowActor } from './bloodcow-adapter.js';
+import { loadBloodCowAsset } from './bloodcow-loader.js';
 import { LICH_CAST_PROFILE } from './lich-cast-profile.js';
 import { loadGlb } from './load-glb.js';
 import { clone as cloneSkeleton } from './vendor/SkeletonUtils.js';
@@ -9,6 +11,9 @@ const DEFINITIONS = {
   lich: { file: 'lich', height: 3.0, label: 'Crowned Lich' },
 };
 const ROLES = ['Idle', 'Walk', 'Run', 'Attack', 'Death'];
+let lastBloodCowLoadState = { state: 'idle', error: null };
+
+export function getBloodCowLoadState() { return { ...lastBloodCowLoadState }; }
 
 /** Slice exact seconds, interpolating both boundary keys; leaves source intact. */
 function sliceClip(THREE, source, from, to) {
@@ -68,8 +73,9 @@ function normalizeClips(THREE, source, castProfile = null) {
  * skeletons and material clones. Caller owns movement/collision/pool limits.
  * The default mesh heading is -Z; yaw is an optional additional rotation.
  */
-export async function loadMonsterLibrary({ THREE } = {}) {
+export async function loadMonsterLibrary({ THREE, bloodCowAsset = undefined, loadBloodCow = true } = {}) {
   if (!THREE) throw new TypeError('loadMonsterLibrary requires THREE');
+  lastBloodCowLoadState = { state: bloodCowAsset ? 'ready' : (loadBloodCow ? 'loading' : 'fallback'), error: null };
   const probeResponse = await fetch(new URL('../../assets/models/monsters/ground-probes.json', import.meta.url));
   if (!probeResponse.ok) throw new Error(`Monster ground probes failed: ${probeResponse.status}`);
   const groundProbes = await probeResponse.json();
@@ -80,7 +86,15 @@ export async function loadMonsterLibrary({ THREE } = {}) {
   if (castData.profileId !== LICH_CAST_PROFILE.id || castData.actorType !== 'caster' ||
       castClip.name !== LICH_CAST_PROFILE.sourceClip || castClip.duration !== LICH_CAST_PROFILE.sourceDuration ||
       castClip.tracks.length !== 24) throw new Error('Lich profile requires the exact full Attack sidecar');
-  const entries = await Promise.all(Object.entries(DEFINITIONS).map(async ([id, definition]) => {
+  let bloodCow = bloodCowAsset ?? null;
+  let ownsBloodCow = bloodCowAsset !== undefined && bloodCowAsset !== null;
+  let bloodCowError = null;
+  if (bloodCowAsset === undefined && loadBloodCow) {
+    try { bloodCow = await loadBloodCowAsset(); ownsBloodCow = true; lastBloodCowLoadState = { state: 'ready', error: null }; }
+    catch (error) { bloodCowError = String(error?.message || error); lastBloodCowLoadState = { state: 'fallback', error: bloodCowError }; }
+  }
+  let entries;
+  try { entries = await Promise.all(Object.entries(DEFINITIONS).map(async ([id, definition]) => {
     const url = new URL(`../../assets/models/monsters/${definition.file}.glb`, import.meta.url).href;
     const source = await loadGlb(url);
     if (source.animations.length !== 5) throw new Error(`${id}: expected five Tripo animation clips`);
@@ -105,14 +119,21 @@ export async function loadMonsterLibrary({ THREE } = {}) {
       textures: [...textures].map(t => ({ width: t.image.width, height: t.image.height })),
       clips: clips.map(c => ({ name: c.name, duration: c.duration, tracks: c.tracks.length })) };
     return [id, { source, clips, castClips, definition, stats, motion }];
-  }));
+  })); } catch (error) { if (ownsBloodCow) bloodCow?.dispose?.(); throw error; }
   const prototypes = Object.fromEntries(entries);
   const actors = new Set();
   let disposed = false;
-  const stats = { loaded: true, activeActors: 0, createdActors: 0, prototypes: Object.fromEntries(entries.map(([id, p]) => [id, p.stats])) };
+  const stats = { loaded: true, activeActors: 0, createdActors: 0, prototypes: Object.fromEntries(entries.map(([id, p]) => [id, p.stats])),
+    bloodCowAsset: { state: bloodCow ? 'ready' : 'fallback', url: bloodCow?.modelUrl || null, error: bloodCowError } };
 
   function create(id, { parent, height = DEFINITIONS[id]?.height, yaw = 0, castProfileId = null } = {}) {
     if (disposed) throw new Error('Monster library has been disposed');
+    if(id==='bloodcow'){
+      if(!bloodCow)throw new Error(`BloodCow GLB is unavailable; keep procedural boss fallback (${bloodCowError || 'asset not loaded'})`);
+      const actor=createBloodCowActor(THREE,bloodCow.gltf,bloodCow.qa,{parent,height:height??2.8,yaw});
+      const release=actor.dispose.bind(actor);actor.dispose=()=>{release();actors.delete(actor);stats.activeActors=actors.size;};
+      actors.add(actor);stats.activeActors=actors.size;stats.createdActors++;return actor;
+    }
     const entry = prototypes[id];
     if (!entry) throw new RangeError(`Unknown monster: ${id}`);
     if (castProfileId !== null && (id !== 'lich' || castProfileId !== LICH_CAST_PROFILE.id)) throw new RangeError('Unsupported monster cast profile');
@@ -385,7 +406,7 @@ export async function loadMonsterLibrary({ THREE } = {}) {
   }
 
   return {
-    ready: true, ids: Object.keys(DEFINITIONS), stats, create,
+    ready: true, ids: [...Object.keys(DEFINITIONS), 'bloodcow'], stats, create,
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -401,6 +422,9 @@ export async function loadMonsterLibrary({ THREE } = {}) {
         }
       });
       for (const resource of [...geometry, ...materials, ...textures, ...skeletons]) resource.dispose();
+      if (ownsBloodCow) bloodCow?.dispose?.();
+      stats.bloodCowAsset.state = 'disposed';
+      lastBloodCowLoadState = { state: 'disposed', error: null };
       stats.loaded = false;
     },
   };

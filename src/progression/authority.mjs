@@ -2,7 +2,8 @@
 // kill/tick/damage events; network clients can choose offered IDs or collect drops.
 import { heroMaxHealth, xpToNext as heroXpToNext, offerSpacing } from '../combat/hero-power.mjs';
 import { SKILL_UPGRADES, SKILL_UPGRADE_WEIGHTS, EXHAUSTED_REWARD, isUpgradeForClass, getSkillMods } from './skill-upgrades.mjs';
-import { RELICS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, AUTO_WEAPONS, nextRelicDrop, getAutoWeaponLoadout } from '../combat/arsenal.mjs';
+import { RELICS, BOSS_RELIC_DROPS, FALLBACK_INFUSION_SECONDS, AUTO_WEAPONS, nextRelicDrop, getAutoWeaponLoadout, getRelicName } from '../combat/arsenal.mjs';
+export const RELIC_ECHO_DURATION = 8;
 export const DEFINITIONS = [
   ['damage', '+Dano', 'common', 'stat', 1, 6],
   ['cadence', '+Cadência', 'common', 'stat', 1, 5],
@@ -47,7 +48,7 @@ export function createProgression(state, {random = Math.random} = {}) {
   const p = {runId: state.runId, character: state.character, xpTotal: 0,
     level: 1, xp: 0, xpToNext: xpToNext(1), pendingLevelUps: 0,
     stacks: {}, offer: null, offerSerial: 0, nextOfferAt: 0, rarityPity: 0,
-    bossKills: 0, revives: 0, weaponTimer: 0, prismStormRemaining: 0, exhaustedRewards: 0,
+    bossKills: 0, revives: 0, weaponTimer: 0, relicEcho: null, prismStormRemaining: 0, exhaustedRewards: 0,
     drops: new Map(), dropSerial: 0, dropCounter: 0, receipts: new Map(),
     random, clock: 0};
   syncProgression(state, p);
@@ -137,9 +138,55 @@ export function snapshot(p) {
 }
 // Relic (temporary infusion of the basic attack) and automatic weapons are server-owned like every other stack.
 export const activeRelic = p => p.weaponTimer > 0 && Object.hasOwn(RELICS, p.relic) ? p.relic : null;
+export const activeRelicEcho = p => p.relicEcho && p.relicEcho.remaining > 0 && Object.hasOwn(RELICS, p.relicEcho.id) ? p.relicEcho : null;
+/** Held relic + optional next drop. Same id refreshes duration and never creates or extends an echo. */
+export function replaceRelic(held, nextType, currentEcho = null) {
+  const next = Object.hasOwn(RELICS, nextType) ? nextType : null;
+  let echo = null;
+  if (held && next && next !== held) echo = { id: held, remaining: RELIC_ECHO_DURATION };
+  else if (currentEcho && currentEcho.remaining > 0 && Object.hasOwn(RELICS, currentEcho.id)) {
+    echo = { id: currentEcho.id, remaining: currentEcho.remaining };
+  }
+  return { relic: next, duration: next ? RELICS[next].duration : FALLBACK_INFUSION_SECONDS, echo };
+}
+export function formatRelicEchoHud(echo, classId) {
+  const live = echo && echo.remaining > 0 && Object.hasOwn(RELICS, echo.id) ? echo : null;
+  if (!live) return null;
+  const seconds = Math.ceil(live.remaining);
+  const short = RELICS[live.id].short;
+  const name = getRelicName(live.id, classId) || RELICS[live.id].label;
+  return { id: live.id, remaining: live.remaining, short, name, text: `Eco · ${short} · ${seconds}s`, aria: `eco da relíquia anterior ${name}, ${seconds} segundos` };
+}
+/** Drop nonfinite/non-positive remaining and unknown ids. Does not trust extra client fields. */
+export function sanitizeRelicEcho(incoming) {
+  if (!incoming || typeof incoming !== 'object') return null;
+  const remaining = Number(incoming.remaining);
+  if (!Number.isFinite(remaining) || remaining <= 0) return null;
+  if (typeof incoming.id !== 'string' || !Object.hasOwn(RELICS, incoming.id)) return null;
+  return { id: incoming.id, remaining };
+}
+/**
+ * Client mirror of server-owned relicEcho.
+ * newerVersion (new run or higher stateVersion): install the sanitized snapshot, including a valid initial echo.
+ * Same-version/stale: cannot create, resurrect, replace identity, or extend remaining.
+ */
+export function mirrorRelicEcho(local, incoming, { newerVersion = false } = {}) {
+  const next = sanitizeRelicEcho(incoming);
+  if (newerVersion) return next;
+  const held = sanitizeRelicEcho(local);
+  if (!held) return null;
+  if (!next || next.id !== held.id) return { id: held.id, remaining: held.remaining };
+  return { id: held.id, remaining: Math.min(held.remaining, next.remaining) };
+}
 export function arsenalSnapshot(p) {
   const relic = activeRelic(p);
-  return {relic, relicDuration: relic ? RELICS[relic].duration : p.weaponTimer > 0 ? FALLBACK_INFUSION_SECONDS : 0, autoWeapons: getAutoWeaponLoadout(p.stacks)};
+  const echo = activeRelicEcho(p);
+  const hud = formatRelicEchoHud(echo, p.character);
+  return {
+    relic, relicDuration: relic ? RELICS[relic].duration : p.weaponTimer > 0 ? FALLBACK_INFUSION_SECONDS : 0,
+    relicEcho: hud ? { id: hud.id, remaining: echo.remaining, label: hud.short, name: hud.name, text: hud.text, aria: hud.aria } : null,
+    autoWeapons: getAutoWeaponLoadout(p.stacks),
+  };
 }
 function rollRelic(p) { const next = nextRelicDrop(p.relicDropIndex, activeRelic(p)); p.relicDropIndex = next.index; return next.type; }
 export function syncProgression(state, p) {
@@ -218,7 +265,7 @@ export function receiveDamage(state, p, amount) {
   let revived = false;
   if (state.health <= 0 && p.revives > 0) {
     p.revives--; state.health = Math.max(1, Math.floor(state.maxHealth * .4)); revived = true;
-  } else if (state.health <= 0) state.state = 'dead';
+  } else if (state.health <= 0) { state.state = 'dead'; p.relicEcho = null; }
   changed(state, p);
   return {damage, revived};
 }
@@ -280,7 +327,10 @@ export function collectDrop(state, p, message) {
     if (p.offer) return {ok:false,code:'choice-pending-or-exhausted'};
     if (!openOffer(state,p,'bossChest')) payExhausted(state,p,1);
   } else if (drop.kind === 'healthPotion') state.health = Math.min(state.maxHealth,state.health+drop.amount);
-  else if (drop.kind === 'weapon') { p.relic = Object.hasOwn(RELICS, drop.type) ? drop.type : null; p.weaponTimer = p.relic ? RELICS[p.relic].duration : FALLBACK_INFUSION_SECONDS; }
+  else if (drop.kind === 'weapon') {
+    const installed = replaceRelic(activeRelic(p), drop.type, p.relicEcho);
+    p.relic = installed.relic; p.weaponTimer = installed.duration; p.relicEcho = installed.echo;
+  }
   else if (drop.kind === 'perk') {
     if (available(p,byId.get(drop.perkId),'perkDrop')) { upgradeId = drop.perkId; grant(state,p,drop.perkId); }
     // Original rule: capped perk drops still disappear, without adding a stack.
@@ -302,8 +352,13 @@ export function tickProgression(state,p,dt) {
   const previousPrismActive = p.prismStormRemaining > 0;
   p.weaponTimer = Math.max(0,p.weaponTimer-dt);
   if (!p.weaponTimer) p.relic = null;
+  const previousEcho = Boolean(p.relicEcho && p.relicEcho.remaining > 0);
+  if (p.relicEcho) {
+    p.relicEcho.remaining = Math.max(0, p.relicEcho.remaining - dt);
+    if (!(p.relicEcho.remaining > 0)) p.relicEcho = null;
+  }
   p.prismStormRemaining = Math.max(0,p.prismStormRemaining-dt);
-  let expired = (previousWeaponActive && p.weaponTimer === 0) || (previousPrismActive && p.prismStormRemaining === 0);
+  let expired = (previousWeaponActive && p.weaponTimer === 0) || (previousPrismActive && p.prismStormRemaining === 0) || (previousEcho && !p.relicEcho);
   for (const [id,drop] of p.drops) if (drop.expiresAt<=p.clock) {p.drops.delete(id);expired=true;}
   // The offer spacing ended with level-ups banked: the next offer opens here and the caller pushes the new state.
   if (p.pendingLevelUps > 0 && !p.offer && p.clock >= p.nextOfferAt) { const banked = p.pendingLevelUps; if (openLevelOffer(state, p) || p.pendingLevelUps !== banked) expired = true; }

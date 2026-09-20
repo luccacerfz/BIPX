@@ -1,6 +1,6 @@
 // Shared, on-demand RGBA depth for volumetric skills. Targets and materials are owned
 // here; source meshes, textures, clipping planes and cutaway uniforms remain borrowed.
-export function createSceneDepthPass({ THREE, renderer, adaptDepthMaterial }) {
+export function createSceneDepthPass({ THREE, renderer, adaptDepthMaterial, getDepthWarmupIdentity }) {
   const materials = new Map();
   const excluded = new THREE.MeshDepthMaterial();
   excluded.visible = false;
@@ -29,9 +29,7 @@ export function createSceneDepthPass({ THREE, renderer, adaptDepthMaterial }) {
     if (entry.adapter || entry.adapted) stats.adapted++;
     return depth;
   }
-  function render(scene, camera, request, width, height) {
-    stats = { ...stats, passes: 0, visibleFields: request?.visibleFields ?? 0, draws: 0, meshes: 0, excluded: 0, adapted: 0 };
-    if (disposed || !request?.required) return null;
+  function ensureTarget(width, height) {
     if (!target) {
       target = new THREE.WebGLRenderTarget(width, height, { type: THREE.UnsignedByteType,
         minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, stencilBuffer: false });
@@ -39,6 +37,13 @@ export function createSceneDepthPass({ THREE, renderer, adaptDepthMaterial }) {
       target.texture.colorSpace = THREE.NoColorSpace;
       target.texture.generateMipmaps = false;
     } else if (target.width !== width || target.height !== height) target.setSize(width, height);
+    return target;
+  }
+  function getShaderWarmupTarget(width, height) { return ensureTarget(width, height); }
+  function render(scene, camera, request, width, height) {
+    stats = { ...stats, passes: 0, visibleFields: request?.visibleFields ?? 0, draws: 0, meshes: 0, excluded: 0, adapted: 0 };
+    if (disposed || !request?.required) return null;
+    ensureTarget(width, height);
     const oldTarget = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
     const clearColor = renderer.getClearColor(new THREE.Color()), clearAlpha = renderer.getClearAlpha();
     const viewport = renderer.getCurrentViewport(new THREE.Vector4());
@@ -88,8 +93,51 @@ export function createSceneDepthPass({ THREE, renderer, adaptDepthMaterial }) {
       renderer.state.viewport(viewport); renderer.state.scissor(scissor); renderer.state.setScissorTest(scissorTest);
     }
   }
+  async function getShaderWarmupPairs(roots, { yieldControl = () => Promise.resolve(), chunkSize = 128, maxVisited = 50_000, maxPairs = 512 } = {}) {
+    const pairs = [], seenPairs = new Set(), seenObjects = new Set(), queue = [...(roots ?? [])];
+    const depthSourceShape = source => {
+      const mapKeys = ['map', 'alphaMap', 'displacementMap'];
+      const maps = mapKeys.map(name => {
+        const texture = source[name];
+        return name + ':' + (texture ? [texture.mapping, texture.channel, texture.colorSpace, texture.type].join('/') : '-');
+      }).join(',');
+      const adapter = source.userData?.bipxDepthAdapter;
+      return [source.type, source.side, source.depthWrite, source.colorWrite, source.opacity, source.blending,
+        source.alphaTest, source.alphaHash, source.displacementScale, source.displacementBias,
+        source.clippingPlanes?.length ?? 0, source.clipIntersection, source.wireframe,
+        source.isShaderMaterial, source.isRawShaderMaterial, adapter?.toString?.() ?? '',
+        getDepthWarmupIdentity?.(source) ?? '', maps].join('|');
+    };
+    let visited = 0;
+    while (queue.length) {
+      const object = queue.pop();
+      if (!object || seenObjects.has(object)) continue;
+      seenObjects.add(object);
+      if (++visited > maxVisited) throw new RangeError(`scene-depth shader source limit exceeded (${maxVisited})`);
+      if (object.isMesh && object.material && object.geometry) {
+        const sources = Array.isArray(object.material) ? object.material : [object.material];
+        const objectFlags = [object.isSkinnedMesh ? 'skin' : '', object.isInstancedMesh ? 'instance' : '',
+          object.morphTargetInfluences ? 'morph' : '', object.geometry.morphAttributes?.position ? 'morph-position' : ''].join('/');
+        const key = sources.map(depthSourceShape).join('&&') + '|' + objectFlags;
+        if (!seenPairs.has(key)) {
+          const depths = sources.map(depthFor);
+          if (!depths.every(depth => depth === excluded)) {
+            seenPairs.add(key);
+            pairs.push({ source: object, material: Array.isArray(object.material) ? depths : depths[0] });
+            if (pairs.length > maxPairs) throw new RangeError(`scene-depth shader variant limit exceeded (${maxPairs})`);
+          }
+        }
+      }
+      for (const child of object.children ?? []) queue.push(child);
+      if (queue.length + visited > maxVisited) throw new RangeError(`scene-depth traversal queue limit exceeded (${maxVisited})`);
+      if (visited % chunkSize === 0) await yieldControl();
+    }
+    return pairs;
+  }
   return {
     render,
+    getShaderWarmupPairs,
+    getShaderWarmupTarget,
     getStats: () => ({ ...stats, encoding: 'rgba-packed', allocated: Boolean(target), width: target?.width ?? 0,
       height: target?.height ?? 0, materials: materials.size, disposed }),
     dispose() {

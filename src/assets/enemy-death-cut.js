@@ -1,10 +1,17 @@
 import { clone as cloneSkeleton } from './vendor/SkeletonUtils.js';
 import { prepareDeathCut } from './death-cut-preparation.js';
+import { installFullInfluences } from './bloodcow-skinning.js';
 
 // Geometry is the stable ownership boundary. Mesh UUIDs are per-instance and
 // must never defeat reuse of immutable topology across shared asset instances.
 const topologyCache = new WeakMap();
 const compactHash = text => { let hash = 1469598103934665603n; for (let i = 0; i < text.length; i++) { hash ^= BigInt(text.charCodeAt(i)); hash = BigInt.asUintN(64, hash * 1099511628211n); } return hash.toString(16); };
+
+function preserveFullInfluenceMethods(root) {
+  root.traverse(mesh => {
+    if (mesh.isSkinnedMesh && mesh.geometry.attributes.joints_1 && mesh.geometry.attributes.weights_1) installFullInfluences(mesh);
+  });
+}
 
 // Convex support in the tipping plane: exact minima for all sampled vertices,
 // with O(hull) work per frame instead of re-skinning thousands of vertices.
@@ -45,15 +52,22 @@ function getTopology(mesh, source) {
   // never invalidate the immutable geometry/topology registration.
   const bindKey = mesh.isSkinnedMesh ? mesh.bindMatrix.elements.join(',') : 'static';
   const groupsKey = geometry.groups.map(group => `${group.start}:${group.count}:${group.materialIndex}`).join(';');
-  const signature = `${geometry.uuid}:${compactHash(`${geometry.index?.uuid || 'nonindexed'}|${groupsKey}|${skeletonKey}|${bindKey}|held:${held}`)}`;
+  const skinSets = [];
+  if (geometry.attributes.skinIndex && geometry.attributes.skinWeight) skinSets.push([geometry.attributes.skinIndex, geometry.attributes.skinWeight]);
+  for (let set = 1; set <= 2; set++) {
+    const indices = geometry.attributes[`joints_${set}`], weights = geometry.attributes[`weights_${set}`];
+    if (indices && weights) skinSets.push([indices, weights]);
+  }
+  const skinStride = skinSets.length * 4;
+  const influenceSignature = skinSets.map(([indices, weights]) => `${indices.count}/${indices.itemSize}:${weights.count}/${weights.itemSize}`).join(',');
+  const signature = `${geometry.uuid}:${compactHash(`${geometry.index?.uuid || 'nonindexed'}|${groupsKey}|${skeletonKey}|${bindKey}|influences:${influenceSignature}|held:${held}`)}`;
   let topology = variants.get(signature);
   if (topology) return topology;
-  const skin = geometry.attributes.skinIndex, weights = geometry.attributes.skinWeight;
   const influence = held ? null : new Float32Array(geometry.attributes.position.count);
-  if (influence && mesh.isSkinnedMesh && skin && weights) {
+  if (influence && mesh.isSkinnedMesh && skinSets.length) {
     const armBones = new Set(mesh.skeleton.bones.map((bone, index) => armName.test(bone.name || '') ? index : -1));
-    for (let i = 0; i < influence.length; i++) for (let c = 0; c < 4; c++)
-      if (armBones.has(skin.getComponent(i, c))) influence[i] += weights.getComponent(i, c);
+    for (let i = 0; i < influence.length; i++) for (const [indices, weights] of skinSets) for (let c = 0; c < 4; c++)
+      if (armBones.has(indices.getComponent(i, c))) influence[i] += weights.getComponent(i, c);
   }
   const index = geometry.index, count = index ? index.count : geometry.attributes.position.count;
   const groups = geometry.groups.length ? geometry.groups : [{ start: 0, count, materialIndex: 0 }];
@@ -71,14 +85,17 @@ function getTopology(mesh, source) {
     positions[i * 3 + 1] = geometry.attributes.position.getY(i);
     positions[i * 3 + 2] = geometry.attributes.position.getZ(i);
   }
-  const skinIndices = skin ? new Uint16Array(geometry.attributes.position.count * 4) : null;
-  const skinWeights = weights ? new Float32Array(geometry.attributes.position.count * 4) : null;
-  if (skinIndices && skinWeights) for (let i = 0; i < geometry.attributes.position.count; i++) for (let c = 0; c < 4; c++) {
-    skinIndices[i * 4 + c] = skin.getComponent(i, c);
-    skinWeights[i * 4 + c] = weights.getComponent(i, c);
+  const skinIndices = skinStride ? new Uint16Array(geometry.attributes.position.count * skinStride) : null;
+  const skinWeights = skinStride ? new Float32Array(geometry.attributes.position.count * skinStride) : null;
+  if (skinIndices && skinWeights) for (let i = 0; i < geometry.attributes.position.count; i++) {
+    let slot = 0;
+    for (const [indices, weights] of skinSets) for (let c = 0; c < 4; c++, slot++) {
+      skinIndices[i * skinStride + slot] = indices.getComponent(i, c);
+      skinWeights[i * skinStride + slot] = weights.getComponent(i, c);
+    }
   }
   topology = { key: signature, groups, index, count, held, influence, faceIndices, materialIndex,
-    positions, skinIndices, skinWeights,
+    positions, skinIndices, skinWeights, skinStride,
     bindMatrix: mesh.isSkinnedMesh ? Float32Array.from(mesh.bindMatrix.elements) : null,
     skinned: Boolean(mesh.isSkinnedMesh && skeleton) };
   variants.set(signature, topology);
@@ -272,6 +289,7 @@ export function captureDeathCutSnapshot({ THREE, source, direction = { x: 0, z: 
   const captured = buildWorkerPosePayload(THREE, source);
   if (!captured.meshes.length) return null;
   const root = cloneSkeleton(source);
+  preserveFullInfluenceMethods(root);
   root.visible = true;
   root.matrix.copy(source.matrixWorld);
   root.matrix.decompose(root.position, root.quaternion, root.scale);
@@ -284,6 +302,14 @@ export function captureDeathCutSnapshot({ THREE, source, direction = { x: 0, z: 
     direction: { x: Number(direction?.x) || 0, z: Number(direction?.z) || 0 },
     groundY: Number.isFinite(groundY) ? groundY : 0,
   };
+}
+
+export function disposeDeathCutSnapshot(snapshot) {
+  const root = snapshot?.root;
+  if (!root) return;
+  root.traverse(object => { if (object.isSkinnedMesh) object.skeleton?.dispose?.(); });
+  root.removeFromParent();
+  snapshot.root = null;
 }
 
 function cutContext(THREE, bounds, direction, groundY) {
@@ -336,6 +362,7 @@ export function createEnemyDeathCut({ THREE, source, scene, direction = { x: 0, 
   phase = profile ? now() : 0;
   for (const sign of [1, -1]) {
     const root = cloneSkeleton(source);
+    preserveFullInfluenceMethods(root);
     root.visible = true;
     const pivot = new THREE.Group();
     pivot.name = sign > 0 ? 'DashCutUpper' : 'DashCutLower';

@@ -1,7 +1,7 @@
 // Visual consumption of authoritative meleeAttack. Does not apply damage.
 // Clip contact is only claimed when family metadata exists; otherwise the pose is timing-normalized.
 
-export const SKINNED_PHASE_TYPES = Object.freeze(['zombie', 'runner', 'orcPeon', 'brute']);
+export const SKINNED_PHASE_TYPES = Object.freeze(['zombie', 'runner', 'orcPeon', 'brute', 'bloodCow']);
 export const PROCEDURAL_PHASE_TYPES = Object.freeze(['cowWalker', 'cowCharger', 'cowBrute', 'bloodCow']);
 export const TIMED_MELEE_TYPES = Object.freeze([...SKINNED_PHASE_TYPES, ...PROCEDURAL_PHASE_TYPES]);
 
@@ -13,7 +13,10 @@ export const MELEE_VISUAL_FAMILIES = Object.freeze({
   cowWalker: { library: null, prototype: null, clip: null, contact: { kind: 'procedural-fallback', reason: 'procedural mesh, no Attack GLB' } },
   cowCharger: { library: null, prototype: null, clip: null, contact: { kind: 'procedural-fallback', reason: 'procedural mesh, no Attack GLB' } },
   cowBrute: { library: null, prototype: null, clip: null, contact: { kind: 'procedural-fallback', reason: 'procedural mesh, no Attack GLB' } },
-  bloodCow: { library: null, prototype: null, clip: null, contact: { kind: 'procedural-fallback', reason: 'procedural mesh, no Attack GLB' } },
+  bloodCow: { library: 'monsters', prototype: 'bloodcow', clip: 'Attack',
+    contact: { kind: 'authored-phase-map', duration: .68, impactTime: .4, impactClipTime: 41 / 60,
+      recoveryClipTime: 1.2, witness: 'left forearm and hand surface +Z p95; full influence >= .25',
+      fallback: 'procedural phase pose remains visible while the asset is unavailable' } },
   caster: { library: 'monsters', prototype: 'lich', clip: 'Attack', contact: { kind: 'cast-profile', preserved: true } },
 });
 

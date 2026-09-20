@@ -677,6 +677,7 @@ body:has(.message:not(.is-hidden)) .arpg-hud { display: none; }
 .hud__stat--weapon[data-relic]:not([data-relic=""]) strong { color: #ffd98a; text-shadow: 0 0 10px #ffb84a66; }
 .hud__stat--weapon[data-relic]:not([data-relic=""]) small { display: inline; color: #ffe7b8; }
 .hud__stat--weapon[data-relic]:not([data-relic=""]) .ui-icon { color: #ffd98a; }
+.hud__stat--weapon[data-echo]:not([data-echo=""]) small { color: #e8d6ff; }
 .arpg-basic[data-relic]:not([data-relic=""]) { color: #ffd98a; }
 .arpg-basic[data-relic]:not([data-relic=""]) .arpg-icon { filter: drop-shadow(0 0 6px #ffb84acc); }
 .arpg-basic[data-relic]:not([data-relic=""]) small { display: block; font-size: 9px; font-weight: 700; color: #ffe7b8; }

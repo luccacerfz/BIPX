@@ -293,5 +293,13 @@ export function createClassSkillVfx({ THREE, scene, quality = 'medium', reducedM
     launchBridges:records.filter(r=>r.bridge).map(r=>({castId:r.id,skillId:r.skillId,terminal:r.terminal,bodyUntil:r.bodyUntil,...r.bridge.getStats()})),
     borrowedPools:{combat:!ownCombat,elemental:!ownElemental},bodies:{...legacyBodies,active:legacyBodies.active+fireBodies,drawCalls:legacyBodies.drawCalls+fireBodies,cannonBodies:fireBodies},cannon:fire,warcry:cry,dash:dash.getStats(),sceneDepth:{...depthState},states:{...state,buffs:cry.buffs,drawCalls:state.drawCalls+cry.drawCalls},combat:combat.getStats(),elemental:elemental.getStats()};}
   function dispose(){if(disposed)return;reset();bodies.dispose();fields.dispose();cannon.dispose();warcry.dispose();dash.dispose();if(ownCombat)combat.dispose();if(ownElemental)elemental.dispose();disposed=true;}
-  return {emit,update,syncProjectiles,updateDashTransform:(id,transform)=>!disposed&&dash.updateDashTransform(id,transform),updateCastTransform:(id,transform)=>!disposed&&warcry.updateCastTransform(id,transform),reset,dispose,getStats,setQuality,setReducedMotion,prepareSceneDepth,setSceneDepth,syncState:(state={})=>{if(!disposed){fields.syncState({...state,buffs:[]});warcry.syncState(state.buffs??[]);}}};
+  function getShaderWarmupCases(){return [
+    {id:'skill/warrior_war_cry',roots:warcry.getShaderWarmupRoots()},
+    {id:'skill/warrior_cleaving_dash',roots:dash.getShaderWarmupRoots()},
+    {id:'skill/warrior_shield_charge',roots:bodies.getShaderWarmupRoots()},
+    {id:'skill/dwarf_explosive_cannon',roots:cannon.getShaderWarmupRoots()},
+    {id:'skill/dwarf_frost_shot',roots:[...bodies.getShaderWarmupRoots(),...elemental.getShaderWarmupRoots(),...fields.getShaderWarmupRoots()]},
+    {id:'skill/dwarf_gravity_shot',roots:[...bodies.getShaderWarmupRoots(),...fields.getShaderWarmupRoots()]},
+  ];}
+  return {emit,update,syncProjectiles,updateDashTransform:(id,transform)=>!disposed&&dash.updateDashTransform(id,transform),updateCastTransform:(id,transform)=>!disposed&&warcry.updateCastTransform(id,transform),reset,dispose,getStats,setQuality,setReducedMotion,getShaderWarmupCases,prepareSceneDepth,setSceneDepth,syncState:(state={})=>{if(!disposed){fields.syncState({...state,buffs:[]});warcry.syncState(state.buffs??[]);}}};
 }

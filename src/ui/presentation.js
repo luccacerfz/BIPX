@@ -36,21 +36,27 @@ function selectedCharacterReady() {
   return Boolean(state && !state.loading && !characterRequestPending && state.characters?.some((character) => character.id === state.selected && character.ready));
 }
 function startupWarmupRunning() {
-  const status = window.__zombieNightDebug?.getStartupWarmup?.().status;
-  return status === 'running' || status === 'failed';
+  const debug = window.__zombieNightDebug;
+  const poolStatus = debug?.getStartupWarmup?.().status;
+  const shaderStatus = debug?.getShaderWarmup?.().status;
+  return poolStatus === 'preparing' || poolStatus === 'running' || shaderStatus === 'preparing' || shaderStatus === 'running';
 }
 function startupWarmupFailed() {
-  return window.__zombieNightDebug?.getStartupWarmup?.().status === 'failed';
+  const debug = window.__zombieNightDebug;
+  return debug?.getStartupWarmup?.().status === 'failed' || debug?.getShaderWarmup?.().status === 'failed';
 }
 function setCharacterStartAvailability(ready) {
-  const warmupStatus = window.__zombieNightDebug?.getStartupWarmup?.().status;
-  const blockedByWarmup = warmupStatus === 'running';
+  const failed = startupWarmupFailed();
+  const blockedByWarmup = startupWarmupRunning();
+  const selectionBusy = Boolean(characters()?.getState()?.loading || characterRequestPending);
   for (const button of startButtons) {
-    // A failed preparation has an explicit solo reload affordance even when
-    // the last character selection is not ready; multiplayer stays blocked.
-    button.disabled = warmupStatus === 'failed'
+    // A failed preparation has an explicit solo reload affordance, but the
+    // multiplayer route must remain closed even when the selected hero is ready.
+    button.disabled = failed
       ? button.id !== 'play-button'
       : !ready || blockedByWarmup;
+    button.setAttribute('aria-disabled', String(button.disabled));
+    button.setAttribute('aria-busy', String(!failed && (blockedByWarmup || selectionBusy)));
   }
 }
 function syncCharacters() {
@@ -119,11 +125,28 @@ for (const input of characterInputs) {
 characterRetry.addEventListener('click', () => void selectCharacter(requestedCharacter || characters()?.getState().selected || 'warrior'));
 window.addEventListener('bipx:character-change', syncCharacters);
 window.addEventListener('bipx:startup-warmup-state', syncCharacters);
+function guardStartButtonClick(button, event) {
+  if (startupWarmupFailed()) {
+    // Let main.js handle the explicit solo reload action; never route a failed
+    // warmup into the multiplayer entry, even for a synthetic/programmatic click.
+    if (button.id === 'play-button') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
+  if (startupWarmupRunning()) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
+  if (!selectedCharacterReady()) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    syncCharacters();
+  }
+}
 for (const button of startButtons) {
-  button.addEventListener('click', (event) => {
-    if (button.id === 'play-button' && startupWarmupFailed()) return;
-    if (!selectedCharacterReady()) { event.preventDefault(); event.stopImmediatePropagation(); syncCharacters(); }
-  }, true);
+  button.addEventListener('click', (event) => guardStartButtonClick(button, event), true);
 }
 
 function syncSettings() {

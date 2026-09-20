@@ -25,6 +25,19 @@ export function placeWorldLabel(anchor, size, blockers, occupied, viewport, pref
   return null;
 }
 
+/** One material/geometry factory shared by the lazy gameplay line and startup warmup. */
+export function createWorldLabelLeaderLine(THREE, renderOrder = 0) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3));
+  const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+    color: 0xcac0a7, transparent: true, opacity: .6, depthTest: false, depthWrite: false,
+  }));
+  line.name = 'loot-label-leader';
+  line.renderOrder = renderOrder;
+  line.frustumCulled = false;
+  return line;
+}
+
 export function createWorldLabelLayout(THREE) {
   const point = new THREE.Vector3(), right = new THREE.Vector3(), projected = new THREE.Vector3();
   const anchor = new THREE.Vector3(), side = new THREE.Vector3(), up = new THREE.Vector3();
@@ -92,10 +105,7 @@ export function createWorldLabelLayout(THREE) {
       label.position.copy(point);
       if (Math.hypot(...state.offset) > 1 && label.parent) {
         if (!state.line) {
-          const geometry = new THREE.BufferGeometry();
-          geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3));
-          state.line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xcac0a7, transparent: true, opacity: .6, depthTest: false, depthWrite: false }));
-          state.line.name = 'loot-label-leader'; state.line.renderOrder = label.renderOrder - 1; state.line.frustumCulled = false;
+          state.line = createWorldLabelLeaderLine(THREE, label.renderOrder - 1);
           label.parent.add(state.line);
         }
         const item = project(drop.mesh.position, camera, viewport);

@@ -156,7 +156,7 @@ export function createDashVfx({THREE,scene,quality='medium',reducedMotion=false}
   }
   function reset(){for(let i=0;i<capacity;i++)hide(i);for(const r of records){r.id=null;r.expiry=0;r.pending=false;r.pendingSegment=-1;r.headSegment=-1;r.transformed=false;}clock=0;cursor=castCapacity;geometry.instanceCount=0;mesh.visible=false;}
   function dispose(){if(disposed)return;reset();mesh.removeFromParent();geometry.dispose();material.dispose();disposed=true;}
-  return {emit,update,updateDashTransform,cancel,reset,dispose,setQuality(v){quality=v;},setReducedMotion(v){reducedMotion=!!v;},getStats(){let active=0;const kinds=[0,0,0,0];for(let i=0;i<capacity;i++)if(endTimes[i]>clock){active++;kinds[arrays.aStyle[i*4]]++;}
+  return {emit,update,updateDashTransform,cancel,reset,dispose,getShaderWarmupRoots:()=>[mesh],setQuality(v){quality=v;},setReducedMotion(v){reducedMotion=!!v;},getStats(){let active=0;const kinds=[0,0,0,0];for(let i=0;i<capacity;i++)if(endTimes[i]>clock){active++;kinds[arrays.aStyle[i*4]]++;}
     return {candidate:'dash-art2',clock,active,kinds,segments,contacts,breaks,dropped,fallbacks,transformUpdates,lastCorrection,capacity,drawCalls:mesh.visible?1:0,allocatedBytes:Object.values(arrays).reduce((n,a)=>n+a.byteLength,0),disposed,
       records:records.filter(r=>r.id!==null).map(r=>({id:r.id,released:r.released,terminal:r.terminal,preparing:!r.released&&!r.terminal&&endTimes[r.index]>clock,pending:r.pending,pendingSegment:r.pendingSegment,headSegment:r.headSegment,following:owners[r.index]===r.id&&endTimes[r.index]>clock,lastEmitter:r.lastEmitter.toArray(),lastRoot:r.lastRoot.toArray()}))};}};
 }

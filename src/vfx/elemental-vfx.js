@@ -274,6 +274,6 @@ export function createElementalVfx({ THREE, scene, quality = 'medium', reducedMo
   }
   setQuality(currentQuality);
   /** trackThreat(key, position, radius): refresh the threat marker of one live hostile projectile; call it every frame. */
-  return { emit, emitTrail, update, setQuality, setReducedMotion, reset, getStats, dispose,
+  return { emit, emitTrail, update, setQuality, setReducedMotion, reset, getStats, dispose, getShaderWarmupRoots:()=>[group],
     trackThreat: (key, position, radius) => !disposed && threats.track(key, position, radius) };
 }

@@ -1,5 +1,6 @@
 import { stepCasterCaller } from "./src/combat/caster-caller-boundary.mjs";
 import { cancelCasterCast, casterCastSnapshot } from "./src/combat/caster-cast.mjs";
+import { CASTER_PROJECTILE_PROFILE, canUseCasterRangedAttack, getCasterProjectileOrigin, getCasterProjectileSpec } from "./src/combat/caster-projectile-profile.mjs";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import http from "node:http";
@@ -13,11 +14,12 @@ import { getEnvironmentColliders, ENVIRONMENT_GROUND } from "./src/render/enviro
 import { getPursuitDirection } from "./src/physics/navigation.mjs";
 import { createSkillState, skillSnapshot, beginSkill, advanceSkills, getSkillModifiers, isSkillMoving, applySkillControl, tickSkillControl, cancelSkills, getSkillDamageTaken, creditSkillKill } from "./src/combat/class-skills.mjs";
 import { locomotionSpeed, creditMoveBudget, consumeMoveBudget } from "./src/combat/network-move.mjs";
+import { stripClientMotion, stampAuthoritativeMotion, motionEnvelope } from "./src/network/authoritative-motion.mjs";
 import { getMeleeTiming, beginMeleeAttack, advanceMeleeAttack, isWithinMeleeArc, meleeHitReach, meleeRawDamage, meleeLosClear, serializeMeleeAttack } from "./src/combat/melee-timing.mjs";
 import { publishMeleeTelegraph, meleeTelegraphEvent } from "./src/combat/melee-telegraph-handoff.mjs";
 import { heroMaxHealth, basicAttackSpec, createHeroCombatState, beginBasicAttack, meleeShape, insideMeleeShape, rifleShot, assistRifleAim, basicPower, skillPower, monsterWeight, applyHeroKnockback, advanceHeroKnockback, resolveIncomingDamage, resolveLeech, waveSpawnBudget, spawnInterval, spawnDistance } from "./src/combat/hero-power.mjs";
 
-import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, skillMods, resolveDamage, rewardKill, receiveDamage, tickProgression, activeRelic } from "./src/progression/authority.mjs";
+import { createProgression, syncProgression, chooseUpgrade, collectDrop, attackStats, stats, skillMods, resolveDamage, rewardKill, receiveDamage, tickProgression, activeRelic, activeRelicEcho } from "./src/progression/authority.mjs";
 import { createArsenalState, relicAttack, advanceArsenal, cancelArsenal, getAutoWeaponLoadout } from "./src/combat/arsenal.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -261,6 +263,10 @@ function joinMultiplayerRoom(requestUrl, socket) {
       attachClientSocket(retained, socket);
       // A half-open previous transport can close later; its callbacks are guarded.
       if (previousSocket && previousSocket !== socket) previousSocket.destroy();
+      stampAuthoritativeMotion(retained.state, {
+        now: Date.now(), kind: 'reconnect', snap: true,
+        from: { x: retained.state.x, z: retained.state.z }, to: { x: retained.state.x, z: retained.state.z },
+      });
       sendWelcome(retained, room, true);
       broadcast(room, { type: "playerJoined", player: createPlayerSnapshot(retained) }, retained.id);
       return;
@@ -291,6 +297,10 @@ function joinMultiplayerRoom(requestUrl, socket) {
   client.moveClock = Date.now();
   client.moveBudget = 0;
   client.state.skills = skillSnapshot(client.skills);
+  stampAuthoritativeMotion(client.state, {
+    now: Date.now(), kind: 'spawn', snap: true,
+    from: { x: client.state.x, z: client.state.z }, to: { x: client.state.x, z: client.state.z },
+  });
   room.clients.set(client.id, client);
   resumableClients.set(client.resumeToken, client);
   attachClientSocket(client, socket);
@@ -352,6 +362,10 @@ function startClientRun(room, client, requestedState = {}, requestId = null) {
   finishPlayerSession(client);
   client.state = nextState;
   client.state.state = "playing";
+  stampAuthoritativeMotion(client.state, {
+    now: Date.now(), kind: 'lifecycle', snap: true,
+    from: { x: client.state.x, z: client.state.z }, to: { x: client.state.x, z: client.state.z },
+  });
   client.state.wave = Math.max(1, room.world.wave);
   client.progression = createProgression(client.state);
   client.skills = createSkillState(client.state.character);
@@ -566,12 +580,16 @@ function handleClientMessage(client, rawMessage) {
     const previousState = client.state.state;
     const now = Date.now();
     const dashing = isSkillMoving(client.skills) || now < (client.skillMovementUntil || 0);
+    stripClientMotion(message.state);
     const incomingState = dashing ? { ...message.state, x: client.state.x, z: client.state.z } : message.state;
+    stripClientMotion(incomingState);
+    const from = { x: client.state.x, z: client.state.z };
     if (dashing) {
       client.moveClock = now;
       client.moveBudget = 0;
       // Skill mover already collided; never copy client x/z into normalizePlayerState.
       client.state = normalizePlayerState(incomingState, client.state, { position: { x: client.state.x, z: client.state.z } });
+      stampAuthoritativeMotion(client.state, { now, kind: 'skill', from, to: { x: client.state.x, z: client.state.z }, speed: client.state.motionSpeed });
     } else {
       const credited = creditMoveBudget({
         now, moveClock: client.moveClock, moveBudget: client.moveBudget,
@@ -580,11 +598,12 @@ function handleClientMessage(client, rawMessage) {
       const requestedX = clampNumber(incomingState?.x, -serverWorldLimit, serverWorldLimit, client.state.x) - client.state.x;
       const requestedZ = clampNumber(incomingState?.z, -serverWorldLimit, serverWorldLimit, client.state.z) - client.state.z;
       const spent = consumeMoveBudget(requestedX, requestedZ, credited.moveBudget);
-      const moved = moveActor(collisionWorld, { id: client.id, x: client.state.x, z: client.state.z, radius: .64 }, { x: spent.dx, z: spent.dz });
+      const moved = moveActor(collisionWorld, { id: client.id, x: client.state.x, z: client.state.z, radius: .64 }, { x: spent.dx, z: spent.dz }, { trace: true });
       client.moveClock = credited.moveClock;
       client.moveBudget = spent.leftover;
       client.lastMoveDiscarded = { meters: spent.discarded, dt: credited.discardedDt, blocked: moved.blocked, consumed: spent.consume, travelled: Math.hypot(moved.x - client.state.x, moved.z - client.state.z) };
       client.state = normalizePlayerState(incomingState, client.state, { position: moved });
+      stampAuthoritativeMotion(client.state, { now, kind: 'walk', trace: moved.trace, from, to: { x: moved.x, z: moved.z }, speed: credited.speed });
     }
     if ((Number.isFinite(message.state?.x) && Math.abs(message.state.x - client.state.x) > .02) ||
         (Number.isFinite(message.state?.z) && Math.abs(message.state.z - client.state.z) > .02)) {
@@ -925,13 +944,12 @@ function updateServerCaster(room, monster, playingClients, dt, controls) {
   const target = active ? living.find(client => client.id === monster.casterCastState.cast.targetId) : getServerMonsterTarget(monster, living);
   const distance = target ? Math.hypot(target.state.x - monster.x, target.state.z - monster.z) : Infinity;
   const profile = serverMonsterProfiles[monster.type];
-  const meleeRange = (profile.meleeRange ?? monster.radius + .72) + (monster.reachBonus || 0);
   const step = stepCasterCaller({ state: monster.casterCastState, worldEpoch: room.world.epoch,
     actor: { id: monster.id, type: monster.type, position: monster, present: room.world.monsters.has(monster.id),
       alive: monster.health > 0, frozen: controls.frozen, stunned: controls.stunned },
     target: target ? { id: target.id, lifeId: target.state.runId, present: true, alive: true, position: target.state } : null,
     tick: room.world.casterTick, dt, ready: monster.attackCooldown <= 0,
-    inRange: distance < 22 && distance > meleeRange + 1.2,
+    inRange: canUseCasterRangedAttack(distance, { radius: monster.radius, meleeRange: profile.meleeRange, reachBonus: monster.reachBonus }),
     losClear: Boolean(target && !sweepStatic(collisionWorld, { x: monster.x, y: .9, z: monster.z }, { x: target.state.x, y: .9, z: target.state.z }, 0)),
     cooldownDuration: getServerRangedCooldown('caster') });
   if (step.assignCooldown !== null) monster.attackCooldown = step.assignCooldown;
@@ -1069,12 +1087,14 @@ function updateServerMonsterStatus(room, monster, dt) {
 function spawnServerProjectile(room, monster, target, directionX, directionZ, preparedCast = null) {
   const world = room.world;
   const spec = getServerProjectileSpec(monster.type);
+  const direction = { x: directionX, z: directionZ };
+  const casterOrigin = monster.type === 'caster' ? getCasterProjectileOrigin(monster, direction, monster.radius) : null;
   const projectile = {
     id: world.nextProjectileId,
     sourceType: monster.type,
-    x: monster.x + directionX * (monster.radius + 0.4),
-    z: monster.z + directionZ * (monster.radius + 0.4),
-    y: enemyProjectileCollisionHeight(monster.type),
+    x: casterOrigin?.x ?? monster.x + directionX * (monster.radius + 0.4),
+    z: casterOrigin?.z ?? monster.z + directionZ * (monster.radius + 0.4),
+    y: casterOrigin?.y ?? enemyProjectileCollisionHeight(monster.type),
     rotation: Math.atan2(directionX, directionZ),
     vx: directionX * spec.speed,
     vz: directionZ * spec.speed,
@@ -1157,7 +1177,11 @@ function handleServerSkill(room, client, message) {
       if (message.slot > 0 && client.state.character === 'warrior') client.skillMovementUntil = Date.now() + result.event.duration * 1000;
       // Recuo Tático: the authority owns Lyra's position while she hops back.
       else if (result.event.mods?.frostHop) client.skillMovementUntil = Date.now() + 320;
-      broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event: result.event });
+      stampAuthoritativeMotion(client.state, {
+        now: Date.now(), kind: 'skill', snap: false,
+        from: { x: client.state.x, z: client.state.z }, to: { x: client.state.x, z: client.state.z },
+      });
+      broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event: result.event, ...motionEnvelope(client.state) });
     }
     result = { ok: result.ok, reason: result.reason, castId: result.castId };
     client.skillReceipts.set(requestId, result);
@@ -1179,8 +1203,15 @@ function updateServerSkills(room, client, dt) {
     },
     sweepStatic: (from, to, radius, kind) => sweepStatic(collisionWorld, from, to, radius, { kind }),
     moveCaster(delta) {
-      const moved = moveActor(collisionWorld, { id: client.id, x: client.state.x, z: client.state.z, radius: .64 }, delta, { stopOnContact: true });
-      client.state.x = moved.x; client.state.z = moved.z; return moved;
+      const from = { x: client.state.x, z: client.state.z };
+      const moved = moveActor(collisionWorld, { id: client.id, x: client.state.x, z: client.state.z, radius: .64 }, delta, { stopOnContact: true, trace: true });
+      client.state.x = moved.x; client.state.z = moved.z;
+      const now = Date.now();
+      const dt = Math.max(1, now - (client.lastSkillMoveAt || now)) / 1000;
+      client.lastSkillMoveAt = now;
+      const speed = Math.hypot(moved.x - from.x, moved.z - from.z) / dt;
+      stampAuthoritativeMotion(client.state, { now, kind: 'skill', trace: moved.trace, from, to: { x: moved.x, z: moved.z }, speed });
+      return moved;
     },
     pullTargets(targets, field, step) {
       const bodies = targets.map(t => ({ ...t, inverseMass: 1, pullScale: t.boss ? .35 : 1 }));
@@ -1196,7 +1227,7 @@ function updateServerSkills(room, client, dt) {
       damageServerMonster(room, monster, resolved.damage, client.id, effect.skillId, effect, resolved.critical);
       return !room.world.monsters.has(monster.id);
     },
-    emit(event) { broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event }); },
+    emit(event) { broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event, ...motionEnvelope(client.state) }); },
   });
   client.state.skills = skillSnapshot(client.skills);
   client.skillSyncTimer = (client.skillSyncTimer || 0) - dt;
@@ -1331,6 +1362,7 @@ function serverArsenalContext(room, client, combatStats, aim = null) {
   let targets = null;
   return {
     ownerId: client.id, actor: client.state, aim, stats: combatStats, relic: activeRelic(client.progression),
+    echoRelic: activeRelicEcho(client.progression)?.id ?? null,
     loadout: getAutoWeaponLoadout(client.progression.stacks), perks: client.progression.stacks,
     dead: client.state.state !== 'playing' || client.state.health <= 0,
     targets: () => targets ??= [...room.world.monsters.values()], sweepStatic: arsenalSweep,
@@ -1338,7 +1370,7 @@ function serverArsenalContext(room, client, combatStats, aim = null) {
       if (!room.world.monsters.has(monster.id)) return true;
       const burning = monster.burnTimer > 0 ? monster.burnDps || 0 : 0;
       const resolved = resolveDamage(client.progression, effect.damage);
-      damageServerMonster(room, monster, resolved.damage, client.id, effect.hitEffect, null, resolved.critical);
+      damageServerMonster(room, monster, resolved.damage, client.id, effect.hitEffect, null, resolved.critical, effect);
       const survived = room.world.monsters.has(monster.id);
       // One shared burn rule for solo and server instead of the legacy amount-based guess.
       if (survived && effect.burnDps) monster.burnDps = Math.max(burning, effect.burnDps);
@@ -1348,7 +1380,8 @@ function serverArsenalContext(room, client, combatStats, aim = null) {
   };
 }
 function applyServerRelicAttack(room, client, attack, direction) {
-  if (activeRelic(client.progression)) relicAttack(getServerArsenal(client), serverArsenalContext(room, client, attack, direction));
+  const ctx = serverArsenalContext(room, client, attack, direction);
+  if (ctx.relic || ctx.echoRelic) relicAttack(getServerArsenal(client), ctx);
 }
 function updateServerArsenal(room, client, dt) {
   const combatStats = attackStats(client.progression);
@@ -1360,13 +1393,14 @@ function cancelServerArsenal(room, client) {
 }
 
 // `critical` and `skillEffect.mod` only colour the client's hit feedback (crit number, napalm ticks roll into one number).
-function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = "pistol", skillEffect = null, critical = false) {
+function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = "pistol", skillEffect = null, critical = false, effect = null) {
   if (!monster || amount <= 0 || !room.world.monsters.has(monster.id)) {
     return false;
   }
 
   monster.health -= amount;
-  if (hitEffect === "frostNova") {
+  const controlScale = Number.isFinite(effect?.controlScale) ? effect.controlScale : 1;
+  if (hitEffect === "frostNova" && controlScale > 0) {
     monster.freezeTimer = serverMonsterProfiles[monster.type]?.boss ? 0.85 : 2.2;
   }
   if (hitEffect === "flamethrower") {
@@ -1382,6 +1416,7 @@ function damageServerMonster(room, monster, amount, sourceClientId, hitEffect = 
     health: Math.max(0, Number(monster.health.toFixed(2))),
     hitEffect,
     sourceId: sourceClientId,
+    ...(effect?.remnant ? { remnant: true } : null),
     ...(critical ? { crit: true } : null), ...(skillEffect?.mod ? { mod: skillEffect.mod } : null),
   });
 
@@ -1474,7 +1509,11 @@ function damageServerPlayer(room, client, amount, source = null) {
   const resolved = receiveDamage(client.state, client.progression, incoming.damage);
   if (client.state.health <= 0) {
     room.world.actorIndex?.remove(`player:${client.id}`);
-    cancelSkills(client.skills, event => broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event }), 'death');
+    stampAuthoritativeMotion(client.state, {
+      now: Date.now(), kind: 'lifecycle', snap: true,
+      from: { x: client.state.x, z: client.state.z }, to: { x: client.state.x, z: client.state.z },
+    });
+    cancelSkills(client.skills, event => broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event, ...motionEnvelope(client.state) }), 'death');
     client.state.skills = skillSnapshot(client.skills);
     cancelServerArsenal(room, client);
   }
@@ -1637,6 +1676,7 @@ function getServerSpawnInterval(world) {
 }
 
 function getServerRangedCooldown(type) {
+  if (type === 'caster') return CASTER_PROJECTILE_PROFILE.cooldown;
   if (serverMonsterProfiles[type]?.boss) {
     return type === "plumaFinance" ? 1.25 : type === "gitcity" ? 1.45 : 1.1;
   }
@@ -1644,6 +1684,7 @@ function getServerRangedCooldown(type) {
 }
 
 function getServerProjectileSpec(type) {
+  if (type === 'caster') return getCasterProjectileSpec();
   if (type === "plumaFinance") return { speed: 7.5, radius: 0.55, height: 1.05, impactRadius: 2.8, lifespan: 5.2, homing: true };
   if (type === "gitcity") return { speed: 17, radius: 0.28, height: 1.45, impactRadius: 1.8, lifespan: 4, homing: false };
   if (type === "angelSheep") return { speed: 14, radius: 0.3, height: 1.4, impactRadius: 1.5, lifespan: 3.8, homing: false };
@@ -2411,7 +2452,7 @@ function expireDisconnectedClients(room) {
 function expireClient(client) {
   const room = rooms.get(client.roomId);
   if (!room || room.clients.get(client.id) !== client) return;
-  cancelSkills(client.skills, event => broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event }), 'expired');
+  cancelSkills(client.skills, event => broadcast(room, { type: 'skillEvent', serverTime: Date.now(), id: client.id, runId: client.state.runId, event, ...motionEnvelope(client.state) }), 'expired');
   client.state.skills = skillSnapshot(client.skills);
   room.clients.delete(client.id);
   resumableClients.delete(client.resumeToken);

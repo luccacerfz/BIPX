@@ -115,3 +115,11 @@ export function shareEnvironmentCutawayDepth(colorMaterial, depthMaterial) {
   install(depthMaterial, binding, 'depth');
   return true;
 }
+
+/** Stable, side-effect-free identity for depth warmup deduplication. */
+export function getEnvironmentCutawayDepthWarmupIdentity(colorMaterial) {
+  const binding = bindings.get(colorMaterial);
+  if (!binding) return '';
+  return [ENVIRONMENT_CUTAWAY_PATCH_VERSION, 'depth', binding.threatLimit,
+    binding.skillAreaLimit, binding.transition].join(':');
+}

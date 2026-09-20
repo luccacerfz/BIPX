@@ -5,7 +5,9 @@
 // so an infused attack is always stronger than the plain one whatever the basic-attack numbers become.
 import { segmentCircleContact } from './projectile-sweep.mjs';
 
-const HIT_HEIGHT = .9, MAX_PROJECTILES = 24, MAX_PENDING = 48, AREA_LIMIT = 2.25;
+const HIT_HEIGHT = .9, AREA_LIMIT = 2.25;
+export const MAX_PROJECTILES = 24, MAX_PENDING = 48;
+export const RELIC_ECHO_DAMAGE = .35, RELIC_ECHO_CONTROL = 0;
 const clamp = (value, min, max, fallback) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
 const alive = target => Boolean(target) && !target.dead && target.health > 0;
 const freeze = value => { for (const key of Object.keys(value)) if (value[key] && typeof value[key] === 'object') freeze(value[key]); return Object.freeze(value); };
@@ -96,13 +98,13 @@ export const getRelicSpec = (relicId, classId) => Object.hasOwn(RELICS, relicId)
 export const getRelicName = (relicId, classId) => getRelicSpec(relicId, classId)?.name || null;
 
 export function createArsenalState(classId = 'dwarf') {
-  return { classId: classId === 'warrior' ? 'warrior' : 'dwarf', clock: 0, serial: 0, relic: null, swing: 0, pending: [], projectiles: [], autoAttacks: 0,
+  return { classId: classId === 'warrior' ? 'warrior' : 'dwarf', clock: 0, serial: 0, relic: null, swing: 0, echo: null, echoSwing: 0, pending: [], projectiles: [], autoAttacks: 0,
     auto: { guardianBlade: { cooldown: .2 }, orbitOrb: { cooldown: .2, angle: 0, x: null, z: null }, sealRain: { cooldown: .2 } } };
 }
 /** Death, restart and disconnect: nothing keeps damaging and every live body gets a terminal event. */
 export function cancelArsenal(state, emit = () => {}, reason = 'cancelled') {
   for (const projectile of state.projectiles) emit({ kind: 'projectile', phase: 'end', id: projectile.id, relic: projectile.relic, x: projectile.x, z: projectile.z, reason });
-  state.projectiles.length = 0; state.pending.length = 0; state.swing = 0; state.relic = null; state.auto.orbitOrb.x = state.auto.orbitOrb.z = null;
+  state.projectiles.length = 0; state.pending.length = 0; state.swing = 0; state.relic = null; state.echoSwing = 0; state.echo = null; state.auto.orbitOrb.x = state.auto.orbitOrb.z = null;
 }
 export const arsenalBusy = state => state.pending.length > 0 || state.projectiles.length > 0;
 
@@ -162,7 +164,7 @@ const targetsOf = ctx => frameTargets ??= (typeof ctx.targets === 'function' ? c
 const victims = [];
 function strike(ctx, target, damage, hitEffect, source, extra) {
   if (!alive(target) || !(damage > 0)) return false;
-  const killed = Boolean(ctx.hit(target, { damage, hitEffect, source, ...extra }));
+  const killed = Boolean(ctx.hit(target, { damage, hitEffect, source, remnant: Boolean(extra?.remnant), controlScale: extra?.controlScale ?? 1, ...extra }));
   if (killed) target.dead = true;
   return killed;
 }
@@ -174,35 +176,65 @@ function strikeAll(ctx, list, damage, hitEffect, source, extra) {
 }
 const readStats = stats => ({ damage: clamp(stats?.damageMultiplier, 0, 100, 2), area: Math.sqrt(clamp(stats?.areaMultiplier, 1, AREA_LIMIT, 1)),
   cooldown: clamp(stats?.cooldownMultiplier, .2, 1, 1), projectiles: Math.floor(clamp(stats?.projectileBonus, 0, 4, 0)) });
+/** One automatic-weapon pulse as fireAuto applies it: per-strike / per-pulse / per-seal numbers, not DPS. */
+export function getAutoWeaponPulse(weaponId, combatStats = {}, evolved = false) {
+  const profile = AUTO_WEAPONS[weaponId];
+  if (!profile) return null;
+  const stats = readStats(combatStats);
+  const evolution = evolved ? profile.evolution : null;
+  const hitDamage = profile.damage * stats.damage * (evolution?.damage || 1);
+  const kind = weaponId === 'guardianBlade' ? 'strike' : weaponId === 'orbitOrb' ? 'pulse' : 'seal';
+  return {
+    weaponId,
+    label: evolution ? evolution.label : profile.label,
+    evolved: Boolean(evolution),
+    kind,
+    cooldown: Math.max(.045, profile.cooldown * stats.cooldown),
+    hitDamage,
+    coneDamage: kind === 'strike' && evolution ? hitDamage * evolution.coneDamage : 0,
+    sealCount: kind === 'seal' ? (evolution ? 3 : 1) : 0,
+    sealDamage: kind === 'seal' ? hitDamage * (evolution ? evolution.impactDamage : 1) : 0,
+  };
+}
 function readAim(aim) {
   const x = clamp(aim?.x, -1, 1, 0), z = clamp(aim?.z, -1, 1, -1), length = Math.hypot(x, z);
   return length > 1e-6 ? { x: x / length, z: z / length } : { x: 0, z: -1 };
 }
 
-/** Call once for every ACCEPTED basic attack. `ctx.relic` comes from trusted progression, never from the attack message. */
-export function relicAttack(state, ctx) {
-  const spec = getRelicSpec(ctx.relic, state.classId);
+function scaleRelicAction(action, scale) {
+  const scaled = { ...action };
+  if (Number.isFinite(action.damage)) scaled.damage = action.damage * scale;
+  if (Number.isFinite(action.explodeDamage)) scaled.explodeDamage = action.explodeDamage * scale;
+  if (Number.isFinite(action.burnDps)) scaled.burnDps = action.burnDps * scale;
+  return scaled;
+}
+
+function performRelicAttack(state, ctx, remnant) {
+  const relic = remnant ? ctx.echoRelic : ctx.relic;
+  const spec = getRelicSpec(relic, state.classId);
   if (!spec || !ctx.actor || !Number.isFinite(ctx.actor.x) || !Number.isFinite(ctx.actor.z)) return false;
-  if (state.relic !== ctx.relic) { state.relic = ctx.relic; state.swing = 0; }
-  state.swing++;
+  const swingKey = remnant ? 'echoSwing' : 'swing', relicKey = remnant ? 'echo' : 'relic';
+  if (state[relicKey] !== relic) { state[relicKey] = relic; state[swingKey] = 0; }
+  state[swingKey]++;
   frameTargets = null;
   const stats = readStats(ctx.stats), direction = readAim(ctx.aim), origin = { x: ctx.actor.x, z: ctx.actor.z };
-  for (const action of spec.actions) {
-    const every = action.every || 1, step = (state.swing - 1) % every;
-    if (step !== 0) { if (action.nova) ctx.emit({ kind: 'relic', relic: ctx.relic, classId: state.classId, shape: 'charge', x: origin.x, z: origin.z, step, of: every }); continue; }
-    if (action.type === 'projectile') { launch(state, ctx, action, origin, direction, stats); continue; }
-    const job = { at: state.clock + (action.delay || 0), relic: ctx.relic, action, direction, stats, x: origin.x, z: origin.z, marks: null };
+  const scale = remnant ? RELIC_ECHO_DAMAGE : 1;
+  for (const raw of spec.actions) {
+    const action = scale === 1 ? raw : scaleRelicAction(raw, scale);
+    const every = action.every || 1, step = (state[swingKey] - 1) % every;
+    if (step !== 0) { if (action.nova) ctx.emit({ kind: 'relic', relic, classId: state.classId, shape: 'charge', x: origin.x, z: origin.z, step, of: every, ...(remnant ? { remnant: true } : {}) }); continue; }
+    if (action.type === 'projectile') { launch(state, { ...ctx, relic }, action, origin, direction, stats, remnant); continue; }
+    const job = { at: state.clock + (action.delay || 0), relic, action, direction, stats, x: origin.x, z: origin.z, marks: null, remnant };
     if (action.type === 'seals') {
-      // Marked now, detonated later: the blast follows a marked enemy that keeps walking.
       const struck = targetsInCone(targetsOf(ctx), origin, direction, action.range * stats.area, action.halfAngle, ctx.sweepStatic, victims)
         .sort((a, b) => Math.hypot(a.x - origin.x, a.z - origin.z) - Math.hypot(b.x - origin.x, b.z - origin.z)).slice(0, action.max);
       victims.length = 0;
       if (!struck.length) continue;
       job.marks = struck.map(target => ({ id: target.id, x: target.x, z: target.z }));
-      ctx.emit({ kind: 'relic', relic: ctx.relic, classId: state.classId, shape: 'seal', phase: 'mark', points: job.marks.map(mark => ({ x: mark.x, z: mark.z })), radius: action.radius * stats.area, delay: action.delay });
+      ctx.emit({ kind: 'relic', relic, classId: state.classId, shape: 'seal', phase: 'mark', points: job.marks.map(mark => ({ x: mark.x, z: mark.z })), radius: action.radius * stats.area, delay: action.delay, ...(remnant ? { remnant: true } : {}) });
     } else if (action.type === 'point') {
       job.x = origin.x + direction.x * action.distance; job.z = origin.z + direction.z * action.distance;
-      if (action.delay) ctx.emit({ kind: 'relic', relic: ctx.relic, classId: state.classId, shape: 'point', phase: 'windup', x: job.x, z: job.z, radius: action.radius * stats.area, delay: action.delay });
+      if (action.delay) ctx.emit({ kind: 'relic', relic, classId: state.classId, shape: 'point', phase: 'windup', x: job.x, z: job.z, radius: action.radius * stats.area, delay: action.delay, ...(remnant ? { remnant: true } : {}) });
     }
     if (action.delay) { if (state.pending.length < MAX_PENDING) state.pending.push(job); } else resolve(state, ctx, job);
   }
@@ -210,6 +242,19 @@ export function relicAttack(state, ctx) {
   return true;
 }
 
+/** Call once for every ACCEPTED basic attack. `ctx.relic` / `ctx.echoRelic` come from trusted progression. */
+export function relicAttack(state, ctx) {
+  const primary = ctx.relic ? performRelicAttack(state, ctx, false) : false;
+  if (ctx.echoRelic && ctx.echoRelic !== ctx.relic) performRelicAttack(state, ctx, true);
+  return primary;
+}
+
+function remnantFields(job) {
+  return job.remnant ? { remnant: true } : {};
+}
+function strikeExtra(job, extra) {
+  return job.remnant ? { remnant: true, controlScale: RELIC_ECHO_CONTROL, ...extra } : extra;
+}
 function resolve(state, ctx, job) {
   const { action, stats, direction, relic } = job, targets = targetsOf(ctx), damage = action.damage * stats.damage, classId = state.classId;
   // Whirlwind, echo and chain follow the hero; slam points and seals stay where they were declared.
@@ -218,22 +263,22 @@ function resolve(state, ctx, job) {
   if (action.type === 'cone') {
     const range = action.range * stats.area;
     targetsInCone(targets, origin, direction, range, action.halfAngle, ctx.sweepStatic, victims);
-    ctx.emit({ kind: 'relic', relic, classId, shape: 'cone', x: origin.x, z: origin.z, dx: direction.x, dz: direction.z, range, halfAngle: action.halfAngle, phantom: Boolean(action.phantom) });
-    strikeAll(ctx, victims, damage, relic, relic, action.burnDps ? { burnDps: action.burnDps * stats.damage, burnDuration: 3 } : undefined);
+    ctx.emit({ kind: 'relic', relic, classId, shape: 'cone', x: origin.x, z: origin.z, dx: direction.x, dz: direction.z, range, halfAngle: action.halfAngle, phantom: Boolean(action.phantom), ...remnantFields(job) });
+    strikeAll(ctx, victims, damage, relic, relic, strikeExtra(job, action.burnDps ? { burnDps: action.burnDps * stats.damage, burnDuration: 3 } : undefined));
   } else if (action.type === 'radius') {
     const radius = action.radius * stats.area;
     targetsInRadius(targets, origin, radius, null, victims);
-    ctx.emit({ kind: 'relic', relic, classId, shape: 'radius', x: origin.x, z: origin.z, radius, nova: Boolean(action.nova), echo: Boolean(action.delay) });
-    strikeAll(ctx, victims, damage, relic, relic);
+    ctx.emit({ kind: 'relic', relic, classId, shape: 'radius', x: origin.x, z: origin.z, radius, nova: Boolean(action.nova), echo: Boolean(action.delay), ...remnantFields(job) });
+    strikeAll(ctx, victims, damage, relic, relic, strikeExtra(job));
   } else if (action.type === 'line') {
     const reach = targetsOnLine(targets, origin, direction, action.length * stats.area, action.halfWidth, ctx.sweepStatic, victims);
-    ctx.emit({ kind: 'relic', relic, classId, shape: 'line', x: origin.x, z: origin.z, dx: direction.x, dz: direction.z, length: reach, halfWidth: action.halfWidth });
-    strikeAll(ctx, victims, damage, relic, relic);
+    ctx.emit({ kind: 'relic', relic, classId, shape: 'line', x: origin.x, z: origin.z, dx: direction.x, dz: direction.z, length: reach, halfWidth: action.halfWidth, ...remnantFields(job) });
+    strikeAll(ctx, victims, damage, relic, relic, strikeExtra(job));
   } else if (action.type === 'point') {
     const radius = action.radius * stats.area;
     targetsInRadius(targets, origin, radius, ctx.sweepStatic, victims);
-    ctx.emit({ kind: 'relic', relic, classId, shape: 'point', phase: 'impact', x: origin.x, z: origin.z, radius });
-    strikeAll(ctx, victims, damage, relic, relic);
+    ctx.emit({ kind: 'relic', relic, classId, shape: 'point', phase: 'impact', x: origin.x, z: origin.z, radius, ...remnantFields(job) });
+    strikeAll(ctx, victims, damage, relic, relic, strikeExtra(job));
   } else if (action.type === 'seals') {
     // One detonation wave per swing: overlapping seals widen the blast, they do not multiply it on the same victim.
     const radius = action.radius * stats.area, points = [], wave = new Set();
@@ -243,8 +288,8 @@ function resolve(state, ctx, job) {
       for (const target of targetsInRadius(targets, center, radius, ctx.sweepStatic, victims)) wave.add(target);
       victims.length = 0;
     }
-    ctx.emit({ kind: 'relic', relic, classId, shape: 'seal', phase: 'detonate', points, radius });
-    for (const target of wave) strike(ctx, target, damage, relic, relic);
+    ctx.emit({ kind: 'relic', relic, classId, shape: 'seal', phase: 'detonate', points, radius, ...remnantFields(job) });
+    for (const target of wave) strike(ctx, target, damage, relic, relic, strikeExtra(job));
   } else if (action.type === 'chain') {
     const range = action.range * stats.area, points = [{ x: origin.x, z: origin.z }], struck = new Set();
     let node = null;
@@ -268,32 +313,32 @@ function resolve(state, ctx, job) {
     for (let jump = 0; node && jump <= action.jumps; jump++) {
       struck.add(node.id); points.push({ x: node.x, z: node.z });
       const from = node;
-      strike(ctx, node, amount, relic, relic);
+      strike(ctx, node, amount, relic, relic, strikeExtra(job));
       amount *= action.falloff;
       node = closestTarget(targets, from.x, from.z, action.jumpRange * stats.area, ctx.sweepStatic, struck);
     }
-    if (points.length > 1) ctx.emit({ kind: 'relic', relic, classId, shape: 'chain', points });
+    if (points.length > 1) ctx.emit({ kind: 'relic', relic, classId, shape: 'chain', points, ...remnantFields(job) });
   }
 }
 
-function launch(state, ctx, action, origin, direction, stats) {
+function launch(state, ctx, action, origin, direction, stats, remnant = false) {
   const count = action.spread ? 1 + stats.projectiles : 1;
   for (let index = 0; index < count && state.projectiles.length < MAX_PROJECTILES; index++) {
     const angle = (index - (count - 1) / 2) * .12, cos = Math.cos(angle), sin = Math.sin(angle);
     const dx = direction.x * cos - direction.z * sin, dz = direction.x * sin + direction.z * cos;
-    const projectile = { id: `${ctx.ownerId ?? 'solo'}:${++state.serial}`, relic: ctx.relic, action, stats, x: origin.x, z: origin.z, dx, dz, speed: action.speed,
+    const projectile = { id: `${ctx.ownerId ?? 'solo'}:${++state.serial}`, relic: ctx.relic, action, stats, remnant, x: origin.x, z: origin.z, dx, dz, speed: action.speed,
       age: 0, travelled: 0, pierce: action.pierce || 0, bounces: action.ricochet || 0, returning: false, hitIds: new Set(), notify: 0,
       from: { x: origin.x, y: HIT_HEIGHT, z: origin.z }, to: { x: origin.x, y: HIT_HEIGHT, z: origin.z } };
     state.projectiles.push(projectile);
     ctx.emit({ kind: 'projectile', phase: 'spawn', id: projectile.id, relic: ctx.relic, body: action.body, x: origin.x, z: origin.z, vx: dx * action.speed, vz: dz * action.speed,
-      life: action.life, radius: action.radius * stats.area });
+      life: action.life, radius: action.radius * stats.area, ...(remnant ? { remnant: true } : {}) });
   }
 }
 
 function explode(ctx, projectile, targets) {
   const { action, stats, relic } = projectile, radius = action.explodeRadius * stats.area;
   targetsInRadius(targets, projectile, radius, ctx.sweepStatic, victims);
-  strikeAll(ctx, victims, action.explodeDamage * stats.damage, relic, relic);
+  strikeAll(ctx, victims, action.explodeDamage * stats.damage, relic, relic, strikeExtra(projectile));
   return radius;
 }
 
@@ -330,7 +375,7 @@ function advanceProjectile(state, ctx, projectile, dt, targets) {
     projectile.travelled += travel * reached; step *= 1 - reached;
     if (victim) {
       projectile.hitIds.add(victim.id);
-      strike(ctx, victim, action.damage * stats.damage, relic, relic);
+      strike(ctx, victim, action.damage * stats.damage, relic, relic, strikeExtra(projectile));
       if (action.explodeRadius) return finish(ctx, projectile, 'impact', explode(ctx, projectile, targets));
       if (action.boomerang) continue;
       if (projectile.bounces > 0) {
@@ -364,13 +409,14 @@ function turnBack(ctx, projectile) {
 }
 function finish(ctx, projectile, reason, radius = 0) {
   ctx.emit({ kind: 'projectile', phase: reason === 'returned' || (reason === 'expired' && !radius) ? 'end' : 'impact', id: projectile.id, relic: projectile.relic,
-    body: projectile.action.body, x: projectile.x, z: projectile.z, radius, reason });
+    body: projectile.action.body, x: projectile.x, z: projectile.z, radius, reason, ...(projectile.remnant ? { remnant: true } : {}) });
   return true;
 }
 
 function fireAuto(state, ctx, weaponId, slot, stats, targets) {
   const profile = AUTO_WEAPONS[weaponId], evolution = ctx.loadout[weaponId].evolved ? profile.evolution : null, actor = ctx.actor;
-  const damage = profile.damage * stats.damage * (evolution?.damage || 1), recharge = Math.max(.045, profile.cooldown * stats.cooldown);
+  const pulse = getAutoWeaponPulse(weaponId, ctx.stats, Boolean(evolution));
+  const damage = pulse.hitDamage, recharge = pulse.cooldown;
   let ritualAt = null;
   if (weaponId === 'guardianBlade') {
     const target = closestTarget(targets, actor.x, actor.z, profile.range, ctx.sweepStatic);
@@ -380,7 +426,7 @@ function fireAuto(state, ctx, weaponId, slot, stats, targets) {
     ctx.emit({ kind: 'auto', weapon: weaponId, evolved: Boolean(evolution), x: actor.x, z: actor.z, tx: target.x, tz: target.z, dx: direction.x, dz: direction.z });
     ritualAt = { x: target.x, z: target.z };
     strike(ctx, target, damage, weaponId, weaponId);
-    if (evolution) { targetsInCone(targets, actor, direction, evolution.coneRange, evolution.coneHalfAngle, ctx.sweepStatic, victims); strikeAll(ctx, victims, damage * evolution.coneDamage, weaponId, weaponId); }
+    if (evolution) { targetsInCone(targets, actor, direction, evolution.coneRange, evolution.coneHalfAngle, ctx.sweepStatic, victims); strikeAll(ctx, victims, pulse.coneDamage, weaponId, weaponId); }
   } else if (weaponId === 'orbitOrb') {
     slot.cooldown = recharge;
     const orbit = profile.orbitRadius * stats.area * (evolution?.orbit || 1), radius = profile.radius * stats.area * (evolution?.radius || 1);
@@ -406,7 +452,7 @@ function fireAuto(state, ctx, weaponId, slot, stats, targets) {
     const blast = evolution ? radius * evolution.impactRadius : radius;
     ctx.emit({ kind: 'auto', weapon: weaponId, evolved: Boolean(evolution), x: target.x, z: target.z, points, radius: blast });
     ritualAt = points[0];
-    for (const point of points) { targetsInRadius(targets, point, blast, null, victims); strikeAll(ctx, victims, damage * (evolution ? evolution.impactDamage : 1), weaponId, weaponId); }
+    for (const point of points) { targetsInRadius(targets, point, blast, null, victims); strikeAll(ctx, victims, pulse.sealDamage, weaponId, weaponId); }
   }
   const ritual = Math.floor(clamp(ctx.perks?.sealRitual, 0, 2, 0));
   if (!ritual || !ritualAt || ++state.autoAttacks % SEAL_RITUAL.every) return;

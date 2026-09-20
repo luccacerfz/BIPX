@@ -20,6 +20,7 @@
 !src/runtime/
 !src/ui/
 !src/vfx/
+!src/network/
 !vendor/three/
 !assets/audio/arpg/
 !assets/audio/arpg-v2/
@@ -29,15 +30,13 @@
 !assets/environment/undead-obelisk-v1/
 !assets/models/enemy-lods/
 !assets/models/monsters/
-!assets/models/orc-peon-source/
+!assets/models/bloodcow/
 !assets/textures/stone/
 !assets/textures/terrain/
 !assets/ui/arpg/
 !assets/ui/portraits/
 !src/assets/vendor/
-!assets/models/monsters/source/
 !assets/ui/arpg/painted-v3/
-!assets/models/monsters/source/mixamo/
 !assets/audio/arpg-v2/skillCannonBlast.mp3
 !assets/audio/arpg-v2/skillGravityCollapse.mp3
 !assets/audio/arpg-v2/skillGravityLoop.mp3
@@ -108,14 +107,16 @@
 !assets/environment/crypt-entrance-v1/crypt-flagstone.glb
 !assets/environment/crypt-entrance-v1/crypt-root-arch.glb
 !assets/environment/crypt-entrance-v1/provenance.json
-!assets/environment/undead-obelisk-v1/Necromantic_Obelisk_LOD0.glb
-!assets/environment/undead-obelisk-v1/Necromantic_Obelisk_LOD1.glb
 !assets/environment/undead-obelisk-v1/basecolor.jpg
 !assets/environment/undead-obelisk-v1/metalrough.jpg
+!assets/environment/undead-obelisk-v1/Necromantic_Obelisk_LOD0.glb
+!assets/environment/undead-obelisk-v1/Necromantic_Obelisk_LOD1.glb
 !assets/environment/undead-obelisk-v1/normal.png
 !assets/environment/undead-obelisk-v1/provenance.json
 !assets/models/aldric-hero.glb
 !assets/models/aldric-hero.provenance.json
+!assets/models/bloodcow/BloodCow_Runtime_v014_distribution.glb
+!assets/models/bloodcow/runtime-binding.json
 !assets/models/cedar-tree.glb
 !assets/models/dwarf-rifleman.glb
 !assets/models/dwarf-rifleman.provenance.json
@@ -130,27 +131,11 @@
 !assets/models/monsters/ground-probes.json
 !assets/models/monsters/lich.glb
 !assets/models/monsters/provenance.json
-!assets/models/monsters/source/boss-lich.glb
-!assets/models/monsters/source/boss-lich.json
-!assets/models/monsters/source/mixamo/Zombie Attack.glb
-!assets/models/monsters/source/mixamo/Zombie Running.glb
-!assets/models/monsters/source/mixamo/Zombie Walk.glb
-!assets/models/monsters/source/zombie-brute.glb
-!assets/models/monsters/source/zombie-brute.json
-!assets/models/monsters/source/zombie-pre-mixamo.glb
-!assets/models/monsters/source/zombie-walker.glb
-!assets/models/monsters/source/zombie-walker.json
 !assets/models/monsters/zombie.glb
 !assets/models/orc-peon-locomotion-v1.glb
 !assets/models/orc-peon-locomotion-v1.provenance.json
 !assets/models/orc-peon-locomotion-v2.glb
 !assets/models/orc-peon-locomotion-v2.provenance.json
-!assets/models/orc-peon-source/mixamo-running.glb
-!assets/models/orc-peon-source/mixamo-walking.glb
-!assets/models/orc-peon-source/orc-peon-walk-v2.glb
-!assets/models/orc-peon-source/orc-peon-walk-v2.provenance.json
-!assets/models/orc-peon-source/provenance.json
-!assets/models/orc-peon-source/walking.provenance.json
 !assets/models/orc-peon.glb
 !assets/models/orc-peon.provenance.json
 !assets/models/ruined-wall.glb
@@ -174,6 +159,10 @@
 !assets/ui/portraits/provenance.json
 !index.html
 !src/assets/asset-preview.html
+!src/assets/bloodcow-adapter.js
+!src/assets/bloodcow-loader.js
+!src/assets/bloodcow-runtime.js
+!src/assets/bloodcow-skinning.js
 !src/assets/character-library.js
 !src/assets/death-cut-preparation.js
 !src/assets/death-cut-worker-client.js
@@ -212,6 +201,7 @@
 !src/combat/caster-launch-bridge.mjs
 !src/combat/caster-presentation.mjs
 !src/combat/caster-projectile-presentation.mjs
+!src/combat/caster-projectile-profile.mjs
 !src/combat/class-skills.mjs
 !src/combat/collision-heights.mjs
 !src/combat/crowd-control.mjs
@@ -230,6 +220,9 @@
 !src/editor/index.js
 !src/editor/layout.css
 !src/main.js
+!src/network/authoritative-motion.mjs
+!src/network/remote-presentation-visual.mjs
+!src/network/remote-presentation.mjs
 !src/physics/contacts.mjs
 !src/physics/navigation.mjs
 !src/progression/authority.mjs
@@ -254,6 +247,9 @@
 !src/render/hit-feedback.js
 !src/render/preferences.js
 !src/render/scene-depth.js
+!src/render/shader-program-readiness.mjs
+!src/render/shader-warmup-variants.mjs
+!src/render/shader-warmup.mjs
 !src/render/visual-motion.js
 !src/runtime/startup-warmup.mjs
 !src/ui/arpg-hud.js
@@ -261,12 +257,13 @@
 !src/ui/boss-bar.css
 !src/ui/boss-bar.js
 !src/ui/boss-label-painter.js
+!src/ui/css-viewport.js
+!src/ui/hud-pulse.js
 !src/ui/hud-v4.css
 !src/ui/presentation.js
 !src/ui/upgrade-hand.css
+!src/ui/viewport-lifecycle.js
 !src/ui/world-label-layout.js
-!src/vfx/ELEMENTAL-LICENSE.txt
-!src/vfx/SAMURAI-LICENSE.txt
 !src/vfx/arsenal-vfx.js
 !src/vfx/cannon-defaults.js
 !src/vfx/cannon-origin-bridge.js
@@ -279,6 +276,7 @@
 !src/vfx/combat-vfx.js
 !src/vfx/dash-vfx.js
 !src/vfx/elemental-geometry.js
+!src/vfx/ELEMENTAL-LICENSE.txt
 !src/vfx/elemental-projectiles.js
 !src/vfx/elemental-shaders.js
 !src/vfx/elemental-source-glsl.js
@@ -296,6 +294,7 @@
 !src/vfx/leaves.js
 !src/vfx/palette.js
 !src/vfx/projectile-origin-bridge.js
+!src/vfx/SAMURAI-LICENSE.txt
 !src/vfx/shaders.js
 !src/vfx/soul-echoes.js
 !src/vfx/target-markers.js

@@ -1,3 +1,4 @@
+import { createHudPulseController } from './hud-pulse.js';
 // Presentation only: snapshots belong to Combat; requests never mutate gameplay.
 const skillArt = {
   warrior_war_cry: ['war-cry', 'fervor', 'Grito', 'Fortalece o guerreiro por um tempo limitado.'],
@@ -58,6 +59,11 @@ export function normalizeSnapshot(value) {
     relic: value.relic && typeof value.relic.id === 'string' && nonnegative(value.relic.remaining) && value.relic.remaining > 0
       ? { id: value.relic.id.slice(0, 24), label: label(value.relic.label, 'Relíquia'), name: label(value.relic.name, 'Relíquia'), remaining: value.relic.remaining,
         duration: nonnegative(value.relic.duration) && value.relic.duration > 0 ? Math.max(value.relic.duration, value.relic.remaining) : 0 } : null,
+    relicEcho: value.relicEcho && typeof value.relicEcho.id === 'string' && nonnegative(value.relicEcho.remaining) && value.relicEcho.remaining > 0
+      ? { id: value.relicEcho.id.slice(0, 24), remaining: value.relicEcho.remaining,
+        short: label(value.relicEcho.short ?? value.relicEcho.label, 'Eco', 24),
+        name: label(value.relicEcho.name, 'Relíquia anterior', 40),
+        text: label(value.relicEcho.text, 'Eco', 48), aria: label(value.relicEcho.aria, 'eco da relíquia anterior', 80) } : null,
     dead: value.dead, paused: value.paused,
     statuses: !value.dead && Array.isArray(value.statuses) ? value.statuses
       .filter(status => status && expected.includes(status.skillId ?? status.id) && typeof status.id === 'string'
@@ -115,15 +121,30 @@ function orb(kind, name) {
     <div class="arpg-orb__rim"><div class="arpg-orb__glass"><div class="arpg-orb__lag"></div><div class="arpg-orb__liquid"></div><div class="arpg-orb__reflection"></div><strong class="arpg-orb__value">—<small>/ —</small></strong></div></div>
     <span class="arpg-orb__label">${name}</span></div>`;
 }
-// A transient state class that always restarts its CSS animation.
-function pulse(element, className, duration) {
-  if (!element) return;
-  element.classList.remove(className);
-  void element.offsetWidth;
-  element.classList.add(className);
-  clearTimeout(element[`_${className}`]);
-  element[`_${className}`] = setTimeout(() => element.classList.remove(className), duration);
+const systemReducedMotion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+const prefersReducedMotion = () => document.documentElement.dataset.reducedMotion === 'true' || Boolean(systemReducedMotion?.matches);
+const pulseController = createHudPulseController({ reducedMotion: prefersReducedMotion });
+const pulse = (element, className, duration) => pulseController.pulse(element, className, duration);
+function syncPulseMotionPreference() {
+  if (prefersReducedMotion()) pulseController.cancelAnimations();
+  else pulseController.resumeAnimations();
 }
+const pulseMotionObserver = typeof MutationObserver === 'function' ? new MutationObserver(syncPulseMotionPreference) : null;
+const onSystemMotionPreference = syncPulseMotionPreference;
+function observePulsePreferences() {
+  pulseMotionObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-reduced-motion'] });
+  if (systemReducedMotion?.addEventListener) systemReducedMotion.addEventListener('change', onSystemMotionPreference);
+  else systemReducedMotion?.addListener?.(onSystemMotionPreference);
+}
+function stopPulsePreferences() {
+  pulseController.cancelAll();
+  pulseMotionObserver?.disconnect();
+  if (systemReducedMotion?.removeEventListener) systemReducedMotion.removeEventListener('change', onSystemMotionPreference);
+  else systemReducedMotion?.removeListener?.(onSystemMotionPreference);
+}
+observePulsePreferences();
+window.addEventListener('pagehide', stopPulsePreferences);
+window.addEventListener('pageshow', (event) => { if (event.persisted) observePulsePreferences(); });
 
 function mount() {
   root = document.querySelector('#arpg-hud');
@@ -131,6 +152,7 @@ function mount() {
   root.innerHTML = `${orb('health', 'Vida')}<div class="arpg-actionbar">
     <div class="arpg-actionbar__heading"><span class="arpg-class">Sobrevivente</span><span class="arpg-progress-dock"></span><span class="arpg-run-status">Aguardando estado</span></div>
     <div class="arpg-actions"><div class="arpg-basic" aria-label="Ataque básico"><span class="arpg-basic__icon"><span class="arpg-basic__ring" aria-hidden="true"></span>${icon('blade')}<svg class="arpg-basic__relic" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="arpg-basic__name">Arma</span><small>Mouse / Espaço</small></div>
+    <div class="arpg-echo" hidden><span class="arpg-echo__kind">Eco</span><span class="arpg-echo__name"></span><span class="arpg-echo__time"><b></b><i>s</i></span></div>
     ${[0, 1, 2].map((slot) => `<button type="button" class="arpg-skill" data-arpg-slot="${slot}" data-state="waiting" aria-disabled="true" aria-keyshortcuts="${slot + 1}" aria-describedby="arpg-tooltip">
       <kbd class="arpg-skill__key">${slot + 1}</kbd><span class="arpg-skill__art">${icon('unknown')}</span><span class="arpg-skill__mask" aria-hidden="true"></span><span class="arpg-skill__timer" aria-hidden="true"></span><span class="arpg-skill__cost" aria-hidden="true">—</span><span class="sr-only arpg-skill__name">Habilidade ${slot + 1}</span>
     </button>`).join('')}</div><span class="arpg-actionbar__hint">Habilidades</span></div>${orb('resource', 'Recurso')}
@@ -232,20 +254,39 @@ function updateOrb(kind, value, max, name) {
   lastHealthRatio = known ? ratio : null;
 }
 
-function updateRelic(relic) {
+function updateRelic(relic, relicEcho) {
   const basic = root.querySelector('.arpg-basic'), fire = document.querySelector('#touch-fire');
+  const echo = root.querySelector('.arpg-echo');
   if (relic) {
     if (relicSpan.id !== relic.id || relic.remaining > relicSpan.duration) relicSpan = { id: relic.id, duration: Math.max(relic.duration, relic.remaining) };
   } else relicSpan = { id: '', duration: 0 };
   const ratio = relic ? Math.max(0, Math.min(1, relic.remaining / (relic.duration || relicSpan.duration || relic.remaining))) : 0;
   const seconds = relic ? `${Math.ceil(relic.remaining)}` : '';
   basic.dataset.relic = relic ? relic.id : '';
+  basic.dataset.echo = relicEcho ? relicEcho.id : '';
   basic.dataset.relicEnding = String(Boolean(relic) && relic.remaining <= 5);
   basic.style.setProperty('--relic-ratio', ratio.toFixed(3));
+  root.dataset.echo = relicEcho ? relicEcho.id : '';
   setText(root.querySelector('.arpg-basic__name'), relic ? relic.label : snapshot?.weapon ?? 'Arma');
   const small = root.querySelector('.arpg-basic small');
   const smallText = relic ? `<b>${seconds}</b><i>s</i>` : 'Mouse / Espaço';
   if (small.dataset.text !== smallText) { small.dataset.text = smallText; small.innerHTML = smallText; }
+  if (echo) {
+    echo.hidden = !relicEcho;
+    if (relicEcho) {
+      echo.dataset.echo = relicEcho.id;
+      echo.dataset.ending = String(relicEcho.remaining <= 3);
+      setText(echo.querySelector('.arpg-echo__name'), relicEcho.short || relicEcho.name);
+      const echoSeconds = `${Math.ceil(relicEcho.remaining)}`;
+      const time = echo.querySelector('.arpg-echo__time');
+      const timeText = `<b>${echoSeconds}</b><i>s</i>`;
+      if (time.dataset.text !== timeText) { time.dataset.text = timeText; time.innerHTML = timeText; }
+      echo.setAttribute('aria-label', relicEcho.aria);
+    } else {
+      echo.dataset.echo = '';
+      echo.removeAttribute('aria-label');
+    }
+  }
   const glyphId = `relic-${relic && relicGlyphs.has(relic.id) ? relic.id : 'generic'}`;
   if (relic) setGlyph(root.querySelector('.arpg-basic__relic'), glyphId);
   // On touch layouts the attack button is the basic attack: it carries the same ring, glyph and seconds.
@@ -272,10 +313,11 @@ function render() {
   setText(root.querySelector('.arpg-run-status'), !snapshot ? 'Aguardando estado' : snapshot.dead ? 'Derrotado' : snapshot.paused || dialog?.open ? 'Em pausa' : choosing ? touchLayout.matches ? 'Evolução · toque numa carta' : 'Evolução' : '');
   root.dataset.choosing = String(Boolean(snapshot) && choosing);
   const relic = snapshot && !snapshot.dead ? snapshot.relic : null;
-  updateRelic(relic);
+  const relicEcho = snapshot && !snapshot.dead ? snapshot.relicEcho : null;
+  updateRelic(relic, relicEcho);
   const weaponId = snapshot?.classId === 'dwarf' ? 'rifle' : 'blade';
   setIconHref(root.querySelector('.arpg-basic .arpg-icon use'), `./assets/ui/arpg/icons.svg#${weaponId}`);
-  root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}${relic ? `, relíquia ${relic.name}, ${Math.ceil(relic.remaining)} segundos` : ''}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
+  root.querySelector('.arpg-basic').setAttribute('aria-label', `${snapshot?.weapon ?? 'Arma básica'}${relic ? `, relíquia ${relic.name}, ${Math.ceil(relic.remaining)} segundos` : ''}${relicEcho ? `, ${relicEcho.aria}` : ''}. Ataque básico: mouse ou Espaço; no toque, controle direito.`);
   // Keep the upper weapon/buff status accurate for both classes.
   setIconHref(document.querySelector('.hud__stat--weapon use'), `#icon-${weaponId}`);
   for (const button of root.querySelectorAll('[data-arpg-slot]')) {

@@ -1,6 +1,6 @@
 import { createVisualMotion, sampleVisualMotion } from './visual-motion.js';
 import { getEnemyControlState } from '../assets/enemy-control-state.js';
-import { captureDeathCutSnapshot, createEnemyDeathCut } from '../assets/enemy-death-cut.js';
+import { captureDeathCutSnapshot, createEnemyDeathCut, disposeDeathCutSnapshot } from '../assets/enemy-death-cut.js';
 import { createDeathCutBrowserWorker } from '../assets/death-cut-worker-client.js';
 import { HIT_FEEDBACK } from './hit-feedback.js';
 
@@ -8,6 +8,7 @@ import { HIT_FEEDBACK } from './hit-feedback.js';
 // entities retain their authoritative position, collision and damage rules.
 export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCutWorker = null, asyncCuts = true }) {
   const libraries = new Map(), entries = [], attached = new Map(), corpses = [];
+  const failedProfiles = new WeakMap(), fallbackActors = new Map();
   const candidates = [], wanted = new Set();
   const cutCorpses = [];
   const ownsWorker = !deathCutWorker && asyncCuts;
@@ -37,8 +38,9 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
     brute: { library: 'monsters', id: 'brute', height: 3.3 },
     caster: { library: 'monsters', id: 'lich', height: 2.8, castProfileId: 'lich-mixamo-cast-v1' },
     visor: { library: 'monsters', id: 'lich', height: 3.5 },
+    bloodCow: { library: 'monsters', id: 'bloodcow', height: 2.8 },
   };
-  let limit = 20;
+  let limit = 20, nextOwnerToken = 0;
 
   function cutBudget() { return cutLimits[cutQuality] || cutLimits.high; }
   function hasUsableCutBudget() { return cutResourceKeys.every(key => Number(cutBudget()[key]) > 0); }
@@ -106,6 +108,7 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
   function settleAsyncFallback(item, reason = 'fallback', error = null) {
     if (!item || item.settled) return;
     item.settled = true; pendingCuts.delete(item.key);
+    disposeDeathCutSnapshot(item.snapshot);
     if (item.entry) item.entry.pendingCut = null;
     asyncFallback++;
     if (reason === 'error') asyncErrors++;
@@ -116,13 +119,14 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
     if (!item || item.settled) return;
     item.settled = true; pendingCuts.delete(item.key);
     const entry = item.entry;
-    if (item.generation !== asyncGeneration || !entry.corpse || !corpses.includes(entry)) { asyncLastError = `stale generation=${item.generation}/${asyncGeneration} corpse=${entry.corpse} listed=${corpses.includes(entry)}`; asyncFallback++; return; }
-    if (entry.age >= (cutQuality === 'low' ? 4 : 8)) { asyncLastError = `expired age=${entry.age}`; asyncFallback++; entry.pendingCut = null; return; }
+    if (item.generation !== asyncGeneration || !entry.corpse || !corpses.includes(entry)) { disposeDeathCutSnapshot(item.snapshot); asyncLastError = `stale generation=${item.generation}/${asyncGeneration} corpse=${entry.corpse} listed=${corpses.includes(entry)}`; asyncFallback++; return; }
+    if (entry.age >= (cutQuality === 'low' ? 4 : 8)) { disposeDeathCutSnapshot(item.snapshot); asyncLastError = `expired age=${entry.age}`; asyncFallback++; entry.pendingCut = null; return; }
     let cut = null;
     try {
       cut = createEnemyDeathCut({ THREE, scene, source: item.snapshot.root, snapshot: item.snapshot,
         prepared, direction: item.snapshot.direction, hideSource: false, groundY: item.snapshot.groundY,
         lifetime: cutQuality === 'low' ? 4 : 8 });
+      disposeDeathCutSnapshot(item.snapshot);
       if (!cut) { asyncLastError = 'prepared result was not admissible to createEnemyDeathCut'; asyncFallback++; return; }
       if (!admitCut(cut, item.zombie, entry.age)) { asyncLastError = 'prepared cut rejected by resource budget'; asyncFallback++; return; }
       const corpseIndex = corpses.indexOf(entry);
@@ -131,6 +135,7 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
       recordAsyncLatency(item.started);
     } catch (error) {
       if (cut) cut.dispose();
+      disposeDeathCutSnapshot(item.snapshot);
       asyncFallback++; asyncErrors++;
     }
   }
@@ -183,7 +188,7 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
     entry.controller.root.quaternion.identity();
     entry.controller.root.scale.copy(entry.scale);
     entry.controller.reset(); restoreMaterials(entry);
-    entry.owner = null; entry.corpse = false; entry.pendingCut = null; entry.flashGain = 1;
+    entry.owner = null; entry.ownerToken = null; entry.corpse = false; entry.pendingCut = null; entry.flashGain = 1;
   }
   function detach(zombie) {
     const entry = attached.get(zombie);
@@ -205,6 +210,7 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
   function acquire(zombie) {
     const profile = profiles[zombie.type], library = libraries.get(profile?.library);
     if (!library) return null;
+    if (failedProfiles.get(zombie) === library) return null;
     let entry = entries.find(item => !item.owner && !item.corpse && item.key === zombie.type);
     if (!entry) {
       if (entries.length >= limit) {
@@ -212,8 +218,18 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
         if (obsolete < 0) return null;
         entries.splice(obsolete, 1)[0].controller.dispose();
       }
-      const controller = library.create(profile.id, { parent: zombie.mesh, height: profile.height, phase: zombie.wobble, castProfileId: profile.castProfileId || null });
+      let controller;
+      try { controller = library.create(profile.id, { parent: zombie.mesh, height: profile.height, phase: zombie.wobble, castProfileId: profile.castProfileId || null }); }
+      catch (error) {
+        failedProfiles.set(zombie, library);
+        const reason = String(error?.message || error);
+        fallbackActors.set(`${zombie.type}:${zombie.id}`, reason);
+        zombie.mesh.userData.animatedEnemyFallback = { type: zombie.type, reason };
+        return null;
+      }
       const materials = new Set();
+      fallbackActors.delete(`${zombie.type}:${zombie.id}`);
+      delete zombie.mesh.userData.animatedEnemyFallback;
       controller.root.traverse(mesh => {
         if (mesh.isMesh) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) materials.add(material);
       });
@@ -223,6 +239,7 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
       entries.push(entry);
     }
     entry.owner = zombie;
+    entry.ownerToken = ++nextOwnerToken;
     entry.fallback = zombie.mesh.children.filter(child => child !== entry.controller.root).map(child => [child, child.visible]);
     entry.motion.initialized = false;
     entry.attackTimer = 0;
@@ -233,6 +250,53 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
     zombie.shadowEnabled = null;
     attached.set(zombie, entry);
     return entry;
+  }
+  async function prewarmShaderRoots({ yieldControl = () => Promise.resolve() } = {}) {
+    const roots = [];
+    for (const [type, profile] of Object.entries(profiles)) {
+      let entry = entries.find(item => item.key === type && !item.owner && !item.corpse);
+      if (!entry) {
+        const library = libraries.get(profile.library);
+        if (!library) throw new Error(`animated enemy shader asset is not ready: ${profile.library}/${profile.id}`);
+        if (entries.length >= limit) throw new Error(`animated enemy pool limit prevents shader preparation (${entries.length}/${limit})`);
+        const detachedParent = new THREE.Group();
+        const controller = library.create(profile.id, { parent: detachedParent, height: profile.height, phase: 0, castProfileId: profile.castProfileId || null });
+        controller.root.removeFromParent();
+        const materials = new Set();
+        controller.root.traverse(mesh => {
+          if (mesh.isMesh) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) materials.add(material);
+        });
+        entry = { controller, key: type, shaderWarmup: true, scale: controller.root.scale.clone(), materials: [...materials].map(material => ({
+          material, opacity: material.opacity, transparent: material.transparent, emissive: material.emissive?.clone(),
+        })), flash: 0, flashGain: 1, corpse: false, motion: createVisualMotion() };
+        entries.push(entry);
+      }
+      roots.push({ id: `enemy/${type}`, root: entry.controller.root });
+      await yieldControl();
+    }
+    return roots;
+  }
+  function createShaderWarmupCorpseFadeRoots() {
+    const records = [];
+    const entry = entries.find(item => item.key === 'zombie' && item.shaderWarmup && !item.owner && !item.corpse);
+    if (!entry) throw new Error('zombie shader pool root is not ready for corpse-fade warmup');
+    entry.controller.root.traverse(source => {
+      if (!source.isSkinnedMesh || !source.material) return;
+      const originals = Array.isArray(source.material) ? source.material : [source.material];
+      if (!originals.some(material => material?.side === THREE.DoubleSide)) return;
+      const ownedMaterials = originals.map(material => {
+        const clone = material.clone();
+        clone.transparent = true;
+        clone.opacity = Math.max(0, Math.min(material.opacity ?? 1, .99));
+        return clone;
+      });
+      const mesh = source.clone(false);
+      mesh.material = Array.isArray(source.material) ? ownedMaterials : ownedMaterials[0];
+      mesh.visible = true;
+      records.push({ root: mesh, ownedMaterials });
+    });
+    if (!records.length) throw new Error('zombie pool has no skinned DoubleSide material for corpse-fade warmup');
+    return records;
   }
   function remove(zombie, { death = false, deathStyle = zombie.deathStyle, killedBySkillId = zombie.killedBySkillId, deathDirection = zombie.deathDirection, direction = deathDirection } = {}) {
     if (death) {
@@ -339,16 +403,18 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
       entry.motion.dead = false;
       position.y = 0;
       const attack = zombie.type === 'caster' ? zombie.casterCastVisual : zombie.meleeAttack;
+      const actorState = { ...entry.motion, ...control, ownerToken: entry.ownerToken, entityId: zombie.id,
+        speed: zombie.speed || 0, attack: attack ?? null };
       if (dt === 0 && controller.stats.supportsPhaseAttack && attack) {
-        controller.update(0, { ...entry.motion, ...control, attack, paused: attack.paused });
+        controller.update(0, { ...actorState, attack, paused: attack.paused });
       }
       if (dt > 0) {
         entry.attackTimer -= dt;
         if (!control.paused && zombie.serverControlled && !controller.stats.supportsPhaseAttack && !zombie.meleeAttack && zombie.visualDistanceSq < (zombie.radius + 1.1) ** 2 && entry.attackTimer <= 0) {
           controller.attack({ duration: .65 }); entry.attackTimer = .9;
         }
-        controller.update(dt, { ...entry.motion, ...control,
-          ...(controller.stats.supportsPhaseAttack && attack ? { attack, paused: attack.paused } : {}),
+        controller.update(dt, { ...actorState,
+          ...(controller.stats.supportsPhaseAttack ? { attack, paused: attack?.paused } : {}),
         });
         // Hit flash: C1 hold/decay on animation time. Hit-stop holds the white frame.
         entry.flash = Math.max(0, entry.flash - dt);
@@ -389,7 +455,17 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
     }
   }
   return {
-    register(name, library) { libraries.set(name, library); },
+    register(name, library) { libraries.set(name, library); if (name === 'monsters') fallbackActors.clear(); },
+    prewarmShaderRoots,
+    createShaderWarmupCorpseFadeRoots,
+    disposeShaderWarmupRoots() {
+      for (let index = entries.length - 1; index >= 0; index--) {
+        const entry = entries[index];
+        if (!entry.shaderWarmup || entry.owner || entry.corpse) continue;
+        entry.controller.dispose();
+        entries.splice(index, 1);
+      }
+    },
     update, remove, syncCast, getCastEmitter,
     hit(zombie, gain = 1) { const entry = attached.get(zombie); if (!entry) return false;
       if (gain >= .5 && !getEnemyControlState(zombie).paused) entry.controller.hit();
@@ -411,6 +487,15 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
       cutEvents = 0; cutEvictions = 0; cutRejected = 0; cutCreationsThisWindow = 0;
       asyncSubmitted = 0; asyncAccepted = 0; asyncFallback = 0; asyncErrors = 0; asyncCancelled = 0; asyncLatency = [];
     },
+    dispose() {
+      this.clear();
+      for (const entry of entries) entry.controller.dispose();
+      entries.length = 0;
+      for (const library of libraries.values()) library.dispose?.();
+      libraries.clear();
+      if (ownsWorker) { worker?.terminate?.(); worker = null; }
+      fallbackActors.clear();
+    },
     getStats() { return { loaded: libraries.size > 0, libraries: [...libraries.keys()], limit, allocated: entries.length,
       active: attached.size, corpses: corpses.length, cutCorpses: cutCorpses.length, cutEvents, cutEvictions, cutRejected,
       cutQuality, cutBudget: { ...cutBudget() }, cutCreationLimit: cutCreationLimits[cutQuality], cutCreationsThisWindow, cutResources: { ...cutResources },
@@ -422,6 +507,7 @@ export function createAnimatedEnemies({ THREE, scene, cutBudgets = null, deathCu
       cutEntries: cutCorpses.map(entry => ({ entityId: entry.entityId, age: entry.age, sequence: entry.sequence, resources: { ...entry.resources } })),
       actors: [...attached].map(([zombie, entry]) => ({ ...entry.controller.stats, entityId: zombie.id, type: zombie.type,
         position: { x: zombie.mesh.position.x, y: zombie.mesh.position.y, z: zombie.mesh.position.z } })),
+      fallbacks: [...fallbackActors].map(([entity, reason]) => ({ entity, reason })),
       corpseActors: corpses.map(entry => ({ type: entry.key, currentClip: entry.controller.stats.currentClip,
         animationTime: entry.controller.stats.animationTime, age: entry.age })),
     }; },

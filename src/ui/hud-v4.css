@@ -58,6 +58,9 @@
 .arpg-progress-dock { display: flex; flex: 1 1 auto; min-width: 0; }
 .arpg-progress-dock:empty { display: none; }
 .survivor-hud__progress.is-docked { flex: 1 1 auto; width: auto; min-width: 0; padding: 0; background: none; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+.survivor-hud__progress.is-docked .hud__stat--level,
+.survivor-hud__progress.is-docked .hud__stat--xp { flex: 0 0 auto; min-width: max-content; }
+.survivor-hud__progress.is-docked .survivor-hud__xp { flex: 1 1 0; width: auto; min-width: 48px; }
 .arpg-run-status { flex: none; }
 .arpg-run-status:empty { display: none; }
 .arpg-hud[data-choosing="true"] .arpg-run-status { padding: 1px 7px 2px; border: 1px solid #c6a67599; border-radius: 2px; background: #1b1508e6; color: #ffe2a6; font-weight: 600; letter-spacing: .03em; }
@@ -93,6 +96,11 @@
 @keyframes arpg-ready-ring { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.28); } }
 @keyframes arpg-denied { 0%, 100% { transform: translateX(0); } 16% { transform: translateX(-4px); } 33% { transform: translateX(4px); } 50% { transform: translateX(-4px); } 66% { transform: translateX(4px); } 83% { transform: translateX(-2px); } }
 @keyframes arpg-short { 0% { box-shadow: 0 0 0 0 #ff3b4f00, inset 0 0 0 2px #191a18; } 30% { box-shadow: 0 0 0 5px #ff3b4fb3, inset 0 0 0 2px #191a18; } 100% { box-shadow: 0 0 0 9px #ff3b4f00, inset 0 0 0 2px #191a18; } }
+.arpg-skill.is-ready-ping.arpg-pulse-waapi-ready, .arpg-skill.is-denied.arpg-pulse-waapi-denied { animation: none; }
+.arpg-skill.is-ready-ping.arpg-pulse-waapi-ready::after, .arpg-skill.is-ready-ping.arpg-pulse-css-off::after { animation: none; }
+.arpg-skill.is-ready-ping.arpg-pulse-css-off, .arpg-skill.is-denied.arpg-pulse-css-off { animation: none; }
+.arpg-orb.is-short.arpg-pulse-css-off .arpg-orb__rim, .arpg-orb.is-hurt.arpg-pulse-css-off .arpg-orb__reflection, .arpg-orb.is-healed.arpg-pulse-css-off .arpg-orb__rim { animation: none; }
+.arpg-orb.is-short.arpg-pulse-waapi-short .arpg-orb__rim, .arpg-orb.is-hurt.arpg-pulse-waapi-hurt .arpg-orb__reflection, .arpg-orb.is-healed.arpg-pulse-waapi-healed .arpg-orb__rim { animation: none; }
 
 /* Relic on the basic attack: its own glyph inside a ring that spends itself with the timer. */
 .arpg-basic__icon { position: relative; display: grid; place-items: center; width: 40px; height: 40px; }
@@ -104,9 +112,17 @@
 .arpg-basic[data-relic]:not([data-relic=""]) .arpg-icon { display: none; }
 .arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__relic { display: block; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px var(--relic)); }
 .arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__name { color: #fff1cf; font-weight: 600; }
-.arpg-basic[data-relic]:not([data-relic=""]) small { display: block; margin-top: 1px; color: #fff; font-size: 12px; font-weight: 700; }
+.arpg-basic[data-relic]:not([data-relic=""]) small { display: block; margin-top: 1px; max-width: 100%; overflow: hidden; color: #fff; font-size: 12px; font-weight: 700; }
 .arpg-basic[data-relic]:not([data-relic=""]) small i { margin-left: 1px; font-size: .78em; font-style: normal; font-weight: 600; opacity: .85; }
 .arpg-basic[data-relic]:not([data-relic=""]) small::after { content: none; }
+.arpg-basic { overflow: hidden; }
+.arpg-echo { display: none; flex: 0 0 auto; flex-direction: column; justify-content: center; gap: 0; min-width: 76px; max-width: 104px; align-self: stretch; padding: 0 8px 0 4px; border-right: 1px solid #85714d55; color: #e8d6ff; overflow: hidden; }
+.arpg-hud[data-echo]:not([data-echo=""]) .arpg-echo { display: flex; }
+.arpg-echo__kind { font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #d4c2f0; }
+.arpg-echo__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 600; color: #f3e9ff; }
+.arpg-echo__time { font-size: 12px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.arpg-echo__time i { margin-left: 1px; font-size: .78em; font-style: normal; font-weight: 600; opacity: .85; }
+.arpg-echo[data-ending="true"] { animation: arpg-relic-ending .45s ease-in-out infinite alternate; }
 .arpg-basic[data-relic-ending="true"] .arpg-basic__ring, .touch-fire[data-relic-ending="true"]::before { animation: arpg-relic-ending .45s ease-in-out infinite alternate; }
 :is(.arpg-basic, .touch-fire)[data-relic="flamethrower"] { --relic: #ff9a4d; }
 :is(.arpg-basic, .touch-fire)[data-relic="axe"] { --relic: #8fdcff; }
@@ -170,7 +186,7 @@
   .survivor-hud__progress .hud__stat--xp { display: none; }
   .arpg-actions { justify-content: center; padding: 4px 8px; }
   .arpg-actions::before { display: none; }
-  .arpg-basic { flex-direction: row; gap: 6px; width: auto; padding: 0; border: 0; align-self: center; }
+  .arpg-basic { flex-direction: row; gap: 6px; width: auto; padding: 0; border: 0; align-self: center; overflow: hidden; }
   .arpg-basic__icon { width: 30px; height: 30px; }
   .arpg-basic .arpg-icon { width: 24px; height: 24px; }
   .arpg-basic__name { max-width: 84px; font-size: 11px; }
@@ -178,6 +194,7 @@
   .arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__ring { inset: -2px; -webkit-mask: radial-gradient(circle, transparent 13px, #000 14px); mask: radial-gradient(circle, transparent 13px, #000 14px); }
   .arpg-basic[data-relic]:not([data-relic=""]) .arpg-basic__relic { width: 18px; height: 18px; }
   .arpg-basic[data-relic]:not([data-relic=""]) small { display: block; margin: 0; font-size: 11px; }
+  .arpg-echo { min-width: 64px; max-width: 92px; padding: 0 6px; border-right: 0; border-left: 1px solid #85714d55; }
   .arpg-actionbar__hint { display: none; }
   /* Effects read better away from the thumbs: top left, under the strip (and under the boss bar on phones). */
   .arpg-statuses { position: fixed; top: calc(max(6px, env(safe-area-inset-top)) + 62px); bottom: auto; left: max(8px, env(safe-area-inset-left)); transform: none; justify-content: flex-start; max-width: 62vw; }
