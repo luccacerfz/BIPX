@@ -7,7 +7,7 @@ import * as THREE from "../vendor/three/three.module.js";
 import { createWorldLabelLayout, createWorldLabelLeaderLine } from "./ui/world-label-layout.js";
 import { readCssViewport, sameCssSize, pointerToNdc, createCssViewportResizer } from "./ui/css-viewport.js";
 import { bindViewportLifecycle } from "./ui/viewport-lifecycle.js";
-import { createCinematicPipeline, createShaderWarmupShadowStage, runShaderWarmupShadowStage } from "./render/cinematic-pipeline.js";
+import { createCinematicPipeline, createShaderWarmupShadowStage, primeShaderWarmupShadowLighting, runShaderWarmupShadowStage } from "./render/cinematic-pipeline.js";
 import { shareEnvironmentCutawayDepth, getEnvironmentCutawayDepthWarmupIdentity } from "./render/environment-cutaway.js";
 import { createCemetery } from "./render/cemetery.js";
 import { createWorldAtmosphere } from "./render/atmosphere.js";
@@ -2662,6 +2662,7 @@ function startGame({ allowWarmupRetry = false } = {}) {
   nextZombieId = 1;
   spatialGrid.dirty = true;
   audioManager.startRun();
+  publishArpgState();
   message.classList.remove("message--game-over");
   message.classList.remove("message--login");
   message.classList.remove("message--ranking");
@@ -3417,7 +3418,7 @@ async function buildStartupShaderWarmupCases(yieldControl) {
     child.isMesh && child.geometry?.type === 'OctahedronGeometry' && child.geometry.parameters?.radius === .28));
   if (!thunderstaffPickup) throw new Error('production thunderstaff crystal shadow caster was not included in warmup sources');
   const shadowStage = createShaderWarmupShadowStage({ THREE,
-    shadowLight: scene.userData?.editorRefs?.moonLight, camera, caster: thunderstaffPickup });
+    shadowLight: scene.userData?.editorRefs?.moonLight, camera, caster: thunderstaffPickup, lightingScene: scene });
   const releaseShadowStage = () => {
     const released = shadowStage.dispose();
     const index = shaderWarmupOwnedCleanupFunctions.indexOf(releaseShadowStage);
@@ -3494,6 +3495,7 @@ function maybeBeginStartupShaderWarmup() {
       runCase: async item => {
         if (item.kind === 'cinematic') await cinematicPipeline.compileShaderWarmupCase(item.id, scene);
         else if (item.kind === 'shadow-render') runShaderWarmupShadowStage(item.shadowStage,
+          (stageScene, stageCamera) => primeShaderWarmupShadowLighting({ THREE, renderer, scene: stageScene, camera: stageCamera }),
           (stageScene, stageCamera) => cinematicPipeline.warmupShadowMapScene(stageScene, stageCamera));
         else await compileShaderWarmupVariants(item.variants, item.shadowEnabled, item.targetPass ?? 'scene');
         const firstUseProbe = window.__bipxShaderFirstUseProbe;
@@ -12316,6 +12318,7 @@ function applyAuthoritativeSelfState(state) {
   if (state.state === 'dead' && game.state === 'playing') endGame();
   else if (state.state === 'playing' && game.state !== 'playing') {
     game.state = 'playing';
+    publishArpgState();
     message.classList.add('is-hidden');
   }
   updateHud(true);

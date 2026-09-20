@@ -117,6 +117,7 @@ export function createSceneDepthPass({ THREE, renderer, adaptDepthMaterial, getD
       if (object.isMesh && object.material && object.geometry) {
         const sources = Array.isArray(object.material) ? object.material : [object.material];
         const objectFlags = [object.isSkinnedMesh ? 'skin' : '', object.isInstancedMesh ? 'instance' : '',
+          object.isInstancedMesh && object.instanceColor ? 'instance-color' : '',
           object.morphTargetInfluences ? 'morph' : '', object.geometry.morphAttributes?.position ? 'morph-position' : ''].join('/');
         const key = sources.map(depthSourceShape).join('&&') + '|' + objectFlags;
         if (!seenPairs.has(key)) {

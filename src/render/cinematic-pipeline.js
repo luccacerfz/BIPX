@@ -44,14 +44,35 @@ export function renderShaderWarmupShadowScene({ THREE, renderer, scene, camera, 
 }
 
 /** Build a disposable shadow-only scene from the actual configured shadow light and product caster. */
-export function createShaderWarmupShadowStage({ THREE, shadowLight, camera, caster }) {
+export function createShaderWarmupShadowStage({ THREE, shadowLight, camera, caster, lightingScene = null }) {
   if (!THREE?.Scene || !shadowLight?.castShadow || !shadowLight.target?.clone || !shadowLight.shadow?.mapSize ||
-      !camera?.clone || !caster?.position?.set) throw new TypeError('shadow warmup stage needs the production light, camera and caster');
+      !camera?.clone || !camera?.layers?.test || !caster?.position?.set) throw new TypeError('shadow warmup stage needs the production light, camera and caster');
   const stage = new THREE.Scene();
   stage.name = 'shader-warmup-shadow-map-thunderstaff';
   const light = shadowLight.clone(false);
   light.target = shadowLight.target.clone(false);
-  stage.add(light, light.target, caster);
+  const retainedLighting = [];
+  const copyWorldTransform = (source, target) => {
+    if (!source?.matrixWorld?.decompose || !target?.position || !target?.quaternion || !target?.scale) return;
+    source.updateWorldMatrix?.(true, false);
+    source.matrixWorld.decompose(target.position, target.quaternion, target.scale);
+    target.updateMatrix?.();
+  };
+  const retainLightShape = source => {
+    if (!source?.isLight || source === shadowLight || source.visible === false || !source.layers?.test?.(camera.layers)) return;
+    const clone = source.clone(false);
+    // The staging pass needs the published scene's exact light-count cache key,
+    // while only the cloned moon should contribute a shadow caster pass.
+    clone.castShadow = false;
+    copyWorldTransform(source, clone);
+    const target = source.target && clone.target ? clone.target : null;
+    if (target) copyWorldTransform(source.target, target);
+    retainedLighting.push(clone);
+    if (target) retainedLighting.push(target);
+  };
+  if (typeof lightingScene?.traverseVisible === 'function') lightingScene.traverseVisible(retainLightShape);
+  else lightingScene?.traverse?.(retainLightShape);
+  stage.add(...retainedLighting, light, light.target, caster);
   caster.position.set(0, 0, 0);
   caster.visible = true;
   let disposed = false;
@@ -63,22 +84,36 @@ export function createShaderWarmupShadowStage({ THREE, shadowLight, camera, cast
       // The caster is borrowed from the product warmup roots. Only detach it;
       // the root owner disposes its geometry/material exactly once.
       stage.remove(caster);
+      stage.remove(...retainedLighting);
+      retainedLighting.length = 0;
       stage.remove(light, light.target);
-      light.shadow?.dispose?.(); // LightShadow owns and releases its cloned map/mapPass; DirectionalLight has no dispose().
+      // DirectionalLight.dispose() delegates to its shadow and releases cloned targets at this stage boundary.
+      light.dispose();
       return true;
     } };
 }
 
-/** Run the real shadow render once, then release its large temporary map on every path. */
-export function runShaderWarmupShadowStage(stage, render) {
-  if (!stage?.scene || !stage?.camera || typeof stage.dispose !== 'function' || typeof render !== 'function') {
-    throw new TypeError('shadow warmup runner needs an owned stage and render callback');
+/** Prime the renderer's cached light state for this exact shadow stage without compiling caster color materials. */
+export function primeShaderWarmupShadowLighting({ THREE, renderer, scene, camera }) {
+  if (!THREE?.Scene || typeof renderer?.compile !== 'function' || !scene || !camera) {
+    throw new TypeError('shadow warmup lighting prime needs Three, renderer, stage scene and camera');
   }
-  let result, renderError = null, disposeError = null;
-  try { result = render(stage.scene, stage.camera); } catch (error) { renderError = error; }
+  renderer.compile(new THREE.Scene(), camera, scene);
+}
+
+/** Prime, render the real shadow pass once, then release its large temporary map on every path. */
+export function runShaderWarmupShadowStage(stage, prime, render) {
+  if (!stage?.scene || !stage?.camera || typeof stage.dispose !== 'function' || typeof prime !== 'function' || typeof render !== 'function') {
+    throw new TypeError('shadow warmup runner needs an owned stage, lighting prime and render callback');
+  }
+  let result, stageError = null, disposeError = null;
+  try {
+    prime(stage.scene, stage.camera);
+    result = render(stage.scene, stage.camera);
+  } catch (error) { stageError = error; }
   try { stage.dispose(); } catch (error) { disposeError = error; }
-  if (renderError && disposeError) throw new AggregateError([renderError, disposeError], 'shadow warmup render and stage cleanup both failed');
-  if (renderError) throw renderError;
+  if (stageError && disposeError) throw new AggregateError([stageError, disposeError], 'shadow warmup preparation/render and stage cleanup both failed');
+  if (stageError) throw stageError;
   if (disposeError) throw disposeError;
   return result;
 }

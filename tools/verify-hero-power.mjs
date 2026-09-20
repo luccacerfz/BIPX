@@ -1,6 +1,8 @@
 // Pure CPU contract for src/combat/hero-power.mjs (no browser, no network): mitigation, hit-grace, leech cap,
-// combo finisher, knockback, level power, pacing monotonicity and client/server numeric parity (same module).
+// combo finisher, knockback, trusted level cap/clamp, first-card/monotonic XP, offer-spacing policy, spawn
+// monotonicity and client/server numeric parity (same module).
 // The survival cases at the end are a *model*: module rules + the monster numbers parsed from the sources.
+// This file does not prove game feel or power-over-time balance.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as H from '../src/combat/hero-power.mjs';
@@ -76,7 +78,7 @@ check('Leech: per-hit and per-kill sustain with a sane rolling per-second cap, n
   let total = W.leech.perHit * max + W.leech.perKill * max;
   for (let i = 0; i < 50; i++) total += H.resolveLeech(s, { hits: 8, kills: 8, now: .2 + i * .01, health: 100, maxHealth: max });
   near(total, W.leech.capPerSecond * max, 1e-6);
-  assert.ok(W.leech.capPerSecond * max <= 25 && W.leech.capPerSecond <= .08, 'cap must stay below a wave-6 zombie hit per second');
+  assert.ok(W.leech.capPerSecond * max <= 25 && W.leech.capPerSecond <= .08, 'rolling leech cap stays a small fraction of max health per second');
   assert.equal(H.resolveLeech(s, { hits: 8, now: .99, health: 100, maxHealth: max }), 0);
   assert.ok(H.resolveLeech(s, { hits: 1, now: 1.01, health: 100, maxHealth: max }) > 0, 'window rolls after one second');
   const full = H.createHeroCombatState('warrior');
@@ -142,12 +144,26 @@ check('Knockback: swarm slides and staggers, heavies barely move, bosses and con
 });
 
 check('Level power: trusted, monotonic, capped, and inside the beginSkill clamp', () => {
+  // Current intended policy: levels arrive slower after the card-pacing retune, so the trusted cap is 22
+  // (was 40). Do not pin mid-run skillPower(12) (old 1.7..2.2 band / wave-6 mapping had no natural data).
+  assert.equal(H.HERO_POWER_LEVEL_CAP, 22, 'trusted cap is 22 after the card-pacing retune');
   for (const classId of ['warrior', 'dwarf']) {
     assert.equal(H.basicPower(classId, 1), 1); assert.equal(H.skillPower(classId, 1), 1);
     for (let level = 1; level < 120; level++) { assert.ok(H.basicPower(classId, level + 1) >= H.basicPower(classId, level)); assert.ok(H.skillPower(classId, level + 1) >= H.skillPower(classId, level)); }
     assert.equal(H.skillPower(classId, 9999), H.skillPower(classId, H.HERO_POWER_LEVEL_CAP));
-    for (const bad of [NaN, -3, 0, undefined, null, 'x', Infinity]) { assert.ok(H.skillPower(classId, bad) >= 1 && H.skillPower(classId, bad) <= H.skillPower(classId, H.HERO_POWER_LEVEL_CAP)); assert.ok(H.basicPower(classId, bad) >= 1); }
-    assert.ok(H.skillPower(classId, 12) >= 1.7 && H.skillPower(classId, 12) <= 2.2, 'wave-6 skills stay relevant without trivialising bosses');
+    assert.equal(H.basicPower(classId, 9999), H.basicPower(classId, H.HERO_POWER_LEVEL_CAP));
+    assert.equal(H.skillPower(classId, H.HERO_POWER_LEVEL_CAP + 1), H.skillPower(classId, H.HERO_POWER_LEVEL_CAP));
+    for (const bad of [NaN, -3, 0, undefined, null, 'x', Infinity]) {
+      assert.ok(H.skillPower(classId, bad) >= 1 && H.skillPower(classId, bad) <= H.skillPower(classId, H.HERO_POWER_LEVEL_CAP));
+      assert.ok(H.basicPower(classId, bad) >= 1 && H.basicPower(classId, bad) <= H.basicPower(classId, H.HERO_POWER_LEVEL_CAP));
+    }
+    for (let level = 2; level < H.HERO_POWER_LEVEL_CAP; level++) {
+      assert.ok(H.skillPower(classId, level) > H.skillPower(classId, 1));
+      assert.ok(H.skillPower(classId, level) < H.skillPower(classId, H.HERO_POWER_LEVEL_CAP));
+      assert.ok(H.basicPower(classId, level) > H.basicPower(classId, 1));
+      assert.ok(H.basicPower(classId, level) < H.basicPower(classId, H.HERO_POWER_LEVEL_CAP));
+    }
+    assert.ok(H.skillPower(classId, H.HERO_POWER_LEVEL_CAP) > H.basicPower(classId, H.HERO_POWER_LEVEL_CAP), 'skills scale more than basics at the trusted cap');
     assert.ok(2.96 * 1.4 * 1.35 * H.skillPower(classId, 9999) < 100, 'max stacks × buffs × level stays inside beginSkill clamp');
   }
   const def = CLASS_SKILLS.find(skill => skill.id === 'dwarf_explosive_cannon'), state = createSkillState('dwarf');
@@ -155,10 +171,20 @@ check('Level power: trusted, monotonic, capped, and inside the beginSkill clamp'
   assert.ok(cast.ok); near(state.active[0].damageMultiplier, 2 * H.skillPower('dwarf', 10));
 });
 
-check('Pacing: early XP is faster then rejoins the old curve; spawn pressure is monotonic with a gentle first 25 s', () => {
-  assert.equal(H.xpToNext(1), 9); // three opening zombies (3 XP each)
-  for (let level = 1; level < 99; level++) { assert.ok(H.xpToNext(level + 1) > H.xpToNext(level)); assert.ok(H.xpToNext(level) <= oldXp(level)); }
-  assert.ok(oldXp(20) - H.xpToNext(20) <= 1 && H.xpToNext(1) <= oldXp(1) * .5); assert.equal(H.xpToNext(-5), H.xpToNext(1)); assert.equal(H.xpToNext('x'), H.xpToNext(1));
+check('Pacing: first card is three kills, later XP costs grow monotonically, spawn pressure is monotonic with a gentle first 25 s', () => {
+  assert.equal(H.xpToNext(1), 9); // three opening zombies (3 XP each) — first card after 3 kills
+  for (let level = 1; level < 99; level++) {
+    assert.ok(H.xpToNext(level) > 0, 'xp costs stay positive');
+    assert.equal(H.xpToNext(level), Math.floor(H.xpToNext(level)), 'xp costs are whole points');
+    assert.ok(H.xpToNext(level + 1) > H.xpToNext(level), 'xp costs grow gradually; a cheaper next level is a revert');
+  }
+  // Superseded curve offered a card ~every 11 s and then rejoined. Current intent: cheaper first card, then
+  // fewer interruptions (higher later costs). Do not require newXP <= oldXP.
+  assert.ok(H.xpToNext(1) < oldXp(1) && H.xpToNext(1) <= oldXp(1) * .5, 'opening card is cheaper than the superseded curve');
+  for (const level of [2, 10, 20]) {
+    assert.ok(H.xpToNext(level) > oldXp(level), `level ${level} must stay slower than the superseded ~11s curve`);
+  }
+  assert.equal(H.xpToNext(-5), H.xpToNext(1)); assert.equal(H.xpToNext('x'), H.xpToNext(1));
   for (const floor of [.032, .05]) for (let wave = 1; wave <= 30; wave++) for (let t = 0; t <= 600; t += 5) {
     assert.ok(H.spawnInterval(wave, t + 5, floor) <= H.spawnInterval(wave, t, floor) + 1e-12, 'interval must not grow with time');
     assert.ok(H.spawnInterval(wave + 1, t, floor) <= H.spawnInterval(wave, t, floor) + 1e-12, 'interval must not grow with wave');
@@ -174,6 +200,21 @@ check('Pacing: early XP is faster then rejoins the old curve; spawn pressure is 
   for (const r of [0, .5, .999]) { const early = H.spawnDistance(0, r), late = H.spawnDistance(60, r); assert.ok(early >= 22 && early <= 32 && late >= 28 && late <= 50 && early <= late); }
 });
 
+check('Offer spacing: authority policy is early 18s, late 28s after 180s', () => {
+  assert.ok(Object.isFrozen(H.OFFER_SPACING));
+  assert.equal(H.OFFER_SPACING.early, 18);
+  assert.equal(H.OFFER_SPACING.late, 28);
+  assert.equal(H.OFFER_SPACING.lateAfter, 180);
+  assert.ok(H.OFFER_SPACING.late > H.OFFER_SPACING.early);
+  assert.equal(H.offerSpacing(0), H.OFFER_SPACING.early);
+  assert.equal(H.offerSpacing(H.OFFER_SPACING.lateAfter - 1e-6), H.OFFER_SPACING.early);
+  assert.equal(H.offerSpacing(H.OFFER_SPACING.lateAfter), H.OFFER_SPACING.late);
+  assert.equal(H.offerSpacing(H.OFFER_SPACING.lateAfter + 60), H.OFFER_SPACING.late);
+  assert.equal(H.offerSpacing(-10), H.OFFER_SPACING.early);
+  assert.match(authority, /p\.nextOfferAt = p\.clock \+ offerSpacing\(p\.clock\)/);
+  assert.match(main, /nextOfferAt = game\.survivalTime \+ offerSpacing\(/);
+});
+
 check('Client/server parity: both import the same module and carry no private copy of the numbers', () => {
   for (const [name, source] of [['main.js', main], ['server.mjs', server]]) {
     assert.match(source, /from ["']\.\/(src\/)?combat\/hero-power\.mjs["']/, `${name} must import hero-power`);
@@ -184,7 +225,10 @@ check('Client/server parity: both import the same module and carry no private co
   assert.match(server, /serverCharacterProfiles = \{ warrior: basicAttackSpec\("warrior"\), dwarf: basicAttackSpec\("dwarf"\) \}/);
   assert.match(server, /damageMultiplier: attackStats\(client\.progression\)\.damageMultiplier \* skillPower\(client\.state\.character, client\.progression\.level\)/);
   assert.match(main, /\* skillPower\(player\.character, player\.level\)/);
-  assert.match(authority, /state\.maxHealth = heroMaxHealth\(p\.character\)/); assert.equal(A.xpToNext, H.xpToNext);
+  assert.match(authority, /state\.maxHealth = maxHealthForStacks\(p\.character, p\.stacks\)/);
+  assert.equal(A.maxHealthForStacks('warrior'), W.maxHealth);
+  assert.equal(A.maxHealthForStacks('dwarf'), D.maxHealth);
+  assert.equal(A.xpToNext, H.xpToNext);
   const warrior = { runId: 'w', character: 'warrior', health: 999, state: 'playing', stateVersion: 0 }; A.createProgression(warrior);
   assert.equal(warrior.maxHealth, W.maxHealth); assert.equal(warrior.health, W.maxHealth);
   const lyra = { runId: 'd', character: 'dwarf', health: 999, state: 'playing', stateVersion: 0 }; A.createProgression(lyra); assert.equal(lyra.maxHealth, D.maxHealth);
@@ -220,6 +264,7 @@ check('Model: the opening horde is survivable, a hero standing still at wave 6 s
 
 const outDir = process.env.BIPX_EVIDENCE_DIR || 'output/qa/hero-power';
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(`${outDir}/hero-power-cpu.json`, JSON.stringify({ passed: true, scope: 'Pure CPU module contract plus source-text parity; the survival block is a model, not gameplay evidence.', profiles: H.HERO_PROFILES, incoming: H.INCOMING, pacing: H.PACING,
+fs.writeFileSync(`${outDir}/hero-power-cpu.json`, JSON.stringify({ passed: true, scope: 'Pure CPU module contract plus source-text parity; the survival block is a model, not gameplay evidence. Game feel and power-over-time balance are not proven by this CPU test.', profiles: H.HERO_PROFILES, incoming: H.INCOMING, pacing: H.PACING,
+  offerSpacing: H.OFFER_SPACING, levelCap: H.HERO_POWER_LEVEL_CAP,
   xpToNext: Array.from({ length: 12 }, (_, i) => H.xpToNext(i + 1)), checks }, null, 2) + '\n');
 console.log(`hero-power: ${checks.length} checks passed`);
